@@ -1,0 +1,4 @@
+{
+  "$schema": "https://opencode.ai/tui.json",
+  "plugin": ["./opencode-quota-zai.tsx", "./opencode-quota-openai.tsx"]
+}

@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+.opencode/plugins/tokens.ts
+.tmp-test/
+.tmp-test-src/
+
+# npm
+*.log
+
+.opencode/
