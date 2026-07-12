@@ -1,6 +1,6 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 
-export type SessionMessage = { info: { id: string } }
+export type SessionMessage = { info: { id: string; role: string } }
 
 export type TitleStage = "checking" | "generating" | "ready" | "updating" | "handled"
 
@@ -13,6 +13,7 @@ type TitleRecord = {
 
 const TITLE = /^[\p{L}\p{N}][\p{L}\p{N}'-]*(?: [\p{L}\p{N}][\p{L}\p{N}'-]*){2,7}$/u
 const TITLE_SYSTEM = "Return only a plain-text session title of 3 to 8 words. No quotes, Markdown, punctuation, or explanation."
+const HANDLED_PARENT_LIMIT = 256
 
 type Client = PluginInput["client"]
 type Warn = (action: string, sessionID: string, error: unknown) => void
@@ -26,15 +27,16 @@ export function hasPriorParentMessages(
   messages: readonly SessionMessage[],
   currentMessageID: string,
 ): boolean {
-  return messages.some((message) => message.info.id !== currentMessageID)
+  return messages.some((message) => message.info.id !== currentMessageID && message.info.role === "user")
 }
 
 export class TitleState {
   #parents = new Map<string, TitleRecord>()
   #children = new Set<string>()
+  #handledParents = new Set<string>()
 
   claim(parentID: string): boolean {
-    if (this.#parents.has(parentID)) return false
+    if (this.#parents.has(parentID) || this.#handledParents.has(parentID)) return false
     this.#parents.set(parentID, { stage: "checking", idleSeen: false })
     return true
   }
@@ -63,8 +65,11 @@ export class TitleState {
   }
 
   fail(parentID: string): void {
-    const record = this.#parents.get(parentID)
-    if (record) record.stage = "handled"
+    if (!this.#parents.delete(parentID)) return
+    this.#handledParents.add(parentID)
+    if (this.#handledParents.size > HANDLED_PARENT_LIMIT) {
+      this.#handledParents.delete(this.#handledParents.values().next().value!)
+    }
   }
 
   onFirstIdle(parentID: string): string | undefined {
@@ -113,6 +118,10 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
   }
 
   return {
+    async config(config) {
+      config.agent ??= {}
+      config.agent.title = { ...config.agent.title, disable: true }
+    },
     async "chat.message"(input, output) {
       const parentID = input.sessionID
       if (state.isChild(parentID) || !state.claim(parentID)) return
@@ -155,6 +164,7 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
           path: { id: childID },
           body: {
             model,
+            ...(input.variant === undefined ? {} : { variant: input.variant }),
             tools: {},
             system: TITLE_SYSTEM,
             parts: [{ type: "text", text: `Generate a title for this request:\n\n${request}` }],

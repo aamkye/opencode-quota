@@ -21,10 +21,11 @@ test("normalizes one plain-text title with three to eight words", () => {
   assert.equal(normalizeTitle("Repair checkout\nwebhook retries"), undefined)
 })
 
-test("recognizes only the initial parent message", () => {
+test("recognizes only prior user messages", () => {
   assert.equal(hasPriorParentMessages([], "message-1"), false)
-  assert.equal(hasPriorParentMessages([{ info: { id: "message-1" } }], "message-1"), false)
-  assert.equal(hasPriorParentMessages([{ info: { id: "message-0" } }], "message-1"), true)
+  assert.equal(hasPriorParentMessages([{ info: { id: "message-1", role: "user" } }], "message-1"), false)
+  assert.equal(hasPriorParentMessages([{ info: { id: "assistant-1", role: "assistant" } }], "message-1"), false)
+  assert.equal(hasPriorParentMessages([{ info: { id: "message-0", role: "user" } }], "message-1"), true)
 })
 
 test("begins generation only from a claimed parent", () => {
@@ -54,12 +55,12 @@ test("releases temporary children after cleanup", () => {
   assert.equal(state.isChild("child-1"), false)
 })
 
-test("does not retry after generation, cleanup, or update failure", () => {
+test("releases terminal parent records without retrying", () => {
   for (const parentID of ["generation", "cleanup", "update"]) {
     const state = new TitleState()
     assert.equal(state.claim(parentID), true)
     state.fail(parentID)
-    assert.equal(state.stage(parentID), "handled")
+    assert.equal(state.stage(parentID), undefined)
     assert.equal(state.claim(parentID), false)
   }
 })
