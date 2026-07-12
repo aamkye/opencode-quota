@@ -103,6 +103,15 @@ The plugin auto-registers `/tokens_*` slash commands via the `config` hook.
 No `opencode.json` registration needed — files in `.opencode/plugins/` are
 auto-scanned at startup.
 
+### Session title plugin
+
+Build the global hook plugin with `npm run build:session-title`. Deploy it with
+`npm run deploy:session-title`; this copies only `dist/session-title.ts` to
+`~/.config/opencode/plugins/session-title.ts`, which OpenCode auto-loads at
+startup. Restart OpenCode after deployment. The plugin generates a one-time,
+3-8 word title from the first message's selected model; later messages do not
+change that title.
+
 ### Files
 
 | File                        | Purpose                                                               |

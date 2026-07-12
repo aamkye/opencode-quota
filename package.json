@@ -14,7 +14,9 @@
     "test": "node tests/compile-shared.mjs && node tests/compile-session-title.mjs && node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "build": "node build-tokens.mjs",
-    "build:tokens": "node build-tokens.mjs"
+    "build:tokens": "node build-tokens.mjs",
+    "build:session-title": "node build-session-title.mjs",
+    "deploy:session-title": "node deploy-session-title.mjs"
   },
   "keywords": [
     "opencode",
