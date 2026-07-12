@@ -65,6 +65,20 @@ test("releases terminal parent records without retrying", () => {
   }
 })
 
+test("does not reclaim a handled parent after more than 256 newer terminal sessions", () => {
+  const state = new TitleState()
+  assert.equal(state.claim("original"), true)
+  state.fail("original")
+
+  for (let index = 0; index < 257; index += 1) {
+    const parentID = `newer-${index}`
+    assert.equal(state.claim(parentID), true)
+    state.fail(parentID)
+  }
+
+  assert.equal(state.claim("original"), false)
+})
+
 test("deletes the child when prompt fails, warns structurally, and never updates the parent", async () => {
   const warnings = []
   const calls = []

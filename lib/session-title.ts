@@ -13,7 +13,6 @@ type TitleRecord = {
 
 const TITLE = /^[\p{L}\p{N}][\p{L}\p{N}'-]*(?: [\p{L}\p{N}][\p{L}\p{N}'-]*){2,7}$/u
 const TITLE_SYSTEM = "Return only a plain-text session title of 3 to 8 words. No quotes, Markdown, punctuation, or explanation."
-const HANDLED_PARENT_LIMIT = 256
 
 type Client = PluginInput["client"]
 type Warn = (action: string, sessionID: string, error: unknown) => void
@@ -67,9 +66,6 @@ export class TitleState {
   fail(parentID: string): void {
     if (!this.#parents.delete(parentID)) return
     this.#handledParents.add(parentID)
-    if (this.#handledParents.size > HANDLED_PARENT_LIMIT) {
-      this.#handledParents.delete(this.#handledParents.values().next().value!)
-    }
   }
 
   onFirstIdle(parentID: string): string | undefined {
