@@ -21,3 +21,4 @@ dist/
 *.log
 
 .opencode/
+.worktrees/
