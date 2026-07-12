@@ -18,5 +18,12 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["opencode-quota-zai.tsx", "opencode-quota-openai.tsx", "opencode-quota-shared.tsx", "opencode-plugin-tui.d.ts"]
+  "include": [
+    "opencode-quota-zai.tsx",
+    "opencode-quota-openai.tsx",
+    "opencode-quota-shared.tsx",
+    "opencode-plugin-tui.d.ts",
+    "lib/session-title.ts",
+    "session-title.ts"
+  ]
 }
