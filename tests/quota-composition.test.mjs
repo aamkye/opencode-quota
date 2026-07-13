@@ -114,6 +114,21 @@ test("uses remaining percentages and descending secondary order by default", () 
   assert.ok(!headers(others).includes("Offline"))
 })
 
+test("falls back to descending selected metrics when sort direction is invalid", () => {
+  const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50 })
+  const alpha = provider({ id: "alpha", title: "Alpha", order: 130, primaryPct: 20 })
+  const beta = provider({ id: "beta", title: "Beta", order: 140, primaryPct: 80 })
+  const gamma = provider({ id: "gamma", title: "Gamma", order: 150, primaryPct: 40 })
+
+  const model = composeQuotaPanel("zai", [alpha, beta, gamma, zai], {
+    percentageMode: "used",
+    sortDirection: "sideways",
+  })
+  const others = model.groups.find((group) => group.id === "other-providers")
+
+  assert.deepEqual(headers(others), ["Alpha", "Gamma", "Beta"])
+})
+
 test("uses selected used percentages and ascending secondary order when configured", () => {
   const openai = provider({ id: "openai", title: "OpenAI", order: 120, primaryPct: 70, secondaryPct: 20 })
   const alpha = provider({ id: "alpha", title: "Alpha", order: 130, primaryPct: 20 })
