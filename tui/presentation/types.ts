@@ -4,7 +4,7 @@ export type TimerState = "unavailable" | "idle" | "countdown" | "expired"
 
 export type QuantityUnit = "count" | "bytes" | "duration" | "currency"
 
-export type PanelStatus = "neutral" | "info" | "success" | "warning" | "error"
+export type PanelStatus = "error" | "warning" | "success" | "text" | "textMuted"
 
 export type PanelAlignment = "start" | "center" | "end"
 

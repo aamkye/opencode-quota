@@ -85,7 +85,7 @@ test("normalizes a generic panel into stable, compact render rows", () => {
   assert.deepEqual(table.columns.map((column) => column.id), ["model", "remaining"])
   assert.deepEqual(table.rows[0], {
     id: "gpt",
-    cells: ["GPT", "80"],
+    cells: [{ text: "GPT" }, { text: "80" }],
   })
 })
 

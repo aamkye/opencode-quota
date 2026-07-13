@@ -6,6 +6,8 @@ const presentationTests = [
   "tests/presentation-types.test.mjs",
   "tests/presentation-format.test.mjs",
   "tests/presentation-layout.test.mjs",
+  "tests/presentation-render-model.test.mjs",
+  "tests/presentation-mounted.test.mjs",
 ]
 
 test("precompiles presentation modules before concurrent test workers start", () => {

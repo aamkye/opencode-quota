@@ -36,7 +36,7 @@ type NormalizedItem =
       kind: "table"
       layout: "compact"
       columns: { id: string; title: string; align: PanelAlignment }[]
-      rows: { id: string; cells: string[] }[]
+      rows: { id: string; cells: { text: string; status?: PanelStatus }[] }[]
       allocation: CompactTableAllocation
       status?: PanelStatus
     }
@@ -63,13 +63,16 @@ type RenderedCell = {
   text: string
   width: number
   align: PanelAlignment
+  status?: PanelStatus
 }
 
 type RenderedItem =
-  | { kind: "header" | "text" | "quantity"; text: string }
+  | { kind: "header" | "text" | "quantity"; text: string; status?: PanelStatus }
   | { kind: "progress"; cells: RenderedCell[] }
-  | { kind: "timer"; text: string; detail?: string }
+  | { kind: "timer"; text: string; detail?: string; status?: PanelStatus }
   | { kind: "table"; rows: RenderedCell[][] }
+
+export type PanelTheme = Record<PanelStatus, string>
 
 export type RenderedPanelLayout = {
   collapsed: boolean
@@ -95,6 +98,10 @@ function formatDisplayValue(value: DisplayValue): string {
     case "currency":
       return formatCurrency(value.value, value.precision)
   }
+}
+
+function formatDisplayCell(value: DisplayValue): { text: string; status?: PanelStatus } {
+  return value.status ? { text: formatDisplayValue(value), status: value.status } : { text: formatDisplayValue(value) }
 }
 
 function formatItemQuantity(item: Extract<PanelItem, { kind: "quantity" }>): string {
@@ -147,8 +154,9 @@ function normalizeItem(item: PanelItem, availableCells: number, now: number): No
     case "table": {
       const columns = sortByOrderThenId(item.columns)
       const columnIndexes = columns.map((column) => item.columns.indexOf(column))
-      const [keyColumn, valueColumn] = columns
+      const [identityColumn, keyColumn, valueColumn] = columns.length === 3 ? columns : [undefined, columns[0], columns[1]]
       const allocation = allocateCompactTable(availableCells, {
+        identity: identityColumn?.title.length,
         key: keyColumn?.title.length ?? 0,
         value: valueColumn?.title.length ?? 0,
       })
@@ -160,7 +168,7 @@ function normalizeItem(item: PanelItem, availableCells: number, now: number): No
         columns: columns.map((column) => ({ id: column.id, title: column.title, align: column.align ?? "start" })),
         rows: sortByOrderThenId(item.rows).map((row) => ({
           id: row.id,
-          cells: columnIndexes.map((index) => formatDisplayValue(row.cells[index]!)),
+          cells: columnIndexes.map((index) => formatDisplayCell(row.cells[index]!)),
         })),
         allocation,
         status: item.status,
@@ -207,46 +215,60 @@ export function normalizePanelModel(model: PanelModel, options: RendererNormaliz
   }
 }
 
-function renderCell(text: string, width: number, align: PanelAlignment): RenderedCell {
-  return { text: alignText(truncateText(text, width), width, align), width, align }
+function renderCell(text: string, width: number, align: PanelAlignment, status?: PanelStatus): RenderedCell {
+  const cell = { text: alignText(truncateText(text, width), width, align), width, align }
+  return status ? { ...cell, status } : cell
 }
 
 function renderItemLayout(item: NormalizedItem): RenderedItem {
   switch (item.kind) {
     case "header":
-      return { kind: item.kind, text: item.detail ? `${item.title}: ${item.detail}` : item.title }
+      return { kind: item.kind, text: item.detail ? `${item.title}: ${item.detail}` : item.title, status: item.status }
     case "text":
-      return { kind: item.kind, text: item.text }
+      return { kind: item.kind, text: item.text, status: item.status }
     case "progress": {
       const filled = Math.round((Number.parseInt(item.percent, 10) / 100) * item.allocation.bar)
       const bar = "█".repeat(filled) + "░".repeat(item.allocation.bar - filled)
       return {
         kind: item.kind,
         cells: [
-          renderCell(item.label, item.allocation.marker, "start"),
-          renderCell("", item.allocation.beforeBarGap, "start"),
-          renderCell(bar, item.allocation.bar, "start"),
-          renderCell("", item.allocation.beforePercentGap, "start"),
-          renderCell(item.percent, item.allocation.percent, "end"),
+          renderCell(item.label, item.allocation.marker, "start", item.status),
+          renderCell("", item.allocation.beforeBarGap, "start", item.status),
+          renderCell(bar, item.allocation.bar, "start", item.status),
+          renderCell("", item.allocation.beforePercentGap, "start", item.status),
+          renderCell(item.percent, item.allocation.percent, "end", item.status),
         ],
       }
     }
     case "timer":
-      return { kind: item.kind, text: item.text, detail: item.detail }
+      return { kind: item.kind, text: item.text, detail: item.detail, status: item.status }
     case "quantity":
-      return { kind: item.kind, text: `${item.label}: ${item.value}` }
+      return { kind: item.kind, text: `${item.label}: ${item.value}`, status: item.status }
     case "table": {
-      const [keyColumn, valueColumn] = item.columns
-      const renderRow = (cells: string[]) => [
-        renderCell(cells[0] ?? "", item.allocation.key, keyColumn?.align ?? "start"),
-        renderCell("", item.allocation.beforeValueGap, "start"),
-        renderCell(cells[1] ?? "", item.allocation.value, item.allocation.valueAlign === "right" ? "end" : "start"),
-      ]
+      const [identityColumn, keyColumn, valueColumn] = item.columns.length === 3 ? item.columns : [undefined, item.columns[0], item.columns[1]]
+      const renderRow = (cells: { text: string; status?: PanelStatus }[]) => {
+        const identityOffset = identityColumn ? 1 : 0
+        return [
+          ...(identityColumn && item.allocation.identity > 0
+            ? [
+                renderCell(cells[0]?.text ?? "", item.allocation.identity, identityColumn.align, cells[0]?.status ?? item.status),
+                renderCell("", item.allocation.beforeKeyGap, "start", item.status),
+              ]
+            : []),
+          renderCell(cells[identityOffset]?.text ?? "", item.allocation.key, keyColumn?.align ?? "start", cells[identityOffset]?.status ?? item.status),
+          renderCell("", item.allocation.beforeValueGap, "start", item.status),
+          renderCell(cells[identityOffset + 1]?.text ?? "", item.allocation.value, item.allocation.valueAlign === "right" ? "end" : "start", cells[identityOffset + 1]?.status ?? item.status),
+        ]
+      }
 
       return {
         kind: item.kind,
         rows: [
-          renderRow([keyColumn?.title ?? "", valueColumn?.title ?? ""]),
+          renderRow(
+            identityColumn
+              ? [{ text: identityColumn.title }, { text: keyColumn?.title ?? "" }, { text: valueColumn?.title ?? "" }]
+              : [{ text: keyColumn?.title ?? "" }, { text: valueColumn?.title ?? "" }],
+          ),
           ...item.rows.map((row) => renderRow(row.cells)),
         ],
       }
@@ -276,7 +298,7 @@ export function renderPanelLayout(model: PanelModel, options: RendererLayoutOpti
         renderCell(panelCollapsed ? "▶" : "▼", allocation.marker, "start"),
         renderCell(title, allocation.label, "start"),
         ...(allocation.beforeSummaryGap > 0 ? [renderCell("", allocation.beforeSummaryGap, "start")] : []),
-        ...(summary && allocation.summary > 0 ? [renderCell(summary.text, allocation.summary, "end")] : []),
+        ...(summary && allocation.summary > 0 ? [renderCell(summary.text, allocation.summary, "end", summary.status)] : []),
       ],
     },
     groups: panelCollapsed
@@ -298,24 +320,26 @@ function Divider() {
   return <box width="100%" height={1} border={["top"]} />
 }
 
-function RenderItem(props: { item: RenderedItem }) {
+function RenderItem(props: { item: RenderedItem; theme: Accessor<PanelTheme> }) {
+  const color = (status?: PanelStatus) => (status ? props.theme()[status] : undefined)
+
   switch (props.item.kind) {
     case "header":
     case "text":
     case "quantity":
-      return <text>{props.item.text}</text>
+      return <text fg={color(props.item.status)}>{props.item.text}</text>
     case "progress":
       return (
         <box flexDirection="row" width="100%">
-          <For each={props.item.cells}>{(cell) => <text width={cell.width}>{cell.text}</text>}</For>
+          <For each={props.item.cells}>{(cell) => <text width={cell.width} fg={color(cell.status)}>{cell.text}</text>}</For>
         </box>
       )
     case "timer":
       return (
         <box flexDirection="column">
-          <text>{props.item.text}</text>
+          <text fg={color(props.item.status)}>{props.item.text}</text>
           <Show when={props.item.detail}>
-            <text>{props.item.detail}</text>
+            <text fg={color(props.item.status)}>{props.item.detail}</text>
           </Show>
         </box>
       )
@@ -323,14 +347,14 @@ function RenderItem(props: { item: RenderedItem }) {
       return (
         <box flexDirection="column">
           <For each={props.item.rows}>
-            {(row) => <box flexDirection="row"><For each={row}>{(cell) => <text width={cell.width}>{cell.text}</text>}</For></box>}
+            {(row) => <box flexDirection="row"><For each={row}>{(cell) => <text width={cell.width} fg={color(cell.status)}>{cell.text}</text>}</For></box>}
           </For>
         </box>
       )
   }
 }
 
-export function PanelRenderer(props: { model: Accessor<PanelModel> }) {
+export function PanelRenderer(props: { model: Accessor<PanelModel>; availableCells: Accessor<number>; theme: Accessor<PanelTheme> }) {
   const [collapsed, setCollapsed] = createSignal(new Set<string>())
   const [now, setNow] = createSignal(Date.now())
   const interval = setInterval(() => setNow(Date.now()), 1_000)
@@ -339,12 +363,12 @@ export function PanelRenderer(props: { model: Accessor<PanelModel> }) {
   const toggle = (id: string) => {
     setCollapsed((current) => toggleCollapsed(current, id))
   }
-  const layout = () => renderPanelLayout(props.model(), { now: now(), collapsed: collapsed() })
+  const layout = () => renderPanelLayout(props.model(), { availableCells: props.availableCells(), now: now(), collapsed: collapsed() })
 
   return (
     <box flexDirection="column" width="100%">
       <box flexDirection="row" width="100%" onMouseDown={() => toggle(`panel:${props.model().id}`)}>
-        <For each={layout().header.cells}>{(cell) => <text width={cell.width}>{cell.text}</text>}</For>
+        <For each={layout().header.cells}>{(cell) => <text width={cell.width} fg={cell.status ? props.theme()[cell.status] : undefined}>{cell.text}</text>}</For>
       </box>
       <Show when={!layout().collapsed}>
         <For each={layout().groups}>
@@ -364,7 +388,7 @@ export function PanelRenderer(props: { model: Accessor<PanelModel> }) {
               </Show>
               <Show when={!group.collapsed}>
                 <For each={group.items}>
-                  {(item) => <RenderItem item={item} />}
+                  {(item) => <RenderItem item={item} theme={props.theme} />}
                 </For>
               </Show>
               <Divider />

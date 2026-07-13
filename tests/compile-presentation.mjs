@@ -1,7 +1,7 @@
 import { build } from "esbuild"
 import { mkdirSync, rmSync } from "node:fs"
 
-for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer"]) {
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
 }
 mkdirSync(".tmp-test", { recursive: true })
@@ -11,6 +11,7 @@ for (const [entryPoint, outfile] of [
   ["tui/presentation/format.ts", ".tmp-test/presentation-format.mjs"],
   ["tui/presentation/layout.ts", ".tmp-test/presentation-layout.mjs"],
   ["tui/presentation/renderer.tsx", ".tmp-test/presentation-renderer.mjs"],
+  ["tests/presentation-mounted.fixture.ts", ".tmp-test/presentation-mounted.mjs"],
 ]) {
   await build({
     bundle: true,
