@@ -22,3 +22,6 @@ dist/
 
 .opencode/
 .worktrees/
+
+AGENTS.md
+.comet/
