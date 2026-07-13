@@ -24,6 +24,7 @@
     "opencode-quota-shared.tsx",
     "opencode-plugin-tui.d.ts",
     "lib/session-title.ts",
-    "session-title.ts"
+    "session-title.ts",
+    "tui/presentation/renderer.tsx"
   ]
 }
