@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from "node:fs"
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { Message, Part, Provider, TextPart } from "@opencode-ai/sdk/v2"
-import { createEffect, createRoot, createSignal, onCleanup, type Accessor } from "solid-js"
+import { createEffect, createRoot, createSignal, onCleanup } from "solid-js"
 
 import type { PanelItem, PanelModel } from "../presentation/types.js"
+import type { HomeQuotaSummary, ProviderFreshness, QuotaProviderAdapter } from "./types.js"
 
 const API_POLL_MS = 60_000
 const EXHAUSTED_POLL_MS = 300_000
@@ -91,13 +92,6 @@ export type ZaiQuotaData = {
   } | null
 }
 
-export type HomeQuotaSummary = {
-  provider: "Z.AI"
-  plan: string
-  primaryPct: number
-  secondaryPct?: number
-}
-
 export type ZaiPanelPhase = "loading" | "unavailable" | "ready" | "stale" | "heuristic" | "rate-limited"
 
 export type ZaiPanelState = {
@@ -107,15 +101,6 @@ export type ZaiPanelState = {
   retryAfterEpoch?: number | null
   baselineSgt?: string
   cycleMs?: number
-}
-
-export interface QuotaProviderAdapter {
-  id: string
-  order: number
-  panel: Accessor<PanelModel>
-  home: Accessor<HomeQuotaSummary | null>
-  refresh(): Promise<void>
-  setSessionID(sessionID: string): void
 }
 
 type AccountEntry = {
@@ -378,6 +363,11 @@ function unref(timer: ReturnType<typeof setTimeout> | ReturnType<typeof setInter
   ;(timer as { unref?: () => void }).unref?.()
 }
 
+function freshnessFor(phase: ZaiPanelPhase): ProviderFreshness {
+  if (phase === "heuristic" || phase === "rate-limited") return "unavailable"
+  return phase
+}
+
 export function createZaiProvider(api: TuiPluginApi): QuotaProviderAdapter {
   return createRoot(() => {
   const [apiKey, setApiKey] = createSignal<string | null>(findZaiKeyFromFiles())
@@ -497,7 +487,8 @@ export function createZaiProvider(api: TuiPluginApi): QuotaProviderAdapter {
     id: "zai",
     order: PROVIDER_ORDER,
     panel: () => mapZaiPanelState({ phase: phase(), data: quotaData(), retryAfterEpoch: retryAfterEpoch(), baselineSgt: baselineSgt(), cycleMs: cycleMs(), now: now() }),
-    home: () => quotaData() ? zaiHomeQuotaSummary(quotaData()!) : null,
+    home: () => phase() === "ready" && quotaData() ? zaiHomeQuotaSummary(quotaData()!) : null,
+    freshness: () => freshnessFor(phase()),
     refresh,
     setSessionID,
   }

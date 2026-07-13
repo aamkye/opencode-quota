@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-const { createOpenAiProvider, mapOpenAiPanelState } = await import("../.tmp-test/provider-openai.mjs")
+const { createOpenAiProvider, fetchOpenAiQuota, mapOpenAiPanelState } = await import("../.tmp-test/provider-openai.mjs")
 
 const now = Date.UTC(2026, 6, 13, 6, 0, 0)
 
@@ -31,6 +31,75 @@ function quota(overrides = {}) {
 
 function item(model, id) {
   return model.groups.flatMap((group) => group.items).find((candidate) => candidate.id === id)
+}
+
+function quotaResponse(primary = window()) {
+  return {
+    ok: true,
+    json: async () => ({
+      plan_type: "plus",
+      rate_limit: { primary_window: primary },
+    }),
+  }
+}
+
+function adapterApi() {
+  return {
+    state: {
+      provider: [{ id: "openai", key: "test-token" }],
+      session: { messages: () => [] },
+      part: () => [],
+    },
+    kv: { get: () => undefined, set: () => {} },
+  }
+}
+
+function installFakeClock(t, start) {
+  const originalNow = Date.now
+  const originalSetTimeout = globalThis.setTimeout
+  const originalClearTimeout = globalThis.clearTimeout
+  const originalSetInterval = globalThis.setInterval
+  const originalClearInterval = globalThis.clearInterval
+  const timeouts = []
+  const intervals = []
+  let current = start
+
+  Date.now = () => current
+  globalThis.setTimeout = (callback, delay = 0) => {
+    const timer = { callback, delay, active: true, unref() {} }
+    timeouts.push(timer)
+    return timer
+  }
+  globalThis.clearTimeout = (timer) => {
+    timer.active = false
+  }
+  globalThis.setInterval = (callback, delay = 0) => {
+    const timer = { callback, delay, active: true, unref() {} }
+    intervals.push(timer)
+    return timer
+  }
+  globalThis.clearInterval = (timer) => {
+    timer.active = false
+  }
+  t.after(() => {
+    Date.now = originalNow
+    globalThis.setTimeout = originalSetTimeout
+    globalThis.clearTimeout = originalClearTimeout
+    globalThis.setInterval = originalSetInterval
+    globalThis.clearInterval = originalClearInterval
+  })
+
+  return {
+    timeouts,
+    intervals,
+    advance(ms) {
+      current += ms
+    },
+  }
+}
+
+async function flushEffects() {
+  await new Promise((resolve) => setImmediate(resolve))
 }
 
 test("maps primary-only OpenAI quota into a semantic panel and compact summary", () => {
@@ -131,9 +200,107 @@ test("maps full, exhausted, expired, and reset-pending OpenAI windows to timer s
   })
 })
 
+test("prefers reset_at over reset_after_seconds", () => {
+  const resetAt = now + 2_000
+  const model = mapOpenAiPanelState({
+    phase: "ready",
+    data: quota({ primary: window({ reset_at: resetAt / 1_000, reset_after_seconds: 3_600 }) }),
+    now,
+  })
+
+  assert.equal(item(model, "openai:5h-reset").epoch, resetAt)
+})
+
 test("exposes a framework-only OpenAI adapter without layout or slot registration", () => {
   const source = readFileSync("tui/providers/openai.ts", "utf8")
   assert.doesNotMatch(source, /@opentui\/solid/)
   assert.doesNotMatch(source, /slots\.register/)
   assert.equal(typeof createOpenAiProvider, "function")
+})
+
+test("exposes reactive freshness and omits the legacy home line while OpenAI data is stale", async (t) => {
+  const originalFetch = globalThis.fetch
+  let available = true
+  globalThis.fetch = async () => available ? quotaResponse() : { ok: false, status: 503 }
+  t.after(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  const adapter = createOpenAiProvider(adapterApi())
+  await adapter.refresh()
+
+  assert.equal(adapter.freshness(), "ready")
+  assert.deepEqual(adapter.home(), { provider: "OpenAI", plan: "Plus", primaryPct: 75, secondaryPct: undefined })
+
+  available = false
+  await adapter.refresh()
+
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(adapter.home(), null)
+})
+
+test("expires stale OpenAI data after the stale window", async (t) => {
+  const clock = installFakeClock(t, now)
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => quotaResponse()
+  t.after(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  const adapter = createOpenAiProvider(adapterApi())
+  await adapter.refresh()
+  clock.advance(10 * 60 * 1_000 + 1)
+  const tick = clock.intervals.find((timer) => timer.active && timer.delay === 1_000)
+
+  assert.ok(tick)
+  tick.callback()
+  assert.equal(adapter.freshness(), "unavailable")
+  assert.equal(adapter.home(), null)
+  assert.equal(item(adapter.panel(), "openai:header").detail, "Usage unavailable")
+})
+
+test("refreshes OpenAI quota at its reset boundary", async (t) => {
+  const clock = installFakeClock(t, now)
+  const originalFetch = globalThis.fetch
+  let requests = 0
+  globalThis.fetch = async () => {
+    requests += 1
+    return quotaResponse(window({ reset_at: (now + 15 * 60 * 1_000) / 1_000 }))
+  }
+  t.after(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  const adapter = createOpenAiProvider(adapterApi())
+  await adapter.refresh()
+  await flushEffects()
+  const boundary = clock.timeouts.find((timer) => timer.active && timer.delay === 15 * 60 * 1_000)
+
+  assert.ok(boundary)
+  const beforeBoundaryRefresh = requests
+  boundary.callback()
+  await flushEffects()
+  assert.equal(requests, beforeBoundaryRefresh + 1)
+})
+
+test("uses the JWT account claim in OpenAI usage requests", async (t) => {
+  const originalFetch = globalThis.fetch
+  const payload = Buffer.from(JSON.stringify({
+    "https://api.openai.com/auth": { chatgpt_account_id: "account-from-jwt" },
+  })).toString("base64url")
+  const token = `header.${payload}.signature`
+  let request
+  globalThis.fetch = async (url, options) => {
+    request = { url, options }
+    return quotaResponse()
+  }
+  t.after(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  await fetchOpenAiQuota({ access: token })
+
+  assert.equal(request.url, "https://chatgpt.com/backend-api/wham/usage")
+  assert.equal(request.options.headers.Authorization, `Bearer ${token}`)
+  assert.equal(request.options.headers["ChatGPT-Account-Id"], "account-from-jwt")
 })

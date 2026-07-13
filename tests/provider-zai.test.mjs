@@ -228,6 +228,25 @@ test("refreshes selected Z.AI quota when constructed outside a component owner",
   }
 })
 
+test("exposes reactive provider freshness alongside the compact Z.AI home summary", async (t) => {
+  const originalFetch = globalThis.fetch
+  let available = true
+  globalThis.fetch = async () => available ? quotaResponse() : { ok: false }
+  t.after(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  const adapter = createZaiProvider(adapterApi())
+  await adapter.refresh()
+  assert.equal(adapter.freshness(), "ready")
+  assert.deepEqual(adapter.home(), { provider: "Z.AI", plan: "Pro", primaryPct: 75, secondaryPct: undefined })
+
+  available = false
+  await adapter.refresh()
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(adapter.home(), null)
+})
+
 test("schedules a quota refresh at the 5H reset boundary", async (t) => {
   const clock = installFakeClock(t, now)
   const originalFetch = globalThis.fetch

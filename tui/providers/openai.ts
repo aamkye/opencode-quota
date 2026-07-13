@@ -1,8 +1,9 @@
 import { existsSync, readFileSync } from "node:fs"
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
-import { createEffect, createRoot, createSignal, onCleanup, type Accessor } from "solid-js"
+import { createEffect, createRoot, createSignal, onCleanup } from "solid-js"
 
 import type { PanelItem, PanelModel } from "../presentation/types.js"
+import type { HomeQuotaSummary, ProviderFreshness, QuotaProviderAdapter } from "./types.js"
 
 const API_POLL_MS = 60_000
 const EXHAUSTED_POLL_MS = 300_000
@@ -70,22 +71,6 @@ export type OpenAiPanelState = {
   now: number
   data?: OpenAiQuotaData | null
   authenticated?: boolean
-}
-
-export type OpenAiHomeQuotaSummary = {
-  provider: "OpenAI"
-  plan: string
-  primaryPct: number
-  secondaryPct?: number
-}
-
-export interface QuotaProviderAdapter {
-  id: string
-  order: number
-  panel: Accessor<PanelModel>
-  home: Accessor<OpenAiHomeQuotaSummary | null>
-  refresh(): Promise<void>
-  setSessionID(sessionID: string): void
 }
 
 function clampPct(value: number): number {
@@ -199,7 +184,7 @@ export async function fetchOpenAiQuota(auth: OpenAiAuthEntry): Promise<OpenAiQuo
   }
 }
 
-export function openAiHomeQuotaSummary(data: OpenAiQuotaData): OpenAiHomeQuotaSummary {
+export function openAiHomeQuotaSummary(data: OpenAiQuotaData): HomeQuotaSummary {
   return {
     provider: "OpenAI",
     plan: data.planType,
@@ -257,6 +242,10 @@ export function mapOpenAiPanelState(state: OpenAiPanelState): PanelModel {
 
 function unref(timer: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>): void {
   ;(timer as { unref?: () => void }).unref?.()
+}
+
+function freshnessFor(phase: OpenAiPanelPhase): ProviderFreshness {
+  return phase
 }
 
 export function createOpenAiProvider(api: TuiPluginApi): QuotaProviderAdapter {
@@ -332,7 +321,9 @@ export function createOpenAiProvider(api: TuiPluginApi): QuotaProviderAdapter {
       id: "openai",
       order: PROVIDER_ORDER,
       panel: () => mapOpenAiPanelState({ phase: phase(), data: quotaData(), authenticated: Boolean(auth()?.access), now: now() }),
-      home: () => quotaData() ? openAiHomeQuotaSummary(quotaData()!) : null,
+      // The legacy home slot removes unavailable and stale OpenAI data rather than showing cached usage.
+      home: () => phase() === "ready" && quotaData() ? openAiHomeQuotaSummary(quotaData()!) : null,
+      freshness: () => freshnessFor(phase()),
       refresh,
       setSessionID(sessionID: string): void {
         void sessionID
