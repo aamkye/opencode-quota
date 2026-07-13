@@ -1,6 +1,6 @@
 import { For, Show, createSignal, onCleanup, type Accessor } from "solid-js"
 
-import { formatBytes, formatCount, formatCurrency, formatDuration, formatPercent, formatTimer, truncateText } from "./format.js"
+import { alignText, formatBytes, formatCount, formatCurrency, formatDuration, formatPercent, formatTimer, truncateText } from "./format.js"
 import { allocateCompactTable, allocateHeader, allocateProgressRow, type CompactTableAllocation, type HeaderAllocation, type ProgressRowAllocation } from "./layout.js"
 import { sortByOrderThenId, type DisplayValue, type PanelAlignment, type PanelGroup, type PanelItem, type PanelModel, type PanelStatus } from "./types.js"
 
@@ -57,6 +57,29 @@ export type NormalizedPanel = {
 export type RendererNormalizationOptions = {
   availableCells?: number
   now?: number
+}
+
+type RenderedCell = {
+  text: string
+  width: number
+  align: PanelAlignment
+}
+
+type RenderedItem =
+  | { kind: "header" | "text" | "quantity"; text: string }
+  | { kind: "progress"; cells: RenderedCell[] }
+  | { kind: "timer"; text: string; detail?: string }
+  | { kind: "table"; rows: RenderedCell[][] }
+
+export type RenderedPanelLayout = {
+  collapsed: boolean
+  header: { cells: RenderedCell[] }
+  groups: { id: string; header?: { title: string; collapsible: boolean }; collapsed: boolean; items: RenderedItem[] }[]
+  divider: { width: "100%"; border: ["top"] }
+}
+
+export type RendererLayoutOptions = RendererNormalizationOptions & {
+  collapsed?: ReadonlySet<string>
 }
 
 function formatDisplayValue(value: DisplayValue): string {
@@ -184,26 +207,107 @@ export function normalizePanelModel(model: PanelModel, options: RendererNormaliz
   }
 }
 
-function Divider() {
-  return (
-    <box width="100%">
-      <text>────────────────</text>
-    </box>
-  )
+function renderCell(text: string, width: number, align: PanelAlignment): RenderedCell {
+  return { text: alignText(truncateText(text, width), width, align), width, align }
 }
 
-function RenderItem(props: { item: NormalizedItem }) {
+function renderItemLayout(item: NormalizedItem): RenderedItem {
+  switch (item.kind) {
+    case "header":
+      return { kind: item.kind, text: item.detail ? `${item.title}: ${item.detail}` : item.title }
+    case "text":
+      return { kind: item.kind, text: item.text }
+    case "progress": {
+      const filled = Math.round((Number.parseInt(item.percent, 10) / 100) * item.allocation.bar)
+      const bar = "█".repeat(filled) + "░".repeat(item.allocation.bar - filled)
+      return {
+        kind: item.kind,
+        cells: [
+          renderCell(item.label, item.allocation.marker, "start"),
+          renderCell("", item.allocation.beforeBarGap, "start"),
+          renderCell(bar, item.allocation.bar, "start"),
+          renderCell("", item.allocation.beforePercentGap, "start"),
+          renderCell(item.percent, item.allocation.percent, "end"),
+        ],
+      }
+    }
+    case "timer":
+      return { kind: item.kind, text: item.text, detail: item.detail }
+    case "quantity":
+      return { kind: item.kind, text: `${item.label}: ${item.value}` }
+    case "table": {
+      const [keyColumn, valueColumn] = item.columns
+      const renderRow = (cells: string[]) => [
+        renderCell(cells[0] ?? "", item.allocation.key, keyColumn?.align ?? "start"),
+        renderCell("", item.allocation.beforeValueGap, "start"),
+        renderCell(cells[1] ?? "", item.allocation.value, item.allocation.valueAlign === "right" ? "end" : "start"),
+      ]
+
+      return {
+        kind: item.kind,
+        rows: [
+          renderRow([keyColumn?.title ?? "", valueColumn?.title ?? ""]),
+          ...item.rows.map((row) => renderRow(row.cells)),
+        ],
+      }
+    }
+  }
+}
+
+export function toggleCollapsed(collapsed: ReadonlySet<string>, id: string): Set<string> {
+  const next = new Set(collapsed)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  return next
+}
+
+export function renderPanelLayout(model: PanelModel, options: RendererLayoutOptions = {}): RenderedPanelLayout {
+  const normalized = normalizePanelModel(model, options)
+  const collapsed = options.collapsed ?? new Set<string>()
+  const panelCollapsed = collapsed.has(`panel:${normalized.id}`)
+  const allocation = normalized.header.allocation
+  const title = normalized.header.cells[1]?.text ?? ""
+  const summary = normalized.header.summary
+
+  return {
+    collapsed: panelCollapsed,
+    header: {
+      cells: [
+        renderCell(panelCollapsed ? "▶" : "▼", allocation.marker, "start"),
+        renderCell(title, allocation.label, "start"),
+        ...(allocation.beforeSummaryGap > 0 ? [renderCell("", allocation.beforeSummaryGap, "start")] : []),
+        ...(summary && allocation.summary > 0 ? [renderCell(summary.text, allocation.summary, "end")] : []),
+      ],
+    },
+    groups: panelCollapsed
+      ? []
+      : normalized.groups.map((group) => {
+          const groupCollapsed = group.header?.collapsible === true && collapsed.has(`group:${group.id}`)
+          return {
+            id: group.id,
+            header: group.header,
+            collapsed: groupCollapsed,
+            items: groupCollapsed ? [] : group.items.map(renderItemLayout),
+          }
+        }),
+    divider: { width: "100%", border: ["top"] },
+  }
+}
+
+function Divider() {
+  return <box width="100%" height={1} border={["top"]} />
+}
+
+function RenderItem(props: { item: RenderedItem }) {
   switch (props.item.kind) {
     case "header":
-      return <text>{props.item.detail ? `${props.item.title}: ${props.item.detail}` : props.item.title}</text>
     case "text":
+    case "quantity":
       return <text>{props.item.text}</text>
     case "progress":
       return (
         <box flexDirection="row" width="100%">
-          <text>{props.item.label}</text>
-          <box flexGrow={1} />
-          <text>{props.item.percent}</text>
+          <For each={props.item.cells}>{(cell) => <text width={cell.width}>{cell.text}</text>}</For>
         </box>
       )
     case "timer":
@@ -215,13 +319,11 @@ function RenderItem(props: { item: NormalizedItem }) {
           </Show>
         </box>
       )
-    case "quantity":
-      return <text>{`${props.item.label}: ${props.item.value}`}</text>
     case "table":
       return (
         <box flexDirection="column">
           <For each={props.item.rows}>
-            {(row) => <text>{row.cells.join(" ")}</text>}
+            {(row) => <box flexDirection="row"><For each={row}>{(cell) => <text width={cell.width}>{cell.text}</text>}</For></box>}
           </For>
         </box>
       )
@@ -234,29 +336,18 @@ export function PanelRenderer(props: { model: Accessor<PanelModel> }) {
   const interval = setInterval(() => setNow(Date.now()), 1_000)
   onCleanup(() => clearInterval(interval))
 
-  const isCollapsed = (id: string) => collapsed().has(id)
   const toggle = (id: string) => {
-    setCollapsed((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    setCollapsed((current) => toggleCollapsed(current, id))
   }
-  const normalized = () => normalizePanelModel(props.model(), { now: now() })
+  const layout = () => renderPanelLayout(props.model(), { now: now(), collapsed: collapsed() })
 
   return (
     <box flexDirection="column" width="100%">
-      <box flexDirection="row" width="100%" onMouseDown={() => toggle(`panel:${normalized().id}`)}>
-        <text>{isCollapsed(`panel:${normalized().id}`) ? "▶" : "▼"}</text>
-        <text>{normalized().title}</text>
-        <box flexGrow={1} />
-        <Show when={normalized().header.summary}>
-          {(summary) => <text>{summary().text}</text>}
-        </Show>
+      <box flexDirection="row" width="100%" onMouseDown={() => toggle(`panel:${props.model().id}`)}>
+        <For each={layout().header.cells}>{(cell) => <text width={cell.width}>{cell.text}</text>}</For>
       </box>
-      <Show when={!isCollapsed(`panel:${normalized().id}`)}>
-        <For each={normalized().groups}>
+      <Show when={!layout().collapsed}>
+        <For each={layout().groups}>
           {(group) => (
             <box flexDirection="column" width="100%">
               <Show when={group.header}>
@@ -266,12 +357,12 @@ export function PanelRenderer(props: { model: Accessor<PanelModel> }) {
                     width="100%"
                     onMouseDown={header().collapsible ? () => toggle(`group:${group.id}`) : undefined}
                   >
-                    <text>{header().collapsible ? (isCollapsed(`group:${group.id}`) ? "▶" : "▼") : ""}</text>
+                    <text>{header().collapsible ? (group.collapsed ? "▶" : "▼") : ""}</text>
                     <text>{header().title}</text>
                   </box>
                 )}
               </Show>
-              <Show when={!isCollapsed(`group:${group.id}`)}>
+              <Show when={!group.collapsed}>
                 <For each={group.items}>
                   {(item) => <RenderItem item={item} />}
                 </For>
