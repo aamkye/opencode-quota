@@ -26,6 +26,7 @@
     "lib/session-title.ts",
     "session-title.ts",
     "tui/presentation/renderer.tsx",
-    "tui/providers/zai.ts"
+    "tui/providers/zai.ts",
+    "tui/providers/openai.ts"
   ]
 }
