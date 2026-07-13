@@ -96,8 +96,11 @@ function orderedProviderItems(items: readonly PanelItem[], options: Required<Quo
 }
 
 function providerItems(provider: QuotaProviderAdapter, options: Required<QuotaCompositionOptions>, orderOffset: number): PanelItem[] {
-  return sortByOrderThenId(provider.panel().groups)
-    .flatMap((group) => orderedProviderItems(group.items, options, orderOffset))
+  return orderedProviderItems(
+    sortByOrderThenId(provider.panel().groups).flatMap((group) => group.items),
+    options,
+    orderOffset,
+  )
 }
 
 function providerPrimaryPct(provider: QuotaProviderAdapter): number | null {

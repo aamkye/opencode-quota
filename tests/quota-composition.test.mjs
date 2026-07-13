@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 const { default: quotaPlugin, composeQuotaPanel, selectedQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
+const { normalizePanelModel } = await import("../.tmp-test/presentation-renderer.mjs")
 
 function provider({
   id,
@@ -11,6 +12,7 @@ function provider({
   primaryPct,
   secondaryPct,
   windows = ["5H", "7D"],
+  groups,
 }) {
   const items = [
     { id: `${id}:header`, order: 10, kind: "header", title },
@@ -28,7 +30,7 @@ function provider({
       order,
       title,
       collapsedSummary: typeof primaryPct === "number" ? { kind: "text", text: `${primaryPct}%` } : undefined,
-      groups: [{ id: `${id}:quota`, order: 10, items }],
+      groups: groups ?? [{ id: `${id}:quota`, order: 10, items }],
     }),
     home: () => typeof primaryPct === "number" ? { provider: title, plan: "Plan", primaryPct, secondaryPct } : null,
     freshness: () => freshness,
@@ -144,6 +146,49 @@ test("uses selected used percentages and ascending secondary order when configur
   assert.equal(model.collapsedSummary.text, "30%/80%")
   assert.deepEqual(headers(others), ["Beta", "Alpha"])
   assert.equal(others.items.find((item) => item.id === "beta:5H").value, 20)
+})
+
+test("orders configured secondary metrics by direction and keeps each header with its quota rows", () => {
+  const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50 })
+  const alpha = provider({
+    id: "alpha",
+    title: "Alpha",
+    order: 130,
+    primaryPct: 70,
+    groups: [
+      {
+        id: "alpha:secondary",
+        order: 10,
+        items: [
+          { id: "alpha:header", order: 10, kind: "header", title: "Alpha" },
+          { id: "alpha:7D", order: 20, kind: "progress", label: "7D", value: 70, total: 100 },
+          { id: "alpha:7D:reset", order: 30, kind: "timer", label: "7D reset", state: "idle" },
+        ],
+      },
+      {
+        id: "alpha:primary",
+        order: 20,
+        items: [
+          { id: "alpha:5H", order: 20, kind: "progress", label: "5H", value: 70, total: 100 },
+          { id: "alpha:5H:reset", order: 30, kind: "timer", label: "5H reset", state: "idle" },
+        ],
+      },
+    ],
+  })
+  const beta = provider({ id: "beta", title: "Beta", order: 140, primaryPct: 40 })
+  const gamma = provider({ id: "gamma", title: "Gamma", order: 150, primaryPct: 70 })
+
+  const model = composeQuotaPanel("zai", [beta, gamma, alpha, zai], {
+    percentageMode: "used",
+    sortDirection: "asc",
+  })
+  const others = normalizePanelModel(model).groups.find((group) => group.id === "other-providers")
+
+  assert.deepEqual(others.items.map((entry) => entry.id), [
+    "alpha:header", "alpha:5H", "alpha:5H:reset", "alpha:7D", "alpha:7D:reset",
+    "gamma:header", "gamma:5H", "gamma:5H:reset", "gamma:7D", "gamma:7D:reset",
+    "beta:header", "beta:5H", "beta:5H:reset", "beta:7D", "beta:7D:reset",
+  ])
 })
 
 test("orders every quota window shortest-first", () => {
