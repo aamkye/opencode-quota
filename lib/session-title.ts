@@ -1,6 +1,9 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 
-export type SessionMessage = { info: { id: string; role: string } }
+export type SessionMessage = {
+  info: { id: string; role: string }
+  parts?: readonly { type: string; text?: string }[]
+}
 
 export type TitleStage = "checking" | "generating" | "ready" | "updating" | "handled"
 
@@ -27,6 +30,37 @@ export function hasPriorParentMessages(
   currentMessageID: string,
 ): boolean {
   return messages.some((message) => message.info.id !== currentMessageID && message.info.role === "user")
+}
+
+export function collectRecentUserText(
+  messages: readonly SessionMessage[],
+  maxCharacters = 8_000,
+): string | undefined {
+  const fragments: string[] = []
+  let remaining = Math.max(0, Math.floor(maxCharacters))
+
+  for (let index = messages.length - 1; index >= 0 && remaining > 0; index -= 1) {
+    const message = messages[index]
+    if (message.info.role !== "user") continue
+
+    const text = message.parts
+      ?.filter((part) => part.type === "text")
+      .map((part) => part.text?.trim())
+      .filter((part): part is string => Boolean(part))
+      .join("\n")
+    if (!text) continue
+
+    const separatorLength = fragments.length > 0 ? 1 : 0
+    const available = remaining - separatorLength
+    if (available <= 0) continue
+
+    const fragment = text.slice(-available)
+    fragments.push(fragment)
+    remaining -= fragment.length + separatorLength
+  }
+
+  const context = fragments.reverse().join("\n")
+  return context || undefined
 }
 
 export class TitleState {
@@ -103,6 +137,73 @@ export class TitleState {
 export function createSessionTitleHooks(client: Client, warn: Warn = logWarning): Hooks {
   const state = new TitleState()
 
+  function resolveModel(input: Parameters<NonNullable<Hooks["chat.message"]>>[0], output: Parameters<NonNullable<Hooks["chat.message"]>>[1]) {
+    const inputModel = input.model
+    const outputModel = output.message.model
+    return inputModel?.providerID && inputModel.modelID
+      ? inputModel
+      : outputModel?.providerID && outputModel.modelID
+        ? outputModel
+        : undefined
+  }
+
+  async function generateTitle(
+    parentID: string,
+    input: Parameters<NonNullable<Hooks["chat.message"]>>[0],
+    output: Parameters<NonNullable<Hooks["chat.message"]>>[1],
+  ): Promise<string | undefined> {
+    let childID: string | undefined
+    let candidate: string | undefined
+    let failed = false
+
+    try {
+      const model = resolveModel(input, output)
+      if (!model) throw new Error("selected model is unavailable")
+
+      const created = await client.session.create({ body: { parentID, title: "Session title" } })
+      if (!created.data) throw new Error("child session was not created")
+      childID = created.data.id
+      state.registerChild(parentID, childID)
+
+      const request = output.parts
+        .filter((part) => part.type === "text")
+        .map((part) => part.text.trim())
+        .filter(Boolean)
+        .join("\n")
+      if (!request) throw new Error("first message has no text")
+
+      const response = await client.session.prompt({
+        path: { id: childID },
+        body: {
+          model,
+          ...(input.variant === undefined ? {} : { variant: input.variant }),
+          tools: {},
+          system: TITLE_SYSTEM,
+          parts: [{ type: "text", text: `Generate a title for this request:\n\n${request}` }],
+        },
+      })
+      const text = response.data?.parts.find((part) => part.type === "text")
+      candidate = text?.type === "text" ? normalizeTitle(text.text) : undefined
+      if (!candidate) throw new Error("generated title is invalid")
+    } catch (error) {
+      failed = true
+      warn("generate", parentID, error)
+    } finally {
+      if (childID) {
+        try {
+          await client.session.delete({ path: { id: childID } })
+        } catch (error) {
+          failed = true
+          warn("cleanup", parentID, error)
+        } finally {
+          state.releaseChild(childID)
+        }
+      }
+    }
+
+    return failed ? undefined : candidate
+  }
+
   async function update(parentID: string, title: string): Promise<void> {
     try {
       await client.session.update({ path: { id: parentID }, body: { title } })
@@ -123,9 +224,6 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
       if (state.isChild(parentID) || !state.claim(parentID)) return
 
       const currentMessageID = input.messageID ?? output.message.id
-      let childID: string | undefined
-      let candidate: string | undefined
-      let failed = false
 
       try {
         const messages = await client.session.messages({ path: { id: parentID } })
@@ -134,58 +232,14 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
           state.fail(parentID)
           return
         }
-
-        const inputModel = input.model
-        const outputModel = output.message.model
-        const model = inputModel?.providerID && inputModel.modelID
-          ? inputModel
-          : outputModel?.providerID && outputModel.modelID
-            ? outputModel
-            : undefined
-        if (!model) throw new Error("selected model is unavailable")
-
-        const created = await client.session.create({ body: { parentID, title: "Session title" } })
-        if (!created.data) throw new Error("child session was not created")
-        childID = created.data.id
-        state.registerChild(parentID, childID)
-
-        const request = output.parts
-          .filter((part) => part.type === "text")
-          .map((part) => part.text.trim())
-          .filter(Boolean)
-          .join("\n")
-        if (!request) throw new Error("first message has no text")
-
-        const response = await client.session.prompt({
-          path: { id: childID },
-          body: {
-            model,
-            ...(input.variant === undefined ? {} : { variant: input.variant }),
-            tools: {},
-            system: TITLE_SYSTEM,
-            parts: [{ type: "text", text: `Generate a title for this request:\n\n${request}` }],
-          },
-        })
-        const text = response.data?.parts.find((part) => part.type === "text")
-        candidate = text?.type === "text" ? normalizeTitle(text.text) : undefined
-        if (!candidate) throw new Error("generated title is invalid")
       } catch (error) {
-        failed = true
         warn("generate", parentID, error)
-      } finally {
-        if (childID) {
-          try {
-            await client.session.delete({ path: { id: childID } })
-          } catch (error) {
-            failed = true
-            warn("cleanup", parentID, error)
-          } finally {
-            state.releaseChild(childID)
-          }
-        }
+        state.fail(parentID)
+        return
       }
 
-      if (failed || !candidate) {
+      const candidate = await generateTitle(parentID, input, output)
+      if (!candidate) {
         state.fail(parentID)
         return
       }
