@@ -25,6 +25,7 @@
     "opencode-plugin-tui.d.ts",
     "lib/session-title.ts",
     "session-title.ts",
-    "tui/presentation/renderer.tsx"
+    "tui/presentation/renderer.tsx",
+    "tui/providers/zai.ts"
   ]
 }
