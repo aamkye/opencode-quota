@@ -160,34 +160,30 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
 
   async function generateTitle(
     parentID: string,
-    input: Parameters<NonNullable<Hooks["chat.message"]>>[0],
-    output: Parameters<NonNullable<Hooks["chat.message"]>>[1],
+    model: NonNullable<Parameters<NonNullable<Hooks["chat.message"]>>[0]["model"]> | undefined,
+    variant: Parameters<NonNullable<Hooks["chat.message"]>>[0]["variant"],
+    request: string,
+    onChildCreated?: (childID: string) => void,
+    onChildReleased?: (childID: string) => void,
   ): Promise<string | undefined> {
     let childID: string | undefined
     let candidate: string | undefined
     let failed = false
 
     try {
-      const model = resolveModel(input, output)
-      if (!model) throw new Error("selected model is unavailable")
+      if (!model?.providerID || !model.modelID) throw new Error("selected model is unavailable")
 
       const created = await client.session.create({ body: { parentID, title: "Session title" } })
       if (!created.data) throw new Error("child session was not created")
       childID = created.data.id
-      state.registerChild(parentID, childID)
-
-      const request = output.parts
-        .filter((part) => part.type === "text")
-        .map((part) => part.text.trim())
-        .filter(Boolean)
-        .join("\n")
+      onChildCreated?.(childID)
       if (!request) throw new Error("first message has no text")
 
       const response = await client.session.prompt({
         path: { id: childID },
         body: {
           model,
-          ...(input.variant === undefined ? {} : { variant: input.variant }),
+          ...(variant === undefined ? {} : { variant }),
           tools: {},
           system: TITLE_SYSTEM,
           parts: [{ type: "text", text: `Generate a title for this request:\n\n${request}` }],
@@ -207,7 +203,7 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
           failed = true
           warn("cleanup", parentID, error)
         } finally {
-          state.releaseChild(childID)
+          onChildReleased?.(childID)
         }
       }
     }
@@ -236,7 +232,45 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
       config.agent.title = { ...config.agent.title, disable: true }
     },
     async "command.execute.before"(input) {
-      if (input.command.replace(/^\//, "") !== "session-rename" || !input.arguments.trim()) return
+      if (input.command.replace(/^\//, "") !== "session-rename") return
+
+      if (!input.arguments.trim()) {
+        let feedback = "Unable to generate a session title."
+        const commandInput = input as typeof input & {
+          model?: NonNullable<Parameters<NonNullable<Hooks["chat.message"]>>[0]["model"]>
+          variant?: Parameters<NonNullable<Hooks["chat.message"]>>[0]["variant"]
+        }
+
+        try {
+          const messages = await client.session.messages({ path: { id: input.sessionID } })
+          if (!messages.data) throw new Error("session messages are unavailable")
+          const context = collectRecentUserText(messages.data, 8_000)
+          if (!context) throw new Error("recent user text is unavailable")
+
+          const title = await generateTitle(input.sessionID, commandInput.model, commandInput.variant, context)
+          if (!title) throw new Error("generated title is unavailable")
+
+          try {
+            await client.session.update({ path: { id: input.sessionID }, body: { title } })
+            feedback = `Session renamed to "${title}".`
+          } catch (error) {
+            warn("update", input.sessionID, error)
+            feedback = "Unable to rename this session."
+          }
+        } catch (error) {
+          if (error instanceof Error && error.message !== "generated title is unavailable") {
+            warn("generate", input.sessionID, error)
+          }
+        }
+
+        try {
+          await appendFeedback(input.sessionID, feedback)
+        } catch (error) {
+          warn("feedback", input.sessionID, error)
+        }
+
+        throw HANDLED_SESSION_RENAME
+      }
 
       const title = normalizeTitle(input.arguments)
       let feedback = "Usage: /session-rename [3-8 word title]"
@@ -278,7 +312,19 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
         return
       }
 
-      const candidate = await generateTitle(parentID, input, output)
+      const request = output.parts
+        .filter((part) => part.type === "text")
+        .map((part) => part.text.trim())
+        .filter(Boolean)
+        .join("\n")
+      const candidate = await generateTitle(
+        parentID,
+        resolveModel(input, output),
+        input.variant,
+        request,
+        (childID) => state.registerChild(parentID, childID),
+        (childID) => state.releaseChild(childID),
+      )
       if (!candidate) {
         state.fail(parentID)
         return

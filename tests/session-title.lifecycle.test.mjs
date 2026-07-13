@@ -108,6 +108,160 @@ test("warns and aborts when command feedback rejects", async () => {
   assert.deepEqual(warnings, [["feedback", "parent-1", feedbackError]])
 })
 
+test("generated rename uses recent user context, cleans up its child, and aborts the command", async () => {
+  const calls = []
+  const hooks = createSessionTitleHooks({ session: {
+    messages: async (request) => {
+      calls.push(["messages", request])
+      return { data: [
+        { info: { id: "user-1", role: "user" }, parts: [{ type: "text", text: "First user request" }] },
+        { info: { id: "assistant-1", role: "assistant" }, parts: [{ type: "text", text: "Do not include this" }] },
+        { info: { id: "user-2", role: "user" }, parts: [{ type: "text", text: "Latest user request" }] },
+      ] }
+    },
+    create: async (request) => {
+      calls.push(["create", request])
+      return { data: { id: "title-child" } }
+    },
+    prompt: async (request) => {
+      calls.push(["prompt", request])
+      return request.body.noReply
+        ? { data: {} }
+        : { data: { parts: [{ type: "text", text: "Plan reliable background jobs" }] } }
+    },
+    delete: async (request) => { calls.push(["delete", request]); return { data: true } },
+    update: async (request) => { calls.push(["update", request]); return { data: {} } },
+  } }, () => {})
+
+  await assert.rejects(hooks["command.execute.before"]({
+    command: "session-rename", arguments: "   ", sessionID: "parent-1",
+    model: { providerID: "openai", modelID: "gpt-5.6" }, variant: "high",
+  }), () => true)
+
+  assert.deepEqual(calls, [
+    ["messages", { path: { id: "parent-1" } }],
+    ["create", { body: { parentID: "parent-1", title: "Session title" } }],
+    ["prompt", { path: { id: "title-child" }, body: {
+      model: { providerID: "openai", modelID: "gpt-5.6" }, variant: "high", tools: {},
+      system: "Return only a plain-text session title of 3 to 8 words. No quotes, Markdown, punctuation, or explanation.",
+      parts: [{ type: "text", text: "Generate a title for this request:\n\nFirst user request\nLatest user request" }],
+    } }],
+    ["delete", { path: { id: "title-child" } }],
+    ["update", { path: { id: "parent-1" }, body: { title: "Plan reliable background jobs" } }],
+    ["prompt", { path: { id: "parent-1" }, body: {
+      noReply: true,
+      parts: [{ type: "text", text: "Session renamed to \"Plan reliable background jobs\".", ignored: true }],
+    } }],
+  ])
+})
+
+test("generated rename failure boundaries leave the parent unchanged and abort the command", async (t) => {
+  const cases = [
+    {
+      name: "Messages unavailable",
+      setup: (session) => { session.messages = async () => ({}) },
+      warning: "generate",
+      cleanup: 0,
+      creates: 0,
+    },
+    {
+      name: "No usable user text",
+      setup: (session) => { session.messages = async () => ({ data: [
+        { info: { id: "assistant-1", role: "assistant" }, parts: [{ type: "text", text: "Ignore" }] },
+        { info: { id: "user-1", role: "user" }, parts: [{ type: "text", text: "   " }, { type: "file" }] },
+      ] }) },
+      warning: "generate",
+      cleanup: 0,
+      creates: 0,
+    },
+    {
+      name: "Model unavailable",
+      input: { model: undefined },
+      warning: "generate",
+      cleanup: 0,
+      creates: 0,
+    },
+    {
+      name: "Child creation failure",
+      setup: (session, calls) => { session.create = async (request) => { calls.push(["create", request]); return {} } },
+      warning: "generate",
+      cleanup: 0,
+      creates: 1,
+    },
+    {
+      name: "Invalid model output",
+      setup: (session, calls) => { session.prompt = async (request) => {
+        calls.push(["prompt", request])
+        return request.body.noReply
+          ? { data: {} }
+          : { data: { parts: [{ type: "text", text: "Too short" }] } }
+      } },
+      warning: "generate",
+      cleanup: 1,
+      creates: 1,
+    },
+    {
+      name: "Parent update failure",
+      setup: (session, calls) => { session.update = async (request) => {
+        calls.push(["update", request])
+        throw new Error("update unavailable")
+      } },
+      warning: "update",
+      cleanup: 1,
+      creates: 1,
+    },
+    {
+      name: "Child cleanup failure",
+      setup: (session, calls) => { session.delete = async (request) => {
+        calls.push(["delete", request])
+        throw new Error("cleanup unavailable")
+      } },
+      warning: "cleanup",
+      cleanup: 1,
+      creates: 1,
+    },
+  ]
+
+  for (const scenario of cases) {
+    await t.test(scenario.name, async () => {
+      const calls = []
+      const warnings = []
+      const session = {
+        messages: async (request) => {
+          calls.push(["messages", request])
+          return { data: [{ info: { id: "user-1", role: "user" }, parts: [{ type: "text", text: "Rename this session" }] }] }
+        },
+        create: async (request) => { calls.push(["create", request]); return { data: { id: "title-child" } } },
+        prompt: async (request) => {
+          calls.push(["prompt", request])
+          return request.body.noReply
+            ? { data: {} }
+            : { data: { parts: [{ type: "text", text: "Plan reliable background jobs" }] } }
+        },
+        delete: async (request) => { calls.push(["delete", request]); return { data: true } },
+        update: async (request) => { calls.push(["update", request]); return { data: {} } },
+      }
+      scenario.setup?.(session, calls)
+      const hooks = createSessionTitleHooks({ session }, (...warning) => { warnings.push(warning) })
+
+      await assert.rejects(hooks["command.execute.before"]({
+        command: "session-rename", arguments: "", sessionID: "parent-1",
+        model: { providerID: "openai", modelID: "gpt-5.6" }, ...scenario.input,
+      }), () => true)
+
+      assert.equal(warnings.length, 1)
+      assert.equal(warnings[0][0], scenario.warning)
+      assert.equal(calls.filter(([name]) => name === "create").length, scenario.creates)
+      assert.equal(calls.filter(([name]) => name === "delete").length, scenario.cleanup)
+      assert.equal(calls.filter(([name]) => name === "update").length, scenario.warning === "update" ? 1 : 0)
+      const feedback = calls.filter(([name, request]) => name === "prompt" && request.body.noReply)
+      assert.equal(feedback.length, 1)
+      assert.equal(feedback[0][1].body.parts[0].ignored, true)
+      assert.notEqual(feedback[0][1].body.parts[0].text, "Session renamed to \"Plan reliable background jobs\".")
+    })
+  }
+})
+
 test("first message uses its selected model and variant, cleans up its child, and titles the parent on first idle", async () => {
   const calls = []
   const client = {
