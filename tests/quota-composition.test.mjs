@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-const { composeQuotaPanel, selectedQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
+const { default: quotaPlugin, composeQuotaPanel, selectedQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
 
 function provider({
   id,
@@ -39,6 +39,50 @@ function provider({
 
 function headers(group) {
   return group.items.filter((item) => item.kind === "header").map((item) => item.title)
+}
+
+function item(model, id) {
+  return model.groups.flatMap((group) => group.items).find((candidate) => candidate.id === id)
+}
+
+async function aggregatePanel(t, options) {
+  const registrations = []
+  const originalFetch = globalThis.fetch
+  const originalReact = globalThis.React
+  const originalError = console.error
+  globalThis.React = { createElement: (component, props) => ({ component, props }) }
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      code: 200,
+      data: {
+        level: "pro",
+        limits: [{ type: "TOKENS_LIMIT", unit: 3, percentage: 25, nextResetTime: Date.now() + 60 * 60 * 1000 }],
+      },
+    }),
+  })
+  console.error = () => {}
+  t.after(() => {
+    globalThis.fetch = originalFetch
+    globalThis.React = originalReact
+    console.error = originalError
+  })
+
+  const api = {
+    state: {
+      provider: [{ id: "zai-coding-plan", key: "test-key" }],
+      session: { messages: () => [] },
+      part: () => [],
+    },
+    kv: { get: () => undefined, set: () => {} },
+    theme: { current: { error: "error", warning: "warning", success: "success", text: "text", textMuted: "muted" } },
+    slots: { register: (registration) => registrations.push(registration) },
+  }
+
+  await quotaPlugin.tui(api, options)
+  await new Promise((resolve) => setImmediate(resolve))
+  const element = registrations[0].slots.sidebar_content({}, { session_id: "session-1" })
+  return element.props.model()
 }
 
 test("keeps the selected supported provider first while loading or unavailable", () => {
@@ -109,4 +153,16 @@ test("maps native credential provider IDs to their aggregate adapters", () => {
 
   assert.equal(selectedQuotaProviderID([{ id: "zai-coding-plan" }], [zai, openai]), "zai")
   assert.equal(selectedQuotaProviderID([{ id: "codex" }], [zai, openai]), "openai")
+})
+
+test("falls back to remaining descending options when native values are invalid", async (t) => {
+  const model = await aggregatePanel(t, { otherProviders: { percentageMode: "invalid", sortDirection: "sideways" } })
+
+  assert.equal(item(model, "zai:5h").value, 75)
+})
+
+test("forwards native TUI options into aggregate composition", async (t) => {
+  const model = await aggregatePanel(t, { otherProviders: { percentageMode: "used", sortDirection: "asc" } })
+
+  assert.equal(item(model, "zai:5h").value, 25)
 })

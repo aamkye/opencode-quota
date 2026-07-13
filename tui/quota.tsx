@@ -1,4 +1,4 @@
-import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui"
+import type { TuiPlugin, TuiPluginApi, TuiPluginModule, TuiPluginOptions } from "@opencode-ai/plugin/tui"
 import { createMemo } from "solid-js"
 
 import { PanelRenderer, type PanelTheme } from "./presentation/renderer.js"
@@ -14,10 +14,6 @@ export type SortDirection = "desc" | "asc"
 export type QuotaCompositionOptions = {
   percentageMode?: PercentageMode
   sortDirection?: SortDirection
-}
-
-type QuotaPluginOptions = {
-  otherProviders?: QuotaCompositionOptions
 }
 
 const SIDEBAR_ORDER = 110
@@ -40,9 +36,10 @@ function compositionOptions(options?: QuotaCompositionOptions): Required<QuotaCo
   }
 }
 
-function pluginOptions(value: unknown): Required<QuotaCompositionOptions> {
-  if (!value || typeof value !== "object") return DEFAULT_OPTIONS
-  return compositionOptions((value as QuotaPluginOptions).otherProviders)
+function pluginOptions(value: TuiPluginOptions): Required<QuotaCompositionOptions> {
+  const otherProviders = value.otherProviders
+  if (!otherProviders || typeof otherProviders !== "object") return DEFAULT_OPTIONS
+  return compositionOptions(otherProviders as QuotaCompositionOptions)
 }
 
 function metric(remainingPct: number, options: Required<QuotaCompositionOptions>): number {
@@ -184,7 +181,7 @@ function selectedProviderID(api: TuiPluginApi, providers: readonly QuotaProvider
   return selectedQuotaProviderID(api.state.provider, providers)
 }
 
-const tui: TuiPlugin = async (api, rawOptions?: unknown) => {
+const tui: TuiPlugin = async (api, rawOptions) => {
   const providers = [createZaiProvider(api), createOpenAiProvider(api)]
   const options = pluginOptions(rawOptions)
   const model = createMemo(() => composeQuotaPanel(selectedProviderID(api, providers), providers, options))
