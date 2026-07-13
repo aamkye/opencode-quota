@@ -1,8 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-await import("./compile-presentation.mjs")
-
 const {
   allocateCompactTable,
   allocateHeader,

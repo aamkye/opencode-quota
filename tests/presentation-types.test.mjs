@@ -2,8 +2,6 @@ import assert from "node:assert/strict"
 import { execFileSync, spawnSync } from "node:child_process"
 import test from "node:test"
 
-await import("./compile-presentation.mjs")
-
 const { sortByOrderThenId } = await import("../.tmp-test/presentation-types.mjs")
 
 test("sorts equal-order presentation records by stable ID", () => {

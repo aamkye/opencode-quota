@@ -11,7 +11,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node tests/compile-shared.mjs && node tests/compile-session-title.mjs && node --test tests/*.test.mjs",
+    "test": "node tests/compile-shared.mjs && node tests/compile-session-title.mjs && node tests/compile-presentation.mjs && node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "build": "node build-tokens.mjs",
     "build:tokens": "node build-tokens.mjs",
