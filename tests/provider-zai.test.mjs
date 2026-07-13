@@ -35,6 +35,79 @@ function item(model, id) {
   return model.groups.flatMap((group) => group.items).find((candidate) => candidate.id === id)
 }
 
+function quotaResponse(nextResetTime = now + 60 * 60 * 1000) {
+  return {
+    ok: true,
+    json: async () => ({
+      code: 200,
+      data: {
+        level: "pro",
+        limits: [{ type: "TOKENS_LIMIT", unit: 3, percentage: 25, nextResetTime }],
+      },
+    }),
+  }
+}
+
+function adapterApi(overrides = {}) {
+  return {
+    state: {
+      provider: [{ id: "zai-coding-plan", key: "test-key" }],
+      session: { messages: () => [] },
+      part: () => [],
+    },
+    kv: { get: () => undefined, set: () => {} },
+    ...overrides,
+  }
+}
+
+function installFakeClock(t, start) {
+  const originalNow = Date.now
+  const originalSetTimeout = globalThis.setTimeout
+  const originalClearTimeout = globalThis.clearTimeout
+  const originalSetInterval = globalThis.setInterval
+  const originalClearInterval = globalThis.clearInterval
+  const timeouts = []
+  const intervals = []
+  let current = start
+
+  Date.now = () => current
+  globalThis.setTimeout = (callback, delay = 0) => {
+    const timer = { callback, delay, active: true, unref() {} }
+    timeouts.push(timer)
+    return timer
+  }
+  globalThis.clearTimeout = (timer) => {
+    timer.active = false
+  }
+  globalThis.setInterval = (callback, delay = 0) => {
+    const timer = { callback, delay, active: true, unref() {} }
+    intervals.push(timer)
+    return timer
+  }
+  globalThis.clearInterval = (timer) => {
+    timer.active = false
+  }
+  t.after(() => {
+    Date.now = originalNow
+    globalThis.setTimeout = originalSetTimeout
+    globalThis.clearTimeout = originalClearTimeout
+    globalThis.setInterval = originalSetInterval
+    globalThis.clearInterval = originalClearInterval
+  })
+
+  return {
+    timeouts,
+    intervals,
+    advance(ms) {
+      current += ms
+    },
+  }
+}
+
+async function flushEffects() {
+  await new Promise((resolve) => setImmediate(resolve))
+}
+
 test("maps ready Z.AI quota into semantic windows, values, and peak status", () => {
   const model = mapZaiPanelState({ phase: "ready", data: quota(), now })
 
@@ -45,9 +118,8 @@ test("maps ready Z.AI quota into semantic windows, values, and peak status", () 
     order: 10,
     kind: "header",
     title: "Z.AI: Pro",
-    detail: "Peak (3x)",
-    status: "error",
   })
+  assert.deepEqual(model.collapsedSummary, { kind: "text", text: "Peak (3x)", status: "error" })
   assert.deepEqual(item(model, "zai:5h"), {
     id: "zai:5h",
     order: 20,
@@ -116,8 +188,7 @@ test("marks reset-boundary windows expired and maps off-peak to the success them
   })
 
   assert.equal(item(model, "zai:5h-reset").state, "expired")
-  assert.equal(item(model, "zai:header").detail, "Off-Peak (1x)")
-  assert.equal(item(model, "zai:header").status, "success")
+  assert.deepEqual(model.collapsedSummary, { kind: "text", text: "Off-Peak (1x)", status: "success" })
 })
 
 test("exposes a framework-only provider adapter and semantic home summary", () => {
@@ -155,4 +226,69 @@ test("refreshes selected Z.AI quota when constructed outside a component owner",
   } finally {
     globalThis.fetch = originalFetch
   }
+})
+
+test("schedules a quota refresh at the 5H reset boundary", async (t) => {
+  const clock = installFakeClock(t, now)
+  const originalFetch = globalThis.fetch
+  let requests = 0
+  globalThis.fetch = async () => {
+    requests += 1
+    return quotaResponse(now + 15 * 60 * 1000)
+  }
+  t.after(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  const adapter = createZaiProvider(adapterApi())
+  await adapter.refresh()
+  const boundary = clock.timeouts.find((timer) => timer.active && timer.delay === 15 * 60 * 1000)
+
+  assert.ok(boundary)
+  const beforeBoundaryRefresh = requests
+  boundary.callback()
+  await flushEffects()
+  assert.equal(requests, beforeBoundaryRefresh + 1)
+})
+
+test("expires stale quota data after the stale window", async (t) => {
+  const clock = installFakeClock(t, now)
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => quotaResponse()
+  t.after(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  const adapter = createZaiProvider(adapterApi())
+  await adapter.refresh()
+  clock.advance(10 * 60 * 1000 + 1)
+  const tick = clock.intervals.find((timer) => timer.active && timer.delay === 1_000)
+
+  assert.ok(tick)
+  tick.callback()
+  assert.equal(item(adapter.panel(), "zai:header").title, "Z.AI (est)")
+})
+
+test("uses a reset timestamp from session messages when quota data is unavailable", async (t) => {
+  const clock = installFakeClock(t, now)
+  const originalFetch = globalThis.fetch
+  const stored = []
+  globalThis.fetch = async () => ({ ok: false })
+  t.after(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  const adapter = createZaiProvider(adapterApi({
+    state: {
+      provider: [{ id: "zai-coding-plan", key: "test-key" }],
+      session: { messages: () => [{ id: "message-1" }] },
+      part: () => [{ type: "text", text: "Your limit will reset at 2026-07-13 20:00:00" }],
+    },
+    kv: { get: () => undefined, set: (key, value) => stored.push([key, value]) },
+  }))
+  await adapter.refresh()
+  adapter.setSessionID("session-1")
+
+  assert.deepEqual(stored, [["quota_zai_baseline_sgt", "2026-07-13 20:00:00"]])
+  assert.equal(item(adapter.panel(), "zai:5h-reset").epoch, Date.UTC(2026, 6, 13, 12, 0, 0))
 })

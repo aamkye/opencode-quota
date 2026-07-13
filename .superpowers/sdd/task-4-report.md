@@ -57,3 +57,25 @@ Result: 68 passing tests, 0 failures.
 ## Concerns
 
 No test or typecheck failures remain. The existing legacy Z.AI plugin still owns its old slot registration until Task 6 composes the new adapter and Task 7 retires legacy entries.
+
+## P1/P2 Review Follow-up
+
+### RED Evidence
+
+Command:
+
+```sh
+node tests/compile-presentation.mjs && node --test tests/provider-zai.test.mjs
+```
+
+Result: 8 passing tests and 2 expected failures. The ready and off-peak cases proved Peak/Off-Peak remained on the expanded `PanelItem` header while the provider header's right-aligned `collapsedSummary` still emitted the quota percentage.
+
+### GREEN Evidence
+
+Command:
+
+```sh
+node tests/compile-presentation.mjs && node --test tests/provider-zai.test.mjs
+```
+
+Result: 10 passing tests. Peak/Off-Peak now occupies the semantic provider header summary with `error`/`success` status, which the renderer consumes as its right-aligned summary cell. The suite now also exercises `createZaiProvider` reset-boundary scheduling, stale-data expiry, and session-message reset fallback.
