@@ -1,7 +1,14 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 
+type SessionTitleModel = { providerID: string; modelID: string }
+
 export type SessionMessage = {
-  info: { id: string; role: string }
+  info: {
+    id: string
+    role: string
+    model?: SessionTitleModel
+    variant?: string
+  }
   parts?: readonly { type: string; text?: string }[]
 }
 
@@ -62,6 +69,16 @@ export function collectRecentUserText(
 
   const context = fragments.reverse().join("\n")
   return context || undefined
+}
+
+function resolveLatestUserModel(messages: readonly SessionMessage[]): { model: SessionTitleModel; variant?: string } | undefined {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    const model = message.info.model
+    if (message.info.role === "user" && model?.providerID && model.modelID) {
+      return { model, variant: message.info.variant }
+    }
+  }
 }
 
 export class TitleState {
@@ -160,8 +177,8 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
 
   async function generateTitle(
     parentID: string,
-    model: NonNullable<Parameters<NonNullable<Hooks["chat.message"]>>[0]["model"]> | undefined,
-    variant: Parameters<NonNullable<Hooks["chat.message"]>>[0]["variant"],
+    model: SessionTitleModel | undefined,
+    variant: string | undefined,
     request: string,
     onChildCreated?: (childID: string) => void,
     onChildReleased?: (childID: string) => void,
@@ -236,18 +253,16 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
 
       if (!input.arguments.trim()) {
         let feedback = "Unable to generate a session title."
-        const commandInput = input as typeof input & {
-          model?: NonNullable<Parameters<NonNullable<Hooks["chat.message"]>>[0]["model"]>
-          variant?: Parameters<NonNullable<Hooks["chat.message"]>>[0]["variant"]
-        }
 
         try {
           const messages = await client.session.messages({ path: { id: input.sessionID } })
           if (!messages.data) throw new Error("session messages are unavailable")
           const context = collectRecentUserText(messages.data, 8_000)
           if (!context) throw new Error("recent user text is unavailable")
+          const selection = resolveLatestUserModel(messages.data)
+          if (!selection) throw new Error("recent user model is unavailable")
 
-          const title = await generateTitle(input.sessionID, commandInput.model, commandInput.variant, context)
+          const title = await generateTitle(input.sessionID, selection.model, selection.variant, context)
           if (!title) throw new Error("generated title is unavailable")
 
           try {

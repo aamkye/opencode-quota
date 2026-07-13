@@ -108,15 +108,15 @@ test("warns and aborts when command feedback rejects", async () => {
   assert.deepEqual(warnings, [["feedback", "parent-1", feedbackError]])
 })
 
-test("generated rename uses recent user context, cleans up its child, and aborts the command", async () => {
+test("generated rename resolves its model from the latest user message, cleans up its child, and aborts the command", async () => {
   const calls = []
   const hooks = createSessionTitleHooks({ session: {
     messages: async (request) => {
       calls.push(["messages", request])
       return { data: [
-        { info: { id: "user-1", role: "user" }, parts: [{ type: "text", text: "First user request" }] },
+        { info: { id: "user-1", role: "user", model: { providerID: "openai", modelID: "gpt-5.6-mini" } }, parts: [{ type: "text", text: "First user request" }] },
         { info: { id: "assistant-1", role: "assistant" }, parts: [{ type: "text", text: "Do not include this" }] },
-        { info: { id: "user-2", role: "user" }, parts: [{ type: "text", text: "Latest user request" }] },
+        { info: { id: "user-2", role: "user", model: { providerID: "openai", modelID: "gpt-5.6" }, variant: "high" }, parts: [{ type: "text", text: "Latest user request" }] },
       ] }
     },
     create: async (request) => {
@@ -135,7 +135,6 @@ test("generated rename uses recent user context, cleans up its child, and aborts
 
   await assert.rejects(hooks["command.execute.before"]({
     command: "session-rename", arguments: "   ", sessionID: "parent-1",
-    model: { providerID: "openai", modelID: "gpt-5.6" }, variant: "high",
   }), () => true)
 
   assert.deepEqual(calls, [
@@ -176,7 +175,9 @@ test("generated rename failure boundaries leave the parent unchanged and abort t
     },
     {
       name: "Model unavailable",
-      input: { model: undefined },
+      setup: (session) => { session.messages = async () => ({ data: [
+        { info: { id: "user-1", role: "user" }, parts: [{ type: "text", text: "Rename this session" }] },
+      ] }) },
       warning: "generate",
       cleanup: 0,
       creates: 0,
@@ -229,7 +230,7 @@ test("generated rename failure boundaries leave the parent unchanged and abort t
       const session = {
         messages: async (request) => {
           calls.push(["messages", request])
-          return { data: [{ info: { id: "user-1", role: "user" }, parts: [{ type: "text", text: "Rename this session" }] }] }
+          return { data: [{ info: { id: "user-1", role: "user", model: { providerID: "openai", modelID: "gpt-5.6" } }, parts: [{ type: "text", text: "Rename this session" }] }] }
         },
         create: async (request) => { calls.push(["create", request]); return { data: { id: "title-child" } } },
         prompt: async (request) => {
@@ -246,7 +247,6 @@ test("generated rename failure boundaries leave the parent unchanged and abort t
 
       await assert.rejects(hooks["command.execute.before"]({
         command: "session-rename", arguments: "", sessionID: "parent-1",
-        model: { providerID: "openai", modelID: "gpt-5.6" }, ...scenario.input,
       }), () => true)
 
       assert.equal(warnings.length, 1)
