@@ -22,6 +22,9 @@ dist/
 
 .opencode/
 .worktrees/
+.superpowers/
+docs/superpowers/
+openspec/
 
 AGENTS.md
 .comet/
