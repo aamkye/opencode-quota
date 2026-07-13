@@ -1,13 +1,12 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 
-type SessionTitleModel = { providerID: string; modelID: string }
+type SessionTitleModel = { providerID: string; modelID: string; variant?: string }
 
 export type SessionMessage = {
   info: {
     id: string
     role: string
     model?: SessionTitleModel
-    variant?: string
   }
   parts?: readonly { type: string; text?: string }[]
 }
@@ -76,7 +75,10 @@ function resolveLatestUserModel(messages: readonly SessionMessage[]): { model: S
     const message = messages[index]
     const model = message.info.model
     if (message.info.role === "user" && model?.providerID && model.modelID) {
-      return { model, variant: message.info.variant }
+      return {
+        model: { providerID: model.providerID, modelID: model.modelID },
+        variant: model.variant,
+      }
     }
   }
 }

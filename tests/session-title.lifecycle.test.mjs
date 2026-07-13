@@ -116,7 +116,7 @@ test("generated rename resolves its model from the latest user message, cleans u
       return { data: [
         { info: { id: "user-1", role: "user", model: { providerID: "openai", modelID: "gpt-5.6-mini" } }, parts: [{ type: "text", text: "First user request" }] },
         { info: { id: "assistant-1", role: "assistant" }, parts: [{ type: "text", text: "Do not include this" }] },
-        { info: { id: "user-2", role: "user", model: { providerID: "openai", modelID: "gpt-5.6" }, variant: "high" }, parts: [{ type: "text", text: "Latest user request" }] },
+        { info: { id: "user-2", role: "user", model: { providerID: "openai", modelID: "gpt-5.6", variant: "high" } }, parts: [{ type: "text", text: "Latest user request" }] },
       ] }
     },
     create: async (request) => {
