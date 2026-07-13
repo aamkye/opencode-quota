@@ -40,7 +40,7 @@ Regression verification:
 npm test
 ```
 
-Result: 67 passing tests, 0 failures.
+Result: 68 passing tests, 0 failures.
 
 ## Scope
 
