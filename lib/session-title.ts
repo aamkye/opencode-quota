@@ -16,6 +16,7 @@ type TitleRecord = {
 
 const TITLE = /^[\p{L}\p{N}][\p{L}\p{N}'-]*(?: [\p{L}\p{N}][\p{L}\p{N}'-]*){2,7}$/u
 const TITLE_SYSTEM = "Return only a plain-text session title of 3 to 8 words. No quotes, Markdown, punctuation, or explanation."
+const HANDLED_SESSION_RENAME = new Error("session rename handled")
 
 type Client = PluginInput["client"]
 type Warn = (action: string, sessionID: string, error: unknown) => void
@@ -137,6 +138,16 @@ export class TitleState {
 export function createSessionTitleHooks(client: Client, warn: Warn = logWarning): Hooks {
   const state = new TitleState()
 
+  async function appendFeedback(sessionID: string, text: string): Promise<void> {
+    await client.session.prompt({
+      path: { id: sessionID },
+      body: {
+        noReply: true,
+        parts: [{ type: "text", text, ignored: true }],
+      },
+    })
+  }
+
   function resolveModel(input: Parameters<NonNullable<Hooks["chat.message"]>>[0], output: Parameters<NonNullable<Hooks["chat.message"]>>[1]) {
     const inputModel = input.model
     const outputModel = output.message.model
@@ -216,8 +227,37 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
 
   return {
     async config(config) {
+      config.command ??= {}
+      config.command["session-rename"] ??= {
+        template: "/session-rename",
+        description: "Rename this session; omit the title to generate one",
+      }
       config.agent ??= {}
       config.agent.title = { ...config.agent.title, disable: true }
+    },
+    async "command.execute.before"(input) {
+      if (input.command.replace(/^\//, "") !== "session-rename" || !input.arguments.trim()) return
+
+      const title = normalizeTitle(input.arguments)
+      let feedback = "Usage: /session-rename [3-8 word title]"
+
+      if (title) {
+        try {
+          await client.session.update({ path: { id: input.sessionID }, body: { title } })
+          feedback = `Session renamed to "${title}".`
+        } catch (error) {
+          warn("update", input.sessionID, error)
+          feedback = "Unable to rename this session."
+        }
+      }
+
+      try {
+        await appendFeedback(input.sessionID, feedback)
+      } catch (error) {
+        warn("feedback", input.sessionID, error)
+      }
+
+      throw HANDLED_SESSION_RENAME
     },
     async "chat.message"(input, output) {
       const parentID = input.sessionID

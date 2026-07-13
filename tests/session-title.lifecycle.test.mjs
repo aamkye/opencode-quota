@@ -13,7 +13,99 @@ test("config disables only OpenCode's hidden title agent", async () => {
       build: { model: "openai/gpt-5.6" },
       title: { model: "openai/gpt-5.6-mini", disable: true },
     },
+    command: {
+      "session-rename": {
+        template: "/session-rename",
+        description: "Rename this session; omit the title to generate one",
+      },
+    },
   })
+})
+
+test("registers the session rename command without changing unrelated config", async () => {
+  const hooks = createSessionTitleHooks({})
+  const config = { command: { keep: { template: "/keep" } }, agent: { title: { model: "openai/gpt-5.6-mini" } } }
+
+  await hooks.config(config)
+
+  assert.deepEqual(config.command["session-rename"], {
+    template: "/session-rename",
+    description: "Rename this session; omit the title to generate one",
+  })
+  assert.equal(config.command.keep.template, "/keep")
+  assert.equal(config.agent.title.disable, true)
+})
+
+test("updates the active session for a valid supplied title and aborts the command", async () => {
+  const calls = []
+  const hooks = createSessionTitleHooks({ session: {
+    update: async (request) => { calls.push(["update", request]); return { data: {} } },
+    prompt: async (request) => { calls.push(["prompt", request]); return { data: {} } },
+  } }, () => {})
+
+  await assert.rejects(hooks["command.execute.before"]({
+    command: "session-rename", arguments: "  Project planning notes  ", sessionID: "parent-1",
+  }), () => true)
+
+  assert.deepEqual(calls, [
+    ["update", { path: { id: "parent-1" }, body: { title: "Project planning notes" } }],
+    ["prompt", { path: { id: "parent-1" }, body: {
+      noReply: true,
+      parts: [{ type: "text", text: "Session renamed to \"Project planning notes\".", ignored: true }],
+    } }],
+  ])
+})
+
+test("reports usage without updating for an invalid supplied title and aborts the command", async () => {
+  const calls = []
+  const hooks = createSessionTitleHooks({ session: {
+    update: async (request) => { calls.push(["update", request]); return { data: {} } },
+    prompt: async (request) => { calls.push(["prompt", request]); return { data: {} } },
+  } }, () => {})
+
+  await assert.rejects(hooks["command.execute.before"]({
+    command: "/session-rename", arguments: "Too short", sessionID: "parent-1",
+  }), () => true)
+
+  assert.deepEqual(calls, [["prompt", { path: { id: "parent-1" }, body: {
+    noReply: true,
+    parts: [{ type: "text", text: "Usage: /session-rename [3-8 word title]", ignored: true }],
+  } }]])
+})
+
+test("warns, reports failure, and aborts when the direct update rejects", async () => {
+  const warnings = []
+  const calls = []
+  const updateError = new Error("update unavailable")
+  const hooks = createSessionTitleHooks({ session: {
+    update: async () => { throw updateError },
+    prompt: async (request) => { calls.push(request); return { data: {} } },
+  } }, (...warning) => { warnings.push(warning) })
+
+  await assert.rejects(hooks["command.execute.before"]({
+    command: "session-rename", arguments: "Project planning notes", sessionID: "parent-1",
+  }), () => true)
+
+  assert.deepEqual(warnings, [["update", "parent-1", updateError]])
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].path.id, "parent-1")
+  assert.equal(calls[0].body.noReply, true)
+  assert.equal(calls[0].body.parts[0].ignored, true)
+})
+
+test("warns and aborts when command feedback rejects", async () => {
+  const warnings = []
+  const feedbackError = new Error("prompt unavailable")
+  const hooks = createSessionTitleHooks({ session: {
+    update: async () => ({ data: {} }),
+    prompt: async () => { throw feedbackError },
+  } }, (...warning) => { warnings.push(warning) })
+
+  await assert.rejects(hooks["command.execute.before"]({
+    command: "session-rename", arguments: "Project planning notes", sessionID: "parent-1",
+  }), () => true)
+
+  assert.deepEqual(warnings, [["feedback", "parent-1", feedbackError]])
 })
 
 test("first message uses its selected model and variant, cleans up its child, and titles the parent on first idle", async () => {
