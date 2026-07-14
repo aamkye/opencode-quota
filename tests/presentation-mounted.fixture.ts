@@ -17,8 +17,8 @@ function expand(value: unknown): unknown[] {
 
   if (value.type.name === "For") {
     const items = value.props.each as readonly unknown[]
-    const render = value.props.children as (item: unknown) => unknown
-    return items.flatMap((item) => expand(render(item)))
+    const render = value.props.children as (item: unknown, index: () => number) => unknown
+    return items.flatMap((item, i) => expand(render(item, () => i)))
   }
   if (value.type.name === "Show") {
     if (!value.props.when) return []

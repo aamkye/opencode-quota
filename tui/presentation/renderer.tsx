@@ -320,6 +320,16 @@ function Divider() {
   return <box width="100%" height={1} border={["top"]} />
 }
 
+function GroupDivider() {
+  return (
+    <box flexDirection="row" width="100%" height={1}>
+      <text>{"---"}</text>
+      <box flexBasis={0} flexGrow={1} height={1} />
+      <text>{"---"}</text>
+    </box>
+  )
+}
+
 function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> }) {
   const color = (status?: PanelStatus) => (status ? props.theme()[status] : undefined)
 
@@ -405,8 +415,9 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Acces
       <Divider />
       <Show when={!panelCollapsed()}>
         <For each={normalized().groups}>
-          {(group) => {
+          {(group, index) => {
             const groupCollapsed = () => group.header?.collapsible === true && collapsed().has(`group:${group.id}`)
+            const isLastGroup = () => index() === normalized().groups.length - 1
             return (
               <box flexDirection="column" width="100%">
                 <Show when={group.header}>
@@ -420,7 +431,7 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Acces
                 <Show when={!groupCollapsed()}>
                   <For each={group.items}>{(item) => <MountedItem item={item} theme={props.theme} />}</For>
                 </Show>
-                <Divider />
+                {isLastGroup() ? <Divider /> : <GroupDivider />}
               </box>
             )
           }}

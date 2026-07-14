@@ -134,3 +134,52 @@ test("wires mounted panel and group mouse collapse while the divider follows the
     dispose()
   }
 })
+
+test("renders middle group dividers as short dashes with flexible spacing", () => {
+  const multiGroupModel = {
+    id: "quota",
+    order: 10,
+    title: "Quota",
+    groups: [
+      {
+        id: "primary",
+        order: 10,
+        items: [
+          { id: "p1", order: 10, kind: "text", text: "Primary" },
+        ],
+      },
+      {
+        id: "other",
+        order: 20,
+        header: { title: "Other", collapsible: true },
+        items: [
+          { id: "o1", order: 10, kind: "text", text: "Other" },
+        ],
+      },
+    ],
+  }
+  const { elements, dispose } = mountPanel(multiGroupModel)
+
+  try {
+    const fullDividers = elements.filter((element) =>
+      element.type === "box"
+      && element.props.width === "100%"
+      && element.props.height === 1
+      && element.props.border?.[0] === "top")
+    assert.equal(fullDividers.length, 2, "top and bottom full-width dividers only")
+
+    const dashEnds = elements.filter((element) =>
+      element.type === "text" && element.props.children === "---")
+    assert.equal(dashEnds.length, 2, "one middle divider with two --- ends")
+
+    const spacer = elements.find((element) =>
+      element.type === "box"
+      && element.props.flexBasis === 0
+      && element.props.flexGrow === 1
+      && element.props.height === 1
+      && !element.props.border)
+    assert.ok(spacer, "middle divider has a flexible spacer between the dash ends")
+  } finally {
+    dispose()
+  }
+})
