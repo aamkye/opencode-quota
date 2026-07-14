@@ -1019,7 +1019,7 @@ git commit -m "fix(tui): label OpenAI windows by duration"
 - Produces: `createOpenAiProvider(api: TuiPluginApi, options?: QuotaProviderOptions)` and `createZaiProvider(api: TuiPluginApi, options?: QuotaProviderOptions)`.
 - Preserves: exhausted polling at `300_000ms` and countdown ticking at `1_000ms`.
 
-- [ ] **Step 1: Make provider test harnesses accept constructor options**
+- [x] **Step 1: Make provider test harnesses accept constructor options**
 
 Update both `createTestAdapter()` helpers:
 
@@ -1043,7 +1043,7 @@ function createTestAdapter(t, { api = adapterApi(), fetch: testFetch, clock, pro
 
 Use `createZaiProvider(api, providerOptions)` in the Z.AI copy.
 
-- [ ] **Step 2: Add failing controlled-timer tests for both adapters**
+- [x] **Step 2: Add failing controlled-timer tests for both adapters**
 
 Add these exact tests to both `tests/provider-openai.test.mjs` and `tests/provider-zai.test.mjs`; each file uses its existing provider-specific `quotaResponse()`:
 
@@ -1073,7 +1073,7 @@ test("uses a custom provider polling interval", async (t) => {
 
 Keep each fake clock in a separate test so globals are restored before another clock is installed.
 
-- [ ] **Step 3: Add a failing plugin-forwarding assertion**
+- [x] **Step 3: Add a failing plugin-forwarding assertion**
 
 In `aggregatePanel()` in `tests/quota-composition.test.mjs`, add an observation parameter, capture the original interval function with the other globals, install the wrapper after `testFetch`, and restore it in the existing `finally` block:
 
@@ -1126,7 +1126,7 @@ test("forwards normalized refreshIntervalSeconds to both providers", async (t) =
 })
 ```
 
-- [ ] **Step 4: Run focused tests and verify RED**
+- [x] **Step 4: Run provider polling focused tests and verify RED**
 
 Run:
 
@@ -1136,7 +1136,7 @@ node tests/compile-presentation.mjs && node --test tests/provider-openai.test.mj
 
 Expected: FAIL because both adapters schedule `60_000ms`, constructor options are ignored, and `tui()` does not pass normalized `refreshIntervalMs`.
 
-- [ ] **Step 5: Add the shared constructor option and use it in both adapters**
+- [x] **Step 5: Add the shared constructor option and use it in both adapters**
 
 Add to `tui/providers/types.ts`:
 
@@ -1183,7 +1183,7 @@ Do not alter the signals, `refresh()`, stale/timeout/boundary effects, or return
 const timer = setInterval(() => void refresh(), exhausted ? EXHAUSTED_POLL_MS : refreshIntervalMs)
 ```
 
-- [ ] **Step 6: Pass normalized polling to both adapters**
+- [x] **Step 6: Pass normalized polling to both adapters**
 
 Reorder setup in `tui()` in `tui/quota.tsx` so options exist before construction:
 
@@ -1209,7 +1209,7 @@ const tui: TuiPlugin = async (api, rawOptions) => {
 }
 ```
 
-- [ ] **Step 7: Document the native options and 10-second default**
+- [x] **Step 7: Document the native options and 10-second default**
 
 Update `README.md` so the shared feature says polling defaults to 10 seconds, then add this exact example under local usage:
 
@@ -1233,7 +1233,7 @@ Update `README.md` so the shared feature says polling defaults to 10 seconds, th
 
 State that invalid/non-positive polling values use 10 seconds, thresholds clamp to `0-100`, `errorBelow` cannot exceed `warningBelow`, and `progressColors.enabled: false` disables semantic bar/percentage colors. Change both provider workflow sections from `60s` to `10s`; retain the documented 5-minute exhausted backoff.
 
-- [ ] **Step 8: Run focused tests and verify GREEN**
+- [x] **Step 8: Run provider polling focused tests and verify GREEN**
 
 Run:
 
@@ -1243,7 +1243,7 @@ node tests/compile-presentation.mjs && node --test tests/provider-openai.test.mj
 
 Expected: all tests PASS; each adapter has an active `10_000ms` default interval or configured interval plus its independent `1_000ms` state clock.
 
-- [ ] **Step 9: Commit the polling slice**
+- [x] **Step 9: Commit the polling slice**
 
 ```bash
 git add tui/providers/types.ts tui/providers/openai.ts tui/providers/zai.ts tui/quota.tsx tests/provider-openai.test.mjs tests/provider-zai.test.mjs tests/quota-composition.test.mjs README.md
