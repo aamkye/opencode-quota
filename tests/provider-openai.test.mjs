@@ -75,10 +75,10 @@ function adapterApi() {
   }
 }
 
-function createTestAdapter(t, { api = adapterApi(), fetch: testFetch, clock } = {}) {
+function createTestAdapter(t, { api = adapterApi(), fetch: testFetch, clock, providerOptions } = {}) {
   const originalFetch = globalThis.fetch
   if (testFetch) globalThis.fetch = testFetch
-  const adapter = createOpenAiProvider(api)
+  const adapter = createOpenAiProvider(api, providerOptions)
   t.after(async () => {
     try {
       adapter.dispose()
@@ -301,6 +301,28 @@ test("exposes a framework-only OpenAI adapter without layout or slot registratio
   assert.doesNotMatch(source, /slots\.register/)
   assert.match(shared, /createOpenAiProvider/)
   assert.equal(typeof createOpenAiProvider, "function")
+})
+
+test("uses the default and custom provider polling intervals while keeping the one-second clock", async (t) => {
+  const defaultClock = installFakeClock(now)
+  createTestAdapter(t, { clock: defaultClock, fetch: async () => quotaResponse() })
+  await flushEffects()
+
+  assert.ok(defaultClock.intervals.some((timer) => timer.active && timer.delay === 10_000))
+  assert.ok(defaultClock.intervals.some((timer) => timer.active && timer.delay === 1_000))
+})
+
+test("uses a custom provider polling interval", async (t) => {
+  const clock = installFakeClock(now)
+  createTestAdapter(t, {
+    clock,
+    fetch: async () => quotaResponse(),
+    providerOptions: { refreshIntervalMs: 2_500 },
+  })
+  await flushEffects()
+
+  assert.ok(clock.intervals.some((timer) => timer.active && timer.delay === 2_500))
+  assert.ok(clock.intervals.some((timer) => timer.active && timer.delay === 1_000))
 })
 
 test("exposes reactive freshness and omits the legacy home line while OpenAI data is stale", async (t) => {

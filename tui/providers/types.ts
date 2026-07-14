@@ -20,6 +20,10 @@ export type HomeQuotaSummary = ZaiHomeQuotaSummary | OpenAiHomeQuotaSummary
 
 export type ProviderFreshness = "loading" | "ready" | "stale" | "unavailable"
 
+export type QuotaProviderOptions = {
+  refreshIntervalMs?: number
+}
+
 export interface QuotaProviderAdapter {
   id: string
   order: number

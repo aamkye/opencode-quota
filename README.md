@@ -59,7 +59,7 @@ and **OpenAI (ChatGPT Plus/Pro)**.
   red at ≤10% remaining.
 - **Provider names, plan types, and bar labels** use the theme foreground
   colour; only the bar fills and percentages are colour-coded.
-- **Smart polling** — checks the quota API every 60s, backing off to 5min
+- **Smart polling** — checks the quota API every 10s by default, backing off to 5min
   when the primary window is exhausted.
 - **Expandable** — click the header to show weekly / tool / absolute details.
 - **Stale handling** — keeps showing the last known data (marked `~stale`)
@@ -69,6 +69,33 @@ and **OpenAI (ChatGPT Plus/Pro)**.
 
 The plugins are built and loaded only from local files. This package is not
 published to npm, and OpenCode is never configured with an npm package spec.
+
+### Configuration
+
+Native TUI options can be supplied with the local plugin entry:
+
+```json
+[
+  "./opencode-tools-quota.js",
+  {
+    "refreshIntervalSeconds": 10,
+    "progressColors": {
+      "enabled": true,
+      "errorBelow": 10,
+      "warningBelow": 30
+    },
+    "otherProviders": {
+      "percentageMode": "remaining",
+      "sortDirection": "desc"
+    }
+  }
+]
+```
+
+Polling defaults to 10 seconds when its value is invalid or non-positive.
+Color thresholds are clamped to `0-100`, and `errorBelow` cannot exceed
+`warningBelow`. Set `progressColors.enabled` to `false` to disable semantic
+bar and percentage colors.
 
 ### Build and deploy
 
@@ -159,7 +186,7 @@ shown above. Legacy files and aliases are intentionally not provided.
 1. Reads the API key from the `zai-coding-plan` provider (falls back to
    `~/.local/share/opencode/auth.json`, then `~/.config/opencode/auth.json`
    and the older `account.json` locations).
-2. Polls `https://api.z.ai/api/monitor/usage/quota/limit` every 60s (5min
+2. Polls `https://api.z.ai/api/monitor/usage/quota/limit` every 10s (5min
    when the 5H quota is exhausted).
 3. Renders bars + countdowns in the sidebar; expands for absolute counts.
 
@@ -169,7 +196,7 @@ shown above. Legacy files and aliases are intentionally not provided.
    `auth.json` (also checks `codex`, `chatgpt`, `opencode` keys).
 2. Extracts the `chatgpt_account_id` from the JWT for the
    `ChatGPT-Account-Id` header.
-3. Polls `https://chatgpt.com/backend-api/wham/usage` every 60s (5min
+3. Polls `https://chatgpt.com/backend-api/wham/usage` every 10s (5min
    when the primary window is exhausted).
 4. Renders plan type + primary (5H) / secondary (7D) / code review windows.
 

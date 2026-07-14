@@ -3,9 +3,9 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import { createEffect, createRoot, createSignal, onCleanup } from "solid-js"
 
 import type { PanelItem, PanelModel } from "../presentation/types.js"
-import type { HomeQuotaSummary, ProviderFreshness, QuotaProviderAdapter } from "./types.js"
+import type { HomeQuotaSummary, ProviderFreshness, QuotaProviderAdapter, QuotaProviderOptions } from "./types.js"
 
-const API_POLL_MS = 60_000
+const DEFAULT_REFRESH_INTERVAL_MS = 10_000
 const EXHAUSTED_POLL_MS = 300_000
 const TICK_MS = 1_000
 const FETCH_TIMEOUT_MS = 20_000
@@ -20,6 +20,14 @@ const OPENAI_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
 const USER_AGENT = "OpenCode-Quota-Toast/1.0"
 const AUTH_SOURCE_KEYS = ["openai", "codex", "chatgpt", "opencode"] as const
 const PROVIDER_ORDER = 120
+
+function providerRefreshInterval(options: QuotaProviderOptions): number {
+  return typeof options.refreshIntervalMs === "number"
+    && Number.isFinite(options.refreshIntervalMs)
+    && options.refreshIntervalMs > 0
+    ? options.refreshIntervalMs
+    : DEFAULT_REFRESH_INTERVAL_MS
+}
 
 export type RateLimitWindow = {
   used_percent: number
@@ -273,7 +281,8 @@ function freshnessFor(phase: OpenAiPanelPhase): ProviderFreshness {
   return phase
 }
 
-export function createOpenAiProvider(api: TuiPluginApi): QuotaProviderAdapter {
+export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOptions = {}): QuotaProviderAdapter {
+  const refreshIntervalMs = providerRefreshInterval(options)
   return createRoot((dispose) => {
     const [auth, setAuth] = createSignal<OpenAiAuthEntry | null>(findOpenAiAuthFromFiles())
     const [quotaData, setQuotaData] = createSignal<OpenAiQuotaData | null>(null)
@@ -313,7 +322,7 @@ export function createOpenAiProvider(api: TuiPluginApi): QuotaProviderAdapter {
     createEffect(() => {
       if (!auth()?.access) return
       const exhausted = quotaData() ? openAiRemainingPct(quotaData()!.primary) <= 0 : false
-      const timer = setInterval(() => void refresh(), exhausted ? EXHAUSTED_POLL_MS : API_POLL_MS)
+      const timer = setInterval(() => void refresh(), exhausted ? EXHAUSTED_POLL_MS : refreshIntervalMs)
       unref(timer)
       onCleanup(() => clearInterval(timer))
     })

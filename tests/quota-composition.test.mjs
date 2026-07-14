@@ -135,10 +135,11 @@ test("uses custom thresholds and omits semantic status when colors are disabled"
   assert.equal("status" in disabled.collapsedSummary, false)
 })
 
-async function aggregatePanel(t, options) {
+async function aggregatePanel(t, options, observedIntervalDelays = []) {
   const registrations = []
   const cleanup = []
   const originalFetch = globalThis.fetch
+  const originalSetInterval = globalThis.setInterval
   const originalReact = globalThis.React
   const originalError = console.error
   const testFetch = async () => ({
@@ -153,6 +154,10 @@ async function aggregatePanel(t, options) {
   })
   globalThis.React = { createElement: (component, props) => ({ component, props }) }
   globalThis.fetch = testFetch
+  globalThis.setInterval = (callback, delay, ...args) => {
+    observedIntervalDelays.push(delay)
+    return originalSetInterval(callback, delay, ...args)
+  }
   console.error = () => {}
   t.after(async () => {
     try {
@@ -160,6 +165,7 @@ async function aggregatePanel(t, options) {
       await flushEffects()
     } finally {
       globalThis.fetch = originalFetch
+      globalThis.setInterval = originalSetInterval
       globalThis.React = originalReact
       console.error = originalError
     }
@@ -191,6 +197,12 @@ async function aggregatePanel(t, options) {
   const element = registrations[0].slots.sidebar_content({}, { session_id: "session-1" })
   return element.props.model()
 }
+
+test("forwards normalized refreshIntervalSeconds to both providers", async (t) => {
+  const intervalDelays = []
+  await aggregatePanel(t, { refreshIntervalSeconds: 2.5 }, intervalDelays)
+  assert.equal(intervalDelays.filter((delay) => delay === 2_500).length, 2)
+})
 
 test("keeps the selected supported provider first while loading or unavailable", () => {
   const openai = provider({ id: "openai", title: "OpenAI", order: 120, primaryPct: 75 })

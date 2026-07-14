@@ -81,10 +81,10 @@ function adapterApi(overrides = {}) {
   }
 }
 
-function createTestAdapter(t, { api = adapterApi(), fetch: testFetch, clock } = {}) {
+function createTestAdapter(t, { api = adapterApi(), fetch: testFetch, clock, providerOptions } = {}) {
   const originalFetch = globalThis.fetch
   if (testFetch) globalThis.fetch = testFetch
-  const adapter = createZaiProvider(api)
+  const adapter = createZaiProvider(api, providerOptions)
   t.after(async () => {
     try {
       adapter.dispose()
@@ -288,6 +288,28 @@ test("exposes reactive provider freshness alongside the compact Z.AI home summar
   await adapter.refresh()
   assert.equal(adapter.freshness(), "stale")
   assert.equal(adapter.home(), null)
+})
+
+test("uses the default and custom provider polling intervals while keeping the one-second clock", async (t) => {
+  const defaultClock = installFakeClock(now)
+  createTestAdapter(t, { clock: defaultClock, fetch: async () => quotaResponse() })
+  await flushEffects()
+
+  assert.ok(defaultClock.intervals.some((timer) => timer.active && timer.delay === 10_000))
+  assert.ok(defaultClock.intervals.some((timer) => timer.active && timer.delay === 1_000))
+})
+
+test("uses a custom provider polling interval", async (t) => {
+  const clock = installFakeClock(now)
+  createTestAdapter(t, {
+    clock,
+    fetch: async () => quotaResponse(),
+    providerOptions: { refreshIntervalMs: 2_500 },
+  })
+  await flushEffects()
+
+  assert.ok(clock.intervals.some((timer) => timer.active && timer.delay === 2_500))
+  assert.ok(clock.intervals.some((timer) => timer.active && timer.delay === 1_000))
 })
 
 test("schedules a quota refresh at the 5H reset boundary", async (t) => {
