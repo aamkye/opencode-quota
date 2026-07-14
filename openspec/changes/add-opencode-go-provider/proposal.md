@@ -4,8 +4,8 @@ The quota sidebar recognizes OpenCode Go model metadata but cannot display the s
 
 ## What Changes
 
-- Add an OpenCode Go quota provider backed by the authenticated console's private subscription-usage query.
-- Add native options for a console workspace ID and session cookie, with explicit local-secret handling requirements.
+- Add an OpenCode Go quota provider backed by strict extraction of structured usage records from the authenticated console Go page.
+- Read `workspaceId` and `workspaceToken` from local `quota.opencodego` native options, with explicit local-secret handling requirements.
 - Display 5H, 7D, and 1M remaining percentages and reset times using the existing semantic panel, coloring, and percentage-mode behavior.
 - Recognize both `opencode-go` and `opencode-go-subscription` runtime IDs for active-provider refresh and prioritization.
 - Reuse configurable polling, reset-boundary refresh, stale-data retention, and lifecycle cleanup while failing closed on invalid configuration or authentication.
@@ -22,4 +22,4 @@ None.
 
 ## Impact
 
-The change affects native quota options, shared provider exports and summary types, quota composition and provider-ID mapping, a new OpenCode Go adapter, focused tests, documentation, and the built/deployed quota artifact. It depends on an undocumented OpenCode console server-query contract and requires users to keep a console session cookie in local uncommitted TUI configuration. It does not change inference requests, OpenCode account settings, provider authentication managed by OpenCode, or token-report calculations.
+The change affects native quota options, shared provider exports and summary types, quota composition and provider-ID mapping, a new OpenCode Go adapter, focused tests, documentation, and the built/deployed quota artifact. It depends on undocumented Solid hydration markup in the OpenCode Go console page and requires users to keep the `auth` cookie value in local uncommitted TUI configuration. It does not change inference requests, OpenCode account settings, provider authentication managed by OpenCode, or token-report calculations.

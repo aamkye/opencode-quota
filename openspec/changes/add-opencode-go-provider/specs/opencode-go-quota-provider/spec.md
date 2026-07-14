@@ -1,10 +1,10 @@
 ## ADDED Requirements
 
 ### Requirement: Native OpenCode Go configuration
-The quota plugin SHALL accept an optional OpenCode Go console workspace ID and full session Cookie header through native plugin options, SHALL use those values only for the fixed `https://opencode.ai` console origin, and SHALL never expose the cookie through logs, errors, reports, or committed examples.
+The quota plugin SHALL accept an optional OpenCode Go console workspace ID and auth-cookie value through `quota.opencodego.workspaceId` and `quota.opencodego.workspaceToken`, SHALL use those values only for the fixed `https://opencode.ai` console origin, and SHALL never expose either value through logs, errors, reports, or committed examples.
 
 #### Scenario: Valid local configuration
-- **WHEN** `openCodeGo.workspaceId` and `openCodeGo.cookie` are both non-empty valid values
+- **WHEN** `quota.opencodego.workspaceId` and `quota.opencodego.workspaceToken` are both non-empty valid values
 - **THEN** the provider may query the configured workspace's authenticated Go usage
 - **AND** it does not duplicate or replace the OpenCode-managed inference API key
 
@@ -15,22 +15,22 @@ The quota plugin SHALL accept an optional OpenCode Go console workspace ID and f
 
 #### Scenario: Secret-safe diagnostics
 - **WHEN** configuration, transport, parsing, or authentication fails
-- **THEN** no diagnostic or returned error contains any part of the configured cookie
+- **THEN** no diagnostic or returned error contains any part of the configured workspace ID or token
 
 ### Requirement: Exact console usage retrieval
-The provider SHALL retrieve structured OpenCode Go subscription usage from the authenticated private `lite.subscription.get` console query and SHALL validate the response before accepting it.
+The provider SHALL fetch the authenticated OpenCode Go workspace page, extract only the named Solid hydration assignments for `rollingUsage`, `weeklyUsage`, and `monthlyUsage`, and validate all three records before accepting them.
 
 #### Scenario: Successful usage response
-- **WHEN** the console returns rolling, weekly, and monthly usage records containing finite `usagePercent` and `resetInSec` values for the configured workspace
+- **WHEN** the authenticated page contains all three named hydration records with finite `usagePercent` and `resetInSec` values
 - **THEN** the provider accepts all three records as one atomic quota snapshot
 
 #### Scenario: Authentication expires
-- **WHEN** the console returns an authentication failure or redirects to login
+- **WHEN** the page request returns an authentication failure or a manual redirect to login
 - **THEN** the provider discards current quota values
 - **AND** it displays `Configuration required`
 
 #### Scenario: Response is malformed
-- **WHEN** any required usage record or numeric field is missing, non-finite, or outside its accepted range
+- **WHEN** the page is HTML without the expected hydration contract or any required usage record or numeric field is missing, non-finite, duplicated, or outside its accepted range
 - **THEN** the provider rejects the complete response
 - **AND** it does not fabricate a partial quota snapshot
 

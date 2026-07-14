@@ -10,32 +10,32 @@ canonical_spec: openspec
 
 The quota sidebar composes provider-specific adapters through `QuotaProviderAdapter`. Z.AI and OpenAI already supply semantic `PanelModel` data, compact home summaries, freshness, polling, reset-boundary refresh, and lifecycle cleanup. `tui/quota.tsx` selects the adapter associated with the latest user model and renders all providers through the shared panel renderer.
 
-OpenCode Go uses provider ID `opencode-go` and publishes three monetary limits: $12 per rolling 5 hours, $30 per week, and $60 per subscription month. Its inference API key authenticates model requests but exposes no documented quota endpoint or quota response headers. The OpenCode console obtains exact percentages and reset durations through the authenticated private SolidStart server query named `lite.subscription.get`.
+OpenCode Go uses provider ID `opencode-go` and publishes three monetary limits: $12 per rolling 5 hours, $30 per week, and $60 per subscription month. Its inference API key authenticates model requests but exposes no documented quota endpoint or quota response headers. The authenticated Go workspace page embeds exact `lite.subscription.get` percentages and reset durations in Solid hydration assignments.
 
 This design adds one provider without changing the renderer or refactoring the existing adapters. The OpenSpec delta spec remains the canonical behavior contract.
 
 ## Constraints
 
-- Exact usage must come from the structured console query, not local estimates.
-- The transport is undocumented and can change independently of this plugin.
-- The user chose native options for the workspace ID and full browser Cookie header.
-- The destination is fixed to `https://opencode.ai`; configuration cannot redirect the cookie elsewhere.
+- Exact usage must come from the three named hydration records, not visible localized text or local estimates.
+- The hydration markup is undocumented and can change independently of this plugin.
+- The existing local option shape is `quota.opencodego.{workspaceId, workspaceToken}`.
+- The destination is fixed to `https://opencode.ai`; configuration cannot redirect the auth token elsewhere.
 - The implementation must fit the existing shared-computation and three-artifact build boundary.
 - Real credentials and captured secret values must never enter Git, reports, fixtures, diagnostics, or test output.
 
 ## Contract-Capture Gate
 
-Implementation starts by capturing the current `lite.subscription.get` wire contract from an authenticated console request. The capture records only:
+Implementation starts by sanitizing the current authenticated Go page contract. The capture records only:
 
-- HTTP method and URL shape
-- required non-secret request headers
-- request payload and SolidStart serialization envelope
-- structured success response envelope
+- fixed GET URL shape
+- required non-secret request headers and `auth` cookie name
+- bounded Solid assignment shapes for `rollingUsage`, `weeklyUsage`, and `monthlyUsage`
+- synthetic `usagePercent` and `resetInSec` values at their observed positions
 - authentication failure and login redirect behavior
 
-The sanitized request manifest and success/error fixtures are committed under `tests/fixtures/opencode-go/`. Cookie values, unrelated browser headers, user identifiers, and real usage values are replaced with obvious test values before commit.
+The sanitized request manifest and minimal hydration/error fixtures are committed under `tests/fixtures/opencode-go/`. Workspace IDs, tokens, unrelated page content, account identifiers, and real usage values are replaced with obvious test values before commit.
 
-Production transport code does not begin until a focused contract test can reproduce the sanitized request and decode all three structured usage records. If the structured protocol cannot be reproduced reliably, the change stops as blocked. It does not fall back to HTML extraction or local cost reconstruction.
+Production parser code does not begin until a focused contract test can decode all three named hydration records atomically from the sanitized fixture. If the bounded assignment shapes cannot be reproduced, the change stops as blocked. It does not parse visible page text, execute page scripts, or reconstruct local costs.
 
 ## Architecture
 
@@ -44,11 +44,11 @@ Production transport code does not begin until a focused contract test can repro
 Add `tui/providers/opencode-go.ts` with four internal boundaries:
 
 1. Configuration validation
-2. Private console request and response classification
-3. Pure semantic quota mapping
+2. Authenticated page request and response classification
+3. Bounded hydration extraction and semantic quota mapping
 4. Reactive adapter lifecycle
 
-Keeping these concerns in one provider module follows the existing provider organization while allowing the private transport to be replaced independently. A generic polling-base refactor is intentionally excluded because it would increase the blast radius without helping the first contract capture.
+Keeping these concerns in one provider module follows the existing provider organization while allowing hydration extraction to be replaced independently. A generic polling-base refactor would increase the blast radius without helping the page contract.
 
 ### Native options
 
@@ -57,14 +57,16 @@ Extend the quota option shape:
 ```ts
 type OpenCodeGoOptions = {
   workspaceId?: string
-  cookie?: string
+  workspaceToken?: string
 }
 
 type QuotaPluginOptions = {
   refreshIntervalSeconds?: number
   progressColors?: ProgressColorOptions
   otherProviders?: Pick<QuotaCompositionOptions, "percentageMode" | "sortDirection">
-  openCodeGo?: OpenCodeGoOptions
+  quota?: {
+    opencodego?: OpenCodeGoOptions
+  }
 }
 ```
 
@@ -73,13 +75,13 @@ Normalization produces either an immutable valid configuration or `null`:
 ```ts
 type OpenCodeGoConfig = {
   workspaceId: string
-  cookie: string
+  workspaceToken: string
 }
 ```
 
-A workspace ID must match `^wrk_[A-Za-z0-9]+$`. The cookie must be non-empty after trimming and must not contain CR or LF characters. Validation returns no value derived from the cookie and does not log rejected input.
+A workspace ID must match `^wrk_[A-Za-z0-9]+$`. The workspace token must be non-empty after trimming and must not contain CR or LF characters. Validation returns no value derived from either credential and does not log rejected input.
 
-The user-facing configuration lives only in the local `.opencode/tui.json` entry. Documentation uses placeholders and explicitly warns that the cookie is plaintext, must not be committed, and must be rotated when the console session expires.
+The user-facing configuration lives only in the local `.opencode/tui.json` entry. Documentation uses placeholders and explicitly warns that `workspaceToken` is a plaintext `auth` cookie value, must not be committed, and must be rotated when the console session expires.
 
 ### Transport result
 
@@ -96,8 +98,8 @@ type OpenCodeGoFetchResult =
 Request controls:
 
 - fixed `https://opencode.ai` origin
-- captured private-query path, method, and body
-- explicit `Cookie` header from validated configuration
+- `GET /workspace/<encoded-workspaceId>/go`
+- `Accept: text/html` and `Cookie: auth=<workspaceToken>`
 - `redirect: "manual"` to prevent forwarding credentials
 - 20-second timeout
 - static diagnostic labels only
@@ -106,12 +108,12 @@ Response classification:
 
 | Condition | Result |
 | --- | --- |
-| Valid structured three-window response | `success` |
-| 401, 403, login redirect, or authenticated page fallback | `authentication-required` |
+| HTTP 200 page with exactly one valid assignment for every usage record | `success` |
+| 401, 403, or login redirect | `authentication-required` |
 | Network error, timeout, 408, 429, or 5xx | `transient-failure` |
-| Other status, malformed envelope, missing window, or invalid number | `invalid-response` |
+| Other status, unexpected content type, missing/duplicate assignment, or invalid number | `invalid-response` |
 
-The parser receives response data only; it never receives the cookie. It accepts a snapshot atomically when rolling, weekly, and monthly records each contain a finite `usagePercent` from 0 through 100 and a finite non-negative `resetInSec`. Unknown response fields are ignored. No partial snapshot is returned.
+The parser receives the HTML string only; it never receives configuration. For each named record, it finds exactly one bounded Solid assignment, then extracts only `usagePercent` and `resetInSec` without `eval`, `Function`, DOM script execution, or general object-literal conversion. It accepts a snapshot atomically when all values are finite, percentages fall from 0 through 100, and reset seconds are non-negative. No partial snapshot is returned.
 
 ### Semantic data model
 
@@ -164,7 +166,7 @@ configuration-required
           +------------------------------+----> ready
 ```
 
-Authentication-required results clear current quota immediately and enter `configuration-required`. Invalid structured responses clear current quota and enter `unavailable`, because protocol drift must not display indefinite cached values. Transient failures retain the last valid snapshot as `stale`; without a snapshot they enter `unavailable`. Stale data expires after the existing 10-minute horizon.
+Authentication-required results clear current quota immediately and enter `configuration-required`. Invalid hydration markup clears current quota and enters `unavailable`, because protocol drift must not display indefinite cached values. Transient failures retain the last valid snapshot as `stale`; without a snapshot they enter `unavailable`. Stale data expires after the existing 10-minute horizon.
 
 The adapter follows existing scheduling rules:
 
@@ -209,26 +211,26 @@ The presentation compile step gains a `provider-opencode-go` entry so Node tests
 - Response bodies are not logged, including malformed bodies that might reflect request metadata.
 - Redirects are never automatically followed.
 - The origin is a source constant, not an option.
-- Tests use a sentinel cookie and fail if that sentinel appears in captured diagnostics or thrown messages.
+- Tests use a sentinel workspace ID and token and fail if either appears in captured diagnostics or thrown messages.
 - Real live-validation options remain uncommitted and are restored or removed after testing.
 
 ## Testing Strategy
 
 ### Contract and configuration
 
-- sanitized request manifest matches the implemented URL, method, required headers, body, and redirect mode
-- workspace and cookie normalization accepts valid placeholders
+- sanitized request manifest matches the implemented GET URL, required headers, cookie name, and redirect mode
+- nested workspace and token normalization accepts valid placeholders
 - missing, blank, malformed, or CR/LF-bearing input disables requests
 - destination cannot be overridden
-- sentinel cookie never appears in diagnostics or errors
+- sentinel credentials never appear in diagnostics or errors
 
 ### Transport and parsing
 
-- success fixture decodes all three windows atomically
+- minimal hydration fixture decodes all three named assignments atomically
 - 401, 403, and login redirects classify as authentication required
 - network, timeout, 408, 429, and 5xx classify as transient
-- malformed envelopes, partial windows, percentages outside 0..100, and negative reset seconds classify as invalid
-- no test fixture contains a real workspace, cookie, or account value
+- missing/duplicate assignments, nested-object tricks, oversized captures, percentages outside 0..100, and negative reset seconds classify as invalid
+- no test fixture contains a real workspace, token, account value, or unrelated page content
 
 ### Mapping and lifecycle
 
@@ -257,7 +259,7 @@ With a real uncommitted configuration:
 - default/custom polling and countdown cadence are observable
 - removing or expiring the session shows configuration required
 - transient interruption produces bounded stale values
-- no terminal output or report contains the cookie
+- no terminal output or report contains either local credential
 
 ## Rollout And Rollback
 
@@ -267,8 +269,8 @@ Rollback removes adapter construction and provider aliases, rebuilds, and redepl
 
 ## Design Completion Criteria
 
-- A sanitized structured-query contract fixture exists and passes before transport implementation.
+- A sanitized minimal hydration contract fixture exists and passes before parser implementation.
 - The provider satisfies every scenario in `openspec/changes/add-opencode-go-provider/specs/opencode-go-quota-provider/spec.md`.
-- No fallback transport or local estimate is introduced.
-- No real cookie or workspace identifier is committed.
+- No visible-text scraper, script execution, or local estimate is introduced.
+- No real token or workspace identifier is committed.
 - Existing provider, build, and deployment tests remain green.
