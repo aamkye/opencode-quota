@@ -7,6 +7,8 @@ import test, { after, before } from "node:test"
 
 const projectRoot = resolve(import.meta.dirname, "..")
 const obsoleteNamespace = ["opencode", "quota"].join("-")
+const localOptions = { otherProviders: { percentageMode: "used", sortDirection: "asc" } }
+const globalOptions = { otherProviders: { percentageMode: "remaining", sortDirection: "desc" } }
 const temporaryRoots = []
 let deployPlugins
 let resolveGlobalConfigRoot
@@ -30,7 +32,11 @@ async function fixture() {
       "./unrelated.js",
       "@scope/unrelated-plugin",
       `file:///tmp/${obsoleteNamespace}/custom-plugin.js`,
-      "./tui/quota.tsx",
+      ["file:///tmp/unrelated/tui/quota.tsx", { preserve: "quota" }],
+      "/tmp/unrelated/tui/home.tsx",
+      "file:///tmp/unrelated/opencode-tools-quota.js",
+      ["file:///tmp/unrelated/tokens.ts?version=1", { preserve: "tokens" }],
+      ["./tui/quota.tsx", localOptions],
       "./tui/home.tsx",
       "@aamkye/opencode-tools/tui",
       `./${obsoleteNamespace}.js`,
@@ -71,10 +77,14 @@ test("local deployment builds, cleans managed entries, and is idempotent", async
     "./unrelated.js",
     "@scope/unrelated-plugin",
     `file:///tmp/${obsoleteNamespace}/custom-plugin.js`,
-    "./opencode-tools-quota.js",
+    ["file:///tmp/unrelated/tui/quota.tsx", { preserve: "quota" }],
+    "/tmp/unrelated/tui/home.tsx",
+    "file:///tmp/unrelated/opencode-tools-quota.js",
+    ["file:///tmp/unrelated/tokens.ts?version=1", { preserve: "tokens" }],
+    ["./opencode-tools-quota.js", localOptions],
   ])
-  assert.equal(config.plugin.filter((entry) => entry === "./opencode-tools-quota.js").length, 1)
-  assert.ok(config.plugin.every((entry) => !/^@aamkye\/opencode-(?:tools|quota)/.test(entry)))
+  assert.equal(config.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-quota.js").length, 1)
+  assert.ok(config.plugin.every((entry) => !/^@aamkye\/opencode-(?:tools|quota)/.test(Array.isArray(entry) ? entry[0] : entry)))
 
   await assert.rejects(readFile(join(root, "plugins", "opencode-tools-tokens.ts"), "utf8"), { code: "ENOENT" })
   await assert.rejects(readFile(join(root, "plugins", `${obsoleteNamespace}-tokens.js`), "utf8"), { code: "ENOENT" })
@@ -95,11 +105,29 @@ test("global config resolution honors XDG_CONFIG_HOME and deploys the same layou
   assert.equal(root, join(xdgRoot, "opencode"))
 
   await mkdir(root, { recursive: true })
-  await writeFile(join(root, "tui.json"), JSON.stringify({ plugin: ["file:///tmp/other.js", "opencode-tools", "./tokens.ts"] }))
+  await writeFile(join(root, "tui.json"), JSON.stringify({
+    plugin: [
+      "file:///tmp/other.js",
+      ["file:///tmp/unrelated/tui/quota.tsx", { preserve: "quota" }],
+      "/tmp/unrelated/tui/home.tsx",
+      "file:///tmp/unrelated/opencode-tools-quota.js",
+      "file:///tmp/unrelated/tokens.ts",
+      ["opencode-tools", globalOptions],
+      "./opencode-tools-quota.js",
+      "./tokens.ts",
+    ],
+  }))
   await deployPlugins(root, { logLevel: "silent" })
 
   const config = JSON.parse(await readFile(join(root, "tui.json"), "utf8"))
-  assert.deepEqual(config.plugin, ["file:///tmp/other.js", "./opencode-tools-quota.js"])
+  assert.deepEqual(config.plugin, [
+    "file:///tmp/other.js",
+    ["file:///tmp/unrelated/tui/quota.tsx", { preserve: "quota" }],
+    "/tmp/unrelated/tui/home.tsx",
+    "file:///tmp/unrelated/opencode-tools-quota.js",
+    "file:///tmp/unrelated/tokens.ts",
+    ["./opencode-tools-quota.js", globalOptions],
+  ])
   assert.equal(basename(root), "opencode")
   assert.equal((await readFile(join(root, "plugins", "opencode-tools-tokens.js"), "utf8")).length > 0, true)
 })
