@@ -879,7 +879,7 @@ git commit -m "fix(tui): preserve provider quota groups"
 - Produces: `formatWindowDuration(seconds: number | undefined): string` with largest exact unit among 30-day month, week, day, and hour, plus a rounded-hour fallback.
 - Produces: progress/reset IDs `openai:<duration-seconds>s-<primary|secondary>` and `openai:<duration-seconds>s-<primary|secondary>-reset`.
 
-- [ ] **Step 1: Add failing weekly-primary and multi-window duration tests**
+- [x] **Step 1: Add failing weekly-primary and multi-window duration tests**
 
 Replace hard-coded OpenAI item IDs in existing tests (`openai:5h`, `openai:5h-reset`, and `openai:7d`) with duration/role IDs (`openai:18000s-primary`, `openai:18000s-primary-reset`, and `openai:604800s-secondary`). Then add:
 
@@ -925,7 +925,7 @@ test("uses the largest exact compact duration unit", () => {
 })
 ```
 
-- [ ] **Step 2: Run the focused OpenAI tests and verify RED**
+- [x] **Step 2: Run the focused OpenAI tests and verify RED**
 
 Run:
 
@@ -935,7 +935,7 @@ node tests/compile-presentation.mjs && node --test tests/provider-openai.test.mj
 
 Expected: FAIL because a weekly primary is still emitted as `openai:5h` with label `5H`, IDs depend on response position, and no 30-day formatter exists.
 
-- [ ] **Step 3: Implement duration formatting and role-stable IDs**
+- [x] **Step 3: Implement duration formatting and role-stable IDs**
 
 Replace `quotaItems()` in `tui/providers/openai.ts` with:
 
@@ -984,7 +984,7 @@ if (data.secondary) items.push(...quotaItems("secondary", 50, data.secondary, no
 
 Keep plan normalization, stale/limited items, reset arithmetic, and collapsed summary unchanged.
 
-- [ ] **Step 4: Run focused provider and composition tests and verify GREEN**
+- [x] **Step 4: Run focused provider and composition tests and verify GREEN**
 
 Run:
 
@@ -994,7 +994,7 @@ node tests/compile-presentation.mjs && node --test tests/provider-openai.test.mj
 
 Expected: all tests PASS; a seven-day primary yields one `7D` group and no `5H` group.
 
-- [ ] **Step 5: Commit the OpenAI duration slice**
+- [x] **Step 5: Commit the OpenAI duration slice**
 
 ```bash
 git add tui/providers/openai.ts tests/provider-openai.test.mjs
