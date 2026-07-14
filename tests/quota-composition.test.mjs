@@ -15,7 +15,7 @@ process.env.XDG_CONFIG_HOME = isolatedProviderHome
 process.env.XDG_DATA_HOME = isolatedProviderHome
 
 const { default: quotaPlugin, composeQuotaPanel, normalizeQuotaOptions, selectedQuotaProviderID, selectedSessionQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
-const { mountQuotaSelection } = await import("../.tmp-test/quota-selection.mjs")
+const { createQuotaSelectionHost, mountQuotaSelection } = await import("../.tmp-test/quota-selection.mjs")
 const { normalizePanelModel } = await import("../.tmp-test/presentation-renderer.mjs")
 
 after(async () => {
@@ -42,6 +42,7 @@ function provider({
   windows = ["5H", "7D"],
   groups,
   onRefresh = async () => {},
+  onDispose = () => {},
 }) {
   const items = [
     { id: `${id}:header`, order: 10, kind: "header", title },
@@ -65,7 +66,7 @@ function provider({
     freshness: () => freshness,
     refresh: onRefresh,
     setSessionID: () => {},
-    dispose: () => {},
+    dispose: onDispose,
   }
 }
 
@@ -430,27 +431,31 @@ test("resolves the newest supported user model and falls back without usable met
   ], providers, "zai"), "zai")
 })
 
-test("refreshes and reorders when the sidebar session changes provider", async () => {
+test("reacts to host messages without refreshing repeated or same-provider sidebar selections", async () => {
   const refreshes = []
   const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 60, onRefresh: async () => refreshes.push("zai") })
   const openai = provider({ id: "openai", title: "OpenAI", order: 120, primaryPct: 70, onRefresh: async () => refreshes.push("openai") })
-  const messages = {
-    "session-zai": [{ id: "z1", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } }],
-    "session-openai": [{ id: "o1", role: "user", model: { providerID: "openai", modelID: "gpt-5" } }],
-  }
-  const api = {
-    state: {
-      provider: [{ id: "zai-coding-plan" }],
-      session: { messages: (sessionID) => messages[sessionID] ?? [] },
+  const host = createQuotaSelectionHost({
+    provider: [{ id: "zai-coding-plan" }],
+    messages: {
+      "session-1": [{ id: "z1", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } }],
     },
-  }
+  })
 
-  const selection = mountQuotaSelection(api, [zai, openai])
+  const selection = mountQuotaSelection(host.api, [zai, openai])
 
   try {
-    selection.setSessionID("session-zai")
+    selection.renderSidebar("session-1")
     await flushEffects()
-    selection.setSessionID("session-openai")
+    selection.renderSidebar("session-1")
+    await flushEffects()
+    host.setMessages("session-1", [
+      { id: "z2", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7-flash" } },
+    ])
+    await flushEffects()
+    host.setMessages("session-1", [
+      { id: "o1", role: "user", model: { providerID: "openai", modelID: "gpt-5" } },
+    ])
     await flushEffects()
 
     assert.deepEqual(refreshes, ["zai", "openai"])
@@ -459,8 +464,94 @@ test("refreshes and reorders when the sidebar session changes provider", async (
     assert.equal(model.groups[1].header.title, "Other providers")
     assert.equal(JSON.stringify(model).includes("gpt-5"), false)
   } finally {
-    selection.dispose()
+    await host.dispose()
   }
+})
+
+test("uses reactive fallback for unreadable messages and stops refreshing after lifecycle disposal", async () => {
+  const refreshes = []
+  const disposals = []
+  const zai = provider({
+    id: "zai",
+    title: "Z.AI",
+    order: 110,
+    onRefresh: async () => refreshes.push("zai"),
+    onDispose: () => disposals.push("zai"),
+  })
+  const openai = provider({
+    id: "openai",
+    title: "OpenAI",
+    order: 120,
+    onRefresh: async () => refreshes.push("openai"),
+    onDispose: () => disposals.push("openai"),
+  })
+  const providers = [zai, openai]
+  const host = createQuotaSelectionHost({
+    provider: [{ id: "zai-coding-plan" }],
+    messages: {
+      "session-1": [{ id: "o1", role: "user", model: { providerID: "openai", modelID: "gpt-5" } }],
+    },
+  })
+  host.api.lifecycle.onDispose(() => providers.forEach((adapter) => adapter.dispose()))
+  const selection = mountQuotaSelection(host.api, providers)
+
+  selection.renderSidebar("session-1")
+  await flushEffects()
+  host.setUnreadableMessages(true)
+  await flushEffects()
+  assert.equal(selection.selectedProviderID(), "zai")
+  host.setProvider([{ id: "openai" }])
+  await flushEffects()
+
+  assert.equal(selection.selectedProviderID(), "openai")
+  assert.deepEqual(refreshes, ["openai", "zai", "openai"])
+  assert.equal(host.lifecycleCount(), 2)
+
+  await host.dispose()
+  host.setProvider([{ id: "zai-coding-plan" }])
+  host.setUnreadableMessages(false)
+  host.setMessages("session-1", [
+    { id: "z2", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } },
+  ])
+  await flushEffects()
+
+  assert.deepEqual(refreshes, ["openai", "zai", "openai"])
+  assert.deepEqual(disposals, ["zai", "openai"])
+})
+
+test("disposes the selection root when lifecycle registration fails during activation", async () => {
+  const host = createQuotaSelectionHost({
+    provider: [{ id: "zai-coding-plan" }],
+    messages: {},
+    disposeRegistrationError: new Error("lifecycle registration failed"),
+  })
+  const zai = provider({ id: "zai", title: "Z.AI", order: 110 })
+
+  assert.throws(
+    () => mountQuotaSelection(host.api, [zai]),
+    /lifecycle registration failed/,
+  )
+  const readsAfterFailure = host.providerReadCount()
+  host.setProvider([{ id: "openai" }])
+  await flushEffects()
+
+  assert.equal(host.providerReadCount(), readsAfterFailure)
+})
+
+test("does not retain a selection root when activation reaches an already disposed lifecycle", async () => {
+  const host = createQuotaSelectionHost({
+    provider: [{ id: "zai-coding-plan" }],
+    messages: {},
+  })
+  const zai = provider({ id: "zai", title: "Z.AI", order: 110 })
+  await host.dispose()
+
+  mountQuotaSelection(host.api, [zai])
+  const readsAfterActivation = host.providerReadCount()
+  host.setProvider([{ id: "openai" }])
+  await flushEffects()
+
+  assert.equal(host.providerReadCount(), readsAfterActivation)
 })
 
 test("falls back to remaining descending options when native values are invalid", async (t) => {

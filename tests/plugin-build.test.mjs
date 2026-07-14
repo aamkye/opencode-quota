@@ -234,7 +234,7 @@ test("combined TUI artifact activates hermetically and shares provider reactivit
     assert.deepEqual(freshness, ["loading", "ready"])
     assert.equal(typeof provider.dispose, "function")
     assert.equal(activationResult, undefined)
-    assert.equal(lifecycle.count(), 2)
+    assert.equal(lifecycle.count(), 3)
     assert.ok(fetchCalls.length >= 3)
     assert.ok(fetchCalls.every((call) => call.url === "https://chatgpt.com/backend-api/wham/usage"))
     assert.ok(fetchCalls.every((call) => call.authorization === "Bearer artifact-test-token"))
@@ -260,7 +260,7 @@ test("combined TUI artifact activates hermetically and shares provider reactivit
       quota.default.tui(failingApi, undefined),
       /home slot registration failed/,
     )
-    assert.equal(failedLifecycle.count(), 2)
+    assert.equal(failedLifecycle.count(), 3)
     await failedLifecycle.dispose()
     assert.equal(failedLifecycle.api.signal.aborted, true)
 

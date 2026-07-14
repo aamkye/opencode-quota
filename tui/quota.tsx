@@ -1,5 +1,5 @@
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule, TuiPluginOptions } from "@opencode-ai/plugin/tui"
-import { createEffect, createMemo, createSignal, type Accessor } from "solid-js"
+import { createEffect, createMemo, createRoot, createSignal, type Accessor } from "solid-js"
 
 import { PanelRenderer, type PanelTheme } from "./presentation/renderer.js"
 import type { PanelItem, PanelModel, PanelStatus } from "./presentation/types.js"
@@ -299,28 +299,44 @@ export function createQuotaSelection(
   api: TuiPluginApi,
   providers: readonly QuotaProviderAdapter[],
 ): { selectedProviderID: Accessor<string | undefined>; setSessionID(sessionID: string): void } {
-  const [sessionID, setSessionID] = createSignal("")
-  const selectedProviderID = createMemo(() => {
-    const fallbackID = selectedQuotaProviderID(api.state.provider, providers)
-    const id = sessionID()
-    if (!id) return fallbackID
-    try {
-      return selectedSessionQuotaProviderID(api.state.session.messages(id), providers, fallbackID)
-    } catch {
-      return fallbackID
+  let dispose: () => void = () => undefined
+  const selection = createRoot((rootDispose) => {
+    dispose = rootDispose
+    const [sessionID, setSessionID] = createSignal("")
+    const selectedProviderID = createMemo(() => {
+      const fallbackID = selectedQuotaProviderID(api.state.provider, providers)
+      const id = sessionID()
+      if (!id) return fallbackID
+      try {
+        return selectedSessionQuotaProviderID(api.state.session.messages(id), providers, fallbackID)
+      } catch {
+        return fallbackID
+      }
+    })
+    let refreshedProviderID: string | undefined
+
+    createEffect(() => {
+      if (!sessionID()) return
+      const adapterID = selectedProviderID()
+      if (!adapterID || adapterID === refreshedProviderID) return
+      refreshedProviderID = adapterID
+      void providers.find((provider) => provider.id === adapterID)?.refresh()
+    })
+
+    return { selectedProviderID, setSessionID }
+  })
+
+  try {
+    const unregister = api.lifecycle.onDispose(dispose)
+    if (api.lifecycle.signal.aborted) {
+      unregister()
+      dispose()
     }
-  })
-  let refreshedProviderID: string | undefined
-
-  createEffect(() => {
-    if (!sessionID()) return
-    const adapterID = selectedProviderID()
-    if (!adapterID || adapterID === refreshedProviderID) return
-    refreshedProviderID = adapterID
-    void providers.find((provider) => provider.id === adapterID)?.refresh()
-  })
-
-  return { selectedProviderID, setSessionID }
+  } catch (error) {
+    dispose()
+    throw error
+  }
+  return selection
 }
 
 const tui: TuiPlugin = async (api, rawOptions) => {
