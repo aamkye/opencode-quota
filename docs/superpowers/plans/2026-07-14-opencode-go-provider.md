@@ -19,7 +19,7 @@ base-ref: f94168f
 - The first deliverable is a sanitized, minimal page-contract fixture. Do not start production parser or transport code until its fixture-only contract test passes.
 - Only the purpose-built Task 1 sanitizer may read ignored `.opencode/tui.json` credentials programmatically; the credential owner may edit them directly for Task 13 live validation. Credentials, raw HTML, request headers, real identifiers, and real usage/reset values must never be printed, logged, reported, persisted, committed, or included in an exception message.
 - The sanitizer fetches the authenticated page once and the unauthenticated redirect once, accepts only exact markers shaped `<name>:$R[<digits>]=` followed by a bounded flat object, replaces hydration indexes and observed numeric data with synthetic values in memory, writes only allowlist-validated minimal fixtures, and self-deletes from the approved temporary directory. Never open, inspect, or reuse the existing unsafe full-HTML temporary capture.
-- Exact quota data comes only from exactly one bounded Solid hydration assignment for each of `rollingUsage`, `weeklyUsage`, and `monthlyUsage`: `rollingUsage:$R[digits]=`, `weeklyUsage:$R[digits]=`, and `monthlyUsage:$R[digits]=`. Visible text, localized labels, local cost estimates, and broad object searches are forbidden.
+- Exact quota data comes only from exactly one bounded Solid hydration assignment for each of `rollingUsage`, `weeklyUsage`, and `monthlyUsage`: `rollingUsage:$R[digits]=`, `weeklyUsage:$R[digits]=`, and `monthlyUsage:$R[digits]=`. Each assignment must use the observed flat `{status:"ok",resetInSec:<number>,usagePercent:<number>}` shape; the parser validates and discards `status`. Visible text, localized labels, local cost estimates, and broad object searches are forbidden.
 - Safe reference evidence is limited to `/Users/aam/.graphify/repos/ridho9/opencode-go-usage/index.js:137-149`, which confirms the three marker shapes. Do not add that external file to this repository, copy its permissive `[^}]+` captures, or copy its object-literal-to-JSON conversion.
 - The request is exactly `GET https://opencode.ai/workspace/<encodeURIComponent(workspaceId)>/go` with `Accept: text/html`, `Cookie: auth=<workspaceToken>`, `redirect: "manual"`, no body, and a 20,000ms timeout.
 - The origin is a source constant. No option, redirect, response, fixture, or dependency injection point may alter `https://opencode.ai` or forward the cookie to another origin.
@@ -87,7 +87,7 @@ base-ref: f94168f
 **Interfaces:**
 - Consumes: ignored local `quota.opencodego` credentials through a temporary in-memory sanitizer and the live page response fetched with manual redirects; it never consumes the existing unsafe full-HTML capture.
 - Produces: a synthetic request manifest and minimal HTML fixture that Tasks 3 and 6 treat as the only page-contract authority.
-- Produces fixture values: rolling `{ usagePercent: 12.5, resetInSec: 1800 }`, weekly `{ usagePercent: 34, resetInSec: 172800 }`, monthly `{ usagePercent: 56.75, resetInSec: 1209600 }`.
+- Produces fixture values: rolling `{ status: "ok", resetInSec: 1800, usagePercent: 12.5 }`, weekly `{ status: "ok", resetInSec: 172800, usagePercent: 34 }`, monthly `{ status: "ok", resetInSec: 1209600, usagePercent: 56.75 }`.
 
 - [ ] **Step 1: Write the fixture-only contract test before creating fixtures**
 
@@ -117,7 +117,7 @@ const NUMBER_SOURCE = String.raw`-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?`
 
 function assignmentPattern(name, syntheticIndex) {
   return new RegExp(
-    String.raw`^${name}:\$R\[${syntheticIndex}\]=\{\s*usagePercent\s*:\s*(?<usage>${NUMBER_SOURCE})\s*,\s*resetInSec\s*:\s*(?<reset>${NUMBER_SOURCE})\s*,?\s*\}$`,
+    String.raw`^${name}:\$R\[${syntheticIndex}\]=\{status:"ok",resetInSec:(?<reset>${NUMBER_SOURCE}),usagePercent:(?<usage>${NUMBER_SOURCE})\}$`,
     "u",
   )
 }
@@ -173,7 +173,7 @@ test("OpenCode Go contract contains one bounded assignment for every usage recor
 
 test("OpenCode Go contract grammar rejects duplicate malformed and trick assignments", () => {
   const lines = fixtureLines(html())
-  const replaceUsage = (replacement) => lines[0].replace(/(usagePercent\s*:\s*)12\.5/, `$1${replacement}`)
+  const replaceUsage = (replacement) => lines[0].replace(/(usagePercent:)12\.5/, `$1${replacement}`)
   const invalid = [
     wrap([lines[0], lines[0], lines[1], lines[2]]),
     wrap([lines[1], lines[0], lines[2]]),
@@ -182,6 +182,7 @@ test("OpenCode Go contract grammar rejects duplicate malformed and trick assignm
     wrap([`"${lines[0]}"`, lines[1], lines[2]]),
     wrap([replaceUsage("{ value: 12.5 }"), lines[1], lines[2]]),
     wrap([replaceUsage("\"12.5\""), lines[1], lines[2]]),
+    wrap([lines[0].replace('status:"ok"', 'status:"other"'), lines[1], lines[2]]),
     wrap([lines[0].replace("}", ",otherField:1}"), lines[1], lines[2]]),
     wrap([lines[0].replace("}", ",__proto__:null}"), lines[1], lines[2]]),
     wrap([lines[0].replace("$R[0]", "$R[x]"), lines[1], lines[2]]),
@@ -244,7 +245,7 @@ const RECORDS = [
   { name: "monthlyUsage", syntheticIndex: 2, syntheticUsage: 56.75, syntheticReset: 1209600 },
 ]
 const OBJECT_PATTERN = new RegExp(
-  String.raw`^\{\s*usagePercent\s*:\s*(?<usage>${NUMBER})\s*,\s*resetInSec\s*:\s*(?<reset>${NUMBER})\s*,?\s*\}$`,
+  String.raw`^\{status:"ok",resetInSec:(?<reset>${NUMBER}),usagePercent:(?<usage>${NUMBER})\}$`,
   "u",
 )
 
@@ -319,7 +320,7 @@ function sanitizedAssignments(raw) {
     if (countLiteral(raw, `${name}:`) !== 1 || rawMarkers.length !== 1 || markers.length !== 1) reject()
     const { usage, reset } = recordFromMarker(markers[0].body, markers[0].marker)
     if (!Number.isFinite(usage) || usage < 0 || usage > 100 || !Number.isFinite(reset) || reset < 0) reject()
-    return `${name}:$R[${syntheticIndex}]={usagePercent:${syntheticUsage},resetInSec:${syntheticReset}}`
+    return `${name}:$R[${syntheticIndex}]={status:"ok",resetInSec:${syntheticReset},usagePercent:${syntheticUsage}}`
   })
   return `<script>\n${lines.join("\n")}\n</script>\n`
 }
@@ -366,7 +367,7 @@ async function main() {
   const outputs = `${manifest}\n${success}\n${login}`
   if (outputs.includes(workspaceId) || outputs.includes(workspaceToken)) reject()
   const expectedSuccess = `<script>\n${RECORDS.map(({ name, syntheticIndex, syntheticUsage, syntheticReset }) =>
-    `${name}:$R[${syntheticIndex}]={usagePercent:${syntheticUsage},resetInSec:${syntheticReset}}`).join("\n")}\n</script>\n`
+    `${name}:$R[${syntheticIndex}]={status:"ok",resetInSec:${syntheticReset},usagePercent:${syntheticUsage}}`).join("\n")}\n</script>\n`
   if (success !== expectedSuccess) reject()
 
   await mkdir(FIXTURES, { recursive: true })
@@ -424,13 +425,13 @@ The generated `success.html` must contain one minimal `<script>` wrapper and exa
 
 ```html
 <script>
-rollingUsage:$R[0]={usagePercent:12.5,resetInSec:1800}
-weeklyUsage:$R[1]={usagePercent:34,resetInSec:172800}
-monthlyUsage:$R[2]={usagePercent:56.75,resetInSec:1209600}
+rollingUsage:$R[0]={status:"ok",resetInSec:1800,usagePercent:12.5}
+weeklyUsage:$R[1]={status:"ok",resetInSec:172800,usagePercent:34}
+monthlyUsage:$R[2]={status:"ok",resetInSec:1209600,usagePercent:56.75}
 </script>
 ```
 
-The sanitizer preserves the confirmed `<name>:$R[digits]=` structure, normalizes hydration indexes to `0`, `1`, and `2`, and replaces both numeric fields with the synthetic values from **Interfaces**. The initial allowlist contains only unquoted `usagePercent` and `resetInSec` in that order, optional whitespace inside the object, and an optional trailing comma. If the live flat object contains any additional field or different structure, the sanitizer blocks; broaden it only by adding literal field names/types proven safe from the observed contract, never a wildcard, broad brace capture, or general object parser. No unrelated script, visible element, raw identifier, string value, or field survives.
+The sanitizer preserves the confirmed `<name>:$R[digits]=` structure, normalizes hydration indexes to `0`, `1`, and `2`, requires and preserves only the static `status:"ok"` field, and replaces both numeric fields with the synthetic values from **Interfaces**. The allowlist contains exactly unquoted `status`, `resetInSec`, and `usagePercent` in that order with no whitespace or trailing comma. If the live flat object changes, the sanitizer blocks; broaden it only by adding literal field names/types proven safe from the observed contract, never a wildcard, broad brace capture, or general object parser. No unrelated script, visible element, raw identifier, string value, or field survives.
 
 The generated `login-redirect.json` must contain only the observed synthetic status and same-origin pathname:
 
@@ -884,7 +885,7 @@ Use this restricted grammar and bounded extraction shape in `tui/providers/openc
 ```typescript
 const NUMBER_SOURCE = String.raw`-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?`
 const OBJECT_PATTERN = new RegExp(
-  String.raw`^\{\s*usagePercent\s*:\s*(?<usage>${NUMBER_SOURCE})\s*,\s*resetInSec\s*:\s*(?<reset>${NUMBER_SOURCE})\s*,?\s*\}$`,
+  String.raw`^\{status:"ok",resetInSec:(?<reset>${NUMBER_SOURCE}),usagePercent:(?<usage>${NUMBER_SOURCE})\}$`,
   "u",
 )
 
@@ -903,7 +904,7 @@ const markerPattern = new RegExp(String.raw`${record.name}:\$R\[(?<index>\d+)\]=
 
 Require exactly one `${record.name}:` literal and exactly one exact marker in the complete HTML, then require that same sole marker exactly once across extracted script bodies. This rejects both duplicate markers and visible-text-only fragments. Starting immediately after the script-body marker, take at most `MAX_ASSIGNMENT_LENGTH + 1` code units. Require the first character to be `{`, find the first `}`, reject when it is absent or makes the capture exceed 4,096 code units, and run only `OBJECT_PATTERN` against the complete bounded slice. After the closing brace, allow only observed assignment terminators from the literal set end-of-script, comma, semicolon, closing brace, CR, or LF, with horizontal whitespace before the terminator.
 
-This deliberately admits no whitespace inside `<name>:$R[digits]=`; Task 1 evidence shows none there. It admits optional whitespace only inside the flat object and before an assignment terminator. It rejects malformed `$R` indexes, visible text outside scripts, free-form strings, comments, nested braces, arrays, computed expressions, methods, accessors, spreads, extra fields, quoted/prototype keys, and any unallowlisted property. If the contract gate discovers an additional flat field, stop unless its literal name, order, and scalar grammar can be explicitly allowlisted in Task 1 and mirrored here; never add `.*`, `[^}]+`, recursive search, or general object conversion.
+This deliberately admits no whitespace inside `<name>:$R[digits]=` or the observed flat object; Task 1 evidence shows none there. It validates the exact literal `status:"ok"` and discards it. It rejects malformed `$R` indexes, visible text outside scripts, other strings or status values, comments, nested braces, arrays, computed expressions, methods, accessors, spreads, extra fields, quoted/prototype keys, and any unallowlisted property. If the contract gate discovers another shape, stop unless its literal name, order, and scalar grammar can be explicitly allowlisted in Task 1 and mirrored here; never add `.*`, `[^}]+`, recursive search, or general object conversion.
 
 Validate `Number.isFinite(usagePercent)`, `0 <= usagePercent <= 100`, `Number.isFinite(resetInSec)`, `resetInSec >= 0`, and `Number.isFinite(receivedAt + resetInSec * 1000)`. Build data only after all three records pass:
 
@@ -1451,8 +1452,8 @@ Expected: no local config, full HTML, HAR, screenshot, log, or secret-bearing pa
 - [ ] OpenSpec tasks 1.1 through 4.2 map one-to-one to Tasks 1 through 13.
 - [ ] Native configuration is exactly `quota.opencodego.{workspaceId, workspaceToken}` and no redirectable origin exists.
 - [ ] Transport is fixed GET HTML with `Accept`, `auth` cookie, manual redirects, and a 20-second timeout.
-- [ ] Task 1 fixture lines are exactly `rollingUsage:$R[0]=...`, `weeklyUsage:$R[1]=...`, and `monthlyUsage:$R[2]=...` in order, with only minimal synthetic flat objects.
-- [ ] Production parsing requires exactly one `<name>:$R[digits]=` marker per record, bounds each capture to 4,096 code units, and rejects the entire snapshot for malformed/duplicate/trick/oversized cases.
+- [ ] Task 1 fixture lines are exactly `rollingUsage:$R[0]=...`, `weeklyUsage:$R[1]=...`, and `monthlyUsage:$R[2]=...` in order, with only the observed static `status:"ok"` and synthetic numeric fields.
+- [ ] Production parsing requires exactly one `<name>:$R[digits]=` marker and the literal `{status:"ok",resetInSec:<number>,usagePercent:<number>}` shape per record, bounds each capture to 4,096 code units, and rejects the entire snapshot for malformed/duplicate/trick/oversized cases.
 - [ ] No `.*`, broad `[^}]+`, script execution, object-literal JSONification, general object conversion, visible-text scraping, local estimate, partial snapshot, or credential-bearing diagnostic exists.
 - [ ] `/Users/aam/.graphify/repos/ridho9/opencode-go-usage/index.js:137-149` remains evidence only and is neither imported nor copied into repository artifacts.
 - [ ] OpenCode Go displays `OpenCode GO:`, 5H, 7D, and 1M in order; compact summary contains only 5H/7D.

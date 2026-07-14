@@ -113,7 +113,7 @@ Response classification:
 | Network error, timeout, 408, 429, or 5xx | `transient-failure` |
 | Other status, unexpected content type, missing/duplicate assignment, or invalid number | `invalid-response` |
 
-The parser receives the HTML string only; it never receives configuration. For each named record, it finds exactly one bounded Solid assignment, then extracts only `usagePercent` and `resetInSec` without `eval`, `Function`, DOM script execution, or general object-literal conversion. It accepts a snapshot atomically when all values are finite, percentages fall from 0 through 100, and reset seconds are non-negative. No partial snapshot is returned.
+The parser receives the HTML string only; it never receives configuration. For each named record, it finds exactly one bounded Solid assignment and accepts only the observed flat shape `{status:"ok",resetInSec:<number>,usagePercent:<number>}`. It validates and discards the static status field, then extracts only `usagePercent` and `resetInSec` without `eval`, `Function`, DOM script execution, or general object-literal conversion. It accepts a snapshot atomically when all values are finite, percentages fall from 0 through 100, and reset seconds are non-negative. No partial snapshot is returned.
 
 ### Semantic data model
 

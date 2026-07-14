@@ -25,7 +25,7 @@ The provider must therefore fetch the authenticated Go workspace page and strict
 
 Add a dedicated OpenCode Go provider with separate page transport, bounded hydration extraction, response validation, semantic mapping, and reactive adapter layers. The first implementation task sanitizes the observed Go page and freezes the current `rollingUsage`, `weeklyUsage`, and `monthlyUsage` assignment shapes before production transport code is written. Tests use fixtures containing no real credentials or identifiers.
 
-The parser targets only Solid hydration assignments for the three named usage records and never interprets visible localized HTML or executes page scripts. This is preferred over reverse-engineering an unobserved server-function wire endpoint and over local reconstruction, which omits other clients and devices.
+The parser targets only Solid hydration assignments for the three named usage records, requires the observed static `status: "ok"` field before the two numeric fields, and never interprets visible localized HTML or executes page scripts. This is preferred over reverse-engineering an unobserved server-function wire endpoint and over local reconstruction, which omits other clients and devices.
 
 ### Configure the console session through native options
 
