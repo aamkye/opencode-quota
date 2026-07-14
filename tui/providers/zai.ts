@@ -397,9 +397,14 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
   const [now, setNow] = createSignal(Date.now())
   const [refreshedBoundary, setRefreshedBoundary] = createSignal(0)
   let refreshInFlight: Promise<void> | null = null
+  let refreshStartedAt = 0
+  let pendingBoundary = 0
+  let disposed = false
 
   const refresh = (): Promise<void> => {
+    if (disposed) return Promise.resolve()
     if (refreshInFlight) return refreshInFlight
+    const startedAt = Date.now()
     const request = (async () => {
       const key = apiKey()
       if (!key) {
@@ -407,6 +412,7 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
         return
       }
       const data = await fetchZaiQuota(key)
+      if (disposed) return
       if (data) {
         setQuotaData(data)
         setPhase("ready")
@@ -418,10 +424,18 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
       }
     })()
     refreshInFlight = request
-    void request.then(
-      () => { if (refreshInFlight === request) refreshInFlight = null },
-      () => { if (refreshInFlight === request) refreshInFlight = null },
-    )
+    refreshStartedAt = startedAt
+    const settled = () => {
+      if (refreshInFlight !== request) return
+      refreshInFlight = null
+      refreshStartedAt = 0
+      if (disposed || pendingBoundary <= 0) return
+      const epoch = pendingBoundary
+      pendingBoundary = 0
+      setRefreshedBoundary(epoch)
+      void refresh()
+    }
+    void request.then(settled, settled)
     return request
   }
 
@@ -488,6 +502,7 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
   })
 
   const tick = setInterval(() => {
+    if (disposed) return
     const current = Date.now()
     setNow(current)
     if (lastSuccessAt() && current - lastSuccessAt() > STALE_MAX_MS && quotaData()) {
@@ -500,8 +515,13 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
 
   createEffect(() => {
     const epoch = quotaData()?.tokenNextResetEpoch ?? retryAfterEpoch() ?? 0
-    if (epoch <= 0 || epoch === refreshedBoundary()) return
+    if (epoch <= 0 || epoch === refreshedBoundary() || epoch === pendingBoundary) return
     const timer = setTimeout(() => {
+      if (disposed) return
+      if (refreshInFlight && refreshStartedAt < epoch) {
+        pendingBoundary = epoch
+        return
+      }
       setRefreshedBoundary(epoch)
       void refresh()
     }, Math.max(0, epoch - Date.now()))
@@ -516,8 +536,15 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
     home: () => phase() === "ready" && quotaData() ? zaiHomeQuotaSummary(quotaData()!) : null,
     freshness: () => freshnessFor(phase()),
     refresh,
-    setSessionID,
-    dispose,
+    setSessionID(id: string): void {
+      if (!disposed) setSessionID(id)
+    },
+    dispose(): void {
+      if (disposed) return
+      disposed = true
+      pendingBoundary = 0
+      dispose()
+    },
   }
   })
 }

@@ -291,9 +291,14 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
     const [now, setNow] = createSignal(Date.now())
     const [refreshedBoundary, setRefreshedBoundary] = createSignal(0)
     let refreshInFlight: Promise<void> | null = null
+    let refreshStartedAt = 0
+    let pendingBoundary = 0
+    let disposed = false
 
     const refresh = (): Promise<void> => {
+      if (disposed) return Promise.resolve()
       if (refreshInFlight) return refreshInFlight
+      const startedAt = Date.now()
       const request = (async () => {
         const currentAuth = auth()
         if (!currentAuth?.access) {
@@ -301,6 +306,7 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
           return
         }
         const data = await fetchOpenAiQuota(currentAuth)
+        if (disposed) return
         if (data) {
           setQuotaData(data)
           setPhase("ready")
@@ -312,10 +318,18 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
         }
       })()
       refreshInFlight = request
-      void request.then(
-        () => { if (refreshInFlight === request) refreshInFlight = null },
-        () => { if (refreshInFlight === request) refreshInFlight = null },
-      )
+      refreshStartedAt = startedAt
+      const settled = () => {
+        if (refreshInFlight !== request) return
+        refreshInFlight = null
+        refreshStartedAt = 0
+        if (disposed || pendingBoundary <= 0) return
+        const epoch = pendingBoundary
+        pendingBoundary = 0
+        setRefreshedBoundary(epoch)
+        void refresh()
+      }
+      void request.then(settled, settled)
       return request
     }
 
@@ -338,6 +352,7 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
     })
 
     const tick = setInterval(() => {
+      if (disposed) return
       const current = Date.now()
       setNow(current)
       if (lastSuccessAt() && current - lastSuccessAt() > STALE_MAX_MS && quotaData()) {
@@ -352,8 +367,13 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
       const data = quotaData()
       if (!data) return
       const epoch = resetEpochMs(data.primary, now())
-      if (epoch <= 0 || epoch === refreshedBoundary()) return
+      if (epoch <= 0 || epoch === refreshedBoundary() || epoch === pendingBoundary) return
       const timer = setTimeout(() => {
+        if (disposed) return
+        if (refreshInFlight && refreshStartedAt < epoch) {
+          pendingBoundary = epoch
+          return
+        }
         setRefreshedBoundary(epoch)
         void refresh()
       }, Math.max(0, epoch - Date.now()))
@@ -372,7 +392,12 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
       setSessionID(sessionID: string): void {
         void sessionID
       },
-      dispose,
+      dispose(): void {
+        if (disposed) return
+        disposed = true
+        pendingBoundary = 0
+        dispose()
+      },
     }
   })
 }

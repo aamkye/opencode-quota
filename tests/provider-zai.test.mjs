@@ -56,6 +56,14 @@ function item(model, id) {
   return model.groups.flatMap((group) => group.items).find((candidate) => candidate.id === id)
 }
 
+function observableState(adapter) {
+  return {
+    panel: adapter.panel(),
+    home: adapter.home(),
+    freshness: adapter.freshness(),
+  }
+}
+
 function quotaResponse(nextResetTime = now + 60 * 60 * 1000) {
   return {
     ok: true,
@@ -312,7 +320,7 @@ test("uses a custom provider polling interval", async (t) => {
   assert.ok(clock.intervals.some((timer) => timer.active && timer.delay === 1_000))
 })
 
-test("skips repeated polling callbacks while a Z.AI refresh is pending and clears timers on dispose", async (t) => {
+test("skips repeated polling callbacks and preserves Z.AI state when a pending refresh resolves after dispose", async (t) => {
   const clock = installFakeClock(now)
   let requests = 0
   let resolveFetch
@@ -335,11 +343,34 @@ test("skips repeated polling callbacks while a Z.AI refresh is pending and clear
   poll.callback()
   await flushEffects()
 
+  const stateAtDispose = observableState(adapter)
   adapter.dispose()
   assert.ok(clock.intervals.every((timer) => !timer.active))
   resolveFetch(quotaResponse())
   await flushEffects()
   assert.equal(requests, 1)
+  assert.deepEqual(observableState(adapter), stateAtDispose)
+})
+
+test("preserves Z.AI state when a pending refresh rejects after dispose", async (t) => {
+  const originalError = console.error
+  let rejectFetch
+  const pendingResponse = new Promise((_resolve, reject) => {
+    rejectFetch = reject
+  })
+  console.error = () => {}
+  t.after(() => {
+    console.error = originalError
+  })
+  const adapter = createTestAdapter(t, { fetch: async () => pendingResponse })
+  await flushEffects()
+
+  const stateAtDispose = observableState(adapter)
+  adapter.dispose()
+  rejectFetch(new Error("request failed after disposal"))
+  await flushEffects()
+
+  assert.deepEqual(observableState(adapter), stateAtDispose)
 })
 
 test("schedules a quota refresh at the 5H reset boundary", async (t) => {
@@ -361,6 +392,41 @@ test("schedules a quota refresh at the 5H reset boundary", async (t) => {
   boundary.callback()
   await flushEffects()
   assert.equal(requests, beforeBoundaryRefresh + 1)
+})
+
+test("queues one Z.AI reset-boundary refresh behind an older request", async (t) => {
+  const clock = installFakeClock(now)
+  const resetAt = now + 15 * 60 * 1_000
+  let requests = 0
+  let resolvePending
+  const pendingResponse = new Promise((resolve) => {
+    resolvePending = resolve
+  })
+  const adapter = createTestAdapter(t, {
+    clock,
+    fetch: async () => {
+      requests += 1
+      if (requests === 1) return quotaResponse(resetAt)
+      if (requests === 2) return pendingResponse
+      return quotaResponse(resetAt + 3_600_000)
+    },
+  })
+  await flushEffects()
+  const boundary = clock.timeouts.find((timer) => timer.active && timer.delay === resetAt - now)
+
+  assert.ok(boundary)
+  void adapter.refresh()
+  await flushEffects()
+  assert.equal(requests, 2)
+
+  clock.advance(resetAt - now)
+  boundary.callback()
+  await flushEffects()
+  assert.equal(requests, 2, "the boundary must not overlap the older request")
+
+  resolvePending(quotaResponse(resetAt))
+  await flushEffects()
+  assert.equal(requests, 3, "the boundary must start one request after the older request settles")
 })
 
 test("expires stale quota data after the stale window", async (t) => {
