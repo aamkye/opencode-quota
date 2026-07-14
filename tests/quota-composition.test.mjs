@@ -1,8 +1,35 @@
 import assert from "node:assert/strict"
-import test from "node:test"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { resolve } from "node:path"
+import test, { after } from "node:test"
+
+const originalProviderEnvironment = {
+  HOME: process.env.HOME,
+  XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
+  XDG_DATA_HOME: process.env.XDG_DATA_HOME,
+}
+const isolatedProviderHome = mkdtempSync(resolve(tmpdir(), "opencode-tools-quota-composition-"))
+process.env.HOME = isolatedProviderHome
+process.env.XDG_CONFIG_HOME = isolatedProviderHome
+process.env.XDG_DATA_HOME = isolatedProviderHome
 
 const { default: quotaPlugin, composeQuotaPanel, selectedQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
 const { normalizePanelModel } = await import("../.tmp-test/presentation-renderer.mjs")
+
+after(async () => {
+  await flushEffects()
+  for (const [key, value] of Object.entries(originalProviderEnvironment)) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+  rmSync(isolatedProviderHome, { recursive: true, force: true })
+})
+
+async function flushEffects() {
+  await Promise.resolve()
+  await new Promise((resolve) => setImmediate(resolve))
+}
 
 function provider({
   id,
@@ -53,8 +80,7 @@ async function aggregatePanel(t, options) {
   const originalFetch = globalThis.fetch
   const originalReact = globalThis.React
   const originalError = console.error
-  globalThis.React = { createElement: (component, props) => ({ component, props }) }
-  globalThis.fetch = async () => ({
+  const testFetch = async () => ({
     ok: true,
     json: async () => ({
       code: 200,
@@ -64,11 +90,18 @@ async function aggregatePanel(t, options) {
       },
     }),
   })
+  globalThis.React = { createElement: (component, props) => ({ component, props }) }
+  globalThis.fetch = testFetch
   console.error = () => {}
-  t.after(() => {
-    globalThis.fetch = originalFetch
-    globalThis.React = originalReact
-    console.error = originalError
+  t.after(async () => {
+    try {
+      for (const dispose of cleanup.reverse()) await dispose()
+      await flushEffects()
+    } finally {
+      globalThis.fetch = originalFetch
+      globalThis.React = originalReact
+      console.error = originalError
+    }
   })
 
   const api = {
@@ -81,7 +114,10 @@ async function aggregatePanel(t, options) {
     lifecycle: {
       signal: new AbortController().signal,
       onDispose(fn) {
-        cleanup.push(fn)
+        cleanup.push(() => {
+          assert.equal(globalThis.fetch, testFetch, "adapter cleanup must run before fetch restoration")
+          fn()
+        })
         return () => {}
       },
     },
@@ -90,8 +126,7 @@ async function aggregatePanel(t, options) {
   }
 
   await quotaPlugin.tui(api, options)
-  t.after(() => cleanup.reverse().forEach((dispose) => dispose()))
-  await new Promise((resolve) => setImmediate(resolve))
+  await flushEffects()
   const element = registrations[0].slots.sidebar_content({}, { session_id: "session-1" })
   return element.props.model()
 }

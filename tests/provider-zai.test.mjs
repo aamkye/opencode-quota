@@ -16,7 +16,8 @@ process.env.XDG_DATA_HOME = isolatedProviderHome
 
 const { createZaiProvider, mapZaiPanelState } = await import("../.tmp-test/provider-zai.mjs")
 
-after(() => {
+after(async () => {
+  await flushEffects()
   for (const [key, value] of Object.entries(originalProviderEnvironment)) {
     if (value === undefined) delete process.env[key]
     else process.env[key] = value
@@ -80,13 +81,23 @@ function adapterApi(overrides = {}) {
   }
 }
 
-function createTestAdapter(t, api = adapterApi()) {
+function createTestAdapter(t, { api = adapterApi(), fetch: testFetch, clock } = {}) {
+  const originalFetch = globalThis.fetch
+  if (testFetch) globalThis.fetch = testFetch
   const adapter = createZaiProvider(api)
-  t.after(() => adapter.dispose())
+  t.after(async () => {
+    try {
+      adapter.dispose()
+      await flushEffects()
+    } finally {
+      globalThis.fetch = originalFetch
+      clock?.restore()
+    }
+  })
   return adapter
 }
 
-function installFakeClock(t, start) {
+function installFakeClock(start) {
   const originalNow = Date.now
   const originalSetTimeout = globalThis.setTimeout
   const originalClearTimeout = globalThis.clearTimeout
@@ -98,34 +109,40 @@ function installFakeClock(t, start) {
 
   Date.now = () => current
   globalThis.setTimeout = (callback, delay = 0) => {
-    const timer = { callback, delay, active: true, unref() {} }
+    const timer = { kind: "timeout", callback, delay, active: true, unref() {} }
     timeouts.push(timer)
     return timer
   }
   globalThis.clearTimeout = (timer) => {
+    assert.equal(timer?.kind, "timeout", "fake clearTimeout must receive a fake timeout")
     timer.active = false
   }
   globalThis.setInterval = (callback, delay = 0) => {
-    const timer = { callback, delay, active: true, unref() {} }
+    const timer = { kind: "interval", callback, delay, active: true, unref() {} }
     intervals.push(timer)
     return timer
   }
   globalThis.clearInterval = (timer) => {
+    assert.equal(timer?.kind, "interval", "fake clearInterval must receive a fake interval")
     timer.active = false
   }
-  t.after(() => {
-    Date.now = originalNow
-    globalThis.setTimeout = originalSetTimeout
-    globalThis.clearTimeout = originalClearTimeout
-    globalThis.setInterval = originalSetInterval
-    globalThis.clearInterval = originalClearInterval
-  })
 
   return {
     timeouts,
     intervals,
     advance(ms) {
       current += ms
+    },
+    restore() {
+      const activeTimeouts = timeouts.filter((timer) => timer.active).length
+      const activeIntervals = intervals.filter((timer) => timer.active).length
+      Date.now = originalNow
+      globalThis.setTimeout = originalSetTimeout
+      globalThis.clearTimeout = originalClearTimeout
+      globalThis.setInterval = originalSetInterval
+      globalThis.clearInterval = originalClearInterval
+      assert.equal(activeTimeouts, 0, "adapter cleanup must clear fake timeouts before clock restoration")
+      assert.equal(activeIntervals, 0, "adapter cleanup must clear fake intervals before clock restoration")
     },
   }
 }
@@ -227,17 +244,6 @@ test("exposes a framework-only provider adapter and semantic home summary", () =
 })
 
 test("refreshes selected Z.AI quota when constructed outside a component owner", async (t) => {
-  const originalFetch = globalThis.fetch
-  globalThis.fetch = async () => ({
-    ok: true,
-    json: async () => ({
-      code: 200,
-      data: {
-        level: "pro",
-        limits: [{ type: "TOKENS_LIMIT", unit: 3, percentage: 25, nextResetTime: now + 60 * 60 * 1000 }],
-      },
-    }),
-  })
   const api = {
     state: {
       provider: [{ id: "zai-coding-plan", key: "test-key" }],
@@ -247,23 +253,29 @@ test("refreshes selected Z.AI quota when constructed outside a component owner",
     kv: { get: () => undefined, set: () => {} },
   }
 
-  t.after(() => {
-    globalThis.fetch = originalFetch
+  const adapter = createTestAdapter(t, {
+    api,
+    fetch: async () => ({
+      ok: true,
+      json: async () => ({
+        code: 200,
+        data: {
+          level: "pro",
+          limits: [{ type: "TOKENS_LIMIT", unit: 3, percentage: 25, nextResetTime: now + 60 * 60 * 1000 }],
+        },
+      }),
+    }),
   })
-  const adapter = createTestAdapter(t, api)
   await new Promise((resolve) => setTimeout(resolve, 20))
   assert.equal(item(adapter.panel(), "zai:header").title, "Z.AI: Pro")
 })
 
 test("exposes reactive provider freshness alongside the compact Z.AI home summary", async (t) => {
-  const originalFetch = globalThis.fetch
   let available = true
-  globalThis.fetch = async () => available ? quotaResponse() : { ok: false }
-  t.after(() => {
-    globalThis.fetch = originalFetch
+  const adapter = createTestAdapter(t, {
+    fetch: async () => available ? quotaResponse() : { ok: false },
   })
 
-  const adapter = createTestAdapter(t)
   await adapter.refresh()
   assert.equal(adapter.freshness(), "ready")
   assert.deepEqual(adapter.home(), { provider: "Z.AI", plan: "Pro", primaryPct: 75, secondaryPct: undefined })
@@ -275,18 +287,16 @@ test("exposes reactive provider freshness alongside the compact Z.AI home summar
 })
 
 test("schedules a quota refresh at the 5H reset boundary", async (t) => {
-  const clock = installFakeClock(t, now)
-  const originalFetch = globalThis.fetch
+  const clock = installFakeClock(now)
   let requests = 0
-  globalThis.fetch = async () => {
-    requests += 1
-    return quotaResponse(now + 15 * 60 * 1000)
-  }
-  t.after(() => {
-    globalThis.fetch = originalFetch
+  const adapter = createTestAdapter(t, {
+    clock,
+    fetch: async () => {
+      requests += 1
+      return quotaResponse(now + 15 * 60 * 1000)
+    },
   })
 
-  const adapter = createTestAdapter(t)
   await adapter.refresh()
   const boundary = clock.timeouts.find((timer) => timer.active && timer.delay === 15 * 60 * 1000)
 
@@ -298,14 +308,12 @@ test("schedules a quota refresh at the 5H reset boundary", async (t) => {
 })
 
 test("expires stale quota data after the stale window", async (t) => {
-  const clock = installFakeClock(t, now)
-  const originalFetch = globalThis.fetch
-  globalThis.fetch = async () => quotaResponse()
-  t.after(() => {
-    globalThis.fetch = originalFetch
+  const clock = installFakeClock(now)
+  const adapter = createTestAdapter(t, {
+    clock,
+    fetch: async () => quotaResponse(),
   })
 
-  const adapter = createTestAdapter(t)
   await adapter.refresh()
   clock.advance(10 * 60 * 1000 + 1)
   const tick = clock.intervals.find((timer) => timer.active && timer.delay === 1_000)
@@ -316,22 +324,20 @@ test("expires stale quota data after the stale window", async (t) => {
 })
 
 test("uses a reset timestamp from session messages when quota data is unavailable", async (t) => {
-  const clock = installFakeClock(t, now)
-  const originalFetch = globalThis.fetch
+  const clock = installFakeClock(now)
   const stored = []
-  globalThis.fetch = async () => ({ ok: false })
-  t.after(() => {
-    globalThis.fetch = originalFetch
+  const adapter = createTestAdapter(t, {
+    clock,
+    fetch: async () => ({ ok: false }),
+    api: adapterApi({
+      state: {
+        provider: [{ id: "zai-coding-plan", key: "test-key" }],
+        session: { messages: () => [{ id: "message-1" }] },
+        part: () => [{ type: "text", text: "Your limit will reset at 2026-07-13 20:00:00" }],
+      },
+      kv: { get: () => undefined, set: (key, value) => stored.push([key, value]) },
+    }),
   })
-
-  const adapter = createTestAdapter(t, adapterApi({
-    state: {
-      provider: [{ id: "zai-coding-plan", key: "test-key" }],
-      session: { messages: () => [{ id: "message-1" }] },
-      part: () => [{ type: "text", text: "Your limit will reset at 2026-07-13 20:00:00" }],
-    },
-    kv: { get: () => undefined, set: (key, value) => stored.push([key, value]) },
-  }))
   await adapter.refresh()
   adapter.setSessionID("session-1")
 

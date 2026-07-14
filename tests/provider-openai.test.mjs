@@ -16,7 +16,8 @@ process.env.XDG_DATA_HOME = isolatedProviderHome
 
 const { createOpenAiProvider, fetchOpenAiQuota, mapOpenAiPanelState } = await import("../.tmp-test/provider-openai.mjs")
 
-after(() => {
+after(async () => {
+  await flushEffects()
   for (const [key, value] of Object.entries(originalProviderEnvironment)) {
     if (value === undefined) delete process.env[key]
     else process.env[key] = value
@@ -74,13 +75,23 @@ function adapterApi() {
   }
 }
 
-function createTestAdapter(t, api = adapterApi()) {
+function createTestAdapter(t, { api = adapterApi(), fetch: testFetch, clock } = {}) {
+  const originalFetch = globalThis.fetch
+  if (testFetch) globalThis.fetch = testFetch
   const adapter = createOpenAiProvider(api)
-  t.after(() => adapter.dispose())
+  t.after(async () => {
+    try {
+      adapter.dispose()
+      await flushEffects()
+    } finally {
+      globalThis.fetch = originalFetch
+      clock?.restore()
+    }
+  })
   return adapter
 }
 
-function installFakeClock(t, start) {
+function installFakeClock(start) {
   const originalNow = Date.now
   const originalSetTimeout = globalThis.setTimeout
   const originalClearTimeout = globalThis.clearTimeout
@@ -92,34 +103,40 @@ function installFakeClock(t, start) {
 
   Date.now = () => current
   globalThis.setTimeout = (callback, delay = 0) => {
-    const timer = { callback, delay, active: true, unref() {} }
+    const timer = { kind: "timeout", callback, delay, active: true, unref() {} }
     timeouts.push(timer)
     return timer
   }
   globalThis.clearTimeout = (timer) => {
+    assert.equal(timer?.kind, "timeout", "fake clearTimeout must receive a fake timeout")
     timer.active = false
   }
   globalThis.setInterval = (callback, delay = 0) => {
-    const timer = { callback, delay, active: true, unref() {} }
+    const timer = { kind: "interval", callback, delay, active: true, unref() {} }
     intervals.push(timer)
     return timer
   }
   globalThis.clearInterval = (timer) => {
+    assert.equal(timer?.kind, "interval", "fake clearInterval must receive a fake interval")
     timer.active = false
   }
-  t.after(() => {
-    Date.now = originalNow
-    globalThis.setTimeout = originalSetTimeout
-    globalThis.clearTimeout = originalClearTimeout
-    globalThis.setInterval = originalSetInterval
-    globalThis.clearInterval = originalClearInterval
-  })
 
   return {
     timeouts,
     intervals,
     advance(ms) {
       current += ms
+    },
+    restore() {
+      const activeTimeouts = timeouts.filter((timer) => timer.active).length
+      const activeIntervals = intervals.filter((timer) => timer.active).length
+      Date.now = originalNow
+      globalThis.setTimeout = originalSetTimeout
+      globalThis.clearTimeout = originalClearTimeout
+      globalThis.setInterval = originalSetInterval
+      globalThis.clearInterval = originalClearInterval
+      assert.equal(activeTimeouts, 0, "adapter cleanup must clear fake timeouts before clock restoration")
+      assert.equal(activeIntervals, 0, "adapter cleanup must clear fake intervals before clock restoration")
     },
   }
 }
@@ -247,14 +264,11 @@ test("exposes a framework-only OpenAI adapter without layout or slot registratio
 })
 
 test("exposes reactive freshness and omits the legacy home line while OpenAI data is stale", async (t) => {
-  const originalFetch = globalThis.fetch
   let available = true
-  globalThis.fetch = async () => available ? quotaResponse() : { ok: false, status: 503 }
-  t.after(() => {
-    globalThis.fetch = originalFetch
+  const adapter = createTestAdapter(t, {
+    fetch: async () => available ? quotaResponse() : { ok: false, status: 503 },
   })
 
-  const adapter = createTestAdapter(t)
   await adapter.refresh()
 
   assert.equal(adapter.freshness(), "ready")
@@ -268,14 +282,12 @@ test("exposes reactive freshness and omits the legacy home line while OpenAI dat
 })
 
 test("expires stale OpenAI data after the stale window", async (t) => {
-  const clock = installFakeClock(t, now)
-  const originalFetch = globalThis.fetch
-  globalThis.fetch = async () => quotaResponse()
-  t.after(() => {
-    globalThis.fetch = originalFetch
+  const clock = installFakeClock(now)
+  const adapter = createTestAdapter(t, {
+    clock,
+    fetch: async () => quotaResponse(),
   })
 
-  const adapter = createTestAdapter(t)
   await adapter.refresh()
   clock.advance(10 * 60 * 1_000 + 1)
   const tick = clock.intervals.find((timer) => timer.active && timer.delay === 1_000)
@@ -288,18 +300,16 @@ test("expires stale OpenAI data after the stale window", async (t) => {
 })
 
 test("refreshes OpenAI quota at its reset boundary", async (t) => {
-  const clock = installFakeClock(t, now)
-  const originalFetch = globalThis.fetch
+  const clock = installFakeClock(now)
   let requests = 0
-  globalThis.fetch = async () => {
-    requests += 1
-    return quotaResponse(window({ reset_at: (now + 15 * 60 * 1_000) / 1_000 }))
-  }
-  t.after(() => {
-    globalThis.fetch = originalFetch
+  const adapter = createTestAdapter(t, {
+    clock,
+    fetch: async () => {
+      requests += 1
+      return quotaResponse(window({ reset_at: (now + 15 * 60 * 1_000) / 1_000 }))
+    },
   })
 
-  const adapter = createTestAdapter(t)
   await adapter.refresh()
   await flushEffects()
   const boundary = clock.timeouts.find((timer) => timer.active && timer.delay === 15 * 60 * 1_000)
@@ -322,7 +332,8 @@ test("uses the JWT account claim in OpenAI usage requests", async (t) => {
     request = { url, options }
     return quotaResponse()
   }
-  t.after(() => {
+  t.after(async () => {
+    await flushEffects()
     globalThis.fetch = originalFetch
   })
 

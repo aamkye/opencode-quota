@@ -211,3 +211,33 @@ Final evidence for this round:
 - `node --test tests/shared-boundary.test.mjs tests/plugin-build.test.mjs tests/plugin-deploy.test.mjs`:
   exit 0; 14 tests passed.
 - `git diff --check`: exit 0 with no output.
+
+## Authorized Final Test-Only Fix: Teardown Ownership
+
+Provider and composition tests registered adapter disposal, fake-clock
+restoration, fetch restoration, and lifecycle cleanup as separate `t.after`
+hooks. Node runs those hooks in registration order, so the tests restored fetch
+and real timer functions before disposing provider roots. Cleanup then attempted
+to clear fake timer handles through the restored real clear functions, and
+pending provider work could continue against restored developer globals.
+
+- RED: after adding teardown-order assertions,
+  `node tests/compile-presentation.mjs && node --test tests/provider-openai.test.mjs tests/provider-zai.test.mjs tests/quota-composition.test.mjs`
+  passed 25 tests and failed 7. Five provider failures retained two active fake
+  intervals when clock restoration began; two composition failures observed
+  that fetch had already been restored before lifecycle disposal.
+- GREEN: each adapter test now owns one async teardown that disposes its adapter,
+  waits for Solid cleanup and queued microtasks, then restores fetch and its fake
+  clock. Fake timeout and interval handles carry distinct kinds, their matching
+  fake clear functions assert the kind, and clock restoration asserts that no
+  fake handle remains active.
+- Composition coverage now isolates `HOME`, `XDG_CONFIG_HOME`, and
+  `XDG_DATA_HOME` before module evaluation. Its unified teardown runs lifecycle
+  disposers in host order while the test fetch remains installed, waits for
+  cleanup, and only then restores fetch/React/console globals. File teardown
+  waits once more before restoring the environment and removing the temporary
+  home.
+- Focused verification: the same provider/composition command passed 32/32.
+- Full verification: `npm test` passed 106/106.
+- Scope: only provider/composition tests changed; production source and built
+  artifacts were unchanged.
