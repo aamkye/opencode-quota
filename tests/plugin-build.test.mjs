@@ -1,16 +1,26 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
-import { builtinModules } from "node:module"
+import { builtinModules, registerHooks } from "node:module"
 import { pathToFileURL } from "node:url"
 import { resolve } from "node:path"
 import test, { before } from "node:test"
 
 const root = resolve(import.meta.dirname, "..")
+const runtimeModulePrefix = "opentui:runtime-module:"
 const expectedArtifacts = [
   "dist/opencode-tools-shared.js",
   "dist/opencode-tools-quota.js",
   "dist/plugins/opencode-tools-tokens.js",
 ]
+
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier.startsWith(runtimeModulePrefix)) {
+      return nextResolve(decodeURIComponent(specifier.slice(runtimeModulePrefix.length)), context)
+    }
+    return nextResolve(specifier, context)
+  },
+})
 
 let buildResults
 let contents
@@ -42,6 +52,14 @@ test("loadable entries keep explicit relative imports to the shared artifact", (
   assert.match(contents["dist/opencode-tools-quota.js"], /from["']\.\/opencode-tools-shared\.js["']/)
   assert.match(contents["dist/plugins/opencode-tools-tokens.js"], /from["']\.\.\/opencode-tools-shared\.js["']/)
   assert.doesNotMatch(contents["dist/opencode-tools-shared.js"], /opencode-tools-(?:quota|tokens)/)
+})
+
+test("combined TUI artifact uses OpenCode's host-owned Solid runtimes", () => {
+  const output = contents["dist/opencode-tools-quota.js"]
+  assert.match(output, /from["']opentui:runtime-module:solid-js["']/)
+  assert.match(output, /from["']opentui:runtime-module:%40opentui%2Fsolid%2Fjsx-runtime["']/)
+  assert.doesNotMatch(output, /from["'](?:solid-js|@opentui\/solid\/jsx-runtime)["']/)
+  assert.doesNotMatch(output, /\bReact\s*(?:\.|\[)/)
 })
 
 test("shared owns computation while loadable entries contain presentation and registration only", () => {
@@ -97,4 +115,32 @@ test("artifacts expose one combined TUI plugin, one regular plugin function, and
   assert.equal(typeof quota.default, "object")
   assert.equal(typeof quota.default.tui, "function")
   assert.equal(typeof tokens.default, "function")
+})
+
+test("combined TUI artifact activates from a bare config entry", async (t) => {
+  const quota = await import(`${pathToFileURL(resolve(root, expectedArtifacts[1])).href}?activation=${Date.now()}`)
+  const registrations = []
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => ({ ok: false })
+  t.after(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  const api = {
+    slots: { register(input) { registrations.push(input) } },
+    theme: { current: {} },
+    state: {
+      provider: [],
+      session: { messages() { return [] } },
+      part() { return [] },
+    },
+    kv: { get() {}, set() {} },
+  }
+
+  await quota.default.tui(api, undefined)
+
+  assert.deepEqual(
+    registrations.map((registration) => Object.keys(registration.slots)),
+    [["sidebar_content"], ["home_bottom"]],
+  )
 })

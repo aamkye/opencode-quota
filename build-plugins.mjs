@@ -26,6 +26,8 @@ const common = {
   bundle: true,
   external: hostDependencies,
   format: "esm",
+  jsx: "automatic",
+  jsxImportSource: "@opentui/solid",
   metafile: true,
   minify: true,
   platform: "node",
@@ -39,6 +41,18 @@ function sharedImport(path) {
       buildApi.onResolve({ filter: /(?:^|\/)shared\/opencode-tools-shared(?:\.js)?$/ }, () => ({
         external: true,
         path,
+      }))
+    },
+  }
+}
+
+function hostRuntimeImports() {
+  return {
+    name: "opencode-host-runtime",
+    setup(buildApi) {
+      buildApi.onResolve({ filter: /^(?:solid-js|@opentui\/solid\/jsx-runtime)$/ }, (args) => ({
+        external: true,
+        path: `opentui:runtime-module:${encodeURIComponent(args.path)}`,
       }))
     },
   }
@@ -75,7 +89,7 @@ export async function buildPlugins({ logLevel = "info" } = {}) {
     },
     logLevel,
     outfile: resolve(distRoot, "opencode-tools-quota.js"),
-    plugins: [sharedImport("./opencode-tools-shared.js")],
+    plugins: [hostRuntimeImports(), sharedImport("./opencode-tools-shared.js")],
   })
 
   const tokens = await build({

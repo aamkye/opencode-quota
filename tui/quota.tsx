@@ -38,8 +38,8 @@ function compositionOptions(options?: QuotaCompositionOptions): Required<QuotaCo
   }
 }
 
-function pluginOptions(value: TuiPluginOptions): Required<QuotaCompositionOptions> {
-  const otherProviders = value.otherProviders
+function pluginOptions(value?: TuiPluginOptions): Required<QuotaCompositionOptions> {
+  const otherProviders = value?.otherProviders
   if (!otherProviders || typeof otherProviders !== "object") return DEFAULT_OPTIONS
   return compositionOptions(otherProviders as QuotaCompositionOptions)
 }

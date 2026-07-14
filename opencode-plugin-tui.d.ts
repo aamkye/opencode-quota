@@ -34,7 +34,7 @@ declare module "@opencode-ai/plugin/tui" {
 
   export type TuiPluginOptions = Record<string, unknown>
 
-  export type TuiPlugin = (api: TuiPluginApi, options: TuiPluginOptions) => void | Promise<void>
+  export type TuiPlugin = (api: TuiPluginApi, options?: TuiPluginOptions) => void | Promise<void>
 
   export interface TuiPluginModule {
     tui: TuiPlugin
