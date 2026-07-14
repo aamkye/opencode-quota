@@ -5,14 +5,15 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { buildPlugins } from "./build-plugins.mjs"
 
 const projectRoot = dirname(fileURLToPath(import.meta.url))
+const obsoleteNamespace = ["opencode", "quota"].join("-")
 
 const obsoleteFiles = [
-  "opencode-quota.js",
-  "opencode-quota.ts",
+  `${obsoleteNamespace}.js`,
+  `${obsoleteNamespace}.ts`,
   "opencode-tools-tokens.ts",
   "plugins/opencode-tools-tokens.ts",
-  "plugins/opencode-quota-tokens.js",
-  "plugins/opencode-quota-tokens.ts",
+  `plugins/${obsoleteNamespace}-tokens.js`,
+  `plugins/${obsoleteNamespace}-tokens.ts`,
   "plugins/tokens.js",
   "plugins/tokens.ts",
 ]

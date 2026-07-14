@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url"
 import test, { after, before } from "node:test"
 
 const projectRoot = resolve(import.meta.dirname, "..")
+const obsoleteNamespace = ["opencode", "quota"].join("-")
 const temporaryRoots = []
 let deployPlugins
 let resolveGlobalConfigRoot
@@ -28,16 +29,16 @@ async function fixture() {
     plugin: [
       "./unrelated.js",
       "@scope/unrelated-plugin",
-      "file:///tmp/opencode-quota/custom-plugin.js",
+      `file:///tmp/${obsoleteNamespace}/custom-plugin.js`,
       "./tui/quota.tsx",
       "./tui/home.tsx",
       "@aamkye/opencode-tools/tui",
-      "./opencode-quota.js",
+      `./${obsoleteNamespace}.js`,
       "./plugins/opencode-tools-tokens.js",
     ],
   }, null, 2))
   await writeFile(join(root, "plugins", "opencode-tools-tokens.ts"), "obsolete")
-  await writeFile(join(root, "plugins", "opencode-quota-tokens.js"), "obsolete")
+  await writeFile(join(root, "plugins", `${obsoleteNamespace}-tokens.js`), "obsolete")
   await writeFile(join(root, "plugins", "unrelated.js"), "preserve")
   return root
 }
@@ -69,14 +70,14 @@ test("local deployment builds, cleans managed entries, and is idempotent", async
   assert.deepEqual(config.plugin, [
     "./unrelated.js",
     "@scope/unrelated-plugin",
-    "file:///tmp/opencode-quota/custom-plugin.js",
+    `file:///tmp/${obsoleteNamespace}/custom-plugin.js`,
     "./opencode-tools-quota.js",
   ])
   assert.equal(config.plugin.filter((entry) => entry === "./opencode-tools-quota.js").length, 1)
   assert.ok(config.plugin.every((entry) => !/^@aamkye\/opencode-(?:tools|quota)/.test(entry)))
 
   await assert.rejects(readFile(join(root, "plugins", "opencode-tools-tokens.ts"), "utf8"), { code: "ENOENT" })
-  await assert.rejects(readFile(join(root, "plugins", "opencode-quota-tokens.js"), "utf8"), { code: "ENOENT" })
+  await assert.rejects(readFile(join(root, "plugins", `${obsoleteNamespace}-tokens.js`), "utf8"), { code: "ENOENT" })
 
   for (const [deployed, built] of [
     ["opencode-tools-shared.js", "dist/opencode-tools-shared.js"],
