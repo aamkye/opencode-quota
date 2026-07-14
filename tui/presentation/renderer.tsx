@@ -363,11 +363,12 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; availableCel
   const toggle = (id: string) => {
     setCollapsed((current) => toggleCollapsed(current, id))
   }
+
   const layout = () => renderPanelLayout(props.model(), { availableCells: props.availableCells(), now: now(), collapsed: collapsed() })
 
   return (
     <box flexDirection="column" width="100%">
-      <box flexDirection="row" width="100%" on:down={() => toggle(`panel:${props.model().id}`)}>
+      <box flexDirection="row" width="100%" onMouseDown={() => toggle(`panel:${props.model().id}`)}>
         <For each={layout().header.cells}>{(cell) => <text width={cell.width} fg={cell.status ? props.theme()[cell.status] : undefined}>{cell.text}</text>}</For>
       </box>
       <Show when={!layout().collapsed}>
@@ -379,7 +380,7 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; availableCel
                   <box
                     flexDirection="row"
                     width="100%"
-                    on:down={header().collapsible ? () => toggle(`group:${group.id}`) : undefined}
+                    onMouseDown={header().collapsible ? () => toggle(`group:${group.id}`) : undefined}
                   >
                     <text>{header().collapsible ? (group.collapsed ? "▶" : "▼") : ""}</text>
                     <text>{header().title}</text>

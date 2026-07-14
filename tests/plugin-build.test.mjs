@@ -11,6 +11,7 @@ const root = resolve(import.meta.dirname, "..")
 const runtimeModulePrefix = "opentui:runtime-module:"
 const hostRuntimeUrls = {
   "solid-js": import.meta.resolve("solid-js/dist/solid.js"),
+  "@opentui/solid": import.meta.resolve("@opentui/solid"),
   "@opentui/solid/jsx-runtime": import.meta.resolve("@opentui/solid/jsx-runtime"),
 }
 const expectedArtifacts = [
@@ -99,8 +100,8 @@ test("shared reactivity and the combined TUI use OpenCode's host-owned Solid run
   }
 
   const quota = contents["dist/opencode-tools-quota.js"]
-  assert.match(quota, /from["']opentui:runtime-module:%40opentui%2Fsolid%2Fjsx-runtime["']/)
-  assert.doesNotMatch(quota, /from["']@opentui\/solid\/jsx-runtime["']/)
+  assert.match(quota, /from["']opentui:runtime-module:%40opentui%2Fsolid["']/)
+  assert.doesNotMatch(quota, /from["']@opentui\/solid(?:\/jsx-runtime)?["']/)
   assert.doesNotMatch(quota, /\bReact\s*(?:\.|\[)/)
 })
 

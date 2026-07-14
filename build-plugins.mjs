@@ -1,8 +1,9 @@
-import { mkdir } from "node:fs/promises"
+import { mkdir, readFile } from "node:fs/promises"
 import { builtinModules } from "node:module"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { build } from "esbuild"
+import { transformAsync } from "@babel/core"
 
 const projectRoot = dirname(fileURLToPath(import.meta.url))
 const distRoot = resolve(projectRoot, "dist")
@@ -26,12 +27,34 @@ const common = {
   bundle: true,
   external: hostDependencies,
   format: "esm",
-  jsx: "automatic",
-  jsxImportSource: "@opentui/solid",
   metafile: true,
   minify: true,
   platform: "node",
   target: "es2022",
+}
+
+async function transformSolid(code, filename) {
+  const solidPreset = (await import("babel-preset-solid")).default
+  const tsPreset = (await import("@babel/preset-typescript")).default
+  const presets = [[solidPreset, { moduleName: "@opentui/solid", generate: "universal" }]]
+  if (/\.[cm]?tsx?$/.test(filename)) {
+    presets.push([tsPreset])
+  }
+  const result = await transformAsync(code, { filename, configFile: false, babelrc: false, presets })
+  return result?.code ?? code
+}
+
+function solidTransformPlugin() {
+  return {
+    name: "solid-jsx-transform",
+    setup(buildApi) {
+      buildApi.onLoad({ filter: /\.[cm]?tsx?$/ }, async (args) => {
+        const code = await readFile(args.path, "utf8")
+        const transformed = await transformSolid(code, args.path)
+        return { contents: transformed, loader: "js" }
+      })
+    },
+  }
 }
 
 function sharedImport(path) {
@@ -50,7 +73,7 @@ function hostRuntimeImports() {
   return {
     name: "opencode-host-runtime",
     setup(buildApi) {
-      buildApi.onResolve({ filter: /^(?:solid-js|@opentui\/solid\/jsx-runtime)$/ }, (args) => ({
+      buildApi.onResolve({ filter: /^(?:solid-js|@opentui\/solid|@opentui\/solid\/jsx-runtime)$/ }, (args) => ({
         external: true,
         path: `opentui:runtime-module:${encodeURIComponent(args.path)}`,
       }))
@@ -66,7 +89,7 @@ export async function buildPlugins({ logLevel = "info" } = {}) {
     entryPoints: ["shared/opencode-tools-shared.ts"],
     logLevel,
     outfile: resolve(distRoot, "opencode-tools-shared.js"),
-    plugins: [hostRuntimeImports()],
+    plugins: [solidTransformPlugin(), hostRuntimeImports()],
   })
 
   const quota = await build({
@@ -90,7 +113,7 @@ export async function buildPlugins({ logLevel = "info" } = {}) {
     },
     logLevel,
     outfile: resolve(distRoot, "opencode-tools-quota.js"),
-    plugins: [hostRuntimeImports(), sharedImport("./opencode-tools-shared.js")],
+    plugins: [solidTransformPlugin(), hostRuntimeImports(), sharedImport("./opencode-tools-shared.js")],
   })
 
   const tokens = await build({
@@ -106,7 +129,7 @@ export async function buildPlugins({ logLevel = "info" } = {}) {
     },
     logLevel,
     outfile: resolve(distRoot, "plugins/opencode-tools-tokens.js"),
-    plugins: [sharedImport("../opencode-tools-shared.js")],
+    plugins: [solidTransformPlugin(), sharedImport("../opencode-tools-shared.js")],
   })
 
   return { shared, quota, tokens }
