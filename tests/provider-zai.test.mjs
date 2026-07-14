@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
 const { createZaiProvider, mapZaiPanelState } = await import("../.tmp-test/provider-zai.mjs")
@@ -193,8 +193,10 @@ test("marks reset-boundary windows expired and maps off-peak to the success them
 
 test("exposes a framework-only provider adapter and semantic home summary", () => {
   const source = readFileSync("tui/providers/zai.ts", "utf8")
+  const shared = existsSync("shared/opencode-tools-shared.ts") ? readFileSync("shared/opencode-tools-shared.ts", "utf8") : ""
   assert.doesNotMatch(source, /@opentui\/solid/)
   assert.doesNotMatch(source, /slots\.register/)
+  assert.match(shared, /createZaiProvider/)
   assert.equal(typeof createZaiProvider, "function")
 })
 

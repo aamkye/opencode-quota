@@ -25,5 +25,6 @@ for (const [entryPoint, outfile, conditions] of [
     platform: "node",
     target: "es2022",
     conditions,
+    external: ["bun:sqlite", "better-sqlite3", "node:sqlite"],
   })
 }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
 const { createOpenAiProvider, fetchOpenAiQuota, mapOpenAiPanelState } = await import("../.tmp-test/provider-openai.mjs")
@@ -213,8 +213,10 @@ test("prefers reset_at over reset_after_seconds", () => {
 
 test("exposes a framework-only OpenAI adapter without layout or slot registration", () => {
   const source = readFileSync("tui/providers/openai.ts", "utf8")
+  const shared = existsSync("shared/opencode-tools-shared.ts") ? readFileSync("shared/opencode-tools-shared.ts", "utf8") : ""
   assert.doesNotMatch(source, /@opentui\/solid/)
   assert.doesNotMatch(source, /slots\.register/)
+  assert.match(shared, /createOpenAiProvider/)
   assert.equal(typeof createOpenAiProvider, "function")
 })
 

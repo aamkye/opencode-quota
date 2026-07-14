@@ -1,9 +1,12 @@
 import type { TuiPlugin, TuiPluginModule } from "@opencode-ai/plugin/tui"
 import { For, Show } from "solid-js"
 
-import { createOpenAiProvider } from "./providers/openai.js"
-import type { HomeQuotaSummary, QuotaProviderAdapter } from "./providers/types.js"
-import { createZaiProvider } from "./providers/zai.js"
+import {
+  createOpenAiProvider,
+  createZaiProvider,
+  type HomeQuotaSummary,
+  type QuotaProviderAdapter,
+} from "../shared/opencode-tools-shared.js"
 
 const HOME_ORDER = 110
 

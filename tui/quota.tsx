@@ -4,9 +4,11 @@ import { createMemo } from "solid-js"
 import { PanelRenderer, type PanelTheme } from "./presentation/renderer.js"
 import type { PanelItem, PanelModel, PanelStatus } from "./presentation/types.js"
 import { sortByOrderThenId } from "./presentation/types.js"
-import { createOpenAiProvider } from "./providers/openai.js"
-import type { QuotaProviderAdapter } from "./providers/types.js"
-import { createZaiProvider } from "./providers/zai.js"
+import {
+  createOpenAiProvider,
+  createZaiProvider,
+  type QuotaProviderAdapter,
+} from "../shared/opencode-tools-shared.js"
 
 export type PercentageMode = "remaining" | "used"
 export type SortDirection = "desc" | "asc"

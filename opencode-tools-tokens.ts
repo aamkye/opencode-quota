@@ -1,10 +1,11 @@
 import type { PluginInput, Hooks } from "@opencode-ai/plugin";
 import {
-  isTokenReportCommand,
-  buildTokenReport,
+  computeTokenReport,
   getCommandTitle,
+  isTokenReportCommand,
   TOKEN_REPORT_COMMANDS,
-} from "./lib/tokens/token-commands";
+} from "./shared/opencode-tools-shared";
+import { renderTokenReport } from "./lib/tokens/token-report-presenter";
 
 const HANDLED = Symbol.for("opencode-tools-tokens/command-handled");
 
@@ -27,11 +28,12 @@ async function server({ client }: PluginInput): Promise<Hooks> {
       if (!isTokenReportCommand(command)) return;
 
       try {
-        const report = await buildTokenReport({
+        const reportData = await computeTokenReport({
           command,
           arguments: input.arguments,
           sessionID: input.sessionID,
         });
+        const report = renderTokenReport(reportData);
 
         await typedClient.session.prompt({
           path: { id: input.sessionID },
