@@ -14,7 +14,8 @@ process.env.HOME = isolatedProviderHome
 process.env.XDG_CONFIG_HOME = isolatedProviderHome
 process.env.XDG_DATA_HOME = isolatedProviderHome
 
-const { default: quotaPlugin, composeQuotaPanel, normalizeQuotaOptions, selectedQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
+const { default: quotaPlugin, composeQuotaPanel, normalizeQuotaOptions, selectedQuotaProviderID, selectedSessionQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
+const { mountQuotaSelection } = await import("../.tmp-test/quota-selection.mjs")
 const { normalizePanelModel } = await import("../.tmp-test/presentation-renderer.mjs")
 
 after(async () => {
@@ -40,6 +41,7 @@ function provider({
   secondaryPct,
   windows = ["5H", "7D"],
   groups,
+  onRefresh = async () => {},
 }) {
   const items = [
     { id: `${id}:header`, order: 10, kind: "header", title },
@@ -61,8 +63,9 @@ function provider({
     }),
     home: () => typeof primaryPct === "number" ? { provider: title, plan: "Plan", primaryPct, secondaryPct } : null,
     freshness: () => freshness,
-    refresh: async () => {},
+    refresh: onRefresh,
     setSessionID: () => {},
+    dispose: () => {},
   }
 }
 
@@ -224,6 +227,7 @@ async function aggregatePanel(t, options, observations = { intervals: [], reques
   await quotaPlugin.tui(api, options)
   await flushEffects()
   const element = registrations[0].slots.sidebar_content({}, { session_id: "session-1" })
+  await flushEffects()
   return element.props.model()
 }
 
@@ -408,6 +412,55 @@ test("maps native credential provider IDs to their aggregate adapters", () => {
 
   assert.equal(selectedQuotaProviderID([{ id: "zai-coding-plan" }], [zai, openai]), "zai")
   assert.equal(selectedQuotaProviderID([{ id: "codex" }], [zai, openai]), "openai")
+})
+
+test("resolves the newest supported user model and falls back without usable metadata", () => {
+  const zai = provider({ id: "zai", title: "Z.AI", order: 110 })
+  const openai = provider({ id: "openai", title: "OpenAI", order: 120 })
+  const providers = [zai, openai]
+
+  assert.equal(selectedSessionQuotaProviderID([
+    { id: "m1", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } },
+    { id: "m2", role: "assistant" },
+    { id: "m3", role: "user", model: { providerID: "codex", modelID: "gpt-5" } },
+  ], providers, "zai"), "openai")
+  assert.equal(selectedSessionQuotaProviderID([], providers, "zai"), "zai")
+  assert.equal(selectedSessionQuotaProviderID([
+    { id: "m4", role: "user", model: { providerID: "unsupported", modelID: "other" } },
+  ], providers, "zai"), "zai")
+})
+
+test("refreshes and reorders when the sidebar session changes provider", async () => {
+  const refreshes = []
+  const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 60, onRefresh: async () => refreshes.push("zai") })
+  const openai = provider({ id: "openai", title: "OpenAI", order: 120, primaryPct: 70, onRefresh: async () => refreshes.push("openai") })
+  const messages = {
+    "session-zai": [{ id: "z1", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } }],
+    "session-openai": [{ id: "o1", role: "user", model: { providerID: "openai", modelID: "gpt-5" } }],
+  }
+  const api = {
+    state: {
+      provider: [{ id: "zai-coding-plan" }],
+      session: { messages: (sessionID) => messages[sessionID] ?? [] },
+    },
+  }
+
+  const selection = mountQuotaSelection(api, [zai, openai])
+
+  try {
+    selection.setSessionID("session-zai")
+    await flushEffects()
+    selection.setSessionID("session-openai")
+    await flushEffects()
+
+    assert.deepEqual(refreshes, ["zai", "openai"])
+    const model = composeQuotaPanel(selection.selectedProviderID(), [zai, openai])
+    assert.equal(model.groups[0].id, "openai:quota")
+    assert.equal(model.groups[1].header.title, "Other providers")
+    assert.equal(JSON.stringify(model).includes("gpt-5"), false)
+  } finally {
+    selection.dispose()
+  }
 })
 
 test("falls back to remaining descending options when native values are invalid", async (t) => {

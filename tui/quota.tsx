@@ -1,5 +1,5 @@
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule, TuiPluginOptions } from "@opencode-ai/plugin/tui"
-import { createMemo } from "solid-js"
+import { createEffect, createMemo, createSignal, type Accessor } from "solid-js"
 
 import { PanelRenderer, type PanelTheme } from "./presentation/renderer.js"
 import type { PanelItem, PanelModel, PanelStatus } from "./presentation/types.js"
@@ -66,6 +66,13 @@ const ADAPTER_ID_BY_PROVIDER_ID: Record<string, string> = {
   codex: "openai",
   chatgpt: "openai",
   opencode: "openai",
+}
+
+type SessionModelMessage = {
+  role?: string
+  model?: {
+    providerID?: string
+  }
 }
 
 function threshold(value: unknown, fallback: number): number {
@@ -275,8 +282,45 @@ export function selectedQuotaProviderID(
   return undefined
 }
 
-function selectedProviderID(api: TuiPluginApi, providers: readonly QuotaProviderAdapter[]): string | undefined {
-  return selectedQuotaProviderID(api.state.provider, providers)
+export function selectedSessionQuotaProviderID(
+  messages: readonly SessionModelMessage[],
+  providers: readonly QuotaProviderAdapter[],
+  fallbackID: string | undefined,
+): string | undefined {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    if (message?.role !== "user" || !message.model?.providerID) continue
+    return selectedQuotaProviderID([{ id: message.model.providerID }], providers) ?? fallbackID
+  }
+  return fallbackID
+}
+
+export function createQuotaSelection(
+  api: TuiPluginApi,
+  providers: readonly QuotaProviderAdapter[],
+): { selectedProviderID: Accessor<string | undefined>; setSessionID(sessionID: string): void } {
+  const [sessionID, setSessionID] = createSignal("")
+  const selectedProviderID = createMemo(() => {
+    const fallbackID = selectedQuotaProviderID(api.state.provider, providers)
+    const id = sessionID()
+    if (!id) return fallbackID
+    try {
+      return selectedSessionQuotaProviderID(api.state.session.messages(id), providers, fallbackID)
+    } catch {
+      return fallbackID
+    }
+  })
+  let refreshedProviderID: string | undefined
+
+  createEffect(() => {
+    if (!sessionID()) return
+    const adapterID = selectedProviderID()
+    if (!adapterID || adapterID === refreshedProviderID) return
+    refreshedProviderID = adapterID
+    void providers.find((provider) => provider.id === adapterID)?.refresh()
+  })
+
+  return { selectedProviderID, setSessionID }
 }
 
 const tui: TuiPlugin = async (api, rawOptions) => {
@@ -285,7 +329,8 @@ const tui: TuiPlugin = async (api, rawOptions) => {
   api.lifecycle.onDispose(() => providers.forEach((provider) => provider.dispose()))
   providers.push(createZaiProvider(api, { refreshIntervalMs: options.refreshIntervalMs }))
   providers.push(createOpenAiProvider(api, { refreshIntervalMs: options.refreshIntervalMs }))
-  const model = createMemo(() => composeQuotaPanel(selectedProviderID(api, providers), providers, options))
+  const selection = createQuotaSelection(api, providers)
+  const model = createMemo(() => composeQuotaPanel(selection.selectedProviderID(), providers, options))
   const theme = () => api.theme.current as PanelTheme
 
   api.slots.register({
@@ -293,7 +338,9 @@ const tui: TuiPlugin = async (api, rawOptions) => {
     order: SIDEBAR_ORDER,
     slots: {
       sidebar_content(_ctx, props) {
-        for (const provider of providers) provider.setSessionID(props.session_id ?? "")
+        const sessionID = props.session_id ?? ""
+        selection.setSessionID(sessionID)
+        for (const provider of providers) provider.setSessionID(sessionID)
         return <PanelRenderer model={model} theme={theme} />
       },
     },
