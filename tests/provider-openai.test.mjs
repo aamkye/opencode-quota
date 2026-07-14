@@ -157,23 +157,23 @@ test("maps primary-only OpenAI quota into a semantic panel and compact summary",
     title: "OpenAI: Plus",
   })
   assert.deepEqual(model.collapsedSummary, { kind: "text", text: "75%", status: "success" })
-  assert.deepEqual(item(model, "openai:5h"), {
-    id: "openai:5h",
+  assert.deepEqual(item(model, "openai:18000s-primary"), {
+    id: "openai:18000s-primary",
     order: 20,
     kind: "progress",
     label: "5H",
     value: 75,
     total: 100,
   })
-  assert.deepEqual(item(model, "openai:5h-reset"), {
-    id: "openai:5h-reset",
+  assert.deepEqual(item(model, "openai:18000s-primary-reset"), {
+    id: "openai:18000s-primary-reset",
     order: 30,
     kind: "timer",
     label: "5H reset",
     state: "countdown",
     epoch: now + 3_600_000,
   })
-  assert.equal(item(model, "openai:7d"), undefined)
+  assert.equal(item(model, "openai:604800s-secondary"), undefined)
   assert.equal(item(model, "openai:review"), undefined)
   assert.equal(item(model, "openai:credits"), undefined)
 })
@@ -181,13 +181,13 @@ test("maps primary-only OpenAI quota into a semantic panel and compact summary",
 test("maps secondary OpenAI quota and preserves normalized Plus, Pro, and Pro Lite labels", () => {
   const model = mapOpenAiPanelState({
     phase: "ready",
-    data: quota({ planType: "Pro Lite", secondary: window({ used_percent: 40 }) }),
+    data: quota({ planType: "Pro Lite", secondary: window({ limit_window_seconds: 604_800, used_percent: 40 }) }),
     now,
   })
 
   assert.equal(item(model, "openai:header").title, "OpenAI: Pro Lite")
-  assert.deepEqual(item(model, "openai:7d"), {
-    id: "openai:7d",
+  assert.deepEqual(item(model, "openai:604800s-secondary"), {
+    id: "openai:604800s-secondary",
     order: 50,
     kind: "progress",
     label: "7D",
@@ -196,6 +196,46 @@ test("maps secondary OpenAI quota and preserves normalized Plus, Pro, and Pro Li
   })
   assert.equal(mapOpenAiPanelState({ phase: "ready", data: quota({ planType: "Plus" }), now }).groups[0].items[0].title, "OpenAI: Plus")
   assert.equal(mapOpenAiPanelState({ phase: "ready", data: quota({ planType: "Pro" }), now }).groups[0].items[0].title, "OpenAI: Pro")
+})
+
+test("labels a weekly-only primary window from its API duration", () => {
+  const model = mapOpenAiPanelState({
+    phase: "ready",
+    data: quota({ primary: window({ limit_window_seconds: 7 * 24 * 60 * 60 }), secondary: null }),
+    now,
+  })
+  const progress = model.groups[0].items.filter((entry) => entry.kind === "progress")
+
+  assert.deepEqual(progress.map((entry) => [entry.id, entry.label]), [
+    ["openai:604800s-primary", "7D"],
+  ])
+  assert.equal(progress.some((entry) => entry.label === "5H"), false)
+})
+
+test("labels each OpenAI role from duration and keeps IDs stable", () => {
+  const model = mapOpenAiPanelState({
+    phase: "ready",
+    data: quota({
+      primary: window({ limit_window_seconds: 18_000 }),
+      secondary: window({ limit_window_seconds: 604_800, used_percent: 40 }),
+    }),
+    now,
+  })
+
+  assert.deepEqual(
+    model.groups[0].items.filter((entry) => entry.kind === "progress").map((entry) => [entry.id, entry.label]),
+    [["openai:18000s-primary", "5H"], ["openai:604800s-secondary", "7D"]],
+  )
+})
+
+test("uses the largest exact compact duration unit", () => {
+  const model = mapOpenAiPanelState({
+    phase: "ready",
+    data: quota({ primary: window({ limit_window_seconds: 30 * 24 * 60 * 60 }) }),
+    now,
+  })
+
+  assert.equal(item(model, "openai:2592000s-primary").label, "1M")
 })
 
 test("maps loading, missing authentication, and unavailable OpenAI states", () => {
@@ -207,7 +247,7 @@ test("maps loading, missing authentication, and unavailable OpenAI states", () =
 test("retains last-known quota and exposes semantic stale and limit status", () => {
   const model = mapOpenAiPanelState({ phase: "stale", data: quota({ limitReached: true }), now })
 
-  assert.equal(item(model, "openai:5h").value, 75)
+  assert.equal(item(model, "openai:18000s-primary").value, 75)
   assert.deepEqual(item(model, "openai:limited"), {
     id: "openai:limited",
     order: 15,
@@ -230,12 +270,12 @@ test("maps full, exhausted, expired, and reset-pending OpenAI windows to timer s
   const expired = mapOpenAiPanelState({ phase: "ready", data: quota({ primary: window({ used_percent: 25, reset_at: now / 1_000 }) }), now })
   const pending = mapOpenAiPanelState({ phase: "ready", data: quota({ primary: window({ used_percent: 25, reset_at: undefined, reset_after_seconds: 0 }) }), now })
 
-  assert.equal(item(full, "openai:5h-reset").state, "idle")
-  assert.equal(item(exhausted, "openai:5h").value, 0)
-  assert.equal(item(exhausted, "openai:5h-reset").state, "countdown")
-  assert.equal(item(expired, "openai:5h-reset").state, "expired")
-  assert.deepEqual(item(pending, "openai:5h-reset"), {
-    id: "openai:5h-reset",
+  assert.equal(item(full, "openai:18000s-primary-reset").state, "idle")
+  assert.equal(item(exhausted, "openai:18000s-primary").value, 0)
+  assert.equal(item(exhausted, "openai:18000s-primary-reset").state, "countdown")
+  assert.equal(item(expired, "openai:18000s-primary-reset").state, "expired")
+  assert.deepEqual(item(pending, "openai:18000s-primary-reset"), {
+    id: "openai:18000s-primary-reset",
     order: 30,
     kind: "timer",
     label: "5H reset",
@@ -251,7 +291,7 @@ test("prefers reset_at over reset_after_seconds", () => {
     now,
   })
 
-  assert.equal(item(model, "openai:5h-reset").epoch, resetAt)
+  assert.equal(item(model, "openai:18000s-primary-reset").epoch, resetAt)
 })
 
 test("exposes a framework-only OpenAI adapter without layout or slot registration", () => {

@@ -203,9 +203,34 @@ function header(title: string, detail?: string): PanelItem {
   return { id: "openai:header", order: 10, kind: "header", title, ...(detail ? { detail } : {}) }
 }
 
-function quotaItems(label: "5H" | "7D", id: "5h" | "7d", order: number, window: RateLimitWindow, now: number): PanelItem[] {
+export function formatWindowDuration(seconds: number | undefined): string {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) return "Quota"
+  const rounded = Math.round(seconds)
+  const month = 30 * 24 * 60 * 60
+  const week = 7 * 24 * 60 * 60
+  const day = 24 * 60 * 60
+  const hour = 60 * 60
+
+  if (rounded % month === 0) return `${rounded / month}M`
+  if (rounded === week) return "7D"
+  if (rounded % week === 0) return `${rounded / week}W`
+  if (rounded % day === 0) return `${rounded / day}D`
+  if (rounded % hour === 0) return `${rounded / hour}H`
+  return `${Math.max(1, Math.round(rounded / hour))}H`
+}
+
+function quotaItems(role: "primary" | "secondary", order: number, window: RateLimitWindow, now: number): PanelItem[] {
   const remainingPct = openAiRemainingPct(window)
   const epoch = resetEpochMs(window, now)
+  const durationSeconds = typeof window.limit_window_seconds === "number"
+    && Number.isFinite(window.limit_window_seconds)
+    && window.limit_window_seconds > 0
+    ? Math.round(window.limit_window_seconds)
+    : 0
+  const label = formatWindowDuration(window.limit_window_seconds)
+  const durationKey = durationSeconds > 0 ? `${durationSeconds}s` : "unknown"
+  const id = `${durationKey}-${role}`
+
   return [
     { id: `openai:${id}`, order, kind: "progress", label, value: remainingPct, total: 100 },
     { id: `openai:${id}-reset`, order: order + 10, kind: "timer", label: `${label} reset`, state: timerState(remainingPct, epoch, now), ...(epoch > 0 ? { epoch } : {}) },
@@ -222,8 +247,8 @@ export function mapOpenAiPanelState(state: OpenAiPanelState): PanelModel {
     items.push(header(`OpenAI: ${data.planType}`))
     if (data.limitReached) items.push({ id: "openai:limited", order: 15, kind: "text", text: "Limited", status: "error" })
     if (state.phase === "stale") items.push({ id: "openai:stale", order: 16, kind: "text", text: "~stale", status: "warning" })
-    items.push(...quotaItems("5H", "5h", 20, data.primary, now))
-    if (data.secondary) items.push(...quotaItems("7D", "7d", 50, data.secondary, now))
+    items.push(...quotaItems("primary", 20, data.primary, now))
+    if (data.secondary) items.push(...quotaItems("secondary", 50, data.secondary, now))
   }
 
   const primaryRemaining = data ? openAiRemainingPct(data.primary) : null
