@@ -663,7 +663,7 @@ git commit -m "fix(tui): normalize quota progress colors"
 - Produces: preamble items followed by progress-led groups sorted shortest-duration first; unknown-duration groups retain source order.
 - Produces: ready/stale Z.AI header item `{ title: "Z.AI: <plan>", detail: "Peak (3x)" | "Off-Peak (1x)", status: "error" | "success" }`.
 
-- [ ] **Step 1: Add a failing composition test for atomic window groups**
+- [x] **Step 1: Add a failing composition test for atomic window groups**
 
 Add to `tests/quota-composition.test.mjs`:
 
@@ -702,7 +702,7 @@ test("keeps window details attached and leaves unknown tool quota last", () => {
 })
 ```
 
-- [ ] **Step 2: Add failing Z.AI header-detail assertions**
+- [x] **Step 2: Add failing Z.AI header-detail assertions**
 
 Update the ready and off-peak expectations in `tests/provider-zai.test.mjs`:
 
@@ -723,7 +723,7 @@ assert.equal(item(model, "zai:header").status, "success")
 assert.deepEqual(model.collapsedSummary, { kind: "text", text: "Off-Peak (1x)", status: "success" })
 ```
 
-- [ ] **Step 3: Run focused tests and verify RED**
+- [x] **Step 3: Run grouping and Z.AI focused tests and verify RED**
 
 Run:
 
@@ -733,7 +733,7 @@ node tests/compile-presentation.mjs && node --test tests/quota-composition.test.
 
 Expected: FAIL because independent item sorting separates quantity/table details from their progress rows, unknown labels sort alphabetically rather than by source order, and the ready Z.AI header has no Peak/Off-Peak detail.
 
-- [ ] **Step 4: Partition and sort provider item groups atomically**
+- [x] **Step 4: Partition and sort provider item groups atomically**
 
 Replace `itemWindowLabel()` and `orderedProviderItems()` in `tui/quota.tsx` with progress-led grouping:
 
@@ -792,7 +792,7 @@ Change the existing unknown-window test to assert source order, because unknown 
 assert.deepEqual(labels, ["5H", "Zeta", "Alpha"])
 ```
 
-- [ ] **Step 5: Put semantic Peak/Off-Peak detail on the Z.AI header**
+- [x] **Step 5: Put semantic Peak/Off-Peak detail on the Z.AI header**
 
 In the ready/stale `data` branch of `mapZaiPanelState()` in `tui/providers/zai.ts`, derive the value once and use it for both header and collapsed summary:
 
@@ -851,7 +851,7 @@ collapsedSummary: data
 
 Declare `peakSummary` before the branch so it is available to the final return. Do not alter loading, unavailable, rate-limited, or heuristic header details.
 
-- [ ] **Step 6: Run focused tests and verify GREEN**
+- [x] **Step 6: Run grouping and Z.AI focused tests and verify GREEN**
 
 Run:
 
@@ -861,7 +861,7 @@ node tests/compile-presentation.mjs && node --test tests/quota-composition.test.
 
 Expected: all tests PASS; the Z.AI header status is available for Task 1's right-aligned mounted detail and tool rows remain after all known quota windows.
 
-- [ ] **Step 7: Commit the grouping and Z.AI status slice**
+- [x] **Step 7: Commit the grouping and Z.AI status slice**
 
 ```bash
 git add tui/quota.tsx tui/providers/zai.ts tests/quota-composition.test.mjs tests/provider-zai.test.mjs
