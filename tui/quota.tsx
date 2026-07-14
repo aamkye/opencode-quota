@@ -136,49 +136,50 @@ function windowDuration(label: string): number | null {
   return Number.isFinite(value) && multiplier ? value * multiplier : null
 }
 
-function itemWindowLabel(item: PanelItem): string | null {
-  if (item.kind === "progress") return item.label
-  if (item.kind === "timer") return item.label.replace(/\s+reset$/i, "")
-  return null
+type ProviderItemGroup = {
+  items: PanelItem[]
+  duration: number | null
+  sourceIndex: number
+}
+
+function providerItemGroups(items: readonly PanelItem[]): { preamble: PanelItem[]; groups: ProviderItemGroup[] } {
+  const ordered = [...items]
+  const firstProgress = ordered.findIndex((item) => item.kind === "progress")
+  if (firstProgress < 0) return { preamble: ordered, groups: [] }
+
+  const preamble = ordered.slice(0, firstProgress)
+  const groups: ProviderItemGroup[] = []
+  for (const item of ordered.slice(firstProgress)) {
+    if (item.kind === "progress") {
+      groups.push({
+        items: [item],
+        duration: windowDuration(item.label),
+        sourceIndex: groups.length,
+      })
+    } else {
+      groups.at(-1)!.items.push(item)
+    }
+  }
+  return { preamble, groups }
 }
 
 function orderedProviderItems(items: readonly PanelItem[], options: NormalizedCompositionOptions, orderOffset: number): PanelItem[] {
-  return [...items]
+  const { preamble, groups } = providerItemGroups(items)
+  const orderedGroups = [...groups].sort((left, right) => {
+    if (left.duration !== null && right.duration !== null) return left.duration - right.duration || left.sourceIndex - right.sourceIndex
+    if (left.duration !== null) return -1
+    if (right.duration !== null) return 1
+    return left.sourceIndex - right.sourceIndex
+  })
+
+  return [...preamble, ...orderedGroups.flatMap((group) => group.items)]
     .map((item, index) => {
-      const label = itemWindowLabel(item)
-      return { item, index, label, duration: label ? windowDuration(label) : null }
-    })
-    .sort((left, right) => {
-      if (left.label !== null && right.label !== null) {
-        if (left.duration !== null && right.duration !== null) {
-          return left.duration - right.duration
-          || (left.item.kind === "progress" ? -1 : 1) - (right.item.kind === "progress" ? -1 : 1)
-          || left.index - right.index
-        }
-        if (left.duration !== null) return -1
-        if (right.duration !== null) return 1
-        return left.label.localeCompare(right.label)
-          || (left.item.kind === "progress" ? -1 : 1) - (right.item.kind === "progress" ? -1 : 1)
-          || left.index - right.index
-      }
-      if (left.label !== null) return 1
-      if (right.label !== null) return -1
-      return left.item.order - right.item.order || left.item.id.localeCompare(right.item.id)
-    })
-    .map(({ item }, index) => {
       if (item.kind !== "progress") return { ...item, order: orderOffset + index }
       const { status: _providerStatus, ...progress } = item
       const remainingPct = item.total > 0 ? (item.value / item.total) * 100 : 0
       const status = percentStatus(remainingPct, options)
-      const value = options.percentageMode === "used"
-        ? Math.max(0, item.total - item.value)
-        : item.value
-      return {
-        ...progress,
-        order: orderOffset + index,
-        value,
-        ...(status ? { status } : {}),
-      }
+      const value = options.percentageMode === "used" ? Math.max(0, item.total - item.value) : item.value
+      return { ...progress, order: orderOffset + index, value, ...(status ? { status } : {}) }
     })
 }
 

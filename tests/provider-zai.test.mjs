@@ -161,6 +161,8 @@ test("maps ready Z.AI quota into semantic windows, values, and peak status", () 
     order: 10,
     kind: "header",
     title: "Z.AI: Pro",
+    detail: "Peak (3x)",
+    status: "error",
   })
   assert.deepEqual(model.collapsedSummary, { kind: "text", text: "Peak (3x)", status: "error" })
   assert.deepEqual(item(model, "zai:5h"), {
@@ -231,6 +233,8 @@ test("marks reset-boundary windows expired and maps off-peak to the success them
   })
 
   assert.equal(item(model, "zai:5h-reset").state, "expired")
+  assert.equal(item(model, "zai:header").detail, "Off-Peak (1x)")
+  assert.equal(item(model, "zai:header").status, "success")
   assert.deepEqual(model.collapsedSummary, { kind: "text", text: "Off-Peak (1x)", status: "success" })
 })
 

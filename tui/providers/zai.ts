@@ -290,6 +290,11 @@ function quotaItems(label: "5H" | "7D", id: "5h" | "7d", order: number, remainin
 export function mapZaiPanelState(state: ZaiPanelState): PanelModel {
   const { now, data } = state
   const items: PanelItem[] = []
+  const peak = isPeakHour(now)
+  const peakSummary = {
+    text: peak ? "Peak (3x)" : "Off-Peak (1x)",
+    status: peak ? "error" as const : "success" as const,
+  }
 
   if (state.phase === "loading") items.push(header("Z.AI", "Loading Z.AI...", "textMuted"))
   else if (state.phase === "unavailable") items.push(header("Z.AI", "No Z.AI account linked", "textMuted"))
@@ -303,7 +308,7 @@ export function mapZaiPanelState(state: ZaiPanelState): PanelModel {
     items.push(header("Z.AI (est)", "Usage unavailable", "textMuted"))
     items.push({ id: "zai:5h-reset", order: 20, kind: "timer", label: "Estimated reset", state: "countdown", epoch })
   } else if (data) {
-    items.push(header(`Z.AI: ${data.level}`))
+    items.push(header(`Z.AI: ${data.level}`, peakSummary.text, peakSummary.status))
     if (state.phase === "stale") items.push({ id: "zai:stale", order: 15, kind: "text", text: "~stale", status: "warning" })
     items.push(...quotaItems("5H", "5h", 20, data.tokenRemainingPct, data.tokenNextResetEpoch, now, data.tokenAbsolute))
     const weekly = data.weeklyLimit
@@ -341,7 +346,9 @@ export function mapZaiPanelState(state: ZaiPanelState): PanelModel {
     id: "zai",
     order: PROVIDER_ORDER,
     title: "Z.AI",
-    collapsedSummary: data ? { kind: "text", text: isPeakHour(now) ? "Peak (3x)" : "Off-Peak (1x)", status: isPeakHour(now) ? "error" : "success" } : undefined,
+    collapsedSummary: data
+      ? { kind: "text", text: peakSummary.text, status: peakSummary.status }
+      : undefined,
     groups: [{ id: "zai:quota", order: 10, items }],
   }
 }

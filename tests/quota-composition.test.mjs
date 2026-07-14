@@ -304,12 +304,45 @@ test("orders every quota window shortest-first", () => {
   assert.deepEqual(labels, ["5H", "7D", "1M"])
 })
 
-test("orders unknown quota window labels alphabetically after known durations", () => {
+test("keeps window details attached and leaves unknown tool quota last", () => {
+  const zai = provider({
+    id: "zai",
+    title: "Z.AI",
+    order: 110,
+    primaryPct: 75,
+    groups: [{
+      id: "zai:quota",
+      order: 10,
+      items: [
+        { id: "zai:header", order: 10, kind: "header", title: "Z.AI: Pro", detail: "Peak (3x)", status: "error" },
+        { id: "zai:7d", order: 50, kind: "progress", label: "7D", value: 60, total: 100 },
+        { id: "zai:7d-reset", order: 60, kind: "timer", label: "7D reset", state: "idle" },
+        { id: "zai:7d-used", order: 61, kind: "quantity", label: "7D used", value: 4000, unit: "count" },
+        { id: "zai:5h", order: 20, kind: "progress", label: "5H", value: 75, total: 100 },
+        { id: "zai:5h-reset", order: 30, kind: "timer", label: "5H reset", state: "idle" },
+        { id: "zai:5h-used", order: 31, kind: "quantity", label: "5H used", value: 250, unit: "count" },
+        { id: "zai:time", order: 80, kind: "progress", label: "T", value: 70, total: 100 },
+        { id: "zai:time-reset", order: 90, kind: "timer", label: "Tool reset", state: "idle" },
+        { id: "zai:time-models", order: 95, kind: "table", columns: [], rows: [] },
+      ],
+    }],
+  })
+
+  const items = composeQuotaPanel("zai", [zai]).groups[0].items
+  assert.deepEqual(items.map((entry) => entry.id), [
+    "zai:header",
+    "zai:5h", "zai:5h-reset", "zai:5h-used",
+    "zai:7d", "zai:7d-reset", "zai:7d-used",
+    "zai:time", "zai:time-reset", "zai:time-models",
+  ])
+})
+
+test("keeps unknown quota window labels in source order after known durations", () => {
   const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50, windows: ["Zeta", "5H", "Alpha"] })
   const model = composeQuotaPanel("zai", [zai])
   const labels = model.groups[0].items.filter((item) => item.kind === "progress").map((item) => item.label)
 
-  assert.deepEqual(labels, ["5H", "Alpha", "Zeta"])
+  assert.deepEqual(labels, ["5H", "Zeta", "Alpha"])
 })
 
 test("maps native credential provider IDs to their aggregate adapters", () => {
