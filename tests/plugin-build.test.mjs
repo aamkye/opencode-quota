@@ -54,12 +54,17 @@ test("loadable entries keep explicit relative imports to the shared artifact", (
   assert.doesNotMatch(contents["dist/opencode-tools-shared.js"], /opencode-tools-(?:quota|tokens)/)
 })
 
-test("combined TUI artifact uses OpenCode's host-owned Solid runtimes", () => {
-  const output = contents["dist/opencode-tools-quota.js"]
-  assert.match(output, /from["']opentui:runtime-module:solid-js["']/)
-  assert.match(output, /from["']opentui:runtime-module:%40opentui%2Fsolid%2Fjsx-runtime["']/)
-  assert.doesNotMatch(output, /from["'](?:solid-js|@opentui\/solid\/jsx-runtime)["']/)
-  assert.doesNotMatch(output, /\bReact\s*(?:\.|\[)/)
+test("shared reactivity and the combined TUI use OpenCode's host-owned Solid runtime", () => {
+  for (const file of ["dist/opencode-tools-shared.js", "dist/opencode-tools-quota.js"]) {
+    const output = contents[file]
+    assert.match(output, /from["']opentui:runtime-module:solid-js["']/, `${file} does not use host Solid`)
+    assert.doesNotMatch(output, /from["']solid-js(?:\/[^"']*)?["']/, `${file} imports a separate Solid runtime`)
+  }
+
+  const quota = contents["dist/opencode-tools-quota.js"]
+  assert.match(quota, /from["']opentui:runtime-module:%40opentui%2Fsolid%2Fjsx-runtime["']/)
+  assert.doesNotMatch(quota, /from["']@opentui\/solid\/jsx-runtime["']/)
+  assert.doesNotMatch(quota, /\bReact\s*(?:\.|\[)/)
 })
 
 test("shared owns computation while loadable entries contain presentation and registration only", () => {
@@ -90,7 +95,8 @@ test("all host and built-in dependencies remain external", () => {
     for (const output of Object.values(result.metafile.outputs)) {
       for (const dependency of output.imports) {
         const bare = dependency.path.replace(/^node:/, "").split("/")[0]
-        const host = dependency.path === "solid-js"
+        const host = dependency.path.startsWith(runtimeModulePrefix)
+          || dependency.path === "solid-js"
           || dependency.path.startsWith("solid-js/")
           || dependency.path.startsWith("@opentui/")
           || dependency.path.startsWith("@opencode-ai/")

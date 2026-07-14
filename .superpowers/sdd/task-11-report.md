@@ -106,3 +106,31 @@ opencode-tools artifacts.
 - `.superpowers/sdd/task-11-constrained.log`
 - `.superpowers/sdd/task-11-tokens-executed.log`
 - `.superpowers/sdd/task-11-postfix-plugin-state-3.log`
+
+## Important Finding 1 Follow-up
+
+The shared artifact owns `createOpenAiProvider` and `createZaiProvider`, so it
+also owns the Solid signals and effects behind provider polling. The previous
+build rewrote Solid imports only for the quota artifact: shared imported bare
+`solid-js`, while the quota renderer imported
+`opentui:runtime-module:solid-js`. That split Solid's runtime-local dependency
+tracking across two module instances and could leave host renderer effects
+unsubscribed from shared provider updates.
+
+- RED: `node --test tests/plugin-build.test.mjs` passed 6 tests and failed the
+  new shared/quota runtime-identity test because
+  `dist/opencode-tools-shared.js` imported `solid-js` instead of the OpenCode
+  host module.
+- GREEN: after applying the existing host-runtime import resolver to the shared
+  build, the same command passed 7/7. The test now inspects both shared and quota,
+  rejects bare Solid imports in either artifact, retains the quota JSX-runtime
+  assertion, and verifies virtual host imports remain external.
+- Runtime: a Node browser-condition probe loaded the built shared artifact
+  through the same virtual-module resolver used by the artifact harness. A host
+  `createEffect` observed the shared OpenAI provider freshness transition
+  `loading -> ready`, demonstrating reactive notification across the explicit
+  shared ESM boundary.
+
+The quota and token entries still import the explicit relative shared artifact,
+and Solid, OpenTUI, OpenCode SDK/plugin modules, Bun modules, database bindings,
+and built-ins remain external rather than bundled.

@@ -66,6 +66,7 @@ export async function buildPlugins({ logLevel = "info" } = {}) {
     entryPoints: ["shared/opencode-tools-shared.ts"],
     logLevel,
     outfile: resolve(distRoot, "opencode-tools-shared.js"),
+    plugins: [hostRuntimeImports()],
   })
 
   const quota = await build({
