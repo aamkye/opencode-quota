@@ -201,7 +201,7 @@ const tui: TuiPlugin = async (api, rawOptions) => {
     slots: {
       sidebar_content(_ctx, props) {
         for (const provider of providers) provider.setSessionID(props.session_id ?? "")
-        return <PanelRenderer model={model} availableCells={() => 80} theme={theme} />
+        return <PanelRenderer model={model} theme={theme} />
       },
     },
   })

@@ -22,6 +22,8 @@ const model = {
       items: [
         { id: "status", order: 10, kind: "header", title: "Primary", detail: "Limited", status: "error" },
         { id: "detail", order: 20, kind: "text", text: "Visible only while expanded" },
+        { id: "five-hour", order: 30, kind: "progress", label: "5H", value: 25, total: 100, status: "warning" },
+        { id: "five-hour-reset", order: 40, kind: "timer", label: "5H reset", state: "countdown", epoch: Date.now() + 3_600_000 },
         {
           id: "limits",
           order: 30,
@@ -48,25 +50,42 @@ const model = {
   ],
 }
 
-test("mounts responsive width, themed statuses, and optional compact-table identity", () => {
-  const { elements: mounted, dispose } = mountPanel(model)
-  const text = mounted.filter((element) => element.type === "text")
+test("mounts responsive framing, bars, reset indentation, and right-aligned status", () => {
+  const { elements, dispose } = mountPanel(model)
+  const text = elements.filter((element) => element.type === "text")
 
   try {
-    assert.ok(text.some((element) => element.props.children === "Identity"))
-    assert.equal(text.find((element) => element.props.children === "Primary: Limited")?.props.fg, "#ff0000")
-    assert.equal(text.find((element) => element.props.children === "51%")?.props.fg, "#ffaa00")
-    assert.equal(text.find((element) => element.props.children.includes("80"))?.props.fg, "#00ff00")
-    assert.equal(text.filter((element) => typeof element.props.width === "number").slice(0, 4).reduce((sum, element) => sum + element.props.width, 0), 24)
+    const quotaMarker = text.find((element) => element.props.children === "▼ ")
+    const title = text.find((element) => element.props.children === "Very long usage overview")
+    const providerTitle = text.find((element) => element.props.children === "Primary")
+    const providerStatus = text.find((element) => element.props.children === "Limited")
+    const filled = text.find((element) => element.props.children === "█".repeat(100))
+    const empty = text.find((element) => element.props.children === "░".repeat(100))
+    const percent = text.find((element) => element.props.children === " 25%")
+    const indent = text.find((element) => element.props.children === "   ")
 
-    const constrained = mountPanel(model, 12)
-    try {
-      const constrainedText = constrained.elements.filter((element) => element.type === "text")
-      assert.ok(!constrainedText.some((element) => element.props.children === "Identity"))
-      assert.ok(constrainedText.some((element) => element.props.children.includes("80")))
-    } finally {
-      constrained.dispose()
-    }
+    assert.equal(quotaMarker?.props.width, 2)
+    assert.equal(title?.props.flexBasis, 0)
+    assert.equal(title?.props.flexGrow, 1)
+    assert.equal(providerTitle?.props.flexBasis, 0)
+    assert.equal(providerTitle?.props.flexGrow, 1)
+    assert.equal(providerStatus?.props.fg, "#ff0000")
+    assert.equal(filled?.props.flexBasis, 0)
+    assert.equal(filled?.props.flexGrow, 25)
+    assert.equal(filled?.props.fg, "#ffaa00")
+    assert.equal(empty?.props.flexBasis, 0)
+    assert.equal(empty?.props.flexGrow, 75)
+    assert.equal(empty?.props.fg, "#888888")
+    assert.equal(percent?.props.width, 4)
+    assert.equal(percent?.props.fg, "#ffaa00")
+    assert.equal(indent?.props.width, 3)
+
+    const dividers = elements.filter((element) =>
+      element.type === "box"
+      && element.props.width === "100%"
+      && element.props.height === 1
+      && element.props.border?.[0] === "top")
+    assert.equal(dividers.length, 2, "one top divider and one group divider")
   } finally {
     dispose()
   }

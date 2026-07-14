@@ -78,8 +78,8 @@ test("normalizes a generic panel into stable, compact render rows", () => {
   })
   assert.deepEqual(group.items.map((item) => item.id), ["a-text", "m-progress", "n-timer", "q-quantity", "t-table", "z-header"])
   assert.equal(progress.percent, "51%")
-  assert.equal(progress.allocation.bar, 7)
-  assert.equal(timer.text, "Resets: resets in 1h 0m")
+  assert.equal(progress.allocation.bar, 8)
+  assert.equal(timer.text, "resets in 1h 0m")
   assert.equal(timer.detail, "Provider supplied reset time")
   assert.equal(table.layout, "compact")
   assert.deepEqual(table.columns.map((column) => column.id), ["model", "remaining"])
@@ -101,6 +101,7 @@ test("renders allocation-derived header, progress, compact table, and parent-fil
         order: 10,
         items: [
           { id: "weekly", order: 10, kind: "progress", label: "Weekly", value: 51, total: 100 },
+          { id: "reset", order: 15, kind: "timer", label: "5H reset", state: "countdown", epoch: 3_600_000 },
           {
             id: "limits",
             order: 20,
@@ -128,8 +129,8 @@ test("renders allocation-derived header, progress, compact table, and parent-fil
   const layout = renderPanelLayout(model, { availableCells: 16, now: 0 })
 
   assert.deepEqual(layout.header.cells, [
-    { text: "▼", width: 1, align: "start" },
-    { text: "Usage …", width: 7, align: "start" },
+    { text: "▼ ", width: 2, align: "start" },
+    { text: "Usage…", width: 6, align: "start" },
     { text: " ", width: 1, align: "start" },
     { text: "51%/80%", width: 7, align: "end" },
   ])
@@ -137,13 +138,13 @@ test("renders allocation-derived header, progress, compact table, and parent-fil
     kind: "progress",
     cells: [
       { text: "We…", width: 3, align: "start" },
-      { text: " ", width: 1, align: "start" },
-      { text: "████░░░", width: 7, align: "start" },
+      { text: "████░░░░", width: 8, align: "start" },
       { text: " ", width: 1, align: "start" },
       { text: " 51%", width: 4, align: "end" },
     ],
   })
-  assert.deepEqual(layout.groups[0].items[1], {
+  assert.equal(layout.groups[0].items[1].text, "resets in 1h 0m")
+  assert.deepEqual(layout.groups[0].items[2], {
     kind: "table",
     rows: [
       [

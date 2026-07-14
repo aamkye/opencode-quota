@@ -24,7 +24,7 @@ export type CompactTableAllocation = {
 
 export function allocateHeader(availableCells: number, _label: string, summary?: string): HeaderAllocation {
   const available = Math.max(0, Math.floor(availableCells))
-  const marker = Math.min(1, available)
+  const marker = Math.min(2, available)
   const remaining = available - marker
   const summaryWidth = Math.min(summary?.length ?? 0, remaining)
   const beforeSummaryGap = summaryWidth > 0 && remaining > summaryWidth ? 1 : 0
@@ -41,7 +41,7 @@ export function allocateHeader(availableCells: number, _label: string, summary?:
 export function allocateProgressRow(availableCells: number): ProgressRowAllocation {
   const available = Math.max(0, Math.floor(availableCells))
   const marker = 3
-  const beforeBarGap = 1
+  const beforeBarGap = 0
   const percent = 4
   const beforePercentGap = 1
   const bar = Math.max(0, available - marker - beforeBarGap - beforePercentGap - percent)

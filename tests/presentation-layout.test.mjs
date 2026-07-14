@@ -8,20 +8,20 @@ const {
 } = await import("../.tmp-test/presentation-layout.mjs")
 const { sortByOrderThenId } = await import("../.tmp-test/presentation-types.mjs")
 
-test("reserves the header summary in the final cell", () => {
+test("reserves a spaced marker and the header summary at the right edge", () => {
   assert.deepEqual(allocateHeader(20, "Quota", "51%/80%"), {
-    marker: 1,
-    label: 11,
+    marker: 2,
+    label: 10,
     beforeSummaryGap: 1,
     summary: 7,
   })
 })
 
-test("keeps progress columns fixed and assigns the remainder to the bar", () => {
+test("starts the flexible progress bar after a three-cell label", () => {
   assert.deepEqual(allocateProgressRow(20), {
     marker: 3,
-    beforeBarGap: 1,
-    bar: 11,
+    beforeBarGap: 0,
+    bar: 12,
     beforePercentGap: 1,
     percent: 4,
   })

@@ -138,7 +138,7 @@ function normalizeItem(item: PanelItem, availableCells: number, now: number): No
       return {
         id: item.id,
         kind: item.kind,
-        text: `${item.label}: ${formatTimer(item, now)}`,
+        text: formatTimer(item, now),
         detail: item.detail,
         status: item.status,
       }
@@ -233,7 +233,7 @@ function renderItemLayout(item: NormalizedItem): RenderedItem {
         kind: item.kind,
         cells: [
           renderCell(item.label, item.allocation.marker, "start", item.status),
-          renderCell("", item.allocation.beforeBarGap, "start", item.status),
+          ...(item.allocation.beforeBarGap > 0 ? [renderCell("", item.allocation.beforeBarGap, "start", item.status)] : []),
           renderCell(bar, item.allocation.bar, "start", item.status),
           renderCell("", item.allocation.beforePercentGap, "start", item.status),
           renderCell(item.percent, item.allocation.percent, "end", item.status),
@@ -295,7 +295,7 @@ export function renderPanelLayout(model: PanelModel, options: RendererLayoutOpti
     collapsed: panelCollapsed,
     header: {
       cells: [
-        renderCell(panelCollapsed ? "▶" : "▼", allocation.marker, "start"),
+        renderCell(panelCollapsed ? "▶ " : "▼ ", allocation.marker, "start"),
         renderCell(title, allocation.label, "start"),
         ...(allocation.beforeSummaryGap > 0 ? [renderCell("", allocation.beforeSummaryGap, "start")] : []),
         ...(summary && allocation.summary > 0 ? [renderCell(summary.text, allocation.summary, "end", summary.status)] : []),
@@ -320,41 +320,67 @@ function Divider() {
   return <box width="100%" height={1} border={["top"]} />
 }
 
-function RenderItem(props: { item: RenderedItem; theme: Accessor<PanelTheme> }) {
+function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> }) {
   const color = (status?: PanelStatus) => (status ? props.theme()[status] : undefined)
 
   switch (props.item.kind) {
     case "header":
-    case "text":
-    case "quantity":
-      return <text fg={color(props.item.status)}>{props.item.text}</text>
-    case "progress":
       return (
         <box flexDirection="row" width="100%">
-          <For each={props.item.cells}>{(cell) => <text width={cell.width} fg={color(cell.status)}>{cell.text}</text>}</For>
-        </box>
-      )
-    case "timer":
-      return (
-        <box flexDirection="column">
-          <text fg={color(props.item.status)}>{props.item.text}</text>
+          <text flexBasis={0} flexGrow={1}>{props.item.title}</text>
           <Show when={props.item.detail}>
             <text fg={color(props.item.status)}>{props.item.detail}</text>
           </Show>
         </box>
       )
-    case "table":
+    case "text":
+      return <text fg={color(props.item.status)}>{props.item.text}</text>
+    case "quantity":
+      return <text fg={color(props.item.status)}>{`${props.item.label}: ${props.item.value}`}</text>
+    case "progress": {
+      const filled = Math.max(0, Math.min(100, Number.parseInt(props.item.percent, 10)))
+      return (
+        <box flexDirection="row" width="100%">
+          <text width={3}>{props.item.label}</text>
+          <box flexDirection="row" flexBasis={0} flexGrow={1}>
+            <text flexBasis={0} flexGrow={filled} fg={color(props.item.status)}>{"█".repeat(100)}</text>
+            <text flexBasis={0} flexGrow={100 - filled} fg={props.theme().textMuted}>{"░".repeat(100)}</text>
+          </box>
+          <text width={1}> </text>
+          <text width={4} fg={color(props.item.status)}>{props.item.percent.padStart(4)}</text>
+        </box>
+      )
+    }
+    case "timer":
       return (
         <box flexDirection="column">
-          <For each={props.item.rows}>
+          <box flexDirection="row" width="100%">
+            <text width={3}>   </text>
+            <text fg={color(props.item.status)}>{props.item.text}</text>
+          </box>
+          <Show when={props.item.detail}>
+            <box flexDirection="row" width="100%">
+              <text width={3}>   </text>
+              <text fg={color(props.item.status)}>{props.item.detail}</text>
+            </box>
+          </Show>
+        </box>
+      )
+    case "table": {
+      const rendered = renderItemLayout(props.item)
+      if (rendered.kind !== "table") return null
+      return (
+        <box flexDirection="column">
+          <For each={rendered.rows}>
             {(row) => <box flexDirection="row"><For each={row}>{(cell) => <text width={cell.width} fg={color(cell.status)}>{cell.text}</text>}</For></box>}
           </For>
         </box>
       )
+    }
   }
 }
 
-export function PanelRenderer(props: { model: Accessor<PanelModel>; availableCells: Accessor<number>; theme: Accessor<PanelTheme> }) {
+export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Accessor<PanelTheme> }) {
   const [collapsed, setCollapsed] = createSignal(new Set<string>())
   const [now, setNow] = createSignal(Date.now())
   const interval = setInterval(() => setNow(Date.now()), 1_000)
@@ -364,37 +390,40 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; availableCel
     setCollapsed((current) => toggleCollapsed(current, id))
   }
 
-  const layout = () => renderPanelLayout(props.model(), { availableCells: props.availableCells(), now: now(), collapsed: collapsed() })
+  const normalized = () => normalizePanelModel(props.model(), { now: now() })
+  const panelCollapsed = () => collapsed().has(`panel:${props.model().id}`)
 
   return (
     <box flexDirection="column" width="100%">
       <box flexDirection="row" width="100%" onMouseDown={() => toggle(`panel:${props.model().id}`)}>
-        <For each={layout().header.cells}>{(cell) => <text width={cell.width} fg={cell.status ? props.theme()[cell.status] : undefined}>{cell.text}</text>}</For>
+        <text width={2}>{panelCollapsed() ? "▶ " : "▼ "}</text>
+        <text flexBasis={0} flexGrow={1}>{normalized().title}</text>
+        <Show when={normalized().header.summary}>
+          {(summary) => <text fg={summary().status ? props.theme()[summary().status!] : undefined}>{summary().text}</text>}
+        </Show>
       </box>
-      <Show when={!layout().collapsed}>
-        <For each={layout().groups}>
-          {(group) => (
-            <box flexDirection="column" width="100%">
-              <Show when={group.header}>
-                {(header) => (
-                  <box
-                    flexDirection="row"
-                    width="100%"
-                    onMouseDown={header().collapsible ? () => toggle(`group:${group.id}`) : undefined}
-                  >
-                    <text>{header().collapsible ? (group.collapsed ? "▶" : "▼") : ""}</text>
-                    <text>{header().title}</text>
-                  </box>
-                )}
-              </Show>
-              <Show when={!group.collapsed}>
-                <For each={group.items}>
-                  {(item) => <RenderItem item={item} theme={props.theme} />}
-                </For>
-              </Show>
-              <Divider />
-            </box>
-          )}
+      <Divider />
+      <Show when={!panelCollapsed()}>
+        <For each={normalized().groups}>
+          {(group) => {
+            const groupCollapsed = () => group.header?.collapsible === true && collapsed().has(`group:${group.id}`)
+            return (
+              <box flexDirection="column" width="100%">
+                <Show when={group.header}>
+                  {(header) => (
+                    <box flexDirection="row" width="100%" onMouseDown={header().collapsible ? () => toggle(`group:${group.id}`) : undefined}>
+                      <text>{header().collapsible ? (groupCollapsed() ? "▶ " : "▼ ") : ""}</text>
+                      <text>{header().title}</text>
+                    </box>
+                  )}
+                </Show>
+                <Show when={!groupCollapsed()}>
+                  <For each={group.items}>{(item) => <MountedItem item={item} theme={props.theme} />}</For>
+                </Show>
+                <Divider />
+              </box>
+            )
+          }}
         </For>
       </Show>
     </box>
