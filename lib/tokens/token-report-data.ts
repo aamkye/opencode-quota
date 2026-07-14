@@ -53,6 +53,16 @@ export type ComputeTokenReportParams = {
   generatedAtMs?: number;
 };
 
+export type ComputeTokenReportDependencies = {
+  aggregateUsage: typeof aggregateUsage;
+  resolveSessionTree: typeof resolveSessionTree;
+};
+
+const DEFAULT_DEPENDENCIES: ComputeTokenReportDependencies = {
+  aggregateUsage,
+  resolveSessionTree,
+};
+
 function sessionLookupError(
   command: string,
   generatedAtMs: number,
@@ -81,8 +91,8 @@ async function computeUsageReport(params: {
   reportKind?: "standard" | "session" | "session_tree";
   sessionTree?: { rootSessionID: string; nodes: SessionTreeNode[] };
   generatedAtMs: number;
-}): Promise<TokenReportData> {
-  const result = await aggregateUsage({
+}, dependencies: ComputeTokenReportDependencies): Promise<TokenReportData> {
+  const result = await dependencies.aggregateUsage({
     sinceMs: params.sinceMs,
     untilMs: params.untilMs,
     sessionID: params.filterSessionID,
@@ -102,7 +112,11 @@ async function computeUsageReport(params: {
   };
 }
 
-export async function computeTokenReport(params: ComputeTokenReportParams): Promise<TokenReportData> {
+export async function computeTokenReport(
+  params: ComputeTokenReportParams,
+  injectedDependencies?: ComputeTokenReportDependencies,
+): Promise<TokenReportData> {
+  const dependencies = injectedDependencies ?? DEFAULT_DEPENDENCIES;
   const spec = getTokenReportCommandSpec(params.command);
   if (!spec) return { kind: "unknown_command", command: params.command };
 
@@ -128,7 +142,7 @@ export async function computeTokenReport(params: ComputeTokenReportParams): Prom
         untilMs: startOfNextLocalDayMs(parsed.endYmd),
         sessionID: sessionID ?? "",
         generatedAtMs: untilMs,
-      });
+      }, dependencies);
     }
 
     let sinceMs: number | undefined;
@@ -155,7 +169,7 @@ export async function computeTokenReport(params: ComputeTokenReportParams): Prom
         reportKind = "session";
         break;
       case "session_tree": {
-        const nodes = await resolveSessionTree(sessionID!);
+        const nodes = await dependencies.resolveSessionTree(sessionID!);
         filterSessionIDs = nodes.map((node) => node.sessionID);
         reportKind = "session_tree";
         sessionTree = { rootSessionID: sessionID!, nodes };
@@ -180,7 +194,7 @@ export async function computeTokenReport(params: ComputeTokenReportParams): Prom
       topModels,
       topSessions,
       generatedAtMs: untilMs,
-    });
+    }, dependencies);
   } catch (error) {
     if (error instanceof SessionNotFoundError) {
       return sessionLookupError(spec.template, untilMs, error);

@@ -12,6 +12,32 @@ function source(path) {
   return existsSync(path) ? readFileSync(path, "utf8") : ""
 }
 
+function relativeImports(code) {
+  return [...code.matchAll(/(?:from\s+|import\s*(?:\(\s*)?|require\s*\(\s*)["'](\.{1,2}\/[^"']+)["']/g)]
+    .map((match) => match[1])
+}
+
+function assertRelativeImports(path, allowed) {
+  const actual = relativeImports(source(path))
+  assert.deepEqual(actual.filter((specifier) => !allowed.includes(specifier)), [], `${path} bypasses the shared computation facade`)
+}
+
+test("relative import allowlists cover static, side-effect, dynamic, and CommonJS paths", () => {
+  assert.deepEqual(relativeImports(`
+    import value from "./static.js"
+    import "./side-effect.js"
+    export { value } from "./exported.js"
+    await import("./dynamic.js")
+    require("./commonjs.js")
+  `), [
+    "./static.js",
+    "./side-effect.js",
+    "./exported.js",
+    "./dynamic.js",
+    "./commonjs.js",
+  ])
+})
+
 test("loadable quota and token entries use the shared facade for computation", () => {
   const quota = source("tui/quota.tsx")
   const home = source("tui/home.tsx")
@@ -20,8 +46,16 @@ test("loadable quota and token entries use the shared facade for computation", (
   assert.match(quota, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(home, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(tokens, /from ["']\.\/shared\/opencode-tools-shared(?:\.js)?["']/)
-  assert.doesNotMatch(`${quota}\n${home}`, /from ["']\.\/providers\//)
-  assert.doesNotMatch(tokens, /from ["']\.\/lib\/tokens\/(?:token-report-data|token-commands|quota-stats|opencode-storage|modelsdev-pricing)/)
+  assertRelativeImports("tui/quota.tsx", [
+    "../shared/opencode-tools-shared.js",
+    "./presentation/renderer.js",
+    "./presentation/types.js",
+  ])
+  assertRelativeImports("tui/home.tsx", ["../shared/opencode-tools-shared.js"])
+  assertRelativeImports("opencode-tools-tokens.ts", [
+    "./shared/opencode-tools-shared",
+    "./lib/tokens/token-report-presenter",
+  ])
 })
 
 test("shared facade exports computation without plugin registration or JSX", () => {
@@ -60,6 +94,60 @@ test("token computation returns semantic data and presentation preserves markdow
   const { computeTokenReport } = await import("../.tmp-test/token-report-data.mjs")
   const { renderTokenReport } = await import("../.tmp-test/token-report-presenter.mjs")
 
+  assert.equal(computeTokenReport.length, 2, "computeTokenReport must accept injected data dependencies")
+
+  const emptyBuckets = { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0 }
+  const aggregateResult = {
+    window: { sinceMs: 1_768_348_800_000, untilMs: 1_768_435_200_000 },
+    totals: {
+      priced: { ...emptyBuckets, input: 120, output: 30 },
+      unknown: emptyBuckets,
+      unpriced: emptyBuckets,
+      costUsd: 0.25,
+      messageCount: 2,
+      sessionCount: 1,
+    },
+    bySourceProvider: [],
+    bySourceModel: [],
+    byModel: [],
+    bySession: [],
+    unknown: [],
+    unpriced: [],
+  }
+  const aggregateCalls = []
+  const successful = await computeTokenReport({
+    command: "tokens_daily",
+    sessionID: "session-1",
+    generatedAtMs: 1_768_435_200_000,
+  }, {
+    aggregateUsage: async (params) => {
+      aggregateCalls.push(params)
+      return aggregateResult
+    },
+    resolveSessionTree: async () => {
+      throw new Error("tokens_daily must not resolve a session tree")
+    },
+  })
+  assert.deepEqual(aggregateCalls, [{
+    sinceMs: 1_768_348_800_000,
+    untilMs: 1_768_435_200_000,
+    sessionID: undefined,
+    sessionIDs: undefined,
+  }])
+  assert.deepEqual(successful, {
+    kind: "report",
+    title: "Tokens used (Last 24 Hours)",
+    result: aggregateResult,
+    topModels: undefined,
+    topSessions: undefined,
+    focusSessionID: "session-1",
+    sessionOnly: undefined,
+    reportKind: undefined,
+    sessionTree: undefined,
+    generatedAtMs: 1_768_435_200_000,
+  })
+  assert.equal("markdown" in successful, false)
+
   const invalid = await computeTokenReport({
     command: "tokens_between",
     arguments: "2026-01-15 2026-01-01",
@@ -95,7 +183,6 @@ test("token computation returns semantic data and presentation preserves markdow
     /\n\nsession_lookup_error:\n- session_id: \(none\)\n- error: Session not found: \(none\)\n- checked_path: \(none\)$/,
   )
 
-  const emptyBuckets = { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0 }
   const report = renderTokenReport({
     kind: "report",
     title: "Tokens used (All Time)",

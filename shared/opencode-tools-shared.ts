@@ -19,6 +19,7 @@ export type {
 } from "../lib/tokens/token-commands";
 export { computeTokenReport } from "../lib/tokens/token-report-data";
 export type {
+  ComputeTokenReportDependencies,
   ComputeTokenReportParams,
   TokenReportData,
 } from "../lib/tokens/token-report-data";
