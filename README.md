@@ -67,41 +67,48 @@ and **OpenAI (ChatGPT Plus/Pro)**.
 
 ## Local-only usage
 
-This plugin is loaded directly by OpenCode — no build step, no npm publish.
+The plugins are built and loaded only from local files. This package is not
+published to npm, and OpenCode is never configured with an npm package spec.
 
-### How TUI plugins load
+### Build and deploy
 
-TUI plugins (`.tsx` files exporting a `tui()` function) are **not** auto-scanned
-from `.opencode/plugins/` (that directory is for regular hook plugins only).
-They must be registered in `tui.json` via the `plugin` array. The repo-root
-`tui.json` does this:
-
-```json
-{
-  "$schema": "https://opencode.ai/tui.json",
-  "plugin": [
-    "./tui/quota.tsx",
-    "./tui/home.tsx"
-  ]
-}
-```
-
-OpenCode resolves each path relative to `tui.json`, loads the `.tsx` files
-with Bun, and resolves imports (`@opencode-ai/plugin/tui`, `@opentui/*`,
-`solid-js`) from the repo's `node_modules`.
-
-### `/tokens_*` commands
-
-The server plugin is bundled into `.opencode/plugins/opencode-tools-tokens.ts` via esbuild.
-Build it with:
+Build the three minified ESM artifacts:
 
 ```bash
-npm run build:opencode-tools
+npm run build:plugins
 ```
 
-The plugin auto-registers `/tokens_*` slash commands via the `config` hook.
-No `opencode.json` registration needed — files in `.opencode/plugins/` are
-auto-scanned at startup.
+Deploy to this repository's `.opencode/` directory or the resolved global
+OpenCode config directory (`$XDG_CONFIG_HOME/opencode`, defaulting to
+`~/.config/opencode`):
+
+```bash
+npm run deploy:local
+npm run deploy:global
+```
+
+Both deploy commands rebuild first, replace obsolete opencode-tools/quota/token
+entries, and preserve unrelated TUI plugins. Repeating either command produces
+the same files and configuration. Fully restart OpenCode after deployment.
+
+### Artifact layout
+
+```text
+dist/
+├── opencode-tools-shared.js
+├── opencode-tools-quota.js
+└── plugins/
+    └── opencode-tools-tokens.js
+```
+
+| File | Responsibility |
+| --- | --- |
+| `opencode-tools-shared.js` | Imported-only quota/provider and token computation; it is not registered as a plugin. |
+| `opencode-tools-quota.js` | Sole TUI plugin; registers sidebar and home slots and imports `./opencode-tools-shared.js`. |
+| `plugins/opencode-tools-tokens.js` | Regular OpenCode plugin for `/tokens_*`; imports `../opencode-tools-shared.js`. |
+
+`solid-js`, `@opentui/*`, `@opencode-ai/plugin`, host SDK modules, and
+Node/Bun built-ins remain external and are provided by the OpenCode host.
 
 ### Session title plugin
 
@@ -112,7 +119,7 @@ startup. Restart OpenCode after deployment. The plugin generates a one-time,
 3-8 word title from the first message's selected model; later messages do not
 change that title.
 
-### Files
+### Source files
 
 | File                        | Purpose                                                               |
 | --------------------------- | --------------------------------------------------------------------- |
@@ -121,36 +128,20 @@ change that title.
 | `tui/providers/`            | Z.AI and OpenAI provider adapters                                     |
 | `opencode-tools-tokens.ts`  | Server plugin entry for `/tokens_*` commands                          |
 | `lib/tokens/`               | Vendored token reporting library ([upstream](https://github.com/slkiser/opencode-quota), MIT) |
-| `build-opencode-tools.mjs`  | esbuild bundler producing `.opencode/plugins/opencode-tools-tokens.ts` |
-| `tui.json`                  | Aggregate and homepage TUI registrations                              |
+| `build-plugins.mjs`         | Builds the three minified local ESM artifacts                          |
+| `deploy-plugins.mjs`        | Idempotently deploys local/global artifacts and updates `tui.json`    |
 
 ### Edit workflow
 
-Edit the relevant file in `tui/`, then restart OpenCode to reload.
+Edit the relevant source, redeploy, then fully restart OpenCode to reload.
 
 ```bash
 npm install       # install/refresh deps in node_modules
 npm run typecheck # tsc --noEmit (informational; runtime resolves via Bun)
-npm run build:opencode-tools # rebuild the /tokens_* server plugin
+npm run build:plugins # rebuild all three local artifacts
+npm run deploy:local # rebuild and deploy into this repository
 npm test          # run tests
 ```
-
-### Global install (optional)
-
-To use across all projects, copy the `tui/` directory and register the entries in your
-global `tui.json` (`~/.config/opencode/tui.json` or `.jsonc`):
-
-```json
-{
-  "plugin": [
-    "~/path/to/tui/quota.tsx",
-    "~/path/to/tui/home.tsx"
-  ]
-}
-```
-
-For `/tokens_*` commands, copy the built `.opencode/plugins/opencode-tools-tokens.ts` to
-`~/.config/opencode/plugins/opencode-tools-tokens.ts`.
 
 ## Breaking migration
 
