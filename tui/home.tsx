@@ -58,6 +58,8 @@ const tui: TuiPlugin = async (api) => {
       },
     },
   })
+
+  return () => providers.forEach((provider) => provider.dispose())
 }
 
 const plugin: TuiPluginModule & { id: string } = {

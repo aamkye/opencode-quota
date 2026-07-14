@@ -28,4 +28,5 @@ export interface QuotaProviderAdapter {
   freshness: Accessor<ProviderFreshness>
   refresh(): Promise<void>
   setSessionID(sessionID: string): void
+  dispose(): void
 }

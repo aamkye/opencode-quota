@@ -1,12 +1,18 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
+import { copyFile, mkdtemp, readFile, rm } from "node:fs/promises"
 import { builtinModules, registerHooks } from "node:module"
+import { tmpdir } from "node:os"
 import { pathToFileURL } from "node:url"
 import { resolve } from "node:path"
 import test, { before } from "node:test"
+import { createEffect, createRoot } from "solid-js/dist/solid.js"
 
 const root = resolve(import.meta.dirname, "..")
 const runtimeModulePrefix = "opentui:runtime-module:"
+const hostRuntimeUrls = {
+  "solid-js": import.meta.resolve("solid-js/dist/solid.js"),
+  "@opentui/solid/jsx-runtime": import.meta.resolve("@opentui/solid/jsx-runtime"),
+}
 const expectedArtifacts = [
   "dist/opencode-tools-shared.js",
   "dist/opencode-tools-quota.js",
@@ -16,7 +22,8 @@ const expectedArtifacts = [
 registerHooks({
   resolve(specifier, context, nextResolve) {
     if (specifier.startsWith(runtimeModulePrefix)) {
-      return nextResolve(decodeURIComponent(specifier.slice(runtimeModulePrefix.length)), context)
+      const hostModule = decodeURIComponent(specifier.slice(runtimeModulePrefix.length))
+      return nextResolve(hostRuntimeUrls[hostModule] ?? hostModule, context)
     }
     return nextResolve(specifier, context)
   },
@@ -123,30 +130,94 @@ test("artifacts expose one combined TUI plugin, one regular plugin function, and
   assert.equal(typeof tokens.default, "function")
 })
 
-test("combined TUI artifact activates from a bare config entry", async (t) => {
-  const quota = await import(`${pathToFileURL(resolve(root, expectedArtifacts[1])).href}?activation=${Date.now()}`)
+test("combined TUI artifact activates hermetically and shares provider reactivity", async () => {
+  const isolatedRoot = await mkdtemp(resolve(tmpdir(), "opencode-tools-artifact-"))
+  const isolatedShared = resolve(isolatedRoot, "opencode-tools-shared.js")
+  const isolatedQuota = resolve(isolatedRoot, "opencode-tools-quota.js")
+  await Promise.all([
+    copyFile(resolve(root, expectedArtifacts[0]), isolatedShared),
+    copyFile(resolve(root, expectedArtifacts[1]), isolatedQuota),
+  ])
+
+  const originalEnvironment = {
+    HOME: process.env.HOME,
+    XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
+    XDG_DATA_HOME: process.env.XDG_DATA_HOME,
+  }
+  process.env.HOME = isolatedRoot
+  process.env.XDG_CONFIG_HOME = isolatedRoot
+  process.env.XDG_DATA_HOME = isolatedRoot
+
   const registrations = []
   const originalFetch = globalThis.fetch
-  globalThis.fetch = async () => ({ ok: false })
-  t.after(() => {
-    globalThis.fetch = originalFetch
-  })
+  const fetchCalls = []
+  globalThis.fetch = async (url, options) => {
+    fetchCalls.push({ url: String(url), authorization: options?.headers?.Authorization })
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        plan_type: "plus",
+        rate_limit: {
+          primary_window: { used_percent: 25, reset_after_seconds: 3_600 },
+          secondary_window: null,
+          limit_reached: false,
+        },
+        code_review_rate_limit: { primary_window: null },
+        credits: { balance: null, unlimited: false },
+      }),
+    }
+  }
 
   const api = {
     slots: { register(input) { registrations.push(input) } },
     theme: { current: {} },
     state: {
-      provider: [],
+      provider: [{ id: "openai", key: "artifact-test-token" }],
       session: { messages() { return [] } },
       part() { return [] },
     },
     kv: { get() {}, set() {} },
   }
 
-  await quota.default.tui(api, undefined)
+  let disposeActivation
+  let disposeProbeRoot
+  let provider
+  const freshness = []
+  try {
+    const shared = await import(`${pathToFileURL(isolatedShared).href}?activation=${Date.now()}`)
+    const quota = await import(`${pathToFileURL(isolatedQuota).href}?activation=${Date.now()}`)
+    provider = shared.createOpenAiProvider(api)
+    createRoot((dispose) => {
+      disposeProbeRoot = dispose
+      createEffect(() => freshness.push(provider.freshness()))
+    })
 
-  assert.deepEqual(
-    registrations.map((registration) => Object.keys(registration.slots)),
-    [["sidebar_content"], ["home_bottom"]],
-  )
+    disposeActivation = await quota.default.tui(api, undefined)
+    for (let attempt = 0; attempt < 50 && freshness.at(-1) !== "ready"; attempt += 1) {
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+
+    assert.deepEqual(freshness, ["loading", "ready"])
+    assert.equal(typeof provider.dispose, "function")
+    assert.equal(typeof disposeActivation, "function")
+    assert.ok(fetchCalls.length >= 3)
+    assert.ok(fetchCalls.every((call) => call.url === "https://chatgpt.com/backend-api/wham/usage"))
+    assert.ok(fetchCalls.every((call) => call.authorization === "Bearer artifact-test-token"))
+    assert.deepEqual(
+      registrations.map((registration) => Object.keys(registration.slots)),
+      [["sidebar_content"], ["home_bottom"]],
+    )
+  } finally {
+    disposeActivation?.()
+    provider?.dispose?.()
+    disposeProbeRoot?.()
+    await new Promise((resolve) => setImmediate(resolve))
+    globalThis.fetch = originalFetch
+    for (const [key, value] of Object.entries(originalEnvironment)) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+    await rm(isolatedRoot, { recursive: true, force: true })
+  }
 })

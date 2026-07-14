@@ -369,7 +369,7 @@ function freshnessFor(phase: ZaiPanelPhase): ProviderFreshness {
 }
 
 export function createZaiProvider(api: TuiPluginApi): QuotaProviderAdapter {
-  return createRoot(() => {
+  return createRoot((dispose) => {
   const [apiKey, setApiKey] = createSignal<string | null>(findZaiKeyFromFiles())
   const [quotaData, setQuotaData] = createSignal<ZaiQuotaData | null>(null)
   const [phase, setPhase] = createSignal<ZaiPanelPhase>("loading")
@@ -491,6 +491,7 @@ export function createZaiProvider(api: TuiPluginApi): QuotaProviderAdapter {
     freshness: () => freshnessFor(phase()),
     refresh,
     setSessionID,
+    dispose,
   }
   })
 }

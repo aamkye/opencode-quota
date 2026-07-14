@@ -249,7 +249,7 @@ function freshnessFor(phase: OpenAiPanelPhase): ProviderFreshness {
 }
 
 export function createOpenAiProvider(api: TuiPluginApi): QuotaProviderAdapter {
-  return createRoot(() => {
+  return createRoot((dispose) => {
     const [auth, setAuth] = createSignal<OpenAiAuthEntry | null>(findOpenAiAuthFromFiles())
     const [quotaData, setQuotaData] = createSignal<OpenAiQuotaData | null>(null)
     const [phase, setPhase] = createSignal<OpenAiPanelPhase>("loading")
@@ -328,6 +328,7 @@ export function createOpenAiProvider(api: TuiPluginApi): QuotaProviderAdapter {
       setSessionID(sessionID: string): void {
         void sessionID
       },
+      dispose,
     }
   })
 }

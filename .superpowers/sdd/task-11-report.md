@@ -134,3 +134,38 @@ unsubscribed from shared provider updates.
 The quota and token entries still import the explicit relative shared artifact,
 and Solid, OpenTUI, OpenCode SDK/plugin modules, Bun modules, database bindings,
 and built-ins remain external rather than bundled.
+
+## Final Code-Fix Round: Hermetic Artifact Activation
+
+The artifact activation test previously restored `globalThis.fetch` as soon as
+slot registration completed, while provider effects and their unowned Solid
+roots could continue running. It also loaded provider credential paths from the
+developer environment, and the shared `loading -> ready` runtime probe existed
+only as narrative evidence.
+
+- RED: `npm run build:plugins && node --test tests/plugin-build.test.mjs` passed
+  6 tests and failed the activation test because neither a provider adapter nor
+  the combined TUI activation exposed a root disposer.
+- GREEN: provider adapters now retain their `createRoot` disposer; quota and
+  home activations aggregate provider cleanup; and the built combined entry
+  returns one cleanup function. The focused artifact suite passes 7/7.
+- Hermetic setup: the test copies the built shared/quota pair to a temporary
+  root, points `HOME`, `XDG_CONFIG_HOME`, and `XDG_DATA_HOME` there before module
+  evaluation, and supplies only a synthetic OpenAI provider token and complete
+  local response. It asserts every intercepted request targets the OpenAI usage
+  endpoint with that synthetic token.
+- Reactive evidence: a host-runtime `createEffect` now observes the built shared
+  provider transition exactly `loading -> ready` in the automated artifact
+  test. The test waits for that transition, disposes the probe, provider, and
+  combined activation roots, lets cleanup settle, and only then restores fetch,
+  environment variables, and temporary files.
+
+Final evidence:
+
+- `npm run typecheck && npm test && npm run build:plugins`: exit 0; 106 tests
+  passed and all three artifacts built.
+- `node --test tests/shared-boundary.test.mjs tests/plugin-build.test.mjs tests/plugin-deploy.test.mjs`:
+  exit 0; 14 tests passed.
+- Three consecutive `node --test tests/plugin-build.test.mjs` runs: each passed
+  7/7.
+- `git diff --check`: exit 0.

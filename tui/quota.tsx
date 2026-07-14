@@ -202,6 +202,8 @@ const tui: TuiPlugin = async (api, rawOptions) => {
       },
     },
   })
+
+  return () => providers.forEach((provider) => provider.dispose())
 }
 
 const plugin: TuiPluginModule & { id: string } = {
