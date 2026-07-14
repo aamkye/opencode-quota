@@ -342,9 +342,9 @@ function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> 
       return (
         <box flexDirection="row" width="100%">
           <text width={3}>{props.item.label}</text>
-          <box flexDirection="row" flexBasis={0} flexGrow={1}>
-            <text flexBasis={0} flexGrow={filled} fg={color(props.item.status)}>{"█".repeat(100)}</text>
-            <text flexBasis={0} flexGrow={100 - filled} fg={props.theme().textMuted}>{"░".repeat(100)}</text>
+          <box flexDirection="row" flexBasis={0} flexGrow={1} height={1} overflow="hidden">
+            <text flexBasis={0} flexGrow={filled} height={1} wrapMode="none" fg={color(props.item.status)}>{"█".repeat(100)}</text>
+            <text flexBasis={0} flexGrow={100 - filled} height={1} wrapMode="none" fg={props.theme().textMuted}>{"░".repeat(100)}</text>
           </box>
           <text width={1}> </text>
           <text width={4} fg={color(props.item.status)}>{props.item.percent.padStart(4)}</text>
