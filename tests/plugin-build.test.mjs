@@ -29,6 +29,36 @@ registerHooks({
   },
 })
 
+function createHostLifecycle() {
+  const controller = new AbortController()
+  let cleanup = []
+  let disposed = false
+
+  return {
+    api: {
+      signal: controller.signal,
+      onDispose(fn) {
+        if (disposed) return () => {}
+        cleanup.push(fn)
+        return () => {
+          cleanup = cleanup.filter((candidate) => candidate !== fn)
+        }
+      },
+    },
+    count() {
+      return cleanup.length
+    },
+    async dispose() {
+      if (disposed) return
+      disposed = true
+      controller.abort()
+      const queue = cleanup.reverse()
+      cleanup = []
+      for (const fn of queue) await fn()
+    },
+  }
+}
+
 let buildResults
 let contents
 
@@ -169,8 +199,10 @@ test("combined TUI artifact activates hermetically and shares provider reactivit
     }
   }
 
+  const lifecycle = createHostLifecycle()
   const api = {
     slots: { register(input) { registrations.push(input) } },
+    lifecycle: lifecycle.api,
     theme: { current: {} },
     state: {
       provider: [{ id: "openai", key: "artifact-test-token" }],
@@ -180,7 +212,7 @@ test("combined TUI artifact activates hermetically and shares provider reactivit
     kv: { get() {}, set() {} },
   }
 
-  let disposeActivation
+  let failedLifecycle
   let disposeProbeRoot
   let provider
   const freshness = []
@@ -193,14 +225,15 @@ test("combined TUI artifact activates hermetically and shares provider reactivit
       createEffect(() => freshness.push(provider.freshness()))
     })
 
-    disposeActivation = await quota.default.tui(api, undefined)
+    const activationResult = await quota.default.tui(api, undefined)
     for (let attempt = 0; attempt < 50 && freshness.at(-1) !== "ready"; attempt += 1) {
       await new Promise((resolve) => setImmediate(resolve))
     }
 
     assert.deepEqual(freshness, ["loading", "ready"])
     assert.equal(typeof provider.dispose, "function")
-    assert.equal(typeof disposeActivation, "function")
+    assert.equal(activationResult, undefined)
+    assert.equal(lifecycle.count(), 2)
     assert.ok(fetchCalls.length >= 3)
     assert.ok(fetchCalls.every((call) => call.url === "https://chatgpt.com/backend-api/wham/usage"))
     assert.ok(fetchCalls.every((call) => call.authorization === "Bearer artifact-test-token"))
@@ -208,8 +241,71 @@ test("combined TUI artifact activates hermetically and shares provider reactivit
       registrations.map((registration) => Object.keys(registration.slots)),
       [["sidebar_content"], ["home_bottom"]],
     )
+
+    failedLifecycle = createHostLifecycle()
+    let registrationCount = 0
+    const failingApi = {
+      ...api,
+      lifecycle: failedLifecycle.api,
+      slots: {
+        register() {
+          registrationCount += 1
+          if (registrationCount === 2) throw new Error("home slot registration failed")
+        },
+      },
+    }
+
+    await assert.rejects(
+      quota.default.tui(failingApi, undefined),
+      /home slot registration failed/,
+    )
+    assert.equal(failedLifecycle.count(), 2)
+    await failedLifecycle.dispose()
+    assert.equal(failedLifecycle.api.signal.aborted, true)
+
+    const originalSetInterval = globalThis.setInterval
+    const originalClearInterval = globalThis.clearInterval
+    const activeIntervals = new Set()
+    let intervalCount = 0
+    globalThis.setInterval = (...args) => {
+      intervalCount += 1
+      if (intervalCount === 2) throw new Error("OpenAI provider construction failed")
+      const timer = originalSetInterval(...args)
+      activeIntervals.add(timer)
+      return timer
+    }
+    globalThis.clearInterval = (timer) => {
+      activeIntervals.delete(timer)
+      return originalClearInterval(timer)
+    }
+
+    const providerFailureLifecycle = createHostLifecycle()
+    try {
+      const providerFailureApi = {
+        ...api,
+        lifecycle: providerFailureLifecycle.api,
+        state: {
+          ...api.state,
+          provider: [],
+        },
+      }
+
+      await assert.rejects(
+        quota.default.tui(providerFailureApi, undefined),
+        /OpenAI provider construction failed/,
+      )
+      assert.ok(activeIntervals.size > 0)
+      await providerFailureLifecycle.dispose()
+      assert.equal(activeIntervals.size, 0)
+    } finally {
+      await providerFailureLifecycle.dispose()
+      for (const timer of activeIntervals) originalClearInterval(timer)
+      globalThis.setInterval = originalSetInterval
+      globalThis.clearInterval = originalClearInterval
+    }
   } finally {
-    disposeActivation?.()
+    await failedLifecycle?.dispose()
+    await lifecycle.dispose()
     provider?.dispose?.()
     disposeProbeRoot?.()
     await new Promise((resolve) => setImmediate(resolve))

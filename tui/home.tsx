@@ -41,7 +41,10 @@ function HomeQuotaLine(props: { summary: HomeQuotaSummary; theme: () => { error:
 }
 
 const tui: TuiPlugin = async (api) => {
-  const providers: QuotaProviderAdapter[] = [createZaiProvider(api), createOpenAiProvider(api)]
+  const providers: QuotaProviderAdapter[] = []
+  api.lifecycle.onDispose(() => providers.forEach((provider) => provider.dispose()))
+  providers.push(createZaiProvider(api))
+  providers.push(createOpenAiProvider(api))
 
   api.slots.register({
     // A distinct home slot preserves the compact provider summaries during initial loading.
@@ -58,8 +61,6 @@ const tui: TuiPlugin = async (api) => {
       },
     },
   })
-
-  return () => providers.forEach((provider) => provider.dispose())
 }
 
 const plugin: TuiPluginModule & { id: string } = {

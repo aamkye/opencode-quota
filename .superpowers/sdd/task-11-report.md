@@ -169,3 +169,45 @@ Final evidence:
 - Three consecutive `node --test tests/plugin-build.test.mjs` runs: each passed
   7/7.
 - `git diff --check`: exit 0.
+
+## Exceptional Final Fix Round: OpenCode Lifecycle Ownership
+
+OpenCode 1.17.20 awaits `plugin.tui(...)` without retaining its return value.
+The host owns plugin cleanup through `api.lifecycle.onDispose`, aborts the
+lifecycle signal before cleanup, and runs registered handlers in reverse order
+both on deactivation and after partial activation failure. The prior combined
+artifact therefore returned a disposer the host ignored, and a failure while
+activating the home sub-plugin could orphan the quota sub-plugin's provider
+roots.
+
+- RED: `node --test tests/plugin-build.test.mjs` passed 6 tests and failed the
+  lifecycle regression because built activation returned a function instead of
+  `undefined`; no host lifecycle cleanup was registered. A focused
+  partial-construction probe then left two provider intervals active when the
+  second provider factory failed.
+- GREEN: quota and home now register provider cleanup through
+  `api.lifecycle.onDispose` before constructing providers. The combined entry
+  awaits both activations and returns nothing. A host-shaped regression verifies
+  two lifecycle handlers on successful activation, ignored-return semantics,
+  signal abortion, cleanup availability when the second slot registration
+  throws, and disposal of the first provider when the second provider factory
+  fails. Providers are added to the cleanup collection sequentially so the first
+  adapter is owned before the second is constructed.
+- Type contract: the local TUI declaration now includes lifecycle `signal` and
+  `onDispose`, defines asynchronous `TuiDispose`, and matches the host's
+  `Promise<void>` plugin activation contract.
+- Provider isolation: OpenAI and Z.AI tests set isolated `HOME`,
+  `XDG_CONFIG_HOME`, and `XDG_DATA_HOME` values before provider module
+  evaluation. Every provider adapter constructed by those tests is disposed
+  through test cleanup.
+
+Final evidence for this round:
+
+- `node tests/compile-presentation.mjs && node --test tests/provider-openai.test.mjs tests/provider-zai.test.mjs tests/quota-composition.test.mjs`:
+  exit 0; 32 tests passed.
+- `npm run typecheck`: exit 0.
+- `npm test`: exit 0; 106 tests passed.
+- `npm run build:plugins`: exit 0; all three minified ESM artifacts built.
+- `node --test tests/shared-boundary.test.mjs tests/plugin-build.test.mjs tests/plugin-deploy.test.mjs`:
+  exit 0; 14 tests passed.
+- `git diff --check`: exit 0 with no output.

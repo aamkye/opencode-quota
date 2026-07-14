@@ -49,6 +49,7 @@ function item(model, id) {
 
 async function aggregatePanel(t, options) {
   const registrations = []
+  const cleanup = []
   const originalFetch = globalThis.fetch
   const originalReact = globalThis.React
   const originalError = console.error
@@ -77,11 +78,19 @@ async function aggregatePanel(t, options) {
       part: () => [],
     },
     kv: { get: () => undefined, set: () => {} },
+    lifecycle: {
+      signal: new AbortController().signal,
+      onDispose(fn) {
+        cleanup.push(fn)
+        return () => {}
+      },
+    },
     theme: { current: { error: "error", warning: "warning", success: "success", text: "text", textMuted: "muted" } },
     slots: { register: (registration) => registrations.push(registration) },
   }
 
   await quotaPlugin.tui(api, options)
+  t.after(() => cleanup.reverse().forEach((dispose) => dispose()))
   await new Promise((resolve) => setImmediate(resolve))
   const element = registrations[0].slots.sidebar_content({}, { session_id: "session-1" })
   return element.props.model()

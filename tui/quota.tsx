@@ -187,7 +187,10 @@ function selectedProviderID(api: TuiPluginApi, providers: readonly QuotaProvider
 }
 
 const tui: TuiPlugin = async (api, rawOptions) => {
-  const providers = [createZaiProvider(api), createOpenAiProvider(api)]
+  const providers: QuotaProviderAdapter[] = []
+  api.lifecycle.onDispose(() => providers.forEach((provider) => provider.dispose()))
+  providers.push(createZaiProvider(api))
+  providers.push(createOpenAiProvider(api))
   const options = pluginOptions(rawOptions)
   const model = createMemo(() => composeQuotaPanel(selectedProviderID(api, providers), providers, options))
   const theme = () => api.theme.current as PanelTheme
@@ -202,8 +205,6 @@ const tui: TuiPlugin = async (api, rawOptions) => {
       },
     },
   })
-
-  return () => providers.forEach((provider) => provider.dispose())
 }
 
 const plugin: TuiPluginModule & { id: string } = {

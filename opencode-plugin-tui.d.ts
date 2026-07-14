@@ -30,13 +30,17 @@ declare module "@opencode-ai/plugin/tui" {
       get<T>(key: string, fallback: T): T
       set<T>(key: string, value: T): void
     }
+    lifecycle: {
+      readonly signal: AbortSignal
+      onDispose(fn: TuiDispose): () => void
+    }
   }
 
   export type TuiPluginOptions = Record<string, unknown>
 
-  export type TuiPluginCleanup = () => void
+  export type TuiDispose = () => void | Promise<void>
 
-  export type TuiPlugin = (api: TuiPluginApi, options?: TuiPluginOptions) => void | TuiPluginCleanup | Promise<void | TuiPluginCleanup>
+  export type TuiPlugin = (api: TuiPluginApi, options: TuiPluginOptions | undefined, meta: unknown) => Promise<void>
 
   export interface TuiPluginModule {
     tui: TuiPlugin

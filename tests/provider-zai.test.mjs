@@ -1,8 +1,28 @@
 import assert from "node:assert/strict"
-import { existsSync, readFileSync } from "node:fs"
-import test from "node:test"
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { resolve } from "node:path"
+import test, { after } from "node:test"
+
+const originalProviderEnvironment = {
+  HOME: process.env.HOME,
+  XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
+  XDG_DATA_HOME: process.env.XDG_DATA_HOME,
+}
+const isolatedProviderHome = mkdtempSync(resolve(tmpdir(), "opencode-tools-zai-provider-"))
+process.env.HOME = isolatedProviderHome
+process.env.XDG_CONFIG_HOME = isolatedProviderHome
+process.env.XDG_DATA_HOME = isolatedProviderHome
 
 const { createZaiProvider, mapZaiPanelState } = await import("../.tmp-test/provider-zai.mjs")
+
+after(() => {
+  for (const [key, value] of Object.entries(originalProviderEnvironment)) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+  rmSync(isolatedProviderHome, { recursive: true, force: true })
+})
 
 const now = Date.UTC(2026, 6, 13, 6, 0, 0)
 
@@ -58,6 +78,12 @@ function adapterApi(overrides = {}) {
     kv: { get: () => undefined, set: () => {} },
     ...overrides,
   }
+}
+
+function createTestAdapter(t, api = adapterApi()) {
+  const adapter = createZaiProvider(api)
+  t.after(() => adapter.dispose())
+  return adapter
 }
 
 function installFakeClock(t, start) {
@@ -200,7 +226,7 @@ test("exposes a framework-only provider adapter and semantic home summary", () =
   assert.equal(typeof createZaiProvider, "function")
 })
 
-test("refreshes selected Z.AI quota when constructed outside a component owner", async () => {
+test("refreshes selected Z.AI quota when constructed outside a component owner", async (t) => {
   const originalFetch = globalThis.fetch
   globalThis.fetch = async () => ({
     ok: true,
@@ -221,13 +247,12 @@ test("refreshes selected Z.AI quota when constructed outside a component owner",
     kv: { get: () => undefined, set: () => {} },
   }
 
-  try {
-    const adapter = createZaiProvider(api)
-    await new Promise((resolve) => setTimeout(resolve, 20))
-    assert.equal(item(adapter.panel(), "zai:header").title, "Z.AI: Pro")
-  } finally {
+  t.after(() => {
     globalThis.fetch = originalFetch
-  }
+  })
+  const adapter = createTestAdapter(t, api)
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  assert.equal(item(adapter.panel(), "zai:header").title, "Z.AI: Pro")
 })
 
 test("exposes reactive provider freshness alongside the compact Z.AI home summary", async (t) => {
@@ -238,7 +263,7 @@ test("exposes reactive provider freshness alongside the compact Z.AI home summar
     globalThis.fetch = originalFetch
   })
 
-  const adapter = createZaiProvider(adapterApi())
+  const adapter = createTestAdapter(t)
   await adapter.refresh()
   assert.equal(adapter.freshness(), "ready")
   assert.deepEqual(adapter.home(), { provider: "Z.AI", plan: "Pro", primaryPct: 75, secondaryPct: undefined })
@@ -261,7 +286,7 @@ test("schedules a quota refresh at the 5H reset boundary", async (t) => {
     globalThis.fetch = originalFetch
   })
 
-  const adapter = createZaiProvider(adapterApi())
+  const adapter = createTestAdapter(t)
   await adapter.refresh()
   const boundary = clock.timeouts.find((timer) => timer.active && timer.delay === 15 * 60 * 1000)
 
@@ -280,7 +305,7 @@ test("expires stale quota data after the stale window", async (t) => {
     globalThis.fetch = originalFetch
   })
 
-  const adapter = createZaiProvider(adapterApi())
+  const adapter = createTestAdapter(t)
   await adapter.refresh()
   clock.advance(10 * 60 * 1000 + 1)
   const tick = clock.intervals.find((timer) => timer.active && timer.delay === 1_000)
@@ -299,7 +324,7 @@ test("uses a reset timestamp from session messages when quota data is unavailabl
     globalThis.fetch = originalFetch
   })
 
-  const adapter = createZaiProvider(adapterApi({
+  const adapter = createTestAdapter(t, adapterApi({
     state: {
       provider: [{ id: "zai-coding-plan", key: "test-key" }],
       session: { messages: () => [{ id: "message-1" }] },

@@ -1,8 +1,28 @@
 import assert from "node:assert/strict"
-import { existsSync, readFileSync } from "node:fs"
-import test from "node:test"
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { resolve } from "node:path"
+import test, { after } from "node:test"
+
+const originalProviderEnvironment = {
+  HOME: process.env.HOME,
+  XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
+  XDG_DATA_HOME: process.env.XDG_DATA_HOME,
+}
+const isolatedProviderHome = mkdtempSync(resolve(tmpdir(), "opencode-tools-openai-provider-"))
+process.env.HOME = isolatedProviderHome
+process.env.XDG_CONFIG_HOME = isolatedProviderHome
+process.env.XDG_DATA_HOME = isolatedProviderHome
 
 const { createOpenAiProvider, fetchOpenAiQuota, mapOpenAiPanelState } = await import("../.tmp-test/provider-openai.mjs")
+
+after(() => {
+  for (const [key, value] of Object.entries(originalProviderEnvironment)) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+  rmSync(isolatedProviderHome, { recursive: true, force: true })
+})
 
 const now = Date.UTC(2026, 6, 13, 6, 0, 0)
 
@@ -52,6 +72,12 @@ function adapterApi() {
     },
     kv: { get: () => undefined, set: () => {} },
   }
+}
+
+function createTestAdapter(t, api = adapterApi()) {
+  const adapter = createOpenAiProvider(api)
+  t.after(() => adapter.dispose())
+  return adapter
 }
 
 function installFakeClock(t, start) {
@@ -228,7 +254,7 @@ test("exposes reactive freshness and omits the legacy home line while OpenAI dat
     globalThis.fetch = originalFetch
   })
 
-  const adapter = createOpenAiProvider(adapterApi())
+  const adapter = createTestAdapter(t)
   await adapter.refresh()
 
   assert.equal(adapter.freshness(), "ready")
@@ -249,7 +275,7 @@ test("expires stale OpenAI data after the stale window", async (t) => {
     globalThis.fetch = originalFetch
   })
 
-  const adapter = createOpenAiProvider(adapterApi())
+  const adapter = createTestAdapter(t)
   await adapter.refresh()
   clock.advance(10 * 60 * 1_000 + 1)
   const tick = clock.intervals.find((timer) => timer.active && timer.delay === 1_000)
@@ -273,7 +299,7 @@ test("refreshes OpenAI quota at its reset boundary", async (t) => {
     globalThis.fetch = originalFetch
   })
 
-  const adapter = createOpenAiProvider(adapterApi())
+  const adapter = createTestAdapter(t)
   await adapter.refresh()
   await flushEffects()
   const boundary = clock.timeouts.find((timer) => timer.active && timer.delay === 15 * 60 * 1_000)
