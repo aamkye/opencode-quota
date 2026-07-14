@@ -13,15 +13,52 @@ import {
 export type PercentageMode = "remaining" | "used"
 export type SortDirection = "desc" | "asc"
 
+export type ProgressColorOptions = {
+  enabled?: boolean
+  errorBelow?: number
+  warningBelow?: number
+}
+
 export type QuotaCompositionOptions = {
   percentageMode?: PercentageMode
   sortDirection?: SortDirection
+  progressColors?: ProgressColorOptions
+}
+
+export type QuotaPluginOptions = {
+  refreshIntervalSeconds?: number
+  progressColors?: ProgressColorOptions
+  otherProviders?: Pick<QuotaCompositionOptions, "percentageMode" | "sortDirection">
+}
+
+type NormalizedProgressColors = {
+  enabled: boolean
+  errorBelow: number
+  warningBelow: number
+}
+
+type NormalizedCompositionOptions = {
+  percentageMode: PercentageMode
+  sortDirection: SortDirection
+  progressColors: NormalizedProgressColors
+}
+
+export type NormalizedQuotaOptions = NormalizedCompositionOptions & {
+  refreshIntervalMs: number
 }
 
 const SIDEBAR_ORDER = 110
-const DEFAULT_OPTIONS: Required<QuotaCompositionOptions> = {
+const DEFAULT_PROGRESS_COLORS: NormalizedProgressColors = {
+  enabled: true,
+  errorBelow: 10,
+  warningBelow: 30,
+}
+
+const DEFAULT_OPTIONS: NormalizedQuotaOptions = {
   percentageMode: "remaining",
   sortDirection: "desc",
+  refreshIntervalMs: 10_000,
+  progressColors: DEFAULT_PROGRESS_COLORS,
 }
 const ADAPTER_ID_BY_PROVIDER_ID: Record<string, string> = {
   "zai-coding-plan": "zai",
@@ -31,26 +68,63 @@ const ADAPTER_ID_BY_PROVIDER_ID: Record<string, string> = {
   opencode: "openai",
 }
 
-function compositionOptions(options?: QuotaCompositionOptions): Required<QuotaCompositionOptions> {
+function threshold(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.min(100, value))
+    : fallback
+}
+
+function normalizeProgressColors(value: unknown): NormalizedProgressColors {
+  if (!value || typeof value !== "object") return DEFAULT_PROGRESS_COLORS
+  const input = value as ProgressColorOptions
+  const errorBelow = threshold(input.errorBelow, DEFAULT_PROGRESS_COLORS.errorBelow)
+  const warningBelow = threshold(input.warningBelow, DEFAULT_PROGRESS_COLORS.warningBelow)
+
   return {
-    percentageMode: options?.percentageMode === "used" ? "used" : "remaining",
-    sortDirection: options?.sortDirection === "asc" ? "asc" : "desc",
+    enabled: typeof input.enabled === "boolean" ? input.enabled : true,
+    ...(errorBelow <= warningBelow
+      ? { errorBelow, warningBelow }
+      : {
+          errorBelow: DEFAULT_PROGRESS_COLORS.errorBelow,
+          warningBelow: DEFAULT_PROGRESS_COLORS.warningBelow,
+        }),
   }
 }
 
-function pluginOptions(value?: TuiPluginOptions): Required<QuotaCompositionOptions> {
-  const otherProviders = value?.otherProviders
-  if (!otherProviders || typeof otherProviders !== "object") return DEFAULT_OPTIONS
-  return compositionOptions(otherProviders as QuotaCompositionOptions)
+function compositionOptions(options?: QuotaCompositionOptions): NormalizedCompositionOptions {
+  return {
+    percentageMode: options?.percentageMode === "used" ? "used" : "remaining",
+    sortDirection: options?.sortDirection === "asc" ? "asc" : "desc",
+    progressColors: normalizeProgressColors(options?.progressColors),
+  }
 }
 
-function metric(remainingPct: number, options: Required<QuotaCompositionOptions>): number {
+export function normalizeQuotaOptions(value?: TuiPluginOptions): NormalizedQuotaOptions {
+  const input = value && typeof value === "object" ? value as QuotaPluginOptions : {}
+  const otherProviders = input.otherProviders && typeof input.otherProviders === "object"
+    ? input.otherProviders
+    : undefined
+  const refreshIntervalMs = typeof input.refreshIntervalSeconds === "number"
+    && Number.isFinite(input.refreshIntervalSeconds)
+    && input.refreshIntervalSeconds > 0
+    ? input.refreshIntervalSeconds * 1_000
+    : DEFAULT_OPTIONS.refreshIntervalMs
+
+  return {
+    ...compositionOptions({ ...otherProviders, progressColors: input.progressColors }),
+    refreshIntervalMs,
+  }
+}
+
+function metric(remainingPct: number, options: NormalizedCompositionOptions): number {
   return options.percentageMode === "used" ? 100 - remainingPct : remainingPct
 }
 
-function percentStatus(value: number, options: Required<QuotaCompositionOptions>): PanelStatus {
-  const remainingPct = options.percentageMode === "used" ? 100 - value : value
-  return remainingPct <= 10 ? "error" : remainingPct <= 30 ? "warning" : "success"
+function percentStatus(remainingPct: number, options: NormalizedCompositionOptions): PanelStatus | undefined {
+  if (!options.progressColors.enabled) return undefined
+  if (remainingPct <= options.progressColors.errorBelow) return "error"
+  if (remainingPct <= options.progressColors.warningBelow) return "warning"
+  return "success"
 }
 
 function windowDuration(label: string): number | null {
@@ -68,7 +142,7 @@ function itemWindowLabel(item: PanelItem): string | null {
   return null
 }
 
-function orderedProviderItems(items: readonly PanelItem[], options: Required<QuotaCompositionOptions>, orderOffset: number): PanelItem[] {
+function orderedProviderItems(items: readonly PanelItem[], options: NormalizedCompositionOptions, orderOffset: number): PanelItem[] {
   return [...items]
     .map((item, index) => {
       const label = itemWindowLabel(item)
@@ -92,12 +166,23 @@ function orderedProviderItems(items: readonly PanelItem[], options: Required<Quo
       return left.item.order - right.item.order || left.item.id.localeCompare(right.item.id)
     })
     .map(({ item }, index) => {
-      if (item.kind !== "progress" || options.percentageMode === "remaining") return { ...item, order: orderOffset + index }
-      return { ...item, order: orderOffset + index, value: Math.max(0, item.total - item.value) }
+      if (item.kind !== "progress") return { ...item, order: orderOffset + index }
+      const { status: _providerStatus, ...progress } = item
+      const remainingPct = item.total > 0 ? (item.value / item.total) * 100 : 0
+      const status = percentStatus(remainingPct, options)
+      const value = options.percentageMode === "used"
+        ? Math.max(0, item.total - item.value)
+        : item.value
+      return {
+        ...progress,
+        order: orderOffset + index,
+        value,
+        ...(status ? { status } : {}),
+      }
     })
 }
 
-function providerItems(provider: QuotaProviderAdapter, options: Required<QuotaCompositionOptions>, orderOffset: number): PanelItem[] {
+function providerItems(provider: QuotaProviderAdapter, options: NormalizedCompositionOptions, orderOffset: number): PanelItem[] {
   return orderedProviderItems(
     sortByOrderThenId(provider.panel().groups).flatMap((group) => group.items),
     options,
@@ -120,13 +205,20 @@ function providerName(provider: QuotaProviderAdapter): string {
   return provider.panel().title
 }
 
-function summary(provider: QuotaProviderAdapter | undefined, options: Required<QuotaCompositionOptions>) {
+function summary(provider: QuotaProviderAdapter | undefined, options: NormalizedCompositionOptions) {
   const home = provider?.home()
   if (!home) return undefined
 
   const primary = metric(home.primaryPct, options)
-  const secondary = typeof home.secondaryPct === "number" ? `/${Math.round(metric(home.secondaryPct, options))}%` : ""
-  return { kind: "text" as const, text: `${Math.round(primary)}%${secondary}`, status: percentStatus(primary, options) }
+  const secondary = typeof home.secondaryPct === "number"
+    ? `/${Math.round(metric(home.secondaryPct, options))}%`
+    : ""
+  const status = percentStatus(home.primaryPct, options)
+  return {
+    kind: "text" as const,
+    text: `${Math.round(primary)}%${secondary}`,
+    ...(status ? { status } : {}),
+  }
 }
 
 export function composeQuotaPanel(
@@ -191,7 +283,7 @@ const tui: TuiPlugin = async (api, rawOptions) => {
   api.lifecycle.onDispose(() => providers.forEach((provider) => provider.dispose()))
   providers.push(createZaiProvider(api))
   providers.push(createOpenAiProvider(api))
-  const options = pluginOptions(rawOptions)
+  const options = normalizeQuotaOptions(rawOptions)
   const model = createMemo(() => composeQuotaPanel(selectedProviderID(api, providers), providers, options))
   const theme = () => api.theme.current as PanelTheme
 

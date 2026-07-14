@@ -14,7 +14,7 @@ process.env.HOME = isolatedProviderHome
 process.env.XDG_CONFIG_HOME = isolatedProviderHome
 process.env.XDG_DATA_HOME = isolatedProviderHome
 
-const { default: quotaPlugin, composeQuotaPanel, selectedQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
+const { default: quotaPlugin, composeQuotaPanel, normalizeQuotaOptions, selectedQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
 const { normalizePanelModel } = await import("../.tmp-test/presentation-renderer.mjs")
 
 after(async () => {
@@ -73,6 +73,67 @@ function headers(group) {
 function item(model, id) {
   return model.groups.flatMap((group) => group.items).find((candidate) => candidate.id === id)
 }
+
+test("normalizes native polling and progress color defaults", () => {
+  assert.deepEqual(normalizeQuotaOptions(), {
+    percentageMode: "remaining",
+    sortDirection: "desc",
+    refreshIntervalMs: 10_000,
+    progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
+  })
+})
+
+test("normalizes custom thresholds and rejects invalid native options", () => {
+  assert.deepEqual(normalizeQuotaOptions({
+    refreshIntervalSeconds: 2.5,
+    progressColors: { enabled: false, errorBelow: -5, warningBelow: 120 },
+    otherProviders: { percentageMode: "used", sortDirection: "asc" },
+  }), {
+    percentageMode: "used",
+    sortDirection: "asc",
+    refreshIntervalMs: 2_500,
+    progressColors: { enabled: false, errorBelow: 0, warningBelow: 100 },
+  })
+
+  assert.deepEqual(normalizeQuotaOptions({
+    refreshIntervalSeconds: 0,
+    progressColors: { enabled: "yes", errorBelow: 80, warningBelow: 20 },
+  }), {
+    percentageMode: "remaining",
+    sortDirection: "desc",
+    refreshIntervalMs: 10_000,
+    progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
+  })
+})
+
+test("colors progress by remaining quota even when displaying used quota", () => {
+  const selected = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 8, secondaryPct: 25 })
+  const model = composeQuotaPanel("zai", [selected], {
+    percentageMode: "used",
+    progressColors: { errorBelow: 10, warningBelow: 30 },
+  })
+
+  assert.equal(item(model, "zai:5H").value, 92)
+  assert.equal(item(model, "zai:5H").status, "error")
+  assert.equal(item(model, "zai:7D").status, "error")
+  assert.equal(model.collapsedSummary.text, "92%/75%")
+  assert.equal(model.collapsedSummary.status, "error")
+})
+
+test("uses custom thresholds and omits semantic status when colors are disabled", () => {
+  const selected = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 40 })
+  const warning = composeQuotaPanel("zai", [selected], {
+    progressColors: { errorBelow: 20, warningBelow: 50 },
+  })
+  const disabled = composeQuotaPanel("zai", [selected], {
+    progressColors: { enabled: false },
+  })
+
+  assert.equal(item(warning, "zai:5H").status, "warning")
+  assert.equal(warning.collapsedSummary.status, "warning")
+  assert.equal("status" in item(disabled, "zai:5H"), false)
+  assert.equal("status" in disabled.collapsedSummary, false)
+})
 
 async function aggregatePanel(t, options) {
   const registrations = []
