@@ -74,12 +74,12 @@ test("mounts responsive width, themed statuses, and optional compact-table ident
 
 test("wires mounted panel and group mouse collapse while the divider follows the parent width", () => {
   const { elements: mounted, dispose } = mountPanel(model)
-  const mouseRows = mounted.filter((element) => element.type === "box" && typeof element.props.onMouseDown === "function")
+  const mouseRows = mounted.filter((element) => element.type === "box" && typeof element.props["on:down"] === "function")
 
   try {
     assert.equal(mouseRows.length, 2)
-    assert.doesNotThrow(() => mouseRows[0].props.onMouseDown())
-    assert.doesNotThrow(() => mouseRows[1].props.onMouseDown())
+    assert.doesNotThrow(() => mouseRows[0].props["on:down"]())
+    assert.doesNotThrow(() => mouseRows[1].props["on:down"]())
     assert.ok(mounted.some((element) => element.type === "box" && element.props.width === "100%" && element.props.height === 1 && element.props.border?.[0] === "top"))
   } finally {
     dispose()
