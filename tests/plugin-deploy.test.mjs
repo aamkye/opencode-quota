@@ -7,6 +7,7 @@ import test, { after, before } from "node:test"
 
 const projectRoot = resolve(import.meta.dirname, "..")
 const obsoleteNamespace = ["opencode", "quota"].join("-")
+const rootOptions = { otherProviders: { percentageMode: "remaining", sortDirection: "asc" } }
 const localOptions = { otherProviders: { percentageMode: "used", sortDirection: "asc" } }
 const globalOptions = { otherProviders: { percentageMode: "remaining", sortDirection: "desc" } }
 const temporaryRoots = []
@@ -96,6 +97,55 @@ test("local deployment builds, cleans managed entries, and is idempotent", async
   ]) {
     assert.equal(first[deployed], await readFile(resolve(projectRoot, built), "utf8"))
   }
+})
+
+test("local deployment merges root and selected .opencode configs without duplicate managed plugins", async () => {
+  const root = await mkdtemp(join(tmpdir(), "opencode-tools-project-"))
+  temporaryRoots.push(root)
+  const configRoot = join(root, ".opencode")
+  await mkdir(configRoot, { recursive: true })
+
+  await writeFile(join(root, "tui.json"), JSON.stringify({
+    $schema: "https://opencode.ai/tui.json",
+    theme: "root-theme",
+    plugin: [
+      "./root-unrelated.js",
+      ["./tui/quota.tsx", rootOptions],
+      "./tui/home.tsx",
+    ],
+  }, null, 2))
+  await writeFile(join(configRoot, "tui.json"), JSON.stringify({
+    $schema: "https://opencode.ai/tui.json",
+    theme: "selected-theme",
+    plugin: [
+      "./selected-unrelated.js",
+      ["./opencode-tools-quota.js", localOptions],
+      "./tui/home.tsx",
+    ],
+  }, null, 2))
+
+  await deployPlugins(configRoot, { logLevel: "silent", projectConfigRoot: root })
+
+  const rootConfig = JSON.parse(await readFile(join(root, "tui.json"), "utf8"))
+  const selectedConfig = JSON.parse(await readFile(join(configRoot, "tui.json"), "utf8"))
+  assert.equal(rootConfig.theme, "root-theme")
+  assert.deepEqual(rootConfig.plugin, ["./root-unrelated.js"])
+  assert.equal(selectedConfig.theme, "selected-theme")
+  assert.deepEqual(selectedConfig.plugin, [
+    "./selected-unrelated.js",
+    ["./opencode-tools-quota.js", localOptions],
+  ])
+
+  const activeManagedEntries = [
+    ...rootConfig.plugin.map((entry) => ({ entry, root })),
+    ...selectedConfig.plugin.map((entry) => ({ entry, root: configRoot })),
+  ].filter(({ entry, root: entryRoot }) => {
+    const spec = Array.isArray(entry) ? entry[0] : entry
+    return resolve(entryRoot, spec) === join(configRoot, "opencode-tools-quota.js")
+      || resolve(entryRoot, spec) === join(root, "tui", "quota.tsx")
+      || resolve(entryRoot, spec) === join(root, "tui", "home.tsx")
+  })
+  assert.equal(activeManagedEntries.length, 1)
 })
 
 test("global config resolution honors XDG_CONFIG_HOME and deploys the same layout", async () => {

@@ -88,8 +88,11 @@ npm run deploy:global
 ```
 
 Both deploy commands rebuild first, replace obsolete opencode-tools/quota/token
-entries, and preserve unrelated TUI plugins. Repeating either command produces
-the same files and configuration. Fully restart OpenCode after deployment.
+entries, and preserve unrelated TUI plugins. Local deployment also removes
+managed source entries from the project-root `tui.json`, because OpenCode loads
+it together with `.opencode/tui.json`; options in the selected `.opencode`
+config take precedence. Repeating either command produces the same files and
+configuration. Fully restart OpenCode after deployment.
 
 ### Artifact layout
 

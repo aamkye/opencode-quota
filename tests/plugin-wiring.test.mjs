@@ -5,15 +5,15 @@ import test from "node:test"
 
 const legacyIdentifier = ["opencode", "quota"].join("-")
 
-test("aggregate and home entries own the TUI slots", () => {
+test("source modules own the TUI slots without root-config activation", () => {
   const pkg = JSON.parse(readFileSync("package.json", "utf8"))
   const tui = JSON.parse(readFileSync("tui.json", "utf8"))
   const tsconfig = JSON.parse(readFileSync("tsconfig.json", "utf8"))
 
   assert.equal(pkg.name, "@aamkye/opencode-tools")
   assert.equal(pkg.files.includes("tui"), true)
-  assert.deepEqual(tui.plugin, ["./tui/quota.tsx", "./tui/home.tsx"])
-  assert.equal(tui.plugin.some((entry) => entry.includes(legacyIdentifier)), false)
+  assert.equal(tui.$schema, "https://opencode.ai/tui.json")
+  assert.equal(tui.plugin, undefined)
   assert.equal(readFileSync("tui/quota.tsx", "utf8").includes("sidebar_content"), true)
   assert.equal(readFileSync("tui/quota.tsx", "utf8").includes("home_bottom"), false)
   assert.equal(readFileSync("tui/home.tsx", "utf8").includes("home_bottom"), true)

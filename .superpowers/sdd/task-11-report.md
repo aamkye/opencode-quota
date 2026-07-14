@@ -241,3 +241,35 @@ pending provider work could continue against restored developer globals.
 - Full verification: `npm test` passed 106/106.
 - Scope: only provider/composition tests changed; production source and built
   artifacts were unchanged.
+
+## Deployment Config Merge Follow-up
+
+Manual smoke testing found that OpenCode loads both the project-root `tui.json`
+and `.opencode/tui.json`. The root config still activated `./tui/quota.tsx` and
+`./tui/home.tsx` while the deployed config activated
+`./opencode-tools-quota.js`, so one local deploy could register both source and
+built implementations.
+
+- RED: `node --test tests/plugin-deploy.test.mjs` passed 3 tests and failed the
+  new two-config deployment regression because both managed source entries
+  remained in the root config.
+- GREEN: local deployment now resolves entries relative to each config's own
+  root, removes only managed entries from the project-root config, preserves
+  unrelated root and selected-config entries, and writes exactly one built
+  quota entry under the selected `.opencode` root. Managed options already in
+  the selected config take precedence over obsolete root-source options.
+- Tracked configuration: root `tui.json` no longer activates source plugins;
+  `.opencode/tui.json` remains the built-artifact activation point after local
+  deployment.
+- Idempotence: two consecutive `npm run deploy:local` commands completed
+  successfully and retained only `./opencode-tools-quota.js` as the managed TUI
+  entry.
+- Focused verification: `node --test tests/plugin-wiring.test.mjs
+  tests/plugin-deploy.test.mjs` passed 6/6.
+- Full verification: `npm run typecheck && npm test && npm run build:plugins`
+  exited 0 with 107/107 tests passing and all three artifacts built.
+- Artifact/deploy verification: `node --test tests/shared-boundary.test.mjs
+  tests/plugin-build.test.mjs tests/plugin-deploy.test.mjs` passed 15/15.
+- Final focused review found no critical or important findings. Interactive
+  OpenCode restart behavior remains covered by the original manual reproduction;
+  the follow-up verifies the corrected merge deterministically.

@@ -87,11 +87,37 @@ async function readTuiConfig(path) {
   }
 }
 
+function cleanManagedEntries(config, configRoot) {
+  const unrelated = []
+  let options
+  let priority = Infinity
+  let removed = false
+
+  for (const entry of Array.isArray(config.plugin) ? config.plugin : []) {
+    const spec = entrySpec(entry)
+    if (!spec || !isManagedSpec(spec, configRoot)) {
+      unrelated.push(entry)
+      continue
+    }
+
+    removed = true
+    const candidatePriority = Array.isArray(entry) && entry.length > 1
+      ? optionsPriority(spec, configRoot)
+      : Infinity
+    if (candidatePriority < priority) {
+      options = entry[1]
+      priority = candidatePriority
+    }
+  }
+
+  return { unrelated, options, priority, removed }
+}
+
 export function resolveGlobalConfigRoot(env = process.env, home = homedir()) {
   return join(env.XDG_CONFIG_HOME?.trim() || join(home, ".config"), "opencode")
 }
 
-export async function deployPlugins(targetRoot, { logLevel = "info" } = {}) {
+export async function deployPlugins(targetRoot, { logLevel = "info", projectConfigRoot } = {}) {
   await buildPlugins({ logLevel })
   await mkdir(join(targetRoot, "plugins"), { recursive: true })
 
@@ -105,26 +131,29 @@ export async function deployPlugins(targetRoot, { logLevel = "info" } = {}) {
 
   const configPath = join(targetRoot, "tui.json")
   const config = await readTuiConfig(configPath)
-  const unrelated = []
-  let options
-  let priority = Infinity
-  for (const entry of Array.isArray(config.plugin) ? config.plugin : []) {
-    const spec = entrySpec(entry)
-    if (!spec || !isManagedSpec(spec, targetRoot)) {
-      unrelated.push(entry)
-      continue
-    }
+  const selected = cleanManagedEntries(config, targetRoot)
+  let fallback
 
-    const candidatePriority = Array.isArray(entry) && entry.length > 1
-      ? optionsPriority(spec, targetRoot)
-      : Infinity
-    if (candidatePriority < priority) {
-      options = entry[1]
-      priority = candidatePriority
+  if (projectConfigRoot && resolve(projectConfigRoot) !== resolve(targetRoot)) {
+    const projectConfigPath = join(projectConfigRoot, "tui.json")
+    try {
+      const projectConfig = await readTuiConfig(projectConfigPath)
+      const project = cleanManagedEntries(projectConfig, projectConfigRoot)
+      fallback = project
+      if (project.removed) {
+        projectConfig.plugin = project.unrelated
+        await writeFile(projectConfigPath, `${JSON.stringify(projectConfig, null, 2)}\n`)
+      }
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error
     }
   }
-  const quotaEntry = priority < Infinity ? ["./opencode-tools-quota.js", options] : "./opencode-tools-quota.js"
-  config.plugin = [...unrelated, quotaEntry]
+
+  const configured = selected.priority < Infinity ? selected : fallback
+  const quotaEntry = configured?.priority < Infinity
+    ? ["./opencode-tools-quota.js", configured.options]
+    : "./opencode-tools-quota.js"
+  config.plugin = [...selected.unrelated, quotaEntry]
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`)
 }
 
@@ -136,7 +165,9 @@ async function main(mode) {
   const targetRoot = mode === "local"
     ? resolve(projectRoot, ".opencode")
     : resolveGlobalConfigRoot()
-  await deployPlugins(targetRoot)
+  await deployPlugins(targetRoot, {
+    projectConfigRoot: mode === "local" ? projectRoot : undefined,
+  })
   console.log(`Deployed opencode-tools plugins to ${targetRoot}`)
 }
 
