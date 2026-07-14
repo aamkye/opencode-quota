@@ -1264,7 +1264,7 @@ git commit -m "fix(tui): configure provider polling interval"
 - Produces: `createQuotaSelection(api, providers): { selectedProviderID: Accessor<string | undefined>; setSessionID(sessionID: string): void }`.
 - Preserves: configured/provider-state selection as fallback and provider titles without model names.
 
-- [ ] **Step 1: Add failing pure selection tests**
+- [x] **Step 1: Add failing pure selection tests**
 
 Import `mountQuotaSelection` from `../.tmp-test/quota-selection.mjs` and import `selectedSessionQuotaProviderID` from `../.tmp-test/quota-composition.mjs` in `tests/quota-composition.test.mjs`. Add `dispose() {}` to the provider fixture, then add:
 
@@ -1286,7 +1286,7 @@ test("resolves the newest supported user model and falls back without usable met
 })
 ```
 
-- [ ] **Step 2: Add a failing reactive refresh/reorder test**
+- [x] **Step 2: Add a failing reactive refresh/reorder test**
 
 Add `onRefresh = async () => {}` to the provider fixture's destructured arguments. Replace its existing `refresh` field and append `dispose`:
 
@@ -1357,7 +1357,7 @@ test("refreshes and reorders when the sidebar session changes provider", async (
 })
 ```
 
-- [ ] **Step 3: Run the focused tests and verify RED**
+- [x] **Step 3: Run active-provider selection focused tests and verify RED**
 
 Run:
 
@@ -1367,7 +1367,7 @@ node tests/compile-presentation.mjs && node --test tests/quota-composition.test.
 
 Expected: FAIL because the session-model helpers do not exist, sidebar selection only reads `api.state.provider`, and no selection effect invokes `refresh()`.
 
-- [ ] **Step 4: Resolve the newest user-message model with fallback**
+- [x] **Step 4: Resolve the newest user-message model with fallback**
 
 Change the Solid import in `tui/quota.tsx`:
 
@@ -1399,7 +1399,7 @@ export function selectedSessionQuotaProviderID(
 }
 ```
 
-- [ ] **Step 5: Add the reactive session selection and one-refresh-per-change effect**
+- [x] **Step 5: Add the reactive session selection and one-refresh-per-change effect**
 
 Add to `tui/quota.tsx`:
 
@@ -1453,7 +1453,7 @@ sidebar_content(_ctx, props) {
 
 Remove the now-unused private `selectedProviderID(api, providers)` wrapper. Keep the provider-ID map entries for `zai-coding-plan`, `openai`, `codex`, `chatgpt`, and `opencode`.
 
-- [ ] **Step 6: Run focused tests and verify GREEN**
+- [x] **Step 6: Run active-provider selection focused tests and verify GREEN**
 
 Run:
 
@@ -1463,7 +1463,7 @@ node tests/compile-presentation.mjs && node --test tests/quota-composition.test.
 
 Expected: all tests PASS; each supported provider change triggers one immediate refresh, the selected provider becomes the first group, other ready/stale providers remain under `Other providers`, unsupported/missing metadata uses provider-state fallback, and no model name enters the panel model.
 
-- [ ] **Step 7: Commit the active-session selection slice**
+- [x] **Step 7: Commit the active-session selection slice**
 
 ```bash
 git add tui/quota.tsx tests/quota-composition.test.mjs
