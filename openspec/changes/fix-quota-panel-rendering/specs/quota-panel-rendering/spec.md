@@ -65,12 +65,17 @@ The quota panel SHALL poll provider APIs at a configurable interval and SHALL de
 
 #### Scenario: Default polling
 - **WHEN** no refresh interval is configured
-- **THEN** each available provider polls at a 10-second interval
+- **THEN** each available non-exhausted provider polls at a 10-second interval
 - **AND** countdown text continues updating once per second
 
 #### Scenario: Custom polling
 - **WHEN** a positive `refreshIntervalSeconds` value is configured
-- **THEN** provider polling uses that interval
+- **THEN** non-exhausted provider polling uses that interval
+
+#### Scenario: Exhausted primary quota
+- **WHEN** a provider's primary quota is exhausted
+- **THEN** regular polling retains the existing five-minute backoff
+- **AND** reset-boundary refresh remains immediate
 
 #### Scenario: Invalid polling configuration
 - **WHEN** the refresh interval is absent, non-numeric, or non-positive

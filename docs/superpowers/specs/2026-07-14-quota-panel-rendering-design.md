@@ -81,7 +81,7 @@ Z.AI maps current Peak/Off-Peak text and semantic status into its header detail.
 
 ## Refresh And Selection Flow
 
-The quota entry normalizes options before constructing adapters and passes `refreshIntervalMs` into both constructors. Each adapter uses it for regular polling while preserving its immediate initial fetch, timeout, stale expiry, one-second state clock, reset-boundary timer, and lifecycle cleanup.
+The quota entry normalizes options before constructing adapters and passes `refreshIntervalMs` into both constructors. Each adapter uses it for non-exhausted polling. Exhausted primary quota retains the existing five-minute backoff. Adapters preserve their immediate initial fetch, timeout, stale expiry, one-second state clock, reset-boundary timer, and lifecycle cleanup.
 
 The sidebar slot writes `session_id` into a Solid signal. A memo reads that session's messages and scans newest-to-oldest for the latest user message with a model provider ID. The existing provider-ID mapping resolves native IDs such as `zai-coding-plan`, `openai`, `codex`, and `chatgpt` to adapter IDs. Configured/provider state remains the fallback.
 

@@ -43,7 +43,7 @@ Only the filled bar segment and percentage receive the threshold status. The lab
 
 ### Refresh from the active session model
 
-Native options expose `refreshIntervalSeconds`, defaulting to 10. The quota entry normalizes invalid or non-positive values to the default and passes milliseconds into both provider adapters. Provider polling uses this interval while countdown rendering continues on its one-second clock and reset-boundary refreshes remain immediate.
+Native options expose `refreshIntervalSeconds`, defaulting to 10. The quota entry normalizes invalid or non-positive values to the default and passes milliseconds into both provider adapters. Non-exhausted provider polling uses this interval while exhausted primary quota retains its five-minute backoff. Countdown rendering continues on its one-second clock and reset-boundary refreshes remain immediate.
 
 The sidebar stores its current session ID in a signal. Composition resolves the active provider from the latest user message's selected model/provider, then falls back to configured/provider state. A selection change refreshes that adapter and moves its provider group above `Other providers`; the panel does not display the model name.
 
