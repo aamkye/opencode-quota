@@ -9,10 +9,12 @@ globalThis.React = {
 
 const { mountPanel } = await import("../.tmp-test/presentation-mounted.mjs")
 
+const fullTitle = "Very long usage overview with enough detail to exceed the normalization fallback width of eighty cells"
+
 const model = {
   id: "usage",
   order: 10,
-  title: "Very long usage overview",
+  title: fullTitle,
   collapsedSummary: { kind: "text", text: "51%", status: "warning" },
   groups: [
     {
@@ -56,26 +58,46 @@ test("mounts responsive framing, bars, reset indentation, and right-aligned stat
 
   try {
     const quotaMarker = text.find((element) => element.props.children === "▼ ")
-    const title = text.find((element) => element.props.children === "Very long usage overview")
+    const title = text.find((element) => element.props.children === fullTitle)
     const providerTitle = text.find((element) => element.props.children === "Primary")
     const providerStatus = text.find((element) => element.props.children === "Limited")
+    const progressLabel = text.find((element) => element.props.children === "5H")
     const filled = text.find((element) => element.props.children === "█".repeat(100))
     const empty = text.find((element) => element.props.children === "░".repeat(100))
     const percent = text.find((element) => element.props.children === " 25%")
     const indent = text.find((element) => element.props.children === "   ")
+    const barContainer = elements.find((element) =>
+      element.type === "box"
+      && element.props.children?.[0] === filled
+      && element.props.children?.[1] === empty)
+    const progressRow = elements.find((element) =>
+      element.type === "box"
+      && element.props.children?.[0] === progressLabel
+      && element.props.children?.[1] === barContainer)
+    const separator = progressRow?.props.children?.[2]
+    const providerRow = elements.find((element) =>
+      element.type === "box"
+      && element.props.children?.[0] === providerTitle
+      && element.props.children?.[1]?.props?.when === "Limited")
 
     assert.equal(quotaMarker?.props.width, 2)
     assert.equal(title?.props.flexBasis, 0)
     assert.equal(title?.props.flexGrow, 1)
+    assert.equal(providerRow?.props.width, "100%")
     assert.equal(providerTitle?.props.flexBasis, 0)
     assert.equal(providerTitle?.props.flexGrow, 1)
     assert.equal(providerStatus?.props.fg, "#ff0000")
+    assert.equal(progressLabel?.props.width, 3)
+    assert.equal(barContainer?.props.flexBasis, 0)
+    assert.equal(barContainer?.props.flexGrow, 1)
     assert.equal(filled?.props.flexBasis, 0)
     assert.equal(filled?.props.flexGrow, 25)
     assert.equal(filled?.props.fg, "#ffaa00")
     assert.equal(empty?.props.flexBasis, 0)
     assert.equal(empty?.props.flexGrow, 75)
     assert.equal(empty?.props.fg, "#888888")
+    assert.equal(separator?.type, "text")
+    assert.equal(separator?.props.width, 1)
     assert.equal(percent?.props.width, 4)
     assert.equal(percent?.props.fg, "#ffaa00")
     assert.equal(indent?.props.width, 3)
