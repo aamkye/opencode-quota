@@ -196,6 +196,29 @@ test("maps ready Z.AI quota into semantic windows, values, and peak status", () 
   assert.equal(item(model, "zai:time-models").kind, "table")
 })
 
+test("inserts one blank display row between the tool reset and usage values", () => {
+  const model = mapZaiPanelState({ phase: "ready", data: quota(), now })
+  const toolItems = model.groups[0].items
+    .slice()
+    .sort((left, right) => left.order - right.order || left.id.localeCompare(right.id))
+    .filter((entry) => entry.id.startsWith("zai:time"))
+
+  assert.deepEqual(toolItems.map((entry) => entry.id), [
+    "zai:time",
+    "zai:time-reset",
+    "zai:time-spacer",
+    "zai:time-used",
+    "zai:time-total",
+    "zai:time-models",
+  ])
+  assert.deepEqual(toolItems[2], {
+    id: "zai:time-spacer",
+    order: 91,
+    kind: "text",
+    text: "",
+  })
+})
+
 test("maps loading and unavailable Z.AI states without hiding the provider", () => {
   assert.equal(item(mapZaiPanelState({ phase: "loading", now }), "zai:header").detail, "Loading Z.AI...")
   assert.equal(item(mapZaiPanelState({ phase: "unavailable", now }), "zai:header").detail, "No Z.AI account linked")

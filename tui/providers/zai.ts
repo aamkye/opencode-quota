@@ -327,8 +327,9 @@ export function mapZaiPanelState(state: ZaiPanelState): PanelModel {
       items.push(
         { id: "zai:time", order: 80, kind: "progress", label: "T", value: time.remainingPct, total: 100 },
         { id: "zai:time-reset", order: 90, kind: "timer", label: "Tool reset", state: timerState(time.remainingPct, time.nextResetEpoch, now), ...(time.nextResetEpoch > 0 ? { epoch: time.nextResetEpoch } : {}) },
-        { id: "zai:time-used", order: 91, kind: "quantity", label: "Tool used", value: time.used, unit: "count" },
-        { id: "zai:time-total", order: 92, kind: "quantity", label: "Tool total", value: time.total, unit: "count" },
+        { id: "zai:time-spacer", order: 91, kind: "text", text: "" },
+        { id: "zai:time-used", order: 92, kind: "quantity", label: "Tool used", value: time.used, unit: "count" },
+        { id: "zai:time-total", order: 93, kind: "quantity", label: "Tool total", value: time.total, unit: "count" },
       )
       const rows = time.usageDetails.filter((detail) => detail.usage > 0)
       if (rows.length) items.push({

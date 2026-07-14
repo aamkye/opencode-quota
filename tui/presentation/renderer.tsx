@@ -287,9 +287,9 @@ export function renderPanelLayout(model: PanelModel, options: RendererLayoutOpti
   const normalized = normalizePanelModel(model, options)
   const collapsed = options.collapsed ?? new Set<string>()
   const panelCollapsed = collapsed.has(`panel:${normalized.id}`)
-  const allocation = normalized.header.allocation
   const title = normalized.header.cells[1]?.text ?? ""
-  const summary = normalized.header.summary
+  const summary = panelCollapsed ? normalized.header.summary : undefined
+  const allocation = allocateHeader(options.availableCells ?? 80, title, summary?.text)
 
   return {
     collapsed: panelCollapsed,
@@ -398,7 +398,7 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Acces
       <box flexDirection="row" width="100%" onMouseDown={() => toggle(`panel:${props.model().id}`)}>
         <text width={2}>{panelCollapsed() ? "▶ " : "▼ "}</text>
         <text flexBasis={0} flexGrow={1}>{props.model().title}</text>
-        <Show when={normalized().header.summary}>
+        <Show when={panelCollapsed() ? normalized().header.summary : undefined}>
           {(summary) => <text fg={summary().status ? props.theme()[summary().status!] : undefined}>{summary().text}</text>}
         </Show>
       </box>

@@ -130,9 +130,7 @@ test("renders allocation-derived header, progress, compact table, and parent-fil
 
   assert.deepEqual(layout.header.cells, [
     { text: "▼ ", width: 2, align: "start" },
-    { text: "Usage…", width: 6, align: "start" },
-    { text: " ", width: 1, align: "start" },
-    { text: "51%/80%", width: 7, align: "end" },
+    { text: "Usage overview", width: 14, align: "start" },
   ])
   assert.deepEqual(layout.groups[0].items[0], {
     kind: "progress",
@@ -160,6 +158,23 @@ test("renders allocation-derived header, progress, compact table, and parent-fil
     ],
   })
   assert.deepEqual(layout.divider, { width: "100%", border: ["top"] })
+})
+
+test("shows the colored end-aligned summary only while the panel is collapsed", () => {
+  const model = {
+    id: "quota",
+    order: 10,
+    title: "Quota",
+    collapsedSummary: { kind: "text", text: "12%", status: "warning" },
+    groups: [],
+  }
+
+  const expanded = renderPanelLayout(model, { availableCells: 16 })
+  const collapsed = renderPanelLayout(model, { availableCells: 16, collapsed: new Set(["panel:quota"]) })
+  const summary = collapsed.header.cells.find((cell) => cell.text.trim() === "12%")
+
+  assert.equal(expanded.header.cells.some((cell) => cell.text.trim() === "12%"), false)
+  assert.deepEqual(summary, { text: "12%", width: 3, align: "end", status: "warning" })
 })
 
 test("keeps panel and group collapse state independent", () => {
