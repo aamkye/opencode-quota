@@ -397,7 +397,7 @@ git commit -m "fix(tui): render quota rows responsively"
 - Produces: `composeQuotaPanel(..., requestedOptions?: QuotaCompositionOptions)` where `QuotaCompositionOptions` includes optional `progressColors`.
 - Produces for Task 5: normalized `refreshIntervalMs: number`, default `10_000`.
 
-- [ ] **Step 1: Add failing default, custom, disabled, and invalid-option tests**
+- [x] **Step 1: Add failing default, custom, disabled, and invalid-option tests**
 
 Import `normalizeQuotaOptions` in `tests/quota-composition.test.mjs`, then add:
 
@@ -464,7 +464,7 @@ test("uses custom thresholds and omits semantic status when colors are disabled"
 })
 ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run quota option focused tests and verify RED**
 
 Run:
 
@@ -474,7 +474,7 @@ node tests/compile-presentation.mjs && node --test tests/quota-composition.test.
 
 Expected: FAIL because `normalizeQuotaOptions` is not exported, `QuotaCompositionOptions` has no `progressColors`, disabled colors still retain provider statuses, and progress items do not receive threshold-derived status.
 
-- [ ] **Step 3: Add exact option types and normalization**
+- [x] **Step 3: Add exact option types and normalization**
 
 Replace the option declarations and defaults near the top of `tui/quota.tsx` with:
 
@@ -578,7 +578,7 @@ export function normalizeQuotaOptions(value?: TuiPluginOptions): NormalizedQuota
 }
 ```
 
-- [ ] **Step 4: Apply remaining-quota status during composition**
+- [x] **Step 4: Apply remaining-quota status during composition**
 
 Replace `percentStatus()` and update `orderedProviderItems()` and `summary()` in `tui/quota.tsx`:
 
@@ -633,7 +633,7 @@ function summary(provider: QuotaProviderAdapter | undefined, options: Normalized
 
 Use `normalizeQuotaOptions(rawOptions)` in `tui()` and pass the normalized object to `composeQuotaPanel()`.
 
-- [ ] **Step 5: Run focused tests and verify GREEN**
+- [x] **Step 5: Run quota option focused tests and verify GREEN**
 
 Run:
 
@@ -643,7 +643,7 @@ node tests/compile-presentation.mjs && node --test tests/quota-composition.test.
 
 Expected: all tests PASS; mounted coverage proves labels are uncolored and empty bars use `textMuted`, while composition coverage proves semantic status and disabled-color omission.
 
-- [ ] **Step 6: Commit the option and color slice**
+- [x] **Step 6: Commit the option and color slice**
 
 ```bash
 git add tui/quota.tsx tests/quota-composition.test.mjs
