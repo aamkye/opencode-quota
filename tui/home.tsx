@@ -7,6 +7,17 @@ import { createZaiProvider } from "./providers/zai.js"
 
 const HOME_ORDER = 110
 
+export function formatHomeQuotaLine(summary: HomeQuotaSummary): string {
+  const secondary = typeof summary.secondaryPct === "number" ? `/${Math.round(summary.secondaryPct)}%` : ""
+  return `${summary.provider}: ${summary.plan}; ${Math.round(summary.primaryPct)}%${secondary}`
+}
+
+export function homeQuotaPercentParts(summary: HomeQuotaSummary): { text: string; pct: number }[] {
+  const parts = [{ text: `${Math.round(summary.primaryPct)}%`, pct: summary.primaryPct }]
+  if (typeof summary.secondaryPct === "number") parts.push({ text: `${Math.round(summary.secondaryPct)}%`, pct: summary.secondaryPct })
+  return parts
+}
+
 function colorForRemaining(remainingPct: number, theme: { error: string; warning: string; success: string }): string {
   return remainingPct <= 10 ? theme.error : remainingPct <= 30 ? theme.warning : theme.success
 }
@@ -47,7 +58,7 @@ const tui: TuiPlugin = async (api) => {
 }
 
 const plugin: TuiPluginModule & { id: string } = {
-  id: "aamkye/opencode-quota-home",
+  id: "aamkye/opencode-tools-home",
   tui,
 }
 

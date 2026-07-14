@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { formatHomeQuotaLine, homeQuotaPercentParts } from "../.tmp-test/opencode-quota-shared.js"
+import { formatHomeQuotaLine, homeQuotaPercentParts } from "../.tmp-test/home-composition.mjs"
 
 test("formats two-window homepage quota lines", () => {
   assert.equal(

@@ -1,4 +1,4 @@
-import type { AggregateResult, SessionTreeNode, TokenBuckets } from "./quota-stats";
+import type { AggregateResult, SessionTreeNode } from "./quota-stats";
 import { abbreviateDisplayedModelName } from "./format-utils";
 import type { WidthMode } from "./markdown-table";
 import { renderMarkdownReport, type ReportDocument, type ReportSection } from "./report-document";

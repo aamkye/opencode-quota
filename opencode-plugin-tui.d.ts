@@ -40,3 +40,6 @@ declare module "@opencode-ai/plugin/tui" {
     tui: TuiPlugin
   }
 }
+
+declare module "bun:sqlite";
+declare module "better-sqlite3";

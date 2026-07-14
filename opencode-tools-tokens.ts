@@ -6,7 +6,7 @@ import {
   TOKEN_REPORT_COMMANDS,
 } from "./lib/tokens/token-commands";
 
-const HANDLED = Symbol.for("opencode-quota-tokens/command-handled");
+const HANDLED = Symbol.for("opencode-tools-tokens/command-handled");
 
 async function server({ client }: PluginInput): Promise<Hooks> {
   const typedClient = client as any;
@@ -22,7 +22,7 @@ async function server({ client }: PluginInput): Promise<Hooks> {
       }
     },
 
-    async "command.execute.before"(input, output) {
+    async "command.execute.before"(input, _output) {
       const command = input.command.replace(/^\//, "");
       if (!isTokenReportCommand(command)) return;
 
@@ -68,7 +68,7 @@ async function server({ client }: PluginInput): Promise<Hooks> {
 }
 
 const plugin = {
-  id: "aamkye/opencode-quota-tokens",
+  id: "aamkye/opencode-tools-tokens",
   server,
 };
 

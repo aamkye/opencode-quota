@@ -1,28 +1,28 @@
-# opencode-quota
+# opencode-tools
 
 > [!NOTE]
 > Heavily inspired by:
-> - [slkiser/opencode-quota](https://github.com/slkiser/opencode-quota)
+> - [the upstream project](https://github.com/slkiser/opencode-quota)
 > - [farrukh2002/opencode-glm-reset](https://github.com/farrukh2002/opencode-glm-reset)
 
 OpenCode TUI plugins that show quota usage, reset countdowns, rate-limit
 status, compact homepage summaries, and `/tokens_*` reports for **Z.AI (GLM)**
 and **OpenAI (ChatGPT Plus/Pro)**.
 
-![opencode-quota homepage bottom](img/img0.jpg)
+![opencode-tools homepage bottom](img/img0.jpg)
 
 <table>
   <tr>
     <td width="50%">
-      <img src="img/img1.jpg" alt="OpenCode Quota TUI sidebar panel" />
+      <img src="img/img1.jpg" alt="OpenCode Tools TUI sidebar panel" />
     </td>
     <td width="50%">
-      <img src="img/img2.jpg" alt="OpenCode Quota TUI sidebar panel extended" />
+      <img src="img/img2.jpg" alt="OpenCode Tools TUI sidebar panel extended" />
     </td>
   </tr>
   <tr>
-    <td width="50%" align="center">OpenCode Quota TUI sidebar panel</td>
-    <td width="50%" align="center">OpenCode Quota TUI sidebar panel extended</td>
+    <td width="50%" align="center">OpenCode Tools TUI sidebar panel</td>
+    <td width="50%" align="center">OpenCode Tools TUI sidebar panel extended</td>
   </tr>
 </table>
 
@@ -80,8 +80,8 @@ They must be registered in `tui.json` via the `plugin` array. The repo-root
 {
   "$schema": "https://opencode.ai/tui.json",
   "plugin": [
-    "./opencode-quota-zai.tsx",
-    "./opencode-quota-openai.tsx"
+    "./tui/quota.tsx",
+    "./tui/home.tsx"
   ]
 }
 ```
@@ -92,11 +92,11 @@ with Bun, and resolves imports (`@opencode-ai/plugin/tui`, `@opentui/*`,
 
 ### `/tokens_*` commands
 
-The server plugin is bundled into `.opencode/plugins/tokens.ts` via esbuild.
+The server plugin is bundled into `.opencode/plugins/opencode-tools-tokens.ts` via esbuild.
 Build it with:
 
 ```bash
-npm run build:tokens
+npm run build:opencode-tools
 ```
 
 The plugin auto-registers `/tokens_*` slash commands via the `config` hook.
@@ -116,42 +116,47 @@ change that title.
 
 | File                        | Purpose                                                               |
 | --------------------------- | --------------------------------------------------------------------- |
-| `opencode-quota-shared.tsx` | Shared constants, helpers, `BarRow`, `HomeQuotaLine`                  |
-| `opencode-quota-zai.tsx`    | Z.AI (GLM) provider plugin (sidebar + homepage)                       |
-| `opencode-quota-openai.tsx` | OpenAI (ChatGPT Plus/Pro) provider plugin (sidebar + homepage)        |
-| `opencode-quota-tokens.ts`  | Server plugin entry for `/tokens_*` commands                          |
-| `lib/tokens/`               | Vendored token reporting library (from `slkiser/opencode-quota`, MIT) |
-| `build-tokens.mjs`          | esbuild bundler producing `.opencode/plugins/tokens.ts`               |
-| `tui.json`                  | TUI plugin registration                                               |
+| `tui/quota.tsx`             | Aggregate sidebar registration and quota composition                  |
+| `tui/home.tsx`              | Compact homepage registration and formatter                           |
+| `tui/providers/`            | Z.AI and OpenAI provider adapters                                     |
+| `opencode-tools-tokens.ts`  | Server plugin entry for `/tokens_*` commands                          |
+| `lib/tokens/`               | Vendored token reporting library ([upstream](https://github.com/slkiser/opencode-quota), MIT) |
+| `build-opencode-tools.mjs`  | esbuild bundler producing `.opencode/plugins/opencode-tools-tokens.ts` |
+| `tui.json`                  | Aggregate and homepage TUI registrations                              |
 
 ### Edit workflow
 
-Edit any `.tsx` file at the repo root, then restart opencode to reload.
+Edit the relevant file in `tui/`, then restart OpenCode to reload.
 
 ```bash
 npm install       # install/refresh deps in node_modules
 npm run typecheck # tsc --noEmit (informational; runtime resolves via Bun)
-npm run build:tokens  # rebuild the /tokens_* server plugin
+npm run build:opencode-tools # rebuild the /tokens_* server plugin
 npm test          # run tests
 ```
 
 ### Global install (optional)
 
-To use across all projects, copy the `.tsx` files and register them in your
+To use across all projects, copy the `tui/` directory and register the entries in your
 global `tui.json` (`~/.config/opencode/tui.json` or `.jsonc`):
 
 ```json
 {
   "plugin": [
-    "~/path/to/opencode-quota-shared.tsx",
-    "~/path/to/opencode-quota-zai.tsx",
-    "~/path/to/opencode-quota-openai.tsx"
+    "~/path/to/tui/quota.tsx",
+    "~/path/to/tui/home.tsx"
   ]
 }
 ```
 
-For `/tokens_*` commands, copy the built `.opencode/plugins/tokens.ts` to
-`~/.config/opencode/plugins/tokens.ts`.
+For `/tokens_*` commands, copy the built `.opencode/plugins/opencode-tools-tokens.ts` to
+`~/.config/opencode/plugins/opencode-tools-tokens.ts`.
+
+## Breaking migration
+
+This project was renamed to `opencode-tools`. Replace every prior project path,
+TUI entry, package name, token plugin filename, and build command with the paths
+shown above. Legacy files and aliases are intentionally not provided.
 
 ## How it works
 

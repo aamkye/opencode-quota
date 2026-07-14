@@ -1,20 +1,21 @@
 {
-  "name": "@aamkye/opencode-quota-zai-cp",
+  "name": "@aamkye/opencode-tools",
   "version": "1.0.0",
   "description": "OpenCode TUI sidebar plugin for GLM rate limit reset countdown",
   "type": "module",
   "exports": {
-    "./tui": "./dist/opencode-quota-zai.tsx"
+    "./tui": "./tui/quota.tsx"
   },
   "files": [
     "dist",
+    "tui",
     "README.md"
   ],
   "scripts": {
-    "test": "node tests/compile-shared.mjs && node tests/compile-session-title.mjs && node tests/compile-presentation.mjs && node --test tests/*.test.mjs",
+    "test": "node tests/compile-session-title.mjs && node tests/compile-presentation.mjs && node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
-    "build": "node build-tokens.mjs",
-    "build:tokens": "node build-tokens.mjs",
+    "build": "node build-opencode-tools.mjs",
+    "build:opencode-tools": "node build-opencode-tools.mjs",
     "build:session-title": "node build-session-title.mjs",
     "deploy:session-title": "node deploy-session-title.mjs"
   },

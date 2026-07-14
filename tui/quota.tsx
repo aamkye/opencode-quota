@@ -203,7 +203,7 @@ const tui: TuiPlugin = async (api, rawOptions) => {
 }
 
 const plugin: TuiPluginModule & { id: string } = {
-  id: "aamkye/opencode-quota",
+  id: "aamkye/opencode-tools",
   tui,
 }
 
