@@ -192,7 +192,7 @@ export function mountPanel(model: Parameters<typeof PanelRenderer>[0]["model"] e
 }
 ```
 
-- [x] **Step 3: Run the focused tests and verify RED**
+- [x] **Step 3: Run responsive renderer focused tests and verify RED**
 
 Run:
 
@@ -368,7 +368,7 @@ Update the sidebar return in `tui/quota.tsx`:
 return <PanelRenderer model={model} theme={theme} />
 ```
 
-- [x] **Step 6: Run focused tests and typecheck to verify GREEN**
+- [x] **Step 6: Run responsive renderer focused tests and typecheck to verify GREEN**
 
 Run:
 
