@@ -135,28 +135,53 @@ test("uses custom thresholds and omits semantic status when colors are disabled"
   assert.equal("status" in disabled.collapsedSummary, false)
 })
 
-async function aggregatePanel(t, options, observedIntervalDelays = []) {
+async function aggregatePanel(t, options, observations = { intervals: [], requests: [] }) {
   const registrations = []
   const cleanup = []
   const originalFetch = globalThis.fetch
   const originalSetInterval = globalThis.setInterval
+  const originalClearInterval = globalThis.clearInterval
   const originalReact = globalThis.React
   const originalError = console.error
-  const testFetch = async () => ({
-    ok: true,
-    json: async () => ({
-      code: 200,
-      data: {
-        level: "pro",
-        limits: [{ type: "TOKENS_LIMIT", unit: 3, percentage: 25, nextResetTime: Date.now() + 60 * 60 * 1000 }],
-      },
-    }),
-  })
+  const testFetch = async (url, requestOptions) => {
+    if (url === "https://api.z.ai/api/monitor/usage/quota/limit") {
+      observations.requests.push({ provider: "zai", authorization: requestOptions.headers.Authorization })
+      return {
+        ok: true,
+        json: async () => ({
+          code: 200,
+          data: {
+            level: "pro",
+            limits: [{ type: "TOKENS_LIMIT", unit: 3, percentage: 25, nextResetTime: Date.now() + 60 * 60 * 1000 }],
+          },
+        }),
+      }
+    }
+    if (url === "https://chatgpt.com/backend-api/wham/usage") {
+      observations.requests.push({ provider: "openai", authorization: requestOptions.headers.Authorization })
+      return {
+        ok: true,
+        json: async () => ({
+          plan_type: "plus",
+          rate_limit: {
+            primary_window: { used_percent: 25, limit_window_seconds: 18_000, reset_after_seconds: 3_600 },
+          },
+        }),
+      }
+    }
+    throw new Error(`Unexpected quota URL: ${url}`)
+  }
   globalThis.React = { createElement: (component, props) => ({ component, props }) }
   globalThis.fetch = testFetch
   globalThis.setInterval = (callback, delay, ...args) => {
-    observedIntervalDelays.push(delay)
-    return originalSetInterval(callback, delay, ...args)
+    const timer = originalSetInterval(callback, delay, ...args)
+    observations.intervals.push({ timer, callback, delay, active: true })
+    return timer
+  }
+  globalThis.clearInterval = (timer) => {
+    const interval = observations.intervals.find((candidate) => candidate.timer === timer)
+    if (interval) interval.active = false
+    return originalClearInterval(timer)
   }
   console.error = () => {}
   t.after(async () => {
@@ -166,6 +191,7 @@ async function aggregatePanel(t, options, observedIntervalDelays = []) {
     } finally {
       globalThis.fetch = originalFetch
       globalThis.setInterval = originalSetInterval
+      globalThis.clearInterval = originalClearInterval
       globalThis.React = originalReact
       console.error = originalError
     }
@@ -173,7 +199,10 @@ async function aggregatePanel(t, options, observedIntervalDelays = []) {
 
   const api = {
     state: {
-      provider: [{ id: "zai-coding-plan", key: "test-key" }],
+      provider: [
+        { id: "zai-coding-plan", key: "test-zai-key" },
+        { id: "openai", key: "test-openai-token" },
+      ],
       session: { messages: () => [] },
       part: () => [],
     },
@@ -199,9 +228,25 @@ async function aggregatePanel(t, options, observedIntervalDelays = []) {
 }
 
 test("forwards normalized refreshIntervalSeconds to both providers", async (t) => {
-  const intervalDelays = []
-  await aggregatePanel(t, { refreshIntervalSeconds: 2.5 }, intervalDelays)
-  assert.equal(intervalDelays.filter((delay) => delay === 2_500).length, 2)
+  const observations = { intervals: [], requests: [] }
+  await aggregatePanel(t, { refreshIntervalSeconds: 2.5 }, observations)
+  const activePolls = observations.intervals.filter((timer) => timer.active && timer.delay === 2_500)
+
+  assert.equal(activePolls.length, 2)
+  const polledProviders = []
+  for (const poll of activePolls) {
+    const requestCount = observations.requests.length
+    poll.callback()
+    await flushEffects()
+    const requests = observations.requests.slice(requestCount)
+    assert.equal(requests.length, 1)
+    polledProviders.push(requests[0])
+  }
+  assert.deepEqual(polledProviders.sort((left, right) => left.provider.localeCompare(right.provider)), [
+    { provider: "openai", authorization: "Bearer test-openai-token" },
+    { provider: "zai", authorization: "Bearer test-zai-key" },
+  ])
+  assert.equal(observations.intervals.filter((timer) => timer.active && timer.delay === 2_500).length, 2)
 })
 
 test("keeps the selected supported provider first while loading or unavailable", () => {

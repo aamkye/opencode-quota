@@ -325,6 +325,36 @@ test("uses a custom provider polling interval", async (t) => {
   assert.ok(clock.intervals.some((timer) => timer.active && timer.delay === 1_000))
 })
 
+test("skips repeated polling callbacks while an OpenAI refresh is pending and clears timers on dispose", async (t) => {
+  const clock = installFakeClock(now)
+  let requests = 0
+  let resolveFetch
+  const pendingResponse = new Promise((resolve) => {
+    resolveFetch = resolve
+  })
+  const adapter = createTestAdapter(t, {
+    clock,
+    fetch: async () => {
+      requests += 1
+      return pendingResponse
+    },
+    providerOptions: { refreshIntervalMs: 2_500 },
+  })
+  await flushEffects()
+
+  const poll = clock.intervals.find((timer) => timer.active && timer.delay === 2_500)
+  assert.ok(poll)
+  poll.callback()
+  poll.callback()
+  await flushEffects()
+
+  adapter.dispose()
+  assert.ok(clock.intervals.every((timer) => !timer.active))
+  resolveFetch(quotaResponse())
+  await flushEffects()
+  assert.equal(requests, 1)
+})
+
 test("exposes reactive freshness and omits the legacy home line while OpenAI data is stale", async (t) => {
   let available = true
   const adapter = createTestAdapter(t, {

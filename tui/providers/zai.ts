@@ -396,23 +396,33 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
   const [sessionID, setSessionID] = createSignal<string | null>(null)
   const [now, setNow] = createSignal(Date.now())
   const [refreshedBoundary, setRefreshedBoundary] = createSignal(0)
+  let refreshInFlight: Promise<void> | null = null
 
-  const refresh = async (): Promise<void> => {
-    const key = apiKey()
-    if (!key) {
-      setPhase("unavailable")
-      return
-    }
-    const data = await fetchZaiQuota(key)
-    if (data) {
-      setQuotaData(data)
-      setPhase("ready")
-      setLastSuccessAt(Date.now())
-    } else if (quotaData()) {
-      setPhase("stale")
-    } else {
-      setPhase(retryAfterEpoch() && retryAfterEpoch()! > Date.now() ? "rate-limited" : "heuristic")
-    }
+  const refresh = (): Promise<void> => {
+    if (refreshInFlight) return refreshInFlight
+    const request = (async () => {
+      const key = apiKey()
+      if (!key) {
+        setPhase("unavailable")
+        return
+      }
+      const data = await fetchZaiQuota(key)
+      if (data) {
+        setQuotaData(data)
+        setPhase("ready")
+        setLastSuccessAt(Date.now())
+      } else if (quotaData()) {
+        setPhase("stale")
+      } else {
+        setPhase(retryAfterEpoch() && retryAfterEpoch()! > Date.now() ? "rate-limited" : "heuristic")
+      }
+    })()
+    refreshInFlight = request
+    void request.then(
+      () => { if (refreshInFlight === request) refreshInFlight = null },
+      () => { if (refreshInFlight === request) refreshInFlight = null },
+    )
+    return request
   }
 
   createEffect(() => {

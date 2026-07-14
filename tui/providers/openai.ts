@@ -290,23 +290,33 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
     const [lastSuccessAt, setLastSuccessAt] = createSignal(0)
     const [now, setNow] = createSignal(Date.now())
     const [refreshedBoundary, setRefreshedBoundary] = createSignal(0)
+    let refreshInFlight: Promise<void> | null = null
 
-    const refresh = async (): Promise<void> => {
-      const currentAuth = auth()
-      if (!currentAuth?.access) {
-        setPhase("unavailable")
-        return
-      }
-      const data = await fetchOpenAiQuota(currentAuth)
-      if (data) {
-        setQuotaData(data)
-        setPhase("ready")
-        setLastSuccessAt(Date.now())
-      } else if (quotaData()) {
-        setPhase("stale")
-      } else {
-        setPhase("unavailable")
-      }
+    const refresh = (): Promise<void> => {
+      if (refreshInFlight) return refreshInFlight
+      const request = (async () => {
+        const currentAuth = auth()
+        if (!currentAuth?.access) {
+          setPhase("unavailable")
+          return
+        }
+        const data = await fetchOpenAiQuota(currentAuth)
+        if (data) {
+          setQuotaData(data)
+          setPhase("ready")
+          setLastSuccessAt(Date.now())
+        } else if (quotaData()) {
+          setPhase("stale")
+        } else {
+          setPhase("unavailable")
+        }
+      })()
+      refreshInFlight = request
+      void request.then(
+        () => { if (refreshInFlight === request) refreshInFlight = null },
+        () => { if (refreshInFlight === request) refreshInFlight = null },
+      )
+      return request
     }
 
     createEffect(() => {
