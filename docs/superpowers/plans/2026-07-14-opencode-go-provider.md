@@ -2035,7 +2035,7 @@ git commit -m "test(quota): verify three-provider composition"
 - Consumes: final nested option names and behavior from Tasks 2-7.
 - Produces: local secret-handling, supported-window, polling, rotation, fixed-origin, and undocumented-contract guidance containing only synthetic values.
 
-- [ ] **Step 1: Add the exact documentation regression test**
+- [x] **Step 1: Add the exact documentation regression test**
 
 Ensure `tests/plugin-wiring.test.mjs` imports `readFileSync`, then append:
 
@@ -2063,13 +2063,13 @@ test("documents secret-safe OpenCode Go configuration", () => {
 })
 ```
 
-- [ ] **Step 2: Run the exact documentation RED gate**
+- [x] **Step 2: Run the exact documentation RED gate**
 
 Run: `node --test --test-name-pattern="documents secret-safe OpenCode Go" tests/plugin-wiring.test.mjs`
 
 Expected: FAIL with `missing README text: quota.opencodego.workspaceId`.
 
-- [ ] **Step 3: Add exact local configuration and safety guidance**
+- [x] **Step 3: Add exact local configuration and safety guidance**
 
 Extend the quota plugin JSON example in `README.md` with:
 
@@ -2092,7 +2092,7 @@ Requests are fixed to `https://opencode.ai`; these values do not replace the Ope
 
 Add OpenCode Go to the provider/source table and state that it uses the shared default/custom polling interval, one-second countdowns, reset-boundary refresh, and ten-minute stale horizon without exhausted backoff.
 
-- [ ] **Step 4: Run the exact documentation GREEN gates**
+- [x] **Step 4: Run the exact documentation GREEN gates**
 
 Run: `node --test tests/plugin-wiring.test.mjs tests/provider-opencode-go-contract.test.mjs`
 
@@ -2102,7 +2102,7 @@ Run: `git diff --check -- README.md tests/plugin-wiring.test.mjs`
 
 Expected: exit 0; the tracked diff contains only synthetic credential values and no raw page content.
 
-- [ ] **Step 5: Commit the GREEN documentation unit atomically**
+- [x] **Step 5: Commit the GREEN documentation unit atomically**
 
 ```bash
 git status --short &&

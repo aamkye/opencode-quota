@@ -16,7 +16,7 @@
 
 - [x] 3.1 Export the provider and summary types through the shared boundary, instantiate it in quota composition, and map `opencode-go` plus `opencode-go-subscription` to the adapter.
 - [x] 3.2 Verify active-provider prioritization, other-provider retention, collapsed summaries, remaining/used modes, and progress colors across all three providers.
-- [ ] 3.3 Document local plaintext workspace-token configuration, non-commit requirements, session rotation, supported windows, and hydration-contract limitations.
+- [x] 3.3 Document local plaintext workspace-token configuration, non-commit requirements, session rotation, supported windows, and hydration-contract limitations.
 
 ## 4. Verify And Deploy
 
