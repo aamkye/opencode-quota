@@ -13,10 +13,12 @@
 - [x] 2.4 Pass the normalized polling interval into provider adapters and reactively resolve, refresh, and prioritize the current session model's provider.
 - [x] 2.5 Render reset timers and standalone tool quantities with muted text while preserving explicit semantic status overrides.
 - [x] 2.6 Render short group-divider marks with the muted theme color.
+- [ ] 2.7 Render mounted compact tables with parent-responsive clipped non-wrapping flex cells and compose semantically ordered provider items within independent group-local boundaries.
+- [ ] 2.8 Add compatible segmented provider-header details; present stale OpenAI as warning `stale` and stale Z.AI as colored Peak/Off-Peak, muted ` / `, and warning `stale` with no standalone stale rows; and make credential replacement/removal/disposal plus reset-boundary ownership generation-safe with one replacement request, silent expected aborts, and immediate request/boundary timeout cleanup.
 
 ## 3. Verify and Deploy
 
-- [x] 3.1 Run focused tests, typechecking, the full automated suite, and the three-artifact production build.
-- [x] 3.2 Deploy locally and manually validate normal/collapsed and normal/constrained-width behavior in OpenCode.
-- [x] 3.3 Manually validate the default/custom refresh interval and provider switching from the active session model.
+- [ ] 3.1 Rerun focused segmented-header, responsive-table, group-ordering, credential lifecycle, and generation-owned reset-boundary tests plus typechecking, the full automated suite, and the three-artifact production build.
+- [ ] 3.2 Redeploy locally and manually validate normal/collapsed and normal/constrained-width behavior, including the real two-column Z.AI Model/Usage table at 37 cells and exact segmented stale provider headers with no standalone stale rows, in OpenCode.
+- [ ] 3.3 Manually revalidate default/custom refresh, active-session provider switching, OpenAI/Z.AI credential replacement/removal, silent expected aborts with retained non-abort diagnostics, and pending-request disposal behavior.
 - [x] 3.4 Rebuild, redeploy, and manually validate muted short group dividers.

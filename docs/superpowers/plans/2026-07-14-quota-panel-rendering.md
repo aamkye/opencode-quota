@@ -8,9 +8,9 @@ base-ref: 67c36679448d9b45890006ae2bf728241756c09b
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the aggregate quota panel responsive, correctly grouped and labeled, color-configurable, polled every 10 seconds by default, and driven by the active session model's provider.
+**Goal:** Make the aggregate quota panel responsive, correctly grouped and labeled, color-configurable, polled every 10 seconds by default, driven by the active session model's provider, and safe across credential replacement and disposal.
 
-**Architecture:** Keep provider adapters responsible for semantic quota models and polling, keep `tui/quota.tsx` responsible for native option normalization, provider selection, and aggregate composition, and keep `tui/presentation/renderer.tsx` responsible for pure deterministic rendering plus parent-responsive mounted JSX. Preserve explicit cell allocation for pure tests, but make mounted headers and progress bars use OpenTUI flex sizing rather than a guessed 80-cell width.
+**Architecture:** Keep provider adapters responsible for semantic quota models and request lifecycle, keep `tui/quota.tsx` responsible for native option normalization, provider selection, and group-local aggregate composition, and keep `tui/presentation/renderer.tsx` responsible for pure deterministic rendering plus parent-responsive mounted JSX. Preserve explicit cell allocation for pure tests, but make mounted headers, progress bars, and compact tables use OpenTUI flex sizing rather than a guessed 80-cell width.
 
 **Tech Stack:** TypeScript 6, SolidJS 1.9, OpenTUI Solid 0.4, Node.js test runner, esbuild, npm scripts.
 
@@ -22,9 +22,18 @@ base-ref: 67c36679448d9b45890006ae2bf728241756c09b
 - Progress status always evaluates remaining quota, even when `otherProviders.percentageMode` displays used quota.
 - Only the filled bar and percentage use semantic progress status; labels remain normal text and empty bars use `textMuted`.
 - Preserve immediate adapter fetch, exhausted-window backoff, fetch timeout, stale expiry, one-second countdown clock, reset-boundary refresh, and lifecycle cleanup.
-- Do not change provider endpoints, authentication, quota arithmetic, timeout handling, reset-boundary behavior, home summaries, or token reports.
+- Do not change provider endpoints, authentication formats, quota arithmetic, the 20-second timeout duration, reset-boundary behavior, home summaries, or token reports.
 - Do not display the selected model name, add providers, add keyboard collapse controls, or perform unrelated refactors.
 - Run each focused command from `/Users/aam/Projects/priv/opencode-quota`.
+- Use strict RED-GREEN TDD for Tasks 10-15: add the focused test first, run the stated command and observe the stated failure, then make the minimum production edit and rerun the focused command before committing.
+- Mounted compact tables must use parent-width flex layout; keep `CompactTableAllocation` only in pure normalization and `renderPanelLayout()`.
+- Sort each provider panel group by semantic `order`, partition and order each group independently, and only then concatenate a provider's aggregate range.
+- Preserve `detail?: string` on semantic header items and add only `detailSegments?: readonly PanelTextSegment[]` for ordered independently colored header detail text.
+- OpenAI and Z.AI adapters own separate active request controllers and credential generations; do not introduce a shared refresh coordinator.
+- Credential replacement retains prior quota as stale, credential removal clears it, and disposal aborts the active request and clears its request timeout immediately.
+- Expected request aborts return `null` without diagnostics; non-abort transport and parsing failures retain their existing `console.error` diagnostics.
+- Published quota, pending reset boundaries, and refreshed-boundary markers are credential-generation owned; credential transition synchronously cancels the old boundary before starting its one replacement request.
+- Keep reactive credential test ownership in a browser-conditioned TypeScript fixture that imports the public provider constructors; do not add production test injection hooks.
 
 ## File Map
 
@@ -32,12 +41,14 @@ base-ref: 67c36679448d9b45890006ae2bf728241756c09b
 - `tui/presentation/renderer.tsx`: normalization, deterministic render model, and mounted OpenTUI JSX.
 - `tests/presentation-mounted.fixture.ts`: expands mounted JSX into inspectable elements.
 - `tests/presentation-layout.test.mjs`, `tests/presentation-render-model.test.mjs`, `tests/presentation-mounted.test.mjs`: responsive rendering and framing coverage.
+- `tui/presentation/types.ts`, `tests/presentation-types.fixture.ts`, `tests/presentation-types.test.mjs`: compatible semantic `PanelTextSegment` and optional header `detailSegments` contract.
 - `tui/quota.tsx`: option normalization, progress semantics, grouping, active-session selection, aggregate composition, and sidebar registration.
 - `tests/quota-composition.test.mjs`: option, color, grouping, selection, refresh, and aggregate-order coverage.
-- `tui/providers/openai.ts`, `tests/provider-openai.test.mjs`: duration-derived OpenAI labels/IDs and OpenAI polling.
-- `tui/providers/zai.ts`, `tests/provider-zai.test.mjs`: Z.AI Peak/Off-Peak header detail and Z.AI polling.
+- `tui/providers/openai.ts`, `tests/provider-openai.test.mjs`: duration-derived OpenAI labels/IDs, segmented stale header, polling, credential generations, and request cancellation.
+- `tui/providers/zai.ts`, `tests/provider-zai.test.mjs`: Z.AI Peak/Off-Peak/stale segments, polling, credential generations, and request cancellation.
+- `tests/provider-lifecycle.fixture.ts`, `tests/compile-presentation.mjs`: same-bundle browser-conditioned Solid signals and provider constructors used only by credential lifecycle tests.
 - `tui/providers/types.ts`: shared provider-constructor polling option.
-- `README.md`: native option contract and 10-second polling documentation.
+- `README.md`: native option/polling documentation and OpenAI window descriptions derived from API-reported durations rather than fixed primary/secondary labels.
 
 ---
 
@@ -1691,11 +1702,2014 @@ Expected: every command exits `0`, all three deployed artifacts match `dist`, an
 
 Fully restart OpenCode and confirm every short `---` divider end uses the muted text color while the top/bottom full-width border dividers and surrounding content remain unchanged.
 
+### Task 10: Make Mounted Compact Tables Parent-Responsive
+
+**Files:**
+- Modify: `tests/presentation-mounted.test.mjs:14-55,241`
+- Modify: `tui/presentation/renderer.tsx:388-398`
+
+**Interfaces:**
+- Consumes: the existing normalized compact-table item `{ columns, rows, status }` produced by `normalizeItem()` and `PanelTheme` through `MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> })`.
+- Produces: mounted table rows with `width="100%"` and `overflow="hidden"`; each cell wrapper has `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, and `overflow="hidden"`, and its text has `wrapMode="none"` and `truncate={true}`.
+- Produces: each native table row receives the cell boxes as a direct array expression, so `presentation-mounted.fixture.ts` observes three cell boxes in `row.props.children` rather than one nested `For` component.
+- Preserves: `CompactTableAllocation`, `normalizePanelModel(model, { availableCells })`, `renderItemLayout()`, and `renderPanelLayout()` for deterministic pure tests.
+
+- [ ] **Step 1: Add the failing mounted three-column contraction test**
+
+Append this test to `tests/presentation-mounted.test.mjs`; it uses the existing `limits` table in `model` and deliberately rejects any numeric width inherited from the 80-cell deterministic allocation:
+
+```javascript
+test("mounts compact tables as clipped non-wrapping parent-width flex rows", () => {
+  const { elements, dispose } = mountPanel(model)
+
+  try {
+    const tableRows = elements.filter((element) =>
+      element.type === "box"
+      && element.props.width === "100%"
+      && element.props.overflow === "hidden"
+      && Array.isArray(element.props.children)
+      && element.props.children.length === 3
+      && element.props.children.every((child) => child?.type === "box"),
+    )
+
+    assert.equal(tableRows.length, 2, "header and data rows use responsive table layout")
+    for (const row of tableRows) {
+      for (const cell of row.props.children) {
+        assert.equal(cell.props.flexBasis, 0)
+        assert.equal(cell.props.flexGrow, 1)
+        assert.equal(cell.props.flexShrink, 1)
+        assert.equal(cell.props.minWidth, 0)
+        assert.equal(cell.props.overflow, "hidden")
+        assert.equal(typeof cell.props.width, "undefined")
+        assert.equal(cell.props.children?.type, "text")
+        assert.equal(cell.props.children?.props.wrapMode, "none")
+        assert.equal(cell.props.children?.props.truncate, true)
+        assert.equal(typeof cell.props.children?.props.width, "undefined")
+      }
+    }
+
+    assert.deepEqual(
+      tableRows[0].props.children.map((cell) => cell.props.children.props.children),
+      ["Identity", "Model", "Remaining"],
+    )
+    assert.equal(tableRows[0].props.children[2].props.justifyContent, "flex-end")
+    assert.equal(tableRows[1].props.children[2].props.children.props.fg, "#00ff00")
+  } finally {
+    dispose()
+  }
+})
+```
+
+- [ ] **Step 2: Run the mounted renderer test and verify RED**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/presentation-mounted.test.mjs
+```
+
+Expected: FAIL at `tableRows.length` with `0 !== 2`, because the current mounted table branch calls `renderItemLayout()` and emits row boxes without `width="100%"` or clipping plus fixed-width `<text width={cell.width}>` children from the 80-cell fallback allocation.
+
+- [ ] **Step 3: Replace only the mounted table branch with flex cells**
+
+Replace the `case "table"` branch in `MountedItem()` in `tui/presentation/renderer.tsx` with:
+
+```tsx
+    case "table": {
+      const rows: { id: string; cells: { text: string; status?: PanelStatus }[] }[] = [
+        {
+          id: `${props.item.id}:header`,
+          cells: props.item.columns.map((column) => ({ text: column.title })),
+        },
+        ...props.item.rows,
+      ]
+      return (
+        <box flexDirection="column" width="100%">
+          <For each={rows}>
+            {(row) => (
+              <box flexDirection="row" width="100%" overflow="hidden">
+                {props.item.columns.map((column, index) => {
+                  const cell = row.cells[index] ?? { text: "" }
+                  return (
+                    <box
+                      flexBasis={0}
+                      flexGrow={1}
+                      flexShrink={1}
+                      minWidth={0}
+                      overflow="hidden"
+                      justifyContent={column.align === "end" ? "flex-end" : "flex-start"}
+                    >
+                      <text
+                        flexShrink={1}
+                        wrapMode="none"
+                        truncate={true}
+                        fg={color(cell.status ?? props.item.status)}
+                      >
+                        {cell.text}
+                      </text>
+                    </box>
+                  )
+                })}
+              </box>
+            )}
+          </For>
+        </box>
+      )
+    }
+```
+
+The outer `For` retains reactive row reconciliation. The direct `columns.map(...)` expression emits the native row's cell children as an inspectable array while preserving exact column order, status fallback, clipping, non-wrapping, truncation, and right alignment. Do not remove `allocation` from `NormalizedItem`, change `normalizeItem()`, or change `renderItemLayout()`; those paths remain the deterministic pure-render contract.
+
+- [ ] **Step 4: Run focused mounted/pure tests and typechecking to verify GREEN**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/presentation-mounted.test.mjs tests/presentation-render-model.test.mjs tests/presentation-layout.test.mjs && npm run typecheck
+```
+
+Expected: all focused tests PASS, the new mounted test finds two responsive three-cell rows with no numeric cell widths, deterministic pure table tests still PASS, and TypeScript exits `0`.
+
+- [ ] **Step 5: Commit the mounted compact-table slice**
+
+```bash
+git add tui/presentation/renderer.tsx tests/presentation-mounted.test.mjs
+git commit -m "fix(tui): make quota tables responsive"
+```
+
+### Task 11: Preserve Semantic Order Within Provider Group Boundaries
+
+**Files:**
+- Modify: `tests/quota-composition.test.mjs:502-594`
+- Modify: `tui/quota.tsx:158-211`
+
+**Interfaces:**
+- Consumes: `sortByOrderThenId<T extends OrderedEntity>(items: readonly T[]): T[]`, `providerItemGroups(items: readonly PanelItem[])`, and the existing `orderedProviderItems(items, options, orderOffset)` status/display transformation.
+- Produces: `providerItems(provider: QuotaProviderAdapter, options: NormalizedCompositionOptions, orderOffset: number): PanelItem[]` that processes `sortByOrderThenId(provider.panel().groups)` one group at a time and assigns one contiguous provider-local aggregate order range.
+- Preserves: known-duration shortest-first ordering inside a group, unknown-duration source order after known durations, progress status/color behavior, selected-provider group boundaries, and secondary-provider divider IDs/orders.
+
+- [ ] **Step 1: Add a failing physically shuffled multi-group composition test**
+
+Append this test after the existing provider grouping tests in `tests/quota-composition.test.mjs`:
+
+```javascript
+test("sorts semantic items and partitions each provider group independently", () => {
+  const selected = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50 })
+  const shuffled = provider({
+    id: "alpha",
+    title: "Alpha",
+    order: 130,
+    primaryPct: 70,
+    groups: [
+      {
+        id: "alpha:later",
+        order: 20,
+        items: [
+          { id: "alpha:5h-note", order: 30, kind: "text", text: "5H note" },
+          { id: "alpha:5h", order: 20, kind: "progress", label: "5H", value: 70, total: 100 },
+          { id: "alpha:later-preamble", order: 10, kind: "text", text: "Later group" },
+        ],
+      },
+      {
+        id: "alpha:earlier",
+        order: 10,
+        items: [
+          { id: "alpha:7d-reset", order: 30, kind: "timer", label: "7D reset", state: "idle" },
+          { id: "alpha:7d", order: 20, kind: "progress", label: "7D", value: 60, total: 100 },
+          { id: "alpha:header", order: 10, kind: "header", title: "Alpha" },
+        ],
+      },
+    ],
+  })
+
+  const model = composeQuotaPanel("zai", [selected, shuffled])
+  const others = model.groups.find((group) => group.id === "other-providers")
+
+  assert.deepEqual(others.items.map((entry) => entry.id), [
+    "alpha:header",
+    "alpha:7d",
+    "alpha:7d-reset",
+    "alpha:later-preamble",
+    "alpha:5h",
+    "alpha:5h-note",
+  ])
+  assert.deepEqual(others.items.map((entry) => entry.order), [0, 1, 2, 3, 4, 5])
+})
+```
+
+Update the existing `orders configured secondary metrics by direction and keeps each header with its quota rows` expectation to preserve semantic group order rather than sorting windows across group boundaries:
+
+```javascript
+  assert.deepEqual(others.items.map((entry) => entry.id), [
+    "alpha:header", "alpha:7D", "alpha:7D:reset", "alpha:5H", "alpha:5H:reset",
+    "other-providers:gamma:divider",
+    "gamma:header", "gamma:5H", "gamma:5H:reset", "gamma:7D", "gamma:7D:reset",
+    "other-providers:beta:divider",
+    "beta:header", "beta:5H", "beta:5H:reset", "beta:7D", "beta:7D:reset",
+  ])
+```
+
+- [ ] **Step 2: Run the composition test and verify RED**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/quota-composition.test.mjs
+```
+
+Expected: FAIL in both updated grouping assertions. The current `providerItemGroups()` trusts physical item order, while `providerItems()` flattens all sorted provider groups before partitioning, so the later group's preamble/details can attach to the earlier group's progress window and `5H` moves ahead of `7D` across group boundaries.
+
+- [ ] **Step 3: Sort before partitioning and compose each provider group locally**
+
+Replace `providerItemGroups()` and `providerItems()` in `tui/quota.tsx` with:
+
+```typescript
+function providerItemGroups(items: readonly PanelItem[]): { preamble: PanelItem[]; groups: ProviderItemGroup[] } {
+  const ordered = sortByOrderThenId(items)
+  const firstProgress = ordered.findIndex((item) => item.kind === "progress")
+  if (firstProgress < 0) return { preamble: ordered, groups: [] }
+
+  const preamble = ordered.slice(0, firstProgress)
+  const groups: ProviderItemGroup[] = []
+  for (const item of ordered.slice(firstProgress)) {
+    if (item.kind === "progress") {
+      groups.push({
+        items: [item],
+        duration: windowDuration(item.label),
+        sourceIndex: groups.length,
+      })
+    } else {
+      groups.at(-1)!.items.push(item)
+    }
+  }
+  return { preamble, groups }
+}
+
+function providerItems(provider: QuotaProviderAdapter, options: NormalizedCompositionOptions, orderOffset: number): PanelItem[] {
+  const items: PanelItem[] = []
+  for (const group of sortByOrderThenId(provider.panel().groups)) {
+    items.push(...orderedProviderItems(group.items, options, orderOffset + items.length))
+  }
+  return items
+}
+```
+
+Keep `orderedProviderItems()` unchanged: it still sorts known durations only among the progress-led groups produced from one panel group, retains unknown source order, applies display mode/status after grouping, and assigns contiguous orders from the supplied offset.
+
+- [ ] **Step 4: Run composition/provider tests and typechecking to verify GREEN**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/quota-composition.test.mjs tests/provider-openai.test.mjs tests/provider-zai.test.mjs tests/provider-opencode-go.test.mjs && npm run typecheck
+```
+
+Expected: all focused tests PASS. Physically shuffled items follow semantic order, each provider group retains its own preamble/details, known and unknown ordering still works within one group, secondary provider dividers remain correctly placed, and TypeScript exits `0`.
+
+- [ ] **Step 5: Commit the group-local composition slice**
+
+```bash
+git add tui/quota.tsx tests/quota-composition.test.mjs
+git commit -m "fix(tui): preserve provider group boundaries"
+```
+
+### Task 12: Render Compatible Segmented Provider-Header Details
+
+**Files:**
+- Modify: `tests/presentation-types.fixture.ts:13-18`
+- Test: `tests/presentation-types.test.mjs:14-28`
+- Modify: `tests/presentation-render-model.test.mjs:201`
+- Modify: `tests/presentation-mounted.test.mjs:241`
+- Modify: `tui/presentation/types.ts:7-40`
+- Modify: `tui/presentation/renderer.tsx:5,28-43,118-124,227-234,339-355`
+
+**Interfaces:**
+- Consumes: `PanelStatus = "error" | "warning" | "success" | "text" | "textMuted"`, the existing header `detail?: string`, `PanelTheme`, and deterministic `renderPanelLayout()`.
+- Produces: `export type PanelTextSegment = { text: string; status?: PanelStatus }` and optional header field `detailSegments?: readonly PanelTextSegment[]` without removing or changing `detail?: string`.
+- Produces: normalized ordered segment copies; mounted right-edge segments colored by their own status; pure header text formed from `detailSegments.map(({ text }) => text).join("")` when segments exist, otherwise the existing detail string.
+- Preserves: every ordinary single-string provider detail, its item-level status color, provider-title flex growth, and all existing `PanelItem` callers.
+
+- [ ] **Step 1: Add failing semantic, pure-render, and mounted segment tests**
+
+Add an ordinary detail and a segmented detail item to `tests/presentation-types.fixture.ts`:
+
+```typescript
+        { id: "account", order: 10, kind: "header", title: "Primary account", detail: "Ready", status: "success" },
+        {
+          id: "stale-account",
+          order: 11,
+          kind: "header",
+          title: "Z.AI: Max",
+          detailSegments: [
+            { text: "Off-Peak (1x)", status: "success" },
+            { text: " / ", status: "textMuted" },
+            { text: "stale", status: "warning" },
+          ],
+        },
+```
+
+Append this deterministic normalization/rendering test to `tests/presentation-render-model.test.mjs`:
+
+```javascript
+test("normalizes ordered header detail segments and keeps pure text readable", () => {
+  const model = {
+    id: "quota",
+    order: 10,
+    title: "Quota",
+    groups: [{
+      id: "providers",
+      order: 10,
+      items: [
+        { id: "ordinary", order: 10, kind: "header", title: "Ordinary", detail: "Limited", status: "error" },
+        {
+          id: "openai",
+          order: 20,
+          kind: "header",
+          title: "OpenAI: Pro",
+          detailSegments: [{ text: "stale", status: "warning" }],
+        },
+        {
+          id: "zai",
+          order: 30,
+          kind: "header",
+          title: "Z.AI: Max",
+          detailSegments: [
+            { text: "Off-Peak (1x)", status: "success" },
+            { text: " / ", status: "textMuted" },
+            { text: "stale", status: "warning" },
+          ],
+        },
+      ],
+    }],
+  }
+
+  const normalized = normalizePanelModel(model)
+  assert.deepEqual(normalized.groups[0].items[2].detailSegments, [
+    { text: "Off-Peak (1x)", status: "success" },
+    { text: " / ", status: "textMuted" },
+    { text: "stale", status: "warning" },
+  ])
+  assert.deepEqual(
+    renderPanelLayout(model).groups[0].items.map((entry) => entry.text),
+    ["Ordinary: Limited", "OpenAI: Pro: stale", "Z.AI: Max: Off-Peak (1x) / stale"],
+  )
+})
+```
+
+Append this mounted compatibility/color test to `tests/presentation-mounted.test.mjs`:
+
+```javascript
+test("mounts ordinary and segmented provider-header details at the right edge", () => {
+  const headerModel = {
+    id: "quota",
+    order: 10,
+    title: "Quota",
+    groups: [{
+      id: "providers",
+      order: 10,
+      items: [
+        { id: "ordinary", order: 10, kind: "header", title: "Ordinary", detail: "Limited", status: "error" },
+        { id: "openai", order: 20, kind: "header", title: "OpenAI: Pro", detailSegments: [{ text: "stale", status: "warning" }] },
+        {
+          id: "zai-peak",
+          order: 30,
+          kind: "header",
+          title: "Z.AI: Max",
+          detailSegments: [
+            { text: "Peak (3x)", status: "error" },
+            { text: " / ", status: "textMuted" },
+            { text: "stale", status: "warning" },
+          ],
+        },
+        {
+          id: "zai-off-peak",
+          order: 40,
+          kind: "header",
+          title: "Z.AI: Pro",
+          detailSegments: [
+            { text: "Off-Peak (1x)", status: "success" },
+            { text: " / ", status: "textMuted" },
+            { text: "stale", status: "warning" },
+          ],
+        },
+      ],
+    }],
+  }
+  const { elements, dispose } = mountPanel(headerModel)
+  const details = elements
+    .filter((element) => element.type === "text")
+    .filter((element) => ["Limited", "stale", "Peak (3x)", " / ", "Off-Peak (1x)"].includes(element.props.children))
+
+  try {
+    assert.deepEqual(details.map((element) => [element.props.children, element.props.fg]), [
+      ["Limited", "#ff0000"],
+      ["stale", "#ffaa00"],
+      ["Peak (3x)", "#ff0000"],
+      [" / ", "#888888"],
+      ["stale", "#ffaa00"],
+      ["Off-Peak (1x)", "#00ff00"],
+      [" / ", "#888888"],
+      ["stale", "#ffaa00"],
+    ])
+    const titles = elements.filter((element) =>
+      element.type === "text"
+      && ["Ordinary", "OpenAI: Pro", "Z.AI: Max", "Z.AI: Pro"].includes(element.props.children))
+    assert.ok(titles.every((element) => element.props.flexBasis === 0 && element.props.flexGrow === 1))
+  } finally {
+    dispose()
+  }
+})
+```
+
+- [ ] **Step 2: Run segmented header tests and verify RED**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/presentation-types.test.mjs tests/presentation-render-model.test.mjs tests/presentation-mounted.test.mjs
+```
+
+Expected: FAIL first in `typechecks a semantic panel model fixture` because TypeScript reports that `detailSegments` does not exist on the header `PanelItem`; pure normalization drops the segments, and mounted rendering emits none of the independently colored segment text.
+
+- [ ] **Step 3: Add the compatible semantic segment type and normalize it**
+
+Add the type after `PanelStatus` in `tui/presentation/types.ts` and extend only the header variant:
+
+```typescript
+export type PanelTextSegment = {
+  text: string
+  status?: PanelStatus
+}
+
+export type PanelItem =
+  | (PanelItemBase & { kind: "divider" })
+  | (PanelItemBase & {
+      kind: "header"
+      title: string
+      detail?: string
+      detailSegments?: readonly PanelTextSegment[]
+    })
+```
+
+Keep all remaining `PanelItem` variants unchanged. Add `PanelTextSegment` to the type import in `tui/presentation/renderer.tsx`, then change the normalized header variant and header normalization case to:
+
+```typescript
+  | {
+      id: string
+      kind: "header"
+      title: string
+      detail?: string
+      detailSegments?: PanelTextSegment[]
+      status?: PanelStatus
+    }
+```
+
+```typescript
+    case "header":
+      return {
+        id: item.id,
+        kind: item.kind,
+        title: item.title,
+        detail: item.detail,
+        detailSegments: item.detailSegments?.map((segment) => ({ ...segment })),
+        status: item.status,
+      }
+```
+
+- [ ] **Step 4: Preserve readable deterministic header text**
+
+Replace only the header case in `renderItemLayout()`:
+
+```typescript
+    case "header": {
+      const detail = item.detailSegments?.length
+        ? item.detailSegments.map((segment) => segment.text).join("")
+        : item.detail
+      return {
+        kind: item.kind,
+        text: detail ? `${item.title}: ${detail}` : item.title,
+        status: item.status,
+      }
+    }
+```
+
+This deliberately keeps pure rendering as one deterministic readable string; per-segment colors are a mounted-only concern.
+
+- [ ] **Step 5: Mount ordered independently colored segments with string fallback**
+
+Replace only the header case in `MountedItem()`:
+
+```tsx
+    case "header":
+      return (
+        <box flexDirection="row" width="100%">
+          <text flexBasis={0} flexGrow={1}>{props.item.title}</text>
+          <Show when={!props.item.detailSegments?.length ? props.item.detail : undefined}>
+            {(detail) => <text fg={color(props.item.status)}>{detail()}</text>}
+          </Show>
+          <Show when={props.item.detailSegments?.length ? props.item.detailSegments : undefined}>
+            {(segments) => (
+              <box flexDirection="row">
+                <For each={segments()}>
+                  {(segment) => <text fg={color(segment.status)}>{segment.text}</text>}
+                </For>
+              </box>
+            )}
+          </Show>
+        </box>
+      )
+```
+
+Do not synthesize separators or statuses in the renderer; providers supply exact ordered text segments. If both fields are present, non-empty `detailSegments` is mounted/pure display input and `detail` remains compatible stored data.
+
+- [ ] **Step 6: Run segmented header tests and typechecking to verify GREEN**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/presentation-types.test.mjs tests/presentation-render-model.test.mjs tests/presentation-mounted.test.mjs && npm run typecheck
+```
+
+Expected: all focused tests PASS; ordinary `detail` remains one item-status-colored right-edge string, ordered segments retain their own colors, pure output is readable, and TypeScript exits `0`.
+
+- [ ] **Step 7: Commit the compatible segmented-header slice**
+
+```bash
+git add tui/presentation/types.ts tui/presentation/renderer.tsx tests/presentation-types.fixture.ts tests/presentation-render-model.test.mjs tests/presentation-mounted.test.mjs
+git commit -m "fix(tui): support segmented header details"
+```
+
+### Task 13: Make OpenAI Credential Replacement And Disposal Request-Safe
+
+**Files:**
+- Create: `tests/provider-lifecycle.fixture.ts`
+- Modify: `tests/compile-presentation.mjs:4-20`
+- Modify: `tests/provider-openai.test.mjs`
+- Modify: `tests/presentation-mounted.test.mjs`
+- Modify: `tui/providers/openai.ts:149-260,284-403`
+
+**Interfaces:**
+- Consumes: Task 12's `PanelTextSegment`/`detailSegments`, reactive `api.state.provider`, `OpenAiAuthEntry`, existing `refresh(): Promise<void>`, reset-boundary queueing, and `FETCH_TIMEOUT_MS = 20_000`.
+- Produces: `fetchOpenAiQuota(auth: OpenAiAuthEntry, signal?: AbortSignal): Promise<OpenAiQuotaData | null>`; callers that omit `signal` retain the helper-owned 20-second timeout, while the adapter passes its owned signal and tracks/clears the corresponding timeout.
+- Produces: adapter-local `credentialGeneration: number` and one `activeRequest` record containing the generation, `AbortController`, timeout, and request promise.
+- Produces: atomic `quotaState: { data: OpenAiQuotaData; generation: number } | null`, generation-tagged pending/refreshed boundary markers, and synchronous old-boundary cancellation on credential transition.
+- Produces: stale cached OpenAI header `detailSegments: [{ text: "stale", status: "warning" }]`, mounted as yellow right-edge text, with no `openai:stale` item.
+- Produces for Task 14: `.tmp-test/provider-lifecycle.mjs`, browser-conditioned from one test-only TypeScript entry that imports `createSignal`, `createOpenAiProvider`, and `createZaiProvider`; each exported constructor returns its adapter and a same-runtime credential setter.
+- Preserves: one in-flight request per credential generation, polling/backoff, stale expiry, reset-boundary queueing, direct `fetchOpenAiQuota({ access })` callers, and the public `QuotaProviderAdapter` signature.
+
+- [ ] **Step 1: Add the shared browser-conditioned provider lifecycle fixture**
+
+Create `tests/provider-lifecycle.fixture.ts` so each reactive signal and the provider constructor that observes it are bundled into the same browser-conditioned Solid runtime:
+
+```typescript
+import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
+import { createSignal } from "solid-js"
+
+import { createOpenAiProvider } from "../tui/providers/openai.js"
+import type { QuotaProviderAdapter, QuotaProviderOptions } from "../tui/providers/types.js"
+import { createZaiProvider } from "../tui/providers/zai.js"
+
+type ReactiveProvider = {
+  adapter: QuotaProviderAdapter
+  setCredential(key: string | null): void
+}
+
+function reactiveProviderApi(providerID: string, initialKey: string | null): {
+  api: TuiPluginApi
+  setCredential(key: string | null): void
+} {
+  const [providers, setProviders] = createSignal(
+    initialKey ? [{ id: providerID, key: initialKey }] : [],
+  )
+  const api = {
+    state: {
+      get provider() {
+        return providers()
+      },
+      session: { messages: () => [] },
+      part: () => [],
+    },
+    kv: { get: () => undefined, set: () => undefined },
+  } as unknown as TuiPluginApi
+
+  return {
+    api,
+    setCredential(key: string | null): void {
+      setProviders(key ? [{ id: providerID, key }] : [])
+    },
+  }
+}
+
+export function createReactiveOpenAiAdapter(
+  initialKey: string | null,
+  options: QuotaProviderOptions = {},
+): ReactiveProvider {
+  const host = reactiveProviderApi("openai", initialKey)
+  return {
+    adapter: createOpenAiProvider(host.api, options),
+    setCredential: host.setCredential,
+  }
+}
+
+export function createReactiveZaiAdapter(
+  initialKey: string | null,
+  options: QuotaProviderOptions = {},
+): ReactiveProvider {
+  const host = reactiveProviderApi("zai-coding-plan", initialKey)
+  return {
+    adapter: createZaiProvider(host.api, options),
+    setCredential: host.setCredential,
+  }
+}
+```
+
+Update both arrays in `tests/compile-presentation.mjs`. Add `"provider-lifecycle"` to the cleanup names:
+
+```javascript
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-lifecycle", "quota-composition", "quota-selection", "home-composition"]) {
+  rmSync(`.tmp-test/${name}.mjs`, { force: true })
+}
+```
+
+Add this exact browser-conditioned compile row after the three direct provider rows:
+
+```javascript
+  ["tests/provider-lifecycle.fixture.ts", ".tmp-test/provider-lifecycle.mjs", ["browser"]],
+```
+
+In `tests/provider-openai.test.mjs`, keep the direct provider import for mapping/fetch tests and add:
+
+```javascript
+const { createReactiveOpenAiAdapter } = await import("../.tmp-test/provider-lifecycle.mjs")
+```
+
+Add this wrapper after `createTestAdapter()`; it installs fetch before provider construction and follows the existing disposal/global-restoration order:
+
+```javascript
+function createReactiveTestAdapter(t, {
+  initialKey = "test-token",
+  fetch: testFetch,
+  clock,
+  providerOptions,
+} = {}) {
+  const originalFetch = globalThis.fetch
+  if (testFetch) globalThis.fetch = testFetch
+  const reactive = createReactiveOpenAiAdapter(initialKey, providerOptions)
+  t.after(async () => {
+    try {
+      reactive.adapter.dispose()
+      await flushEffects()
+    } finally {
+      globalThis.fetch = originalFetch
+      clock?.restore()
+    }
+  })
+  return reactive
+}
+```
+
+Keep the deferred request queue in the Node test because it owns no Solid reactive state:
+
+```javascript
+function deferredRequests() {
+  const requests = []
+  return {
+    requests,
+    fetch: async (_url, options) => {
+      let resolve
+      let reject
+      const promise = new Promise((resolvePromise, rejectPromise) => {
+        resolve = resolvePromise
+        reject = rejectPromise
+      })
+      requests.push({
+        authorization: options.headers.Authorization,
+        signal: options.signal,
+        resolve,
+        reject,
+      })
+      return promise
+    },
+  }
+}
+```
+
+- [ ] **Step 2: Add failing OpenAI stale-header, replacement-boundary, abort-log, removal, and disposal tests**
+
+Replace the stale model assertion in `tests/provider-openai.test.mjs` with:
+
+```javascript
+test("retains OpenAI quota with one warning stale header segment", () => {
+  const model = mapOpenAiPanelState({ phase: "stale", data: quota({ limitReached: true }), now })
+
+  assert.equal(item(model, "openai:18000s-primary").value, 75)
+  assert.deepEqual(item(model, "openai:header"), {
+    id: "openai:header",
+    order: 10,
+    kind: "header",
+    title: "OpenAI: Plus",
+    detailSegments: [{ text: "stale", status: "warning" }],
+  })
+  assert.deepEqual(item(model, "openai:limited"), {
+    id: "openai:limited",
+    order: 15,
+    kind: "text",
+    text: "Limited",
+    status: "error",
+  })
+  assert.equal(item(model, "openai:stale"), undefined)
+})
+```
+
+Append this exact mounted provider-model test to `tests/presentation-mounted.test.mjs`, adding `mapOpenAiPanelState` to the top-level compiled-module imports:
+
+```javascript
+const { mapOpenAiPanelState } = await import("../.tmp-test/provider-openai.mjs")
+
+test("mounts stale OpenAI state as warning text in the provider header", () => {
+  const staleModel = mapOpenAiPanelState({
+    phase: "stale",
+    now: Date.UTC(2026, 6, 13, 6, 0, 0),
+    data: {
+      planType: "Pro Lite",
+      primary: { used_percent: 54, limit_window_seconds: 604_800, reset_after_seconds: 3_600 },
+      secondary: null,
+      codeReview: null,
+      limitReached: false,
+      creditsBalance: null,
+      creditsUnlimited: false,
+    },
+  })
+  const { elements, dispose } = mountPanel(staleModel)
+  const text = elements.filter((element) => element.type === "text")
+
+  try {
+    const title = text.find((element) => element.props.children === "OpenAI: Pro Lite")
+    const stale = text.find((element) => element.props.children === "stale")
+    assert.equal(title?.props.flexBasis, 0)
+    assert.equal(title?.props.flexGrow, 1)
+    assert.equal(stale?.props.fg, "#ffaa00")
+    assert.equal(text.some((element) => element.props.children === "~stale"), false)
+  } finally {
+    dispose()
+  }
+})
+```
+
+Append this abort-control-flow diagnostic test to `tests/provider-openai.test.mjs`:
+
+```javascript
+test("suppresses expected OpenAI abort logs but diagnoses non-abort failures", async (t) => {
+  const originalFetch = globalThis.fetch
+  const originalError = console.error
+  const errors = []
+  console.error = (...args) => errors.push(args)
+  t.after(() => {
+    globalThis.fetch = originalFetch
+    console.error = originalError
+  })
+
+  globalThis.fetch = async (_url, options) => new Promise((_resolve, reject) => {
+    options.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true })
+  })
+  const controller = new AbortController()
+  const aborted = fetchOpenAiQuota({ access: "token" }, controller.signal)
+  controller.abort()
+  assert.equal(await aborted, null)
+  assert.equal(errors.length, 0)
+
+  globalThis.fetch = async () => {
+    throw new Error("transport failed")
+  }
+  assert.equal(await fetchOpenAiQuota({ access: "token" }, new AbortController().signal), null)
+  assert.equal(errors.length, 1)
+  assert.equal(errors[0][0], "[quota-openai] fetchQuota error:")
+})
+```
+
+Append these lifecycle tests after the existing disposal tests:
+
+```javascript
+test("replaces OpenAI credentials without publishing the old generation", async (t) => {
+  const pending = deferredRequests()
+  const { adapter, setCredential } = createReactiveTestAdapter(t, {
+    initialKey: "token-a",
+    fetch: pending.fetch,
+  })
+  await flushEffects()
+
+  pending.requests[0].resolve(quotaResponse(window({ used_percent: 25 })))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "ready")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 75)
+
+  void adapter.refresh()
+  await flushEffects()
+  assert.equal(pending.requests.length, 2)
+  setCredential("token-b")
+  await flushEffects()
+
+  assert.equal(pending.requests[1].signal.aborted, true)
+  assert.equal(pending.requests.length, 3, "one replacement request starts")
+  assert.equal(pending.requests[2].authorization, "Bearer token-b")
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 75)
+  assert.deepEqual(item(adapter.panel(), "openai:header").detailSegments, [
+    { text: "stale", status: "warning" },
+  ])
+  assert.equal(item(adapter.panel(), "openai:stale"), undefined)
+
+  pending.requests[1].resolve(quotaResponse(window({ used_percent: 99 })))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 75)
+
+  pending.requests[2].resolve(quotaResponse(window({ used_percent: 40 })))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "ready")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 60)
+
+  void adapter.refresh()
+  await flushEffects()
+  setCredential("token-c")
+  await flushEffects()
+  assert.equal(pending.requests[3].signal.aborted, true)
+  assert.equal(pending.requests.length, 5, "one failed replacement request starts")
+  pending.requests[4].resolve({ ok: false, status: 503 })
+  await flushEffects()
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 60)
+  assert.deepEqual(item(adapter.panel(), "openai:header").detailSegments, [
+    { text: "stale", status: "warning" },
+  ])
+  assert.equal(item(adapter.panel(), "openai:stale"), undefined)
+
+  pending.requests[3].resolve(quotaResponse(window({ used_percent: 10 })))
+  await flushEffects()
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 60)
+
+  setCredential(null)
+  await flushEffects()
+  assert.equal(adapter.freshness(), "unavailable")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary"), undefined)
+  assert.equal(item(adapter.panel(), "openai:header").detail, "No ChatGPT account linked")
+})
+
+test("does not carry an OpenAI reset boundary into a replacement generation", async (t) => {
+  const clock = installFakeClock(now)
+  const oldResetAt = now + 15 * 60 * 1_000
+  const pending = deferredRequests()
+  const { adapter, setCredential } = createReactiveTestAdapter(t, {
+    initialKey: "token-a",
+    fetch: pending.fetch,
+    clock,
+  })
+  await flushEffects()
+
+  pending.requests[0].resolve(quotaResponse(window({ reset_at: oldResetAt / 1_000 })))
+  await flushEffects()
+  const oldBoundary = clock.timeouts.find((timer) =>
+    timer.active && timer.delay === oldResetAt - now)
+  assert.ok(oldBoundary)
+
+  setCredential("token-b")
+  await flushEffects()
+  assert.equal(oldBoundary.active, false, "replacement synchronously clears the old boundary")
+  assert.equal(pending.requests.length, 2, "exactly one replacement request starts")
+
+  clock.advance(oldResetAt - now)
+  oldBoundary.callback()
+  await flushEffects()
+  assert.equal(pending.requests.length, 2, "the old callback cannot queue a replacement follow-up")
+
+  pending.requests[1].resolve(quotaResponse(window({ reset_at: (oldResetAt + 60 * 60 * 1_000) / 1_000 })))
+  await flushEffects()
+  assert.equal(pending.requests.length, 2, "settlement cannot consume an old-generation boundary")
+  assert.equal(adapter.freshness(), "ready")
+  assert.ok(clock.timeouts.some((timer) => timer.active && timer.delay === 60 * 60 * 1_000))
+})
+
+test("aborts and clears the OpenAI request timeout immediately on dispose", async (t) => {
+  const clock = installFakeClock(now)
+  const pending = deferredRequests()
+  const adapter = createTestAdapter(t, { clock, fetch: pending.fetch })
+  await flushEffects()
+
+  const requestTimeout = clock.timeouts.find((timer) => timer.active && timer.delay === 20_000)
+  assert.ok(requestTimeout)
+  const stateAtDispose = observableState(adapter)
+  adapter.dispose()
+
+  assert.equal(pending.requests[0].signal.aborted, true)
+  assert.equal(requestTimeout.active, false)
+  pending.requests[0].resolve(quotaResponse(window({ used_percent: 5 })))
+  await flushEffects()
+  assert.deepEqual(observableState(adapter), stateAtDispose)
+})
+```
+
+Retain the existing `queues one OpenAI reset-boundary refresh behind an older request` test unchanged. Its same-generation ordering remains required: after the boundary callback, `requests` stays `2`; after `resolvePending(...)` and `flushEffects()`, `requests` becomes exactly `3`.
+
+- [ ] **Step 3: Run the OpenAI provider test and verify RED**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/provider-openai.test.mjs tests/presentation-mounted.test.mjs
+```
+
+Expected: compilation creates `.tmp-test/provider-lifecycle.mjs` successfully, proving the fixture uses the real browser-conditioned bundle. Tests then FAIL because stale mapping/abort/disposal behavior is absent and `oldBoundary.active` remains `true` after replacement; invoking that old callback while the replacement is pending can populate the unowned numeric `pendingBoundary` and produce an extra request after settlement.
+
+- [ ] **Step 4: Allow adapter-owned signals without changing direct fetch callers**
+
+Replace `fetchOpenAiQuota()` in `tui/providers/openai.ts` with:
+
+```typescript
+export async function fetchOpenAiQuota(auth: OpenAiAuthEntry, signal?: AbortSignal): Promise<OpenAiQuotaData | null> {
+  const accessToken = auth.access
+  if (!accessToken) return null
+  if (auth.expires && auth.expires < Date.now()) {
+    console.error("[quota-openai] Token expired")
+    return null
+  }
+
+  const ownedController = signal ? null : new AbortController()
+  const requestSignal = signal ?? ownedController!.signal
+  const timeout = ownedController
+    ? setTimeout(() => ownedController.abort(), FETCH_TIMEOUT_MS)
+    : null
+  try {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${accessToken}`,
+      "User-Agent": USER_AGENT,
+    }
+    const accountId = auth.accountId || decodeJwtAccountId(accessToken)
+    if (accountId) headers["ChatGPT-Account-Id"] = accountId
+
+    const response = await fetch(OPENAI_USAGE_URL, { headers, signal: requestSignal })
+    if (!response.ok) {
+      console.error(`[quota-openai] API returned ${response.status}`)
+      return null
+    }
+    const data = await response.json() as UsageResponse
+    const primary = data.rate_limit?.primary_window
+    if (!primary) {
+      console.error("[quota-openai] No primary rate limit window")
+      return null
+    }
+    return {
+      planType: derivePlanLabel(data.plan_type),
+      primary,
+      secondary: data.rate_limit?.secondary_window ?? null,
+      codeReview: data.code_review_rate_limit?.primary_window ?? null,
+      limitReached: Boolean(data.rate_limit?.limit_reached),
+      creditsBalance: data.credits?.balance ?? null,
+      creditsUnlimited: Boolean(data.credits?.unlimited),
+    }
+  } catch (error) {
+    if (!requestSignal.aborted) console.error("[quota-openai] fetchQuota error:", error)
+    return null
+  } finally {
+    if (timeout) clearTimeout(timeout)
+  }
+}
+```
+
+- [ ] **Step 5: Add OpenAI stale-header mapping, generation ownership, and credential transitions**
+
+Add `PanelTextSegment` to the type import from `tui/presentation/types.ts`. Replace the OpenAI `header()` helper and ready/stale mapping branch so stale state uses Task 12's exact optional field and never creates a standalone row:
+
+```typescript
+function header(title: string, detail?: string, detailSegments?: readonly PanelTextSegment[]): PanelItem {
+  return {
+    id: "openai:header",
+    order: 10,
+    kind: "header",
+    title,
+    ...(detail ? { detail } : {}),
+    ...(detailSegments?.length ? { detailSegments } : {}),
+  }
+}
+```
+
+```typescript
+  else {
+    items.push(header(
+      `OpenAI: ${data.planType}`,
+      undefined,
+      state.phase === "stale" ? [{ text: "stale", status: "warning" }] : undefined,
+    ))
+    if (data.limitReached) items.push({ id: "openai:limited", order: 15, kind: "text", text: "Limited", status: "error" })
+    items.push(...quotaItems("primary", 20, data.primary, now))
+    if (data.secondary) items.push(...quotaItems("secondary", 50, data.secondary, now))
+  }
+```
+
+Then initialize `auth` to `null` and replace the current quota/request/boundary bookkeeping, `refresh()`, and credential effects with the following exact block. One combined discovery/transition effect owns credential change ordering, while `quotaState` atomically associates data with its publishing generation.
+
+```typescript
+    type PublishedQuota = { data: OpenAiQuotaData; generation: number }
+    type GenerationBoundary = { epoch: number; generation: number }
+
+    const [auth, setAuth] = createSignal<OpenAiAuthEntry | null>(null)
+    const [quotaState, setQuotaState] = createSignal<PublishedQuota | null>(null)
+    const quotaData = () => quotaState()?.data ?? null
+    const [phase, setPhase] = createSignal<OpenAiPanelPhase>("loading")
+    const [lastSuccessAt, setLastSuccessAt] = createSignal(0)
+    const [now, setNow] = createSignal(Date.now())
+    const [refreshedBoundary, setRefreshedBoundary] = createSignal<GenerationBoundary | null>(null)
+    let refreshInFlight: Promise<void> | null = null
+    let refreshStartedAt = 0
+    let pendingBoundary: GenerationBoundary | null = null
+    let credentialGeneration = 0
+    let observedCredential: string | null | undefined
+    let disposed = false
+    let boundarySchedule: {
+      timer: ReturnType<typeof setTimeout>
+      generation: number
+    } | null = null
+    let activeRequest: {
+      generation: number
+      controller: AbortController
+      timeout: ReturnType<typeof setTimeout>
+      promise: Promise<void>
+    } | null = null
+
+    const clearBoundarySchedule = (): void => {
+      const schedule = boundarySchedule
+      boundarySchedule = null
+      if (schedule) clearTimeout(schedule.timer)
+      pendingBoundary = null
+      setRefreshedBoundary(null)
+    }
+
+    const cancelActiveRequest = (): void => {
+      const request = activeRequest
+      if (!request) return
+      activeRequest = null
+      request.controller.abort()
+      clearTimeout(request.timeout)
+      if (refreshInFlight === request.promise) {
+        refreshInFlight = null
+        refreshStartedAt = 0
+      }
+    }
+
+    const refresh = (): Promise<void> => {
+      if (disposed) return Promise.resolve()
+      if (refreshInFlight) return refreshInFlight
+      const currentAuth = auth()
+      if (!currentAuth?.access) {
+        setPhase("unavailable")
+        return Promise.resolve()
+      }
+
+      const generation = credentialGeneration
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+      const startedAt = Date.now()
+      const request = (async () => {
+        const data = await fetchOpenAiQuota(currentAuth, controller.signal)
+        if (disposed || generation !== credentialGeneration) return
+        if (data) {
+          setQuotaState({ data, generation })
+          setPhase("ready")
+          setLastSuccessAt(Date.now())
+        } else if (quotaData()) {
+          setPhase("stale")
+        } else {
+          setPhase("unavailable")
+        }
+      })()
+      refreshInFlight = request
+      refreshStartedAt = startedAt
+      activeRequest = { generation, controller, timeout, promise: request }
+      const settled = () => {
+        if (activeRequest?.promise === request) {
+          clearTimeout(activeRequest.timeout)
+          activeRequest = null
+        }
+        if (refreshInFlight !== request) return
+        refreshInFlight = null
+        refreshStartedAt = 0
+        const queued = pendingBoundary
+        if (disposed || generation !== credentialGeneration || queued?.generation !== generation) return
+        pendingBoundary = null
+        setRefreshedBoundary(queued)
+        void refresh()
+      }
+      void request.then(settled, settled)
+      return request
+    }
+
+    createEffect(() => {
+      const next = findOpenAiAuthFromProviders(api.state.provider) ?? findOpenAiAuthFromFiles()
+      const credential = next?.access
+        ? `${next.access}\u0000${next.accountId ?? ""}`
+        : null
+      if (credential === observedCredential) return
+      const replacingCredential = observedCredential !== undefined && observedCredential !== null
+      observedCredential = credential
+      credentialGeneration += 1
+      clearBoundarySchedule()
+      cancelActiveRequest()
+      setAuth(next)
+
+      if (!credential) {
+        setQuotaState(null)
+        setLastSuccessAt(0)
+        setPhase("unavailable")
+        return
+      }
+      setPhase(replacingCredential && quotaData() ? "stale" : "loading")
+      void refresh()
+    })
+```
+
+In the one-second stale-expiry tick, replace the existing quota clear with this atomic state clear and synchronous boundary cleanup:
+
+```typescript
+        setQuotaState(null)
+        clearBoundarySchedule()
+```
+
+Replace the OpenAI reset-boundary effect completely:
+
+```typescript
+    createEffect(() => {
+      const published = quotaState()
+      if (!published || published.generation !== credentialGeneration) return
+      const generation = published.generation
+      const epoch = resetEpochMs(published.data.primary, now())
+      const refreshed = refreshedBoundary()
+      const pending = pendingBoundary
+      if (
+        epoch <= 0
+        || (refreshed?.generation === generation && refreshed.epoch === epoch)
+        || (pending?.generation === generation && pending.epoch === epoch)
+      ) return
+
+      const timer = setTimeout(() => {
+        if (
+          disposed
+          || generation !== credentialGeneration
+          || quotaState()?.generation !== generation
+        ) return
+        if (refreshInFlight && activeRequest?.generation === generation && refreshStartedAt < epoch) {
+          pendingBoundary = { epoch, generation }
+          return
+        }
+        setRefreshedBoundary({ epoch, generation })
+        void refresh()
+      }, Math.max(0, epoch - Date.now()))
+      const schedule = { timer, generation }
+      boundarySchedule = schedule
+      unref(timer)
+      onCleanup(() => {
+        if (boundarySchedule !== schedule) return
+        boundarySchedule = null
+        clearTimeout(timer)
+      })
+    })
+```
+
+The callback captures the published generation, and credential transition increments `credentialGeneration` before `clearBoundarySchedule()`. Therefore even an already-queued callback is inert, while effect cleanup and the explicit timer reference synchronously remove the normal schedule. Replace the returned adapter's `dispose()` body with:
+
+```typescript
+      dispose(): void {
+        if (disposed) return
+        disposed = true
+        credentialGeneration += 1
+        clearBoundarySchedule()
+        cancelActiveRequest()
+        dispose()
+      },
+```
+
+- [ ] **Step 6: Run OpenAI lifecycle and boundary tests to verify GREEN**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/provider-openai.test.mjs tests/presentation-mounted.test.mjs tests/quota-composition.test.mjs && npm run typecheck
+```
+
+Expected: all focused tests PASS. The fixture-driven setter is observed by the bundled OpenAI constructor; replacement clears the old boundary and starts exactly one request even when that request spans the old reset epoch; its success schedules a new-generation boundary; the existing same-generation test still queues exactly one follow-up; stale headers, silent aborts, retained diagnostics, removal, disposal, and timeout cleanup pass; TypeScript exits `0`.
+
+- [ ] **Step 7: Commit the OpenAI lifecycle slice**
+
+```bash
+git add tui/providers/openai.ts tests/provider-openai.test.mjs tests/presentation-mounted.test.mjs tests/provider-lifecycle.fixture.ts tests/compile-presentation.mjs
+git commit -m "fix(tui): secure OpenAI credential lifecycle"
+```
+
+### Task 14: Make Z.AI Credential Replacement And Disposal Request-Safe
+
+**Files:**
+- Test: `tests/provider-lifecycle.fixture.ts`
+- Modify: `tests/provider-zai.test.mjs`
+- Modify: `tests/presentation-mounted.test.mjs`
+- Modify: `tui/providers/zai.ts:200-363,387-551`
+
+**Interfaces:**
+- Consumes: Task 12's `PanelTextSegment`/`detailSegments`, Task 13's browser-conditioned `createReactiveZaiAdapter()` fixture export, existing Z.AI file/provider key discovery, `refresh(): Promise<void>`, heuristic/rate-limit fallback, reset-boundary queueing, and `FETCH_TIMEOUT_MS = 20_000`.
+- Produces: `fetchZaiQuota(apiKey: string, signal?: AbortSignal): Promise<ZaiQuotaData | null>`; callers without a signal retain helper-owned timeout behavior, while the adapter owns the signal and tracked timeout used by its refresh state machine.
+- Produces: Z.AI-local `credentialGeneration: number`, active controller/timeout/promise ownership, and generation-guarded publication; no state or coordinator is shared with OpenAI.
+- Produces: atomic `quotaState: { data: ZaiQuotaData; generation: number } | null`, generation-tagged pending/refreshed boundary markers, and synchronous old-boundary/retry cleanup on credential transition.
+- Produces: stale Z.AI `detailSegments` in exact order: colored Peak/Off-Peak, `textMuted` ` / `, warning `stale`; no `zai:stale` item.
+- Preserves: Z.AI heuristic fallback when an initial authenticated fetch fails, retry/reset parsing, polling/backoff, stale expiry, reset-boundary queueing, and the public `QuotaProviderAdapter` signature.
+
+- [ ] **Step 1: Bind Z.AI tests to the shared lifecycle fixture**
+
+Keep the existing direct provider bundle import for mapping/fetch tests, add `fetchZaiQuota` to it, and import the Task 13 fixture export separately:
+
+```javascript
+const { createZaiProvider, fetchZaiQuota, mapZaiPanelState } = await import("../.tmp-test/provider-zai.mjs")
+const { createReactiveZaiAdapter } = await import("../.tmp-test/provider-lifecycle.mjs")
+```
+
+Change the response helper so tests can distinguish published generations:
+
+```javascript
+function quotaResponse(nextResetTime = now + 60 * 60 * 1000, percentage = 25) {
+  return {
+    ok: true,
+    json: async () => ({
+      code: 200,
+      data: {
+        level: "pro",
+        limits: [{ type: "TOKENS_LIMIT", unit: 3, percentage, nextResetTime }],
+      },
+    }),
+  }
+}
+```
+
+Add this wrapper after `createTestAdapter()`; no Node-test Solid import is allowed:
+
+```javascript
+function createReactiveTestAdapter(t, {
+  initialKey = "test-key",
+  fetch: testFetch,
+  clock,
+  providerOptions,
+} = {}) {
+  const originalFetch = globalThis.fetch
+  if (testFetch) globalThis.fetch = testFetch
+  const reactive = createReactiveZaiAdapter(initialKey, providerOptions)
+  t.after(async () => {
+    try {
+      reactive.adapter.dispose()
+      await flushEffects()
+    } finally {
+      globalThis.fetch = originalFetch
+      clock?.restore()
+    }
+  })
+  return reactive
+}
+
+function deferredRequests() {
+  const requests = []
+  return {
+    requests,
+    fetch: async (_url, options) => {
+      let resolve
+      let reject
+      const promise = new Promise((resolvePromise, rejectPromise) => {
+        resolve = resolvePromise
+        reject = rejectPromise
+      })
+      requests.push({
+        authorization: options.headers.Authorization,
+        signal: options.signal,
+        resolve,
+        reject,
+      })
+      return promise
+    },
+  }
+}
+```
+
+- [ ] **Step 2: Add failing Z.AI stale-header, replacement-boundary, abort-log, removal, and disposal tests**
+
+Replace the existing stale model test in `tests/provider-zai.test.mjs` with:
+
+```javascript
+test("retains Z.AI quota with Peak and stale header segments", () => {
+  const ready = mapZaiPanelState({ phase: "ready", data: quota(), now })
+  const stale = mapZaiPanelState({ phase: "stale", data: quota(), now })
+
+  assert.deepEqual(item(stale, "zai:5h"), item(ready, "zai:5h"))
+  assert.deepEqual(item(stale, "zai:7d"), item(ready, "zai:7d"))
+  assert.deepEqual(item(stale, "zai:header"), {
+    id: "zai:header",
+    order: 10,
+    kind: "header",
+    title: "Z.AI: Pro",
+    detailSegments: [
+      { text: "Peak (3x)", status: "error" },
+      { text: " / ", status: "textMuted" },
+      { text: "stale", status: "warning" },
+    ],
+  })
+  assert.equal(item(stale, "zai:stale"), undefined)
+})
+```
+
+Append this exact mounted provider-model test to `tests/presentation-mounted.test.mjs`, adding `mapZaiPanelState` to the top-level compiled-module imports:
+
+```javascript
+const { mapZaiPanelState } = await import("../.tmp-test/provider-zai.mjs")
+
+test("mounts stale Z.AI state as colored Peak, separator, and stale header segments", () => {
+  const staleModel = mapZaiPanelState({
+    phase: "stale",
+    now: Date.UTC(2026, 6, 13, 6, 0, 0),
+    data: {
+      level: "Max",
+      tokenUsedPct: 25,
+      tokenRemainingPct: 75,
+      tokenNextResetEpoch: Date.UTC(2026, 6, 13, 7, 0, 0),
+      tokenAbsolute: null,
+      weeklyLimit: null,
+      timeLimit: null,
+    },
+  })
+  const { elements, dispose } = mountPanel(staleModel)
+  const text = elements.filter((element) => element.type === "text")
+
+  try {
+    const title = text.find((element) => element.props.children === "Z.AI: Max")
+    const segments = text.filter((element) => ["Peak (3x)", " / ", "stale"].includes(element.props.children))
+    assert.equal(title?.props.flexBasis, 0)
+    assert.equal(title?.props.flexGrow, 1)
+    assert.deepEqual(segments.map((element) => [element.props.children, element.props.fg]), [
+      ["Peak (3x)", "#ff0000"],
+      [" / ", "#888888"],
+      ["stale", "#ffaa00"],
+    ])
+    assert.equal(text.some((element) => element.props.children === "~stale"), false)
+  } finally {
+    dispose()
+  }
+})
+```
+
+Add `fetchZaiQuota` to the compiled provider import in `tests/provider-zai.test.mjs`, then append:
+
+```javascript
+test("suppresses expected Z.AI abort logs but diagnoses non-abort failures", async (t) => {
+  const originalFetch = globalThis.fetch
+  const originalError = console.error
+  const errors = []
+  console.error = (...args) => errors.push(args)
+  t.after(() => {
+    globalThis.fetch = originalFetch
+    console.error = originalError
+  })
+
+  globalThis.fetch = async (_url, options) => new Promise((_resolve, reject) => {
+    options.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true })
+  })
+  const controller = new AbortController()
+  const aborted = fetchZaiQuota("key", controller.signal)
+  controller.abort()
+  assert.equal(await aborted, null)
+  assert.equal(errors.length, 0)
+
+  globalThis.fetch = async () => {
+    throw new Error("transport failed")
+  }
+  assert.equal(await fetchZaiQuota("key", new AbortController().signal), null)
+  assert.equal(errors.length, 1)
+  assert.equal(errors[0][0], "[quota-zai] fetchQuota error:")
+})
+```
+
+Append these lifecycle tests after the current disposal tests:
+
+```javascript
+test("replaces Z.AI credentials without publishing the old generation", async (t) => {
+  const pending = deferredRequests()
+  const { adapter, setCredential } = createReactiveTestAdapter(t, {
+    initialKey: "key-a",
+    fetch: pending.fetch,
+  })
+  await flushEffects()
+
+  pending.requests[0].resolve(quotaResponse(now + 3_600_000, 25))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "ready")
+  assert.equal(item(adapter.panel(), "zai:5h").value, 75)
+
+  void adapter.refresh()
+  await flushEffects()
+  assert.equal(pending.requests.length, 2)
+  setCredential("key-b")
+  await flushEffects()
+
+  assert.equal(pending.requests[1].signal.aborted, true)
+  assert.equal(pending.requests.length, 3, "one replacement request starts")
+  assert.equal(pending.requests[2].authorization, "Bearer key-b")
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "zai:5h").value, 75)
+  assert.deepEqual(item(adapter.panel(), "zai:header").detailSegments, [
+    { text: "Peak (3x)", status: "error" },
+    { text: " / ", status: "textMuted" },
+    { text: "stale", status: "warning" },
+  ])
+  assert.equal(item(adapter.panel(), "zai:stale"), undefined)
+
+  pending.requests[1].resolve(quotaResponse(now + 3_600_000, 99))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "zai:5h").value, 75)
+
+  pending.requests[2].resolve(quotaResponse(now + 3_600_000, 40))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "ready")
+  assert.equal(item(adapter.panel(), "zai:5h").value, 60)
+
+  void adapter.refresh()
+  await flushEffects()
+  setCredential("key-c")
+  await flushEffects()
+  assert.equal(pending.requests[3].signal.aborted, true)
+  assert.equal(pending.requests.length, 5, "one failed replacement request starts")
+  pending.requests[4].resolve({ ok: false })
+  await flushEffects()
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "zai:5h").value, 60)
+  assert.deepEqual(item(adapter.panel(), "zai:header").detailSegments, [
+    { text: "Peak (3x)", status: "error" },
+    { text: " / ", status: "textMuted" },
+    { text: "stale", status: "warning" },
+  ])
+  assert.equal(item(adapter.panel(), "zai:stale"), undefined)
+
+  pending.requests[3].resolve(quotaResponse(now + 3_600_000, 10))
+  await flushEffects()
+  assert.equal(item(adapter.panel(), "zai:5h").value, 60)
+
+  setCredential(null)
+  await flushEffects()
+  assert.equal(adapter.freshness(), "unavailable")
+  assert.equal(item(adapter.panel(), "zai:5h"), undefined)
+  assert.equal(item(adapter.panel(), "zai:header").detail, "No Z.AI account linked")
+})
+
+test("does not carry a Z.AI reset boundary into a replacement generation", async (t) => {
+  const clock = installFakeClock(now)
+  const oldResetAt = now + 15 * 60 * 1_000
+  const pending = deferredRequests()
+  const { adapter, setCredential } = createReactiveTestAdapter(t, {
+    initialKey: "key-a",
+    fetch: pending.fetch,
+    clock,
+  })
+  await flushEffects()
+
+  pending.requests[0].resolve(quotaResponse(oldResetAt, 25))
+  await flushEffects()
+  const oldBoundary = clock.timeouts.find((timer) =>
+    timer.active && timer.delay === oldResetAt - now)
+  assert.ok(oldBoundary)
+
+  setCredential("key-b")
+  await flushEffects()
+  assert.equal(oldBoundary.active, false, "replacement synchronously clears the old boundary")
+  assert.equal(pending.requests.length, 2, "exactly one replacement request starts")
+
+  clock.advance(oldResetAt - now)
+  oldBoundary.callback()
+  await flushEffects()
+  assert.equal(pending.requests.length, 2, "the old callback cannot queue a replacement follow-up")
+
+  pending.requests[1].resolve(quotaResponse(oldResetAt + 60 * 60 * 1_000, 40))
+  await flushEffects()
+  assert.equal(pending.requests.length, 2, "settlement cannot consume an old-generation boundary")
+  assert.equal(adapter.freshness(), "ready")
+  assert.ok(clock.timeouts.some((timer) => timer.active && timer.delay === 60 * 60 * 1_000))
+})
+
+test("aborts and clears the Z.AI request timeout immediately on dispose", async (t) => {
+  const clock = installFakeClock(now)
+  const pending = deferredRequests()
+  const adapter = createTestAdapter(t, { clock, fetch: pending.fetch })
+  await flushEffects()
+
+  const requestTimeout = clock.timeouts.find((timer) => timer.active && timer.delay === 20_000)
+  assert.ok(requestTimeout)
+  const stateAtDispose = observableState(adapter)
+  adapter.dispose()
+
+  assert.equal(pending.requests[0].signal.aborted, true)
+  assert.equal(requestTimeout.active, false)
+  pending.requests[0].resolve(quotaResponse(now + 3_600_000, 5))
+  await flushEffects()
+  assert.deepEqual(observableState(adapter), stateAtDispose)
+})
+```
+
+Retain the existing `queues one Z.AI reset-boundary refresh behind an older request` test unchanged. Its same-generation ordering remains required: after the boundary callback, `requests` stays `2`; after `resolvePending(...)` and `flushEffects()`, `requests` becomes exactly `3`.
+
+- [ ] **Step 3: Run the Z.AI provider test and verify RED**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/provider-zai.test.mjs tests/presentation-mounted.test.mjs
+```
+
+Expected: `.tmp-test/provider-lifecycle.mjs` imports successfully and the same-runtime Z.AI setter triggers provider effects. Tests then FAIL because stale mapping/abort/disposal behavior is absent and `oldBoundary.active` remains `true` after replacement; invoking that old callback while the replacement is pending can populate the unowned numeric `pendingBoundary` and produce an extra request after settlement.
+
+- [ ] **Step 4: Allow Z.AI adapter-owned signals while preserving helper callers**
+
+Replace `fetchZaiQuota()` in `tui/providers/zai.ts` with this signature/opening and retain the existing response parsing body between the `try` and `catch`:
+
+```typescript
+export async function fetchZaiQuota(apiKey: string, signal?: AbortSignal): Promise<ZaiQuotaData | null> {
+  const ownedController = signal ? null : new AbortController()
+  const requestSignal = signal ?? ownedController!.signal
+  const timeout = ownedController
+    ? setTimeout(() => ownedController.abort(), FETCH_TIMEOUT_MS)
+    : null
+  try {
+    const response = await fetch(ZAI_QUOTA_URL, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
+      signal: requestSignal,
+    })
+    if (!response.ok) return null
+    const payload = await response.json() as QuotaApiResponse
+    if (payload.code !== 200 || !payload.data?.limits) return null
+
+    const rawLevel = String(payload.data.level || "Unknown")
+    const tokenLimits = payload.data.limits.filter((limit): limit is TokenLimit => limit.type === "TOKENS_LIMIT")
+    const token = tokenLimits.find((limit) => limit.unit === TIME_UNIT.SESSION_5H) ?? tokenLimits[0]
+    const weekly = tokenLimits.find((limit) => limit.unit === TIME_UNIT.WEEKLY_7D && limit !== token)
+    const time = payload.data.limits.find((limit): limit is TimeLimit => limit.type === "TIME_LIMIT")
+    const absolute = (limit: TokenLimit, usedPct: number): AbsoluteQuota | null => {
+      const total = safeNumber(limit.usage, 0)
+      if (total <= 0) return null
+      return {
+        usedPct,
+        remainingPct: clampPct(100 - usedPct),
+        nextResetEpoch: safeNumber(limit.nextResetTime, 0),
+        used: safeNumber(limit.currentValue, Math.round(total * usedPct / 100)),
+        total,
+      }
+    }
+    const tokenUsedPct = token ? clampPct(safeNumber(token.percentage, 0)) : 0
+
+    return {
+      level: rawLevel.charAt(0).toUpperCase() + rawLevel.slice(1).toLowerCase(),
+      tokenUsedPct,
+      tokenRemainingPct: clampPct(100 - tokenUsedPct),
+      tokenNextResetEpoch: token ? safeNumber(token.nextResetTime, 0) : 0,
+      tokenAbsolute: token ? absolute(token, tokenUsedPct) : null,
+      weeklyLimit: weekly
+        ? {
+            usedPct: clampPct(safeNumber(weekly.percentage, 0)),
+            remainingPct: clampPct(100 - safeNumber(weekly.percentage, 0)),
+            nextResetEpoch: safeNumber(weekly.nextResetTime, 0),
+            absolute: absolute(weekly, clampPct(safeNumber(weekly.percentage, 0))),
+          }
+        : null,
+      timeLimit: time
+        ? {
+            usedPct: clampPct(safeNumber(time.percentage, 0)),
+            remainingPct: clampPct(100 - safeNumber(time.percentage, 0)),
+            nextResetEpoch: safeNumber(time.nextResetTime, 0),
+            total: safeNumber(time.usage, 0),
+            used: safeNumber(time.currentValue, 0),
+            usageDetails: Array.isArray(time.usageDetails) ? time.usageDetails : [],
+          }
+        : null,
+    }
+  } catch (error) {
+    if (!requestSignal.aborted) console.error("[quota-zai] fetchQuota error:", error)
+    return null
+  } finally {
+    if (timeout) clearTimeout(timeout)
+  }
+}
+```
+
+- [ ] **Step 5: Add Z.AI stale-header mapping, generation ownership, and credential transitions**
+
+Add `PanelStatus` and `PanelTextSegment` to the type import from `tui/presentation/types.ts`. Replace the Z.AI `header()` helper and ready/stale branch with the exact compatible mapping below:
+
+```typescript
+function header(
+  title: string,
+  detail?: string,
+  status?: PanelStatus,
+  detailSegments?: readonly PanelTextSegment[],
+): PanelItem {
+  return {
+    id: "zai:header",
+    order: 10,
+    kind: "header",
+    title,
+    ...(detail ? { detail } : {}),
+    ...(status ? { status } : {}),
+    ...(detailSegments?.length ? { detailSegments } : {}),
+  }
+}
+```
+
+```typescript
+  } else if (data) {
+    const staleSegments: readonly PanelTextSegment[] | undefined = state.phase === "stale"
+      ? [
+          { text: peakSummary.text, status: peakSummary.status },
+          { text: " / ", status: "textMuted" },
+          { text: "stale", status: "warning" },
+        ]
+      : undefined
+    items.push(staleSegments
+      ? header(`Z.AI: ${data.level}`, undefined, undefined, staleSegments)
+      : header(`Z.AI: ${data.level}`, peakSummary.text, peakSummary.status))
+    items.push(...quotaItems("5H", "5h", 20, data.tokenRemainingPct, data.tokenNextResetEpoch, now, data.tokenAbsolute))
+    const weekly = data.weeklyLimit
+    items.push(...quotaItems("7D", "7d", 50, weekly?.remainingPct ?? 100, weekly?.nextResetEpoch ?? 0, now, weekly?.absolute ?? null))
+    if (!weekly) items.push({ id: "zai:7d-legacy", order: 65, kind: "text", text: "Unlimited (Legacy)", status: "textMuted" })
+    if (data.timeLimit) {
+      const time = data.timeLimit
+      items.push(
+        { id: "zai:time", order: 80, kind: "progress", label: "T", value: time.remainingPct, total: 100 },
+        { id: "zai:time-reset", order: 90, kind: "timer", label: "Tool reset", state: timerState(time.remainingPct, time.nextResetEpoch, now), ...(time.nextResetEpoch > 0 ? { epoch: time.nextResetEpoch } : {}) },
+        { id: "zai:time-spacer", order: 91, kind: "text", text: "" },
+        { id: "zai:time-used", order: 92, kind: "quantity", label: "Tool used", value: time.used, unit: "count" },
+        { id: "zai:time-total", order: 93, kind: "quantity", label: "Tool total", value: time.total, unit: "count" },
+      )
+      const rows = time.usageDetails.filter((detail) => detail.usage > 0)
+      if (rows.length) items.push({
+        id: "zai:time-models",
+        order: 95,
+        kind: "table",
+        columns: [
+          { id: "model", order: 10, title: "Model" },
+          { id: "usage", order: 20, title: "Usage", align: "end" },
+        ],
+        rows: rows.map((detail, index) => ({
+          id: `zai:time-model:${detail.modelCode}`,
+          order: index,
+          cells: [{ kind: "text", text: detail.modelCode }, { kind: "quantity", value: detail.usage, unit: "count" }],
+        })),
+      })
+    }
+```
+
+This complete branch replaces the existing ready/stale branch and therefore removes only the old `zai:stale` insertion while retaining weekly and tool mapping. Then initialize `apiKey` to `null` and replace the quota/request/boundary bookkeeping, `refresh()`, and credential effects with the block below. One combined discovery/transition effect owns key-change ordering, and `quotaState` atomically associates data with its publishing generation.
+
+```typescript
+  type PublishedQuota = { data: ZaiQuotaData; generation: number }
+  type GenerationBoundary = { epoch: number; generation: number }
+
+  const [apiKey, setApiKey] = createSignal<string | null>(null)
+  const [quotaState, setQuotaState] = createSignal<PublishedQuota | null>(null)
+  const quotaData = () => quotaState()?.data ?? null
+  const [phase, setPhase] = createSignal<ZaiPanelPhase>("loading")
+  const [lastSuccessAt, setLastSuccessAt] = createSignal(0)
+  const [retryAfterEpoch, setRetryAfterEpoch] = createSignal<number | null>(null)
+  const [baselineSgt, setBaselineSgt] = createSignal(FALLBACK_BASELINE_SGT)
+  const [cycleMs, setCycleMs] = createSignal(FALLBACK_CYCLE_MS)
+  const [sessionID, setSessionID] = createSignal<string | null>(null)
+  const [now, setNow] = createSignal(Date.now())
+  const [refreshedBoundary, setRefreshedBoundary] = createSignal<GenerationBoundary | null>(null)
+  let refreshInFlight: Promise<void> | null = null
+  let refreshStartedAt = 0
+  let pendingBoundary: GenerationBoundary | null = null
+  let credentialGeneration = 0
+  let observedCredential: string | null | undefined
+  let disposed = false
+  let boundarySchedule: {
+    timer: ReturnType<typeof setTimeout>
+    generation: number
+  } | null = null
+  let activeRequest: {
+    generation: number
+    controller: AbortController
+    timeout: ReturnType<typeof setTimeout>
+    promise: Promise<void>
+  } | null = null
+
+  const clearBoundarySchedule = (): void => {
+    const schedule = boundarySchedule
+    boundarySchedule = null
+    if (schedule) clearTimeout(schedule.timer)
+    pendingBoundary = null
+    setRefreshedBoundary(null)
+  }
+
+  const cancelActiveRequest = (): void => {
+    const request = activeRequest
+    if (!request) return
+    activeRequest = null
+    request.controller.abort()
+    clearTimeout(request.timeout)
+    if (refreshInFlight === request.promise) {
+      refreshInFlight = null
+      refreshStartedAt = 0
+    }
+  }
+
+  const refresh = (): Promise<void> => {
+    if (disposed) return Promise.resolve()
+    if (refreshInFlight) return refreshInFlight
+    const key = apiKey()
+    if (!key) {
+      setPhase("unavailable")
+      return Promise.resolve()
+    }
+
+    const generation = credentialGeneration
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+    const startedAt = Date.now()
+    const request = (async () => {
+      const data = await fetchZaiQuota(key, controller.signal)
+      if (disposed || generation !== credentialGeneration) return
+      if (data) {
+        setQuotaState({ data, generation })
+        setPhase("ready")
+        setLastSuccessAt(Date.now())
+      } else if (quotaData()) {
+        setPhase("stale")
+      } else {
+        setPhase(retryAfterEpoch() && retryAfterEpoch()! > Date.now() ? "rate-limited" : "heuristic")
+      }
+    })()
+    refreshInFlight = request
+    refreshStartedAt = startedAt
+    activeRequest = { generation, controller, timeout, promise: request }
+    const settled = () => {
+      if (activeRequest?.promise === request) {
+        clearTimeout(activeRequest.timeout)
+        activeRequest = null
+      }
+      if (refreshInFlight !== request) return
+      refreshInFlight = null
+      refreshStartedAt = 0
+      const queued = pendingBoundary
+      if (disposed || generation !== credentialGeneration || queued?.generation !== generation) return
+      pendingBoundary = null
+      setRefreshedBoundary(queued)
+      void refresh()
+    }
+    void request.then(settled, settled)
+    return request
+  }
+
+  createEffect(() => {
+    const next = findZaiKeyFromProviders(api.state.provider) ?? findZaiKeyFromFiles()
+    if (next === observedCredential) return
+    const replacingCredential = observedCredential !== undefined && observedCredential !== null
+    observedCredential = next
+    credentialGeneration += 1
+    clearBoundarySchedule()
+    cancelActiveRequest()
+    setRetryAfterEpoch(null)
+    setApiKey(next)
+
+    if (!next) {
+      setQuotaState(null)
+      setLastSuccessAt(0)
+      setPhase("unavailable")
+      return
+    }
+    setPhase(replacingCredential && quotaData() ? "stale" : "loading")
+    void refresh()
+  })
+```
+
+In the one-second Z.AI stale-expiry tick, replace the existing quota clear with:
+
+```typescript
+      setQuotaState(null)
+      clearBoundarySchedule()
+```
+
+Replace the Z.AI reset-boundary effect completely:
+
+```typescript
+  createEffect(() => {
+    const published = quotaState()
+    const generation = published?.generation ?? credentialGeneration
+    if (published && generation !== credentialGeneration) return
+    const epoch = published?.data.tokenNextResetEpoch ?? retryAfterEpoch() ?? 0
+    const refreshed = refreshedBoundary()
+    const pending = pendingBoundary
+    if (
+      epoch <= 0
+      || (refreshed?.generation === generation && refreshed.epoch === epoch)
+      || (pending?.generation === generation && pending.epoch === epoch)
+    ) return
+
+    const timer = setTimeout(() => {
+      const current = quotaState()
+      const sourceIsCurrent = published
+        ? current?.generation === generation
+        : current === null
+      if (disposed || generation !== credentialGeneration || !sourceIsCurrent) return
+      if (refreshInFlight && activeRequest?.generation === generation && refreshStartedAt < epoch) {
+        pendingBoundary = { epoch, generation }
+        return
+      }
+      setRefreshedBoundary({ epoch, generation })
+      void refresh()
+    }, Math.max(0, epoch - Date.now()))
+    const schedule = { timer, generation }
+    boundarySchedule = schedule
+    unref(timer)
+    onCleanup(() => {
+      if (boundarySchedule !== schedule) return
+      boundarySchedule = null
+      clearTimeout(timer)
+    })
+  })
+```
+
+Clearing `retryAfterEpoch` during every credential transition prevents a fallback boundary from the old account surviving replacement. Published quota and retry-only callbacks both capture the current generation and verify their source before queueing. Replace the returned adapter's `dispose()` body with:
+
+```typescript
+    dispose(): void {
+      if (disposed) return
+      disposed = true
+      credentialGeneration += 1
+      clearBoundarySchedule()
+      cancelActiveRequest()
+      dispose()
+    },
+```
+
+- [ ] **Step 6: Run Z.AI lifecycle and fallback tests to verify GREEN**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/provider-zai.test.mjs tests/presentation-mounted.test.mjs tests/quota-composition.test.mjs && npm run typecheck
+```
+
+Expected: all focused tests PASS. The fixture-driven setter is observed by the bundled Z.AI constructor; replacement clears old quota/retry boundaries and starts exactly one request while spanning the old reset epoch; success schedules a new-generation boundary; the same-generation test still queues exactly one follow-up; segmented stale state, silent aborts, retained diagnostics, removal/disposal, heuristic fallback, and session fallback pass; TypeScript exits `0`.
+
+- [ ] **Step 7: Commit the Z.AI lifecycle slice**
+
+```bash
+git add tui/providers/zai.ts tests/provider-zai.test.mjs tests/presentation-mounted.test.mjs
+git commit -m "fix(tui): secure Z.AI credential lifecycle"
+```
+
+### Task 15: Correct Quota Documentation And Reverify The Expanded Change
+
+**Files:**
+- Modify: `README.md:43-48,73-74,225-234`
+- Verify only: all source/tests changed in Tasks 1-14
+- Generated by build: `dist/opencode-tools-shared.js`, `dist/opencode-tools-quota.js`, `dist/plugins/opencode-tools-tokens.js`
+- Generated by local deploy: `.opencode/opencode-tools-shared.js`, `.opencode/opencode-tools-quota.js`, `.opencode/plugins/opencode-tools-tokens.js`, `.opencode/tui.json`
+
+**Interfaces:**
+- Consumes: API-duration-derived OpenAI labels, `PanelTextSegment`/`detailSegments`, exact provider stale-header mappings, generation-owned reset boundaries, the complete focused test set, `npm test`, `npm run typecheck`, the three-artifact build contract, and idempotent local deployment.
+- Produces: README wording that does not promise fixed `5H` primary/`7D` secondary windows, one atomic documentation commit, fresh automated/build/deploy evidence, and affected live-validation evidence.
+- Distinguishes: automated mounted coverage keeps the synthetic three-column table, while live validation uses Z.AI's actual two-column `Model`/`Usage` table emitted from `TIME_LIMIT.usageDetails`.
+- Excludes: the unrelated OpenCode GO response-size final-review finding and all source changes outside this approved expansion.
+
+- [ ] **Step 1: Run quota documentation assertions and verify RED**
+
+Run:
+
+```bash
+node --input-type=module -e 'import assert from "node:assert/strict"; import { readFileSync } from "node:fs"; const readme = readFileSync("README.md", "utf8"); assert.doesNotMatch(readme, /\*\*5H primary window\*\*/); assert.doesNotMatch(readme, /primary \(5H\) \/ secondary \(7D\)/); assert.doesNotMatch(readme, /marked `~stale`/); assert.match(readme, /API-reported duration/); assert.match(readme, /right-aligned provider header/);'
+```
+
+Expected: FAIL with `AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /\*\*5H primary window\*\*/` because `README.md` still describes fixed `5H` primary and `7D` secondary windows instead of API-reported duration labels.
+
+- [ ] **Step 2: Replace fixed OpenAI duration and standalone stale-row wording**
+
+Replace the first two bullets under `### OpenAI (ChatGPT Plus/Pro)` with:
+
+```markdown
+- **API-reported quota windows** — primary and optional secondary windows use
+  compact labels derived from their API-reported duration, such as `5H`, `7D`,
+  or `1M`, and show remaining percentage plus reset countdown.
+```
+
+Replace step 4 under `### OpenAI` in `## How it works` with:
+
+```markdown
+4. Renders the plan type and available primary/secondary quota windows with
+   compact labels derived from each API-reported duration.
+```
+
+Replace the shared stale-handling bullet with:
+
+```markdown
+- **Stale handling** — keeps showing the last known data through transient
+  fetch failures and marks `stale` in the right-aligned provider header.
+```
+
+- [ ] **Step 3: Rerun quota documentation assertions to verify GREEN**
+
+Run:
+
+```bash
+node --input-type=module -e 'import assert from "node:assert/strict"; import { readFileSync } from "node:fs"; const readme = readFileSync("README.md", "utf8"); assert.doesNotMatch(readme, /\*\*5H primary window\*\*/); assert.doesNotMatch(readme, /primary \(5H\) \/ secondary \(7D\)/); assert.doesNotMatch(readme, /marked `~stale`/); assert.match(readme, /API-reported duration/); assert.match(readme, /right-aligned provider header/); console.log("README quota wording verified");'
+```
+
+Expected: exits `0` and prints `README quota wording verified`.
+
+- [ ] **Step 4: Commit the quota documentation slice**
+
+```bash
+git add README.md
+git commit -m "docs: update quota window and stale wording"
+```
+
+- [ ] **Step 5: Run the affected focused test set from a fresh presentation compile**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/presentation-types.test.mjs tests/presentation-layout.test.mjs tests/presentation-render-model.test.mjs tests/presentation-mounted.test.mjs tests/quota-composition.test.mjs tests/provider-openai.test.mjs tests/provider-zai.test.mjs tests/provider-opencode-go.test.mjs
+```
+
+Expected: every affected test PASS with `fail 0`, including the compatible segment type, readable pure header text, independently colored mounted segments, exact OpenAI/Z.AI stale models with no standalone stale row, compact-table flex structure, shuffled multi-group order, replacement/removal, silent expected aborts, non-abort diagnostics, disposal timeout cleanup, old-boundary suppression across replacement, new-generation scheduling, and one same-generation queued follow-up.
+
+- [ ] **Step 6: Run static and full automated verification**
+
+Run these commands separately so a failure identifies its gate:
+
+```bash
+npm run typecheck
+npm test
+```
+
+Expected: `tsc --noEmit` exits `0`; both compile scripts and every `tests/*.test.mjs` test PASS with `fail 0`.
+
+- [ ] **Step 7: Build and prove three-artifact activation/deployment parity**
+
+Run:
+
+```bash
+npm run build && node --test tests/plugin-build.test.mjs tests/plugin-deploy.test.mjs && npm run deploy:local
+```
+
+Expected: all commands exit `0`; build tests activate the combined TUI against host-owned Solid and lifecycle cleanup; deployment tests prove idempotence, option preservation, and byte parity between `dist` and the exact three deployed files; local deployment prints `Deployed opencode-tools plugins to /Users/aam/Projects/priv/opencode-quota/.opencode`.
+
+- [ ] **Step 8: Perform affected live validation after a full OpenCode restart**
+
+Fully restart OpenCode from `/Users/aam/Projects/priv/opencode-quota` and repeat every check below against the Task 10-14 deployment. Do not cite the earlier Task 8 run as evidence:
+
+```text
+[ ] At normal sidebar width, expanded Quota framing, provider headers, progress labels/bars/percentages, reset indentation, dividers, and provider detail placement match the approved layout.
+[ ] At a constrained 37-cell sidebar width, bars and table cells shrink before fixed labels/percentages, all rows remain inside the panel, and text does not wrap into extra rows.
+[ ] Collapsing Quota and Other Providers shows the approved markers/summaries, preserves right-edge alignment, and hides only the intended expanded content.
+[ ] With Z.AI tool `usageDetails` visible, its real two-column `Model`/`Usage` table stays inside a 37-cell panel; long model text clips without wrapping and no fixed 80-cell row appears.
+[ ] Selected and Other providers show headers/preambles first, each reset/quantity/text/table detail remains with its own window, and Z.AI tool details remain last.
+[ ] With no refresh option, each available non-exhausted provider polls approximately every 10 seconds while countdown text still updates every second; exhausted primary quota retains the 5-minute backoff.
+[ ] With `refreshIntervalSeconds=2.5`, each available non-exhausted provider polls approximately every 2.5 seconds; restore the desired option afterward.
+[ ] Switching the active session model between supported Z.AI and OpenAI/Codex/ChatGPT providers causes one immediate refresh and moves the selected provider above Other Providers without adding the model name.
+[ ] Stale OpenAI displays `OpenAI: <plan>` with yellow `stale` at the right edge and no standalone `~stale` row.
+[ ] Stale Z.AI displays colored `Peak (3x)` or `Off-Peak (1x)`, gray ` / `, and yellow `stale` at the right edge, with no standalone `~stale` row.
+[ ] Ready/loading/unavailable/rate-limited provider headers that use one `detail` string remain visually unchanged.
+[ ] Replacing a visible OpenAI credential preserves the segmented stale header, aborts the old network request without an error diagnostic, starts one request with the new credential, and publishes only the new response.
+[ ] A failed OpenAI replacement retains stale prior quota; removing the credential clears quota and shows the unlinked state.
+[ ] Replacing a visible Z.AI credential preserves the segmented stale header, aborts the old network request without an error diagnostic, starts one request with the new credential, and publishes only the new response.
+[ ] A failed Z.AI replacement retains stale prior quota; removing the credential clears quota and shows the unlinked state.
+[ ] Restarting or closing OpenCode while each provider request is pending aborts that request immediately; no late quota update appears after shutdown/restart.
+[ ] OpenAI windows display labels matching their API-reported durations, including a weekly-only primary response as one 7D row and no invented 5H row.
+```
+
+- [ ] **Step 9: Inspect final review readiness without expanding scope**
+
+Run:
+
+```bash
+git diff --check 67c36679448d9b45890006ae2bf728241756c09b..HEAD
+git status --short
+git log --oneline --decorate 67c36679448d9b45890006ae2bf728241756c09b..HEAD
+```
+
+Expected: `git diff --check` prints nothing and exits `0`; status contains no unexpected source/test/generated changes from verification; the log contains separate atomic commits for Tasks 10-15. Review only the quota-panel rendering scope and explicitly leave the unrelated OpenCode GO response-size finding out of this change.
+
 ## Self-Review Checklist
 
 - [x] Every canonical spec requirement maps to a task: responsive flex rows and framing (Task 1), progress colors and thresholds (Task 2), provider grouping and Z.AI status (Task 3), OpenAI duration labels (Task 4), configurable polling (Task 5), active-session selection (Task 6), muted subordinate metadata (Task 7), full verification/deployment/manual checks (Task 8), and muted short group dividers (Task 9).
 - [x] Every production edit in Tasks 1-6 is preceded by a focused failing test and an explicit RED command; each task ends with focused GREEN verification and an atomic commit command.
-- [x] No step changes provider endpoints, authentication, quota arithmetic, timeout/stale/reset behavior, home output, token reports, or model-name presentation.
+- [x] No step changes provider endpoints, authentication, quota arithmetic, reset epoch calculation, home output, token reports, or model-name presentation; reset scheduling changes only generation ownership and cleanup.
 - [x] Signatures are consistent across tasks: `normalizeQuotaOptions()` produces `refreshIntervalMs`; both provider constructors consume `QuotaProviderOptions`; `createQuotaSelection()` exposes `selectedProviderID` and `setSessionID`; `PanelRenderer` no longer consumes `availableCells`.
 - [x] Placeholder-language scan is clean; every test and production edit step has a concrete snippet, command, and expected result.
 - [x] Snippets use current IDs/types (`PanelStatus`, `QuotaProviderAdapter`, `TuiPluginApi`, `Accessor`) and commands use scripts present in `package.json`.
+- [x] Expanded spec coverage maps mounted compact tables to Task 10, semantic/group-local composition to Task 11, compatible segmented header details to Task 12, OpenAI lifecycle/stale mapping to Task 13, Z.AI lifecycle/stale mapping to Task 14, and duration docs plus focused/full/build/deploy/live verification to Task 15.
+- [x] Tasks 10-14 each have strict test-first RED and focused GREEN commands before an atomic commit; Task 15 has a RED-GREEN documentation assertion and its own atomic documentation commit before verification-only steps.
+- [x] Credential snippets retain prior quota as stale on non-empty replacement, abort and invalidate old generations, start one replacement, preserve stale data on replacement failure, clear on removal, and abort/clear timeout before disposal.
+- [x] Expanded snippets use `PanelTextSegment` and `detailSegments?: readonly PanelTextSegment[]` consistently while retaining `detail?: string`; `PanelRenderer` consumes model/theme accessors, `composeQuotaPanel()` consumes `QuotaProviderAdapter[]`, and fetch helpers add only optional `AbortSignal` parameters while adapter constructors remain unchanged.
+- [x] Stale model/mounted/provider coverage requires OpenAI warning `stale`; Z.AI Peak/Off-Peak plus muted ` / ` plus warning `stale`; no standalone stale rows; expected abort silence; and retained non-abort diagnostics.
+- [x] Mounted table snippets expose direct native row child arrays for fixture inspection; lifecycle tests import no Node-side Solid signal and instead consume `.tmp-test/provider-lifecycle.mjs` built with `conditions: ["browser"]`; live table validation uses the real two-column Z.AI table.
+- [x] Boundary snippets atomically pair published data with `generation`, tag pending/refreshed markers, synchronously clear old timers before replacement refresh, reject escaped old callbacks, schedule new-success boundaries, and retain exactly one same-generation queued follow-up.
+- [x] Task 15 independently repeats normal/constrained/collapsed rendering, default/custom polling, active-session switching, table, stale-header, credential, and disposal checks instead of relying on Task 8 evidence.
+- [x] Expanded placeholder and unique-checkbox scan is clean; every code edit has concrete code, every command has an expected result, and no new implementation checkbox is pre-checked.
