@@ -113,7 +113,19 @@ Response classification:
 | Network error, timeout, 408, 429, or 5xx | `transient-failure` |
 | Other status, unexpected content type, missing/duplicate assignment, or invalid number | `invalid-response` |
 
-The parser receives the HTML string only; it never receives configuration. For each named record, it finds exactly one bounded Solid assignment and accepts only the observed flat shape `{status:"ok",resetInSec:<number>,usagePercent:<number>}`. It validates and discards the static status field, then extracts only `usagePercent` and `resetInSec` without `eval`, `Function`, DOM script execution, or general object-literal conversion. It accepts a snapshot atomically when all values are finite, percentages fall from 0 through 100, and reset seconds are non-negative. No partial snapshot is returned.
+The parser receives the HTML string only; it never receives configuration. It uses two dependency-free, non-executing lexical passes before applying the existing exact record grammar.
+
+The first pass is one deterministic left-to-right HTML scan over at most 1,000,000 UTF-16 code units. It recognizes start and end tags only in data state, skips `<!-- ... -->` comments, and scans tag attributes with matching single- and double-quote state so `<script` text in a quoted attribute is never treated as markup. On opening `textarea`, `title`, `style`, `xmp`, `iframe`, `noembed`, or `noframes`, it enters raw-text state and advances only to that element's case-insensitive syntactically valid end tag; script-like text inside that region is ignored. On an actual non-self-closing `script` start tag, it emits only the body range ending at a syntactically valid `</script>` tag. Cursors advance monotonically. An unclosed comment, attribute quote, relevant start tag, script body, raw-text element, or malformed relevant end tag rejects the complete page.
+
+The second pass scans each emitted script body once with explicit `code`, single-quoted string, double-quoted string, no-substitution template literal, line-comment, and block-comment states. Backslash escapes are consumed in strings and templates. `${name}:$R` is a candidate only in `code`; the exact `<name>:$R[digits]=` marker and bounded object capture are also checked there. A shared `hasMarkerCandidate(source, start, end)` helper checks only the three fixed literal `${name}:$R` prefixes within the supplied range. It slices that bounded range once and calls `indexOf` at most once per fixed prefix; it does not use a broad regular expression or interpret a candidate as code.
+
+No-substitution templates close normally and ignore marker-like text as non-code. On an unescaped `${`, the scanner does not parse the template expression. It searches the remainder of that actual script body with `hasMarkerCandidate`. A candidate in that remainder rejects the page because the scanner cannot establish its code/string/comment context. With no candidate, the scanner safely stops that body and returns markers found before `${`; the bounded search proves that stopping cannot skip a later quota candidate. Other script bodies remain eligible, so an unrelated template expression does not invalidate valid hydration markers elsewhere.
+
+In `code`, `//` and `/*` enter normal comment states. For any other `/`, the scanner does not classify regex versus division. It finds the next actual CR, LF, or script-body end and checks only that bounded line remainder for marker candidates; a JavaScript regex literal cannot contain an unescaped line terminator, so ambiguity cannot extend beyond this boundary. A candidate rejects the page. With no candidate, the scanner skips to the line boundary and resumes code scanning on the next line. This admits unrelated division and regex lines, including in other scripts, while rejecting a marker that could be hidden in or after ambiguous slash syntax on the same line. A real same-line marker after division is conservatively rejected; a marker on the next line remains scannable. The implementation does not add regex-literal, expression, template-expression, or general JavaScript parsing. Unterminated quoted strings, no-substitution templates, or block comments reject the page; a line comment may terminate at the actual script-body end.
+
+For each named record, the parser requires exactly one code-state `${name}:$R` candidate, exactly one code-state `<name>:$R[digits]=` marker, and the observed flat shape `{status:"ok",resetInSec:<number>,usagePercent:<number>}` with no whitespace or additional fields. The capture begins at `{`, examines no more than 4,097 code units to enforce a 4,096-code-unit inclusive maximum, and validates and discards the static status field. After `}`, suffix validation walks actual remaining space and tab characters in the script body until it reaches an actual `,`, `;`, `}`, CR, LF, or the actual body end. A temporary slice end is never accepted as end-of-body. The parser extracts only `usagePercent` and `resetInSec` without `eval`, `Function`, DOM use, script execution, HTML or JavaScript parser dependencies, broad record regexes, or general object-literal conversion. It accepts a snapshot atomically when all three values are finite, percentages fall from 0 through 100, reset seconds are non-negative, and computed reset epochs are finite. No partial snapshot is returned.
+
+The HTML scan is `O(html.length)` with a fixed maximum of 1,000,000 code units. Emitted script ranges are disjoint. JavaScript cursors never move backward; slash-line searches cover disjoint line remainders, and a template-expression remainder search ends that body immediately. Each ambiguity search performs at most three fixed-prefix `indexOf` calls over its bounded slice, and each record capture has a fixed 4,097-code-unit inspection ceiling. Total work remains linear with a fixed factor. Every loop advances, returns collected markers, or fails.
 
 ### Semantic data model
 
@@ -229,7 +241,15 @@ The presentation compile step gains a `provider-opencode-go` entry so Node tests
 - minimal hydration fixture decodes all three named assignments atomically
 - 401, 403, and login redirects classify as authentication required
 - network, timeout, 408, 429, and 5xx classify as transient
-- missing/duplicate assignments, nested-object tricks, oversized captures, percentages outside 0..100, and negative reset seconds classify as invalid
+- unique records inside visible text, HTML comments, quoted attributes, and each protected raw-text element are ignored; pages with all three records only in non-script contexts are invalid
+- markers inside JavaScript single-quoted strings, double-quoted strings, template literals, line comments, and block comments are ignored even when followed by an otherwise accepted delimiter; the same markers in unambiguous code remain accepted
+- malformed or unclosed HTML comments, quoted tags, raw-text elements, scripts, JavaScript strings, templates, or block comments classify as invalid
+- unrelated script bodies containing division, regex literals, or template expressions remain valid when their bounded ambiguous remainder contains no marker candidate
+- division and regex lines resume scanning at the next CR/LF; no-substitution templates resume after their closing backtick; template expressions stop only their current script body after a candidate-free remainder check
+- marker candidates on an ambiguous slash line or anywhere after `${` in the same script body classify the complete response as invalid
+- missing/duplicate assignments, nested-object tricks, long-whitespace disallowed suffixes, percentages outside 0..100, and negative reset seconds classify as invalid
+- exactly 1,000,000 HTML code units are accepted when otherwise valid and 1,000,001 are rejected
+- the no-whitespace literal grammar can construct a finite record exactly 4,096 code units long, so 4,096 is accepted and 4,097 is rejected
 - no test fixture contains a real workspace, token, account value, or unrelated page content
 
 ### Mapping and lifecycle
@@ -271,6 +291,7 @@ Rollback removes adapter construction and provider aliases, rebuilds, and redepl
 
 - A sanitized minimal hydration contract fixture exists and passes before parser implementation.
 - The provider satisfies every scenario in `openspec/changes/add-opencode-go-provider/specs/opencode-go-quota-provider/spec.md`.
-- No visible-text scraper, script execution, or local estimate is introduced.
+- No visible-text scraper, DOM or parser dependency, script execution, broad record regex, or local estimate is introduced.
+- Only syntactically actual script bodies and unambiguous JavaScript code-state markers participate in uniqueness and record extraction.
 - No real token or workspace identifier is committed.
 - Existing provider, build, and deployment tests remain green.

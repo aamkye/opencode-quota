@@ -19,12 +19,14 @@ base-ref: f94168f
 - The first deliverable is a sanitized, minimal page-contract fixture. Do not start production parser or transport code until its fixture-only contract test passes.
 - Only the purpose-built Task 1 sanitizer may read ignored `.opencode/tui.json` credentials programmatically; the credential owner may edit them directly for Task 10 live validation. Credentials, raw HTML, request headers, real identifiers, and real usage/reset values must never be printed, logged, reported, persisted, committed, or included in an exception message.
 - The sanitizer fetches the authenticated page once and the unauthenticated redirect once, accepts only exact markers shaped `<name>:$R[<digits>]=` followed by a bounded flat object, replaces hydration indexes and observed numeric data with synthetic values in memory, writes only allowlist-validated minimal fixtures, and self-deletes from the approved temporary directory. Never open, inspect, or reuse the existing unsafe full-HTML temporary capture.
-- Exact quota data comes only from exactly one bounded Solid hydration assignment for each of `rollingUsage`, `weeklyUsage`, and `monthlyUsage`: `rollingUsage:$R[digits]=`, `weeklyUsage:$R[digits]=`, and `monthlyUsage:$R[digits]=`. Each assignment must use the observed flat `{status:"ok",resetInSec:<number>,usagePercent:<number>}` shape; the parser validates and discards `status`. Visible text, localized labels, local cost estimates, and broad object searches are forbidden.
+- Exact quota data comes only from exactly one bounded Solid hydration assignment in unambiguous JavaScript code context for each of `rollingUsage`, `weeklyUsage`, and `monthlyUsage`: `rollingUsage:$R[digits]=`, `weeklyUsage:$R[digits]=`, and `monthlyUsage:$R[digits]=`. Each assignment must use the observed flat `{status:"ok",resetInSec:<number>,usagePercent:<number>}` shape; the parser validates and discards `status`. Visible text, localized labels, HTML comments/attributes/raw-text, JavaScript strings/templates/comments, local cost estimates, and broad object searches are forbidden.
 - Safe reference evidence is limited to `/Users/aam/.graphify/repos/ridho9/opencode-go-usage/index.js:137-149`, which confirms the three marker shapes. Do not add that external file to this repository, copy its permissive `[^}]+` captures, or copy its object-literal-to-JSON conversion.
 - The request is exactly `GET https://opencode.ai/workspace/<encodeURIComponent(workspaceId)>/go` with `Accept: text/html`, `Cookie: auth=<workspaceToken>`, `redirect: "manual"`, no body, and a 20,000ms timeout.
 - The origin is a source constant. No option, redirect, response, fixture, or dependency injection point may alter `https://opencode.ai` or forward the cookie to another origin.
-- The parser receives only an HTML string and receipt timestamp. It never receives configuration and never uses `eval`, `Function`, DOM/script execution, a JavaScript parser, JSONification of object literals, general object conversion, visible-text scraping, recursive property search, `.*`, or broad `[^}]+` capture.
-- Reject the complete response for missing, malformed, or duplicate markers, input over 1,000,000 UTF-16 code units, a record capture over 4,096 code units, additional fields outside the literal allowlist, nested-object/prototype/comment/string tricks, non-finite numbers, `usagePercent` outside `0..100`, negative `resetInSec`, or a non-finite computed reset epoch. Never return a partial snapshot.
+- The parser receives only an HTML string and receipt timestamp. It uses one deterministic HTML lexical pass over at most 1,000,000 UTF-16 code units and one deterministic JavaScript lexical pass per disjoint actual script body. It never receives configuration and never uses `eval`, `Function`, DOM/script execution, an HTML or JavaScript parser dependency, JSONification of object literals, general object conversion, visible-text scraping, recursive property search, `.*`, or broad `[^}]+` capture.
+- The HTML pass recognizes tags only outside comments, honors single/double attribute quotes, skips script-like text in `textarea`, `title`, `style`, `xmp`, `iframe`, `noembed`, and `noframes`, and emits only actual `script` bodies. The JavaScript pass tracks code, single/double strings, no-substitution templates, line comments, and block comments with escapes. Markers count only in code. A shared bounded `hasMarkerCandidate(source, start, end)` helper may use `indexOf` at most once per fixed `${name}:$R` prefix, but no broad regex or unrestricted raw-HTML search.
+- On template `${`, reject only when the remaining current script body contains a marker candidate; otherwise stop that body and retain markers already found. On a code-state `/` other than `//` or `/*`, reject only when the remainder through the next CR, LF, or body end contains a marker candidate; otherwise skip that line remainder and resume at the next line. Unrelated regex, division, and template-expression scripts without marker candidates must not invalidate valid markers in another script body.
+- Reject the complete response for missing, malformed, or duplicate code-state markers, malformed/unclosed relevant HTML or JavaScript lexical constructs, input over 1,000,000 UTF-16 code units, a record capture over 4,096 code units, additional fields outside the literal allowlist, nested-object/prototype/comment/string tricks, non-finite numbers, `usagePercent` outside `0..100`, negative `resetInSec`, or a non-finite computed reset epoch. Suffix checks walk real remaining body whitespace and require an actual delimiter or actual script-body end. Never return a partial snapshot.
 - `quota.opencodego.workspaceId` must match `^wrk_[A-Za-z0-9]+$`. `quota.opencodego.workspaceToken` must be non-empty after trimming and contain neither CR nor LF.
 - Error values and diagnostics are static classifications only. They never include URL strings, response bodies, headers, status text, caught exceptions, workspace IDs, tokens, or derived credential fragments.
 - Preserve the existing 10,000ms default polling interval, normalized custom interval, 1,000ms countdown tick, 600,000ms stale horizon, provider selection refresh, request serialization, and reset-boundary behavior. Do not add exhausted backoff or a generic polling refactor.
@@ -684,258 +686,503 @@ git commit -m "feat(quota): normalize OpenCode Go options"
 - Consumes: Task 1 `success.html`, `request-manifest.json`, `login-redirect.json`, and Task 2 `OpenCodeGoConfig`.
 - Produces: `OpenCodeGoWindow`, `OpenCodeGoQuotaData`, `OpenCodeGoFetchResult`, `OpenCodeGoFetchDependencies`, `parseOpenCodeGoHydration(html: string, receivedAt: number): OpenCodeGoQuotaData | null`, and `fetchOpenCodeGoQuota(config, signal, dependencies): Promise<OpenCodeGoFetchResult>`.
 - Task 4 is the only owner of panel mapper tests and implementation.
+- Starting point: commit `29a102d` contains the rejected Task 3 transport and parser. Preserve its exported types, exact object grammar, numeric validation, atomic output mapping, and fixed transport. Replace only parser scanning/context helpers and parser internals described below.
 
-- [ ] **Step 1: Add focused parser tests using the confirmed hydration shape**
+- [ ] **Step 1: Append lexical-context and exact-boundary parser regressions**
 
-Extend `tests/provider-opencode-go.test.mjs` with `fixture`, `manifest`, and the Task 3 exports. Replace Task 2's `const { normalizeOpenCodeGoConfig } = providerModule` line with this expanded object destructuring so the module is imported only once:
+Append the following helpers and eight tests to `tests/provider-opencode-go.test.mjs` after the two existing parser tests and before `const config = ...`. Do not rewrite or delete the existing Task 3 tests. These cases isolate each review bypass, prove that hidden candidates do not affect code-state uniqueness, scope ambiguity to marker-bearing remainders, and pin both meaningful size boundaries:
 
 ```javascript
-const fixture = (name) => readFileSync(`tests/fixtures/opencode-go/${name}`, "utf8")
-const manifest = JSON.parse(fixture("request-manifest.json"))
-const now = Date.UTC(2026, 6, 14, 12, 0, 0)
-const {
-  fetchOpenCodeGoQuota,
-  normalizeOpenCodeGoConfig,
-  parseOpenCodeGoHydration,
-} = providerModule
+const fixtureScript = fixture("success.html").trimEnd()
+const recordLines = fixtureScript
+  .slice("<script>\n".length, -"\n</script>".length)
+  .split("\n")
+const [rollingRecord, weeklyRecord, monthlyRecord] = recordLines
+const script = (...lines) => `<script>\n${lines.join("\n")}\n</script>`
+const rawTextNames = ["textarea", "title", "style", "xmp", "iframe", "noembed", "noframes"]
+const rollingObject = rollingRecord.slice(rollingRecord.indexOf("=") + 1)
 
-const expectedQuota = {
-  fiveHour: { usedPct: 12.5, remainingPct: 87.5, resetEpoch: now + 1_800_000 },
-  weekly: { usedPct: 34, remainingPct: 66, resetEpoch: now + 172_800_000 },
-  monthly: { usedPct: 56.75, remainingPct: 43.25, resetEpoch: now + 1_209_600_000 },
-}
-
-test("OpenCode Go parser decodes the three confirmed flat hydration records atomically", () => {
-  const source = fixture("success.html")
-  assert.deepEqual(parseOpenCodeGoHydration(source, now), expectedQuota)
-  assert.deepEqual(parseOpenCodeGoHydration(
-    source.replace("$R[0]", "$R[17]").replace("$R[1]", "$R[203]").replace("$R[2]", "$R[9]"),
-    now,
-  ), expectedQuota)
-  const reordered = `<script>\n${source.slice(8, -11).split("\n").reverse().join("\n")}\n</script>\n`
-  assert.deepEqual(parseOpenCodeGoHydration(reordered, now), expectedQuota)
-  assert.deepEqual(parseOpenCodeGoHydration(`${source}<script>const metadata={monthlyUsage:null}</script>`, now), expectedQuota)
-})
-
-test("OpenCode Go parser rejects malformed duplicate trick and oversized records without partial data", () => {
-  const valid = fixture("success.html")
-  const rolling = 'rollingUsage:$R[0]={status:"ok",resetInSec:1800,usagePercent:12.5}'
-  const invalid = [
-    valid.replace(`${rolling}\n`, ""),
-    valid.replace(rolling, `${rolling}\n${rolling}`),
-    valid.replace(rolling, `${rolling}\nrollingUsage:$R[x]={status:"ok",resetInSec:1,usagePercent:1}`),
-    ...["$R[x]", "$R[-1]", '$R["0"]', "$R[ 0 ]", "$R[]", "$R [0]"].map((marker) => valid.replace("$R[0]", marker)),
-    valid.replace("usagePercent:12.5", "usagePercent:NaN"),
-    valid.replace("usagePercent:12.5", "usagePercent:Infinity"),
-    valid.replace("usagePercent:12.5", "usagePercent:1e309"),
-    valid.replace("usagePercent:12.5", "usagePercent:-1"),
-    valid.replace("usagePercent:12.5", "usagePercent:101"),
-    valid.replace("resetInSec:1800", "resetInSec:-1"),
-    valid.replace('status:"ok"', 'status:"other"'),
-    valid.replace("resetInSec:1800", 'resetInSec:"1800"'),
-    valid.replace("={", "=/*comment*/{"),
-    valid.replace("={", "={nested:{},"),
-    valid.replace("}", ",extra:1}"),
-    valid.replace("}", ",__proto__:null}"),
-    valid.replace(rolling, `"${rolling}"`),
-    `<div>${rolling}</div>`,
-    `${valid}<div>${rolling}</div>`,
-    `${valid}${"x".repeat(1_000_001)}`,
-    valid.replace("={", `={${"x".repeat(4_097)}`),
+test("OpenCode Go parser ignores unique records in visible comment attribute and raw-text HTML contexts", () => {
+  const hiddenRollingContexts = [
+    `<div>${rollingRecord};</div>`,
+    `<!-- <script>${rollingRecord};</script> -->`,
+    `<div data-record='<script>${rollingRecord};</script>'></div>`,
+    ...rawTextNames.map((name) => `<${name}><script>${rollingRecord};</script></${name}>`),
   ]
-  for (const source of invalid) {
-    const before = source
+  for (const hidden of hiddenRollingContexts) {
+    assert.equal(parseOpenCodeGoHydration(`${hidden}\n${script(weeklyRecord, monthlyRecord)}`, now), null)
+  }
+})
+
+test("OpenCode Go parser rejects pages whose three records exist only outside actual scripts", () => {
+  const allRecords = recordLines.map((line) => `${line};`).join("\n")
+  for (const source of [
+    `<!-- <script>${allRecords}</script> -->`,
+    `<div data-record='<script>${allRecords}</script>'></div>`,
+    `<textarea><script>${allRecords}</script></textarea>`,
+  ]) assert.equal(parseOpenCodeGoHydration(source, now), null)
+})
+
+test("OpenCode Go parser ignores markers in JavaScript strings templates and comments", () => {
+  const hiddenRollingContexts = [
+    `'${rollingRecord};';`,
+    `${JSON.stringify(`${rollingRecord};`)};`,
+    `\`${rollingRecord};\`;`,
+    `// ${rollingRecord};`,
+    `/* ${rollingRecord}; */`,
+  ]
+  for (const hidden of hiddenRollingContexts) {
+    assert.equal(parseOpenCodeGoHydration(script(hidden, weeklyRecord, monthlyRecord), now), null)
+  }
+})
+
+test("OpenCode Go parser accepts actual code markers while ignored JavaScript contexts contain duplicates", () => {
+  const source = script(
+    rollingRecord,
+    weeklyRecord,
+    monthlyRecord,
+    `'${rollingRecord};';`,
+    `${JSON.stringify(`${weeklyRecord};`)};`,
+    `\`${monthlyRecord};\`;`,
+    `// ${rollingRecord};`,
+    `/* ${weeklyRecord}; */`,
+  )
+  assert.deepEqual(parseOpenCodeGoHydration(source, now), expectedQuota)
+})
+
+test("OpenCode Go parser fails closed on malformed HTML and unclosed JavaScript lexical state", () => {
+  const malformedHtml = [
+    `<!-- ${fixtureScript}`,
+    `<div data-record='${fixtureScript}`,
+    ...rawTextNames.map((name) => `<${name}>${fixtureScript}`),
+    fixtureScript.replace("</script>", ""),
+  ]
+  const malformedJavaScript = [
+    script(...recordLines, "const value='unterminated"),
+    script(...recordLines, 'const value="unterminated'),
+    script(...recordLines, "const value=`unterminated"),
+    script(...recordLines, "/* unterminated"),
+  ]
+  for (const source of [...malformedHtml, ...malformedJavaScript]) {
     assert.equal(parseOpenCodeGoHydration(source, now), null)
-    assert.equal(source, before)
   }
+})
+
+test("OpenCode Go parser scopes slash and template-expression ambiguity to marker-bearing remainders", () => {
+  const unrelatedBodies = [
+    "const ratio=1/2",
+    "const pattern=/safe/",
+    "const text=`before ${answer}`",
+  ]
+  for (const unrelated of unrelatedBodies) {
+    assert.deepEqual(parseOpenCodeGoHydration(`${script(unrelated)}\n${fixtureScript}`, now), expectedQuota)
+  }
+
+  assert.deepEqual(parseOpenCodeGoHydration(script("const ratio=1/2", ...recordLines), now), expectedQuota)
+  assert.deepEqual(parseOpenCodeGoHydration(script("const pattern=/safe/", ...recordLines), now), expectedQuota)
+  assert.deepEqual(parseOpenCodeGoHydration(script(...recordLines, "const text=`before ${answer}`"), now), expectedQuota)
+
+  for (const ambiguousLine of [
+    `const ratio=1/2; ${rollingRecord};`,
+    `const pattern=/safe/; ${rollingRecord};`,
+  ]) {
+    assert.equal(parseOpenCodeGoHydration(script(weeklyRecord, monthlyRecord, ambiguousLine), now), null)
+  }
+  assert.equal(parseOpenCodeGoHydration(
+    script(weeklyRecord, monthlyRecord, "const text=`before ${answer}`", rollingRecord),
+    now,
+  ), null)
+  assert.equal(parseOpenCodeGoHydration(
+    script(weeklyRecord, monthlyRecord, "const text=`before ${answer}`", `'${rollingRecord};';`),
+    now,
+  ), null)
+})
+
+test("OpenCode Go parser validates suffixes against the real script-body remainder", () => {
+  const source = fixtureScript.replace(rollingRecord, `${rollingRecord}${" ".repeat(64)}x`)
+  assert.equal(parseOpenCodeGoHydration(source, now), null)
+})
+
+test("OpenCode Go parser enforces exact HTML and record code-unit boundaries", () => {
+  const htmlAtLimit = fixtureScript.padEnd(1_000_000, " ")
+  assert.equal(htmlAtLimit.length, 1_000_000)
+  assert.deepEqual(parseOpenCodeGoHydration(htmlAtLimit, now), expectedQuota)
+  assert.equal(parseOpenCodeGoHydration(`${htmlAtLimit} `, now), null)
+
+  const objectAtLength = (length) => {
+    const prefix = '{status:"ok",resetInSec:0.'
+    const suffix = ",usagePercent:12.5}"
+    const zeros = length - prefix.length - suffix.length
+    assert.ok(zeros > 0)
+    return `${prefix}${"0".repeat(zeros)}${suffix}`
+  }
+  const exactObject = objectAtLength(4_096)
+  const oversizedObject = objectAtLength(4_097)
+  assert.equal(exactObject.length, 4_096)
+  assert.equal(oversizedObject.length, 4_097)
+  assert.deepEqual(
+    parseOpenCodeGoHydration(fixtureScript.replace(rollingObject, exactObject), now),
+    { ...expectedQuota, fiveHour: { usedPct: 12.5, remainingPct: 87.5, resetEpoch: now } },
+  )
+  assert.equal(parseOpenCodeGoHydration(fixtureScript.replace(rollingObject, oversizedObject), now), null)
 })
 ```
 
-- [ ] **Step 2: Add focused fixed-request and response-classification tests**
-
-Append these helpers and tests:
-
-```javascript
-const config = normalizeOpenCodeGoConfig(sentinel)
-const signal = new AbortController().signal
-const response = (status, body = "", headers = {}) => new Response(status === 204 ? null : body, { status, headers })
-
-async function transportWith(result) {
-  const calls = []
-  const value = await fetchOpenCodeGoQuota(config, signal, {
-    now: () => now,
-    fetch: async (...args) => {
-      calls.push(args)
-      if (result instanceof Error) throw result
-      return result
-    },
-  })
-  return { calls, value }
-}
-
-test("OpenCode Go transport sends the exact fixed-origin manual request", async () => {
-  const { calls, value } = await transportWith(response(200, fixture("success.html"), {
-    "content-type": "text/html; charset=utf-8",
-  }))
-  assert.deepEqual(value, { kind: "success", data: expectedQuota })
-  assert.deepEqual(calls, [[manifest.request.url, {
-    method: "GET",
-    headers: manifest.request.headers,
-    redirect: "manual",
-    signal,
-  }]])
-})
-
-test("OpenCode Go transport classifies authentication transient and invalid responses", async () => {
-  for (const status of [401, 403]) {
-    assert.deepEqual((await transportWith(response(status))).value, { kind: "authentication-required" })
-  }
-  for (const location of ["/login", "/auth/authorize"]) {
-    assert.deepEqual((await transportWith(response(302, "", { location }))).value, { kind: "authentication-required" })
-  }
-  for (const status of [408, 429, 500, 503, 599]) {
-    assert.deepEqual((await transportWith(response(status))).value, { kind: "transient-failure" })
-  }
-  assert.deepEqual((await transportWith(new Error("TOKEN_TEST_ONLY_DO_NOT_USE"))).value, { kind: "transient-failure" })
-  for (const value of [
-    response(200, fixture("success.html"), { "content-type": "application/json" }),
-    response(200, "<html>missing records</html>", { "content-type": "text/html" }),
-    response(204),
-    response(302, "", { location: "https://example.com/login" }),
-    response(302, "", { location: "/workspace" }),
-    response(404),
-  ]) assert.deepEqual((await transportWith(value)).value, { kind: "invalid-response" })
-})
-
-test("OpenCode Go transport emits static secret-safe results and never follows redirects", async () => {
-  const diagnostics = []
-  const original = console.error
-  console.error = (...args) => diagnostics.push(args)
-  try {
-    const results = [
-      (await transportWith(new Error(sentinel.workspaceToken))).value,
-      (await transportWith(response(403))).value,
-      (await transportWith(response(200, sentinel.workspaceId, { "content-type": "text/html" }))).value,
-    ]
-    const serialized = JSON.stringify({ results, diagnostics })
-    for (const secret of Object.values(sentinel)) assert.equal(serialized.includes(secret), false)
-  } finally {
-    console.error = original
-  }
-})
-```
-
-For body-read failure, add a response-like object with `status: 200`, `headers: new Headers({ "content-type": "text/html" })`, and `text: async () => { throw new Error("body failed") }`; assert `transient-failure`. For redirect bodies, add `text()` that increments a counter and assert the counter remains zero after a same-origin `/auth/authorize` response. These objects contain only static synthetic strings.
-
-- [ ] **Step 3: Run the exact transport/parser RED gate**
+- [ ] **Step 2: Run the lexical-scanner RED gate against rejected commit 29a102d**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go parser|OpenCode Go transport" tests/provider-opencode-go.test.mjs`
 
-Expected: FAIL in the focused test callbacks with `TypeError: parseOpenCodeGoHydration is not a function`; transport callbacks that run also report `TypeError: fetchOpenCodeGoQuota is not a function`. Object destructuring reads missing dynamic-import properties as `undefined`, so module import itself succeeds.
+Expected: exit 1 against `29a102d`. Existing transport tests, the original valid parser test, and candidate-free unrelated slash/template-expression cases remain green. At minimum, failures show that the old parser returns quota for script-like records in an HTML comment/raw-text/quoted-attribute context, returns quota when a required marker exists only in a JavaScript string/template/comment, returns `null` when valid code markers have ignored-context duplicates, accepts malformed/unclosed lexical state after valid records, accepts marker candidates after an ambiguous slash or template `${`, and accepts the 64-space suffix followed by `x`. The exact boundary assertions may already pass; they are regression locks, not required RED causes.
 
-- [ ] **Step 4: Add exact transport/parser contracts and bounded extraction**
+- [ ] **Step 3: Replace raw HTML index searches with one deterministic lexical pass**
 
-Append these exported types and constants to `tui/providers/opencode-go.ts`:
-
-```typescript
-export type OpenCodeGoWindow = {
-  usedPct: number
-  remainingPct: number
-  resetEpoch: number
-}
-
-export type OpenCodeGoQuotaData = {
-  fiveHour: OpenCodeGoWindow
-  weekly: OpenCodeGoWindow
-  monthly: OpenCodeGoWindow
-}
-
-export type OpenCodeGoFetchResult =
-  | { kind: "success"; data: OpenCodeGoQuotaData }
-  | { kind: "authentication-required" }
-  | { kind: "transient-failure" }
-  | { kind: "invalid-response" }
-
-export type OpenCodeGoFetchDependencies = {
-  fetch: typeof globalThis.fetch
-  now: () => number
-}
-
-const OPENCODE_ORIGIN = "https://opencode.ai"
-const MAX_HTML_LENGTH = 1_000_000
-const MAX_ASSIGNMENT_LENGTH = 4_096
-const NUMBER_SOURCE = String.raw`-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?`
-const OBJECT_PATTERN = new RegExp(
-  String.raw`^\{status:"ok",resetInSec:(?<reset>${NUMBER_SOURCE}),usagePercent:(?<usage>${NUMBER_SOURCE})\}$`,
-  "u",
-)
-const RECORDS = [
-  { name: "rollingUsage", output: "fiveHour" },
-  { name: "weeklyUsage", output: "weekly" },
-  { name: "monthlyUsage", output: "monthly" },
-] as const
-```
-
-Append this bounded implementation. It uses the narrow `${name}:$R` candidate gate, never `.*` or `[^}]+`, and validates the exact confirmed `{status:"ok",resetInSec:<number>,usagePercent:<number>}` shape:
+In `tui/providers/opencode-go.ts`, delete `scriptBodies` and replace it with the following concrete scanner shape. Keep ranges or strings internally; no scanner helper is exported. The pseudocode is TypeScript-complete in behavior: helper names may be adjusted, but every state, boundary, and failure below is mandatory.
 
 ```typescript
-function countLiteral(source: string, value: string): number {
-  let count = 0
-  let cursor = 0
-  while (true) {
-    const index = source.indexOf(value, cursor)
-    if (index < 0) return count
-    count += 1
-    cursor = index + value.length
+const RAW_TEXT_NAMES = new Set(["textarea", "title", "style", "xmp", "iframe", "noembed", "noframes"])
+const NOT_A_TAG = Symbol("not-a-tag")
+
+type HtmlTag = { closing: boolean; name: string; end: number; selfClosing: boolean }
+
+function isHtmlSpace(char: string | undefined): boolean {
+  return char === " " || char === "\t" || char === "\n" || char === "\f" || char === "\r"
+}
+
+function isAsciiAlpha(char: string | undefined): boolean {
+  return char !== undefined && /[A-Za-z]/u.test(char)
+}
+
+function isTagNameChar(char: string | undefined): boolean {
+  return char !== undefined && /[A-Za-z0-9:-]/u.test(char)
+}
+
+function startsWithAsciiCaseInsensitive(source: string, value: string, at: number): boolean {
+  if (at + value.length > source.length) return false
+  for (let offset = 0; offset < value.length; offset += 1) {
+    if (source.charCodeAt(at + offset) === value.charCodeAt(offset)) continue
+    if (source[at + offset]!.toLowerCase() !== value[offset]!.toLowerCase()) return false
   }
+  return true
 }
 
-function scriptBodies(html: string): string[] | null {
-  const lower = html.toLowerCase()
+function scanMarkupEnd(html: string, start: number): number | null {
+  let quote: "'" | '"' | null = null
+  for (let cursor = start; cursor < html.length; cursor += 1) {
+    const char = html[cursor]!
+    if (quote) {
+      if (char === quote) quote = null
+      continue
+    }
+    if (char === "'" || char === '"') quote = char
+    else if (char === "<") return null
+    else if (char === ">") return cursor + 1
+  }
+  return null
+}
+
+function readDataTag(html: string, start: number): HtmlTag | typeof NOT_A_TAG | null {
+  let cursor = start + 1
+  let closing = false
+  if (html[cursor] === "/") {
+    closing = true
+    cursor += 1
+  }
+  if (!isAsciiAlpha(html[cursor])) return NOT_A_TAG
+
+  const nameStart = cursor
+  while (isTagNameChar(html[cursor])) cursor += 1
+  const name = html.slice(nameStart, cursor).toLowerCase()
+  if (!isHtmlSpace(html[cursor]) && html[cursor] !== "/" && html[cursor] !== ">") return null
+
+  if (closing) {
+    while (isHtmlSpace(html[cursor])) cursor += 1
+    if (html[cursor] !== ">") return null
+    return { closing: true, name, end: cursor + 1, selfClosing: false }
+  }
+
+  let quote: "'" | '"' | null = null
+  let lastNonSpace = cursor - 1
+  while (cursor < html.length) {
+    const char = html[cursor]!
+    if (quote) {
+      if (char === quote) quote = null
+      cursor += 1
+      continue
+    }
+    if (char === "'" || char === '"') quote = char
+    else if (char === "<") return null
+    else if (char === ">") {
+      return { closing: false, name, end: cursor + 1, selfClosing: html[lastNonSpace] === "/" }
+    }
+    if (!isHtmlSpace(char)) lastNonSpace = cursor
+    cursor += 1
+  }
+  return null
+}
+
+function readRawEnd(html: string, start: number, name: string): number | null | undefined {
+  if (html[start] !== "<" || html[start + 1] !== "/"
+    || !startsWithAsciiCaseInsensitive(html, name, start + 2)) return undefined
+  let cursor = start + 2 + name.length
+  const boundary = html[cursor]
+  if (boundary !== undefined && !isHtmlSpace(boundary) && boundary !== "/" && boundary !== ">") return undefined
+  while (isHtmlSpace(html[cursor])) cursor += 1
+  if (html[cursor] !== ">") return null
+  return cursor + 1
+}
+
+function scanRawElement(html: string, start: number, name: string): { bodyEnd: number; end: number } | null {
+  let cursor = start
+  while (cursor < html.length) {
+    if (html[cursor] !== "<") {
+      cursor += 1
+      continue
+    }
+    const end = readRawEnd(html, cursor, name)
+    if (end === null) return null
+    if (end !== undefined) return { bodyEnd: cursor, end }
+    cursor += 1
+  }
+  return null
+}
+
+function scanScriptBodies(html: string): string[] | null {
   const bodies: string[] = []
   let cursor = 0
   while (cursor < html.length) {
-    const open = lower.indexOf("<script", cursor)
-    if (open < 0) break
-    const afterName = lower[open + 7]
-    if (afterName !== ">" && !/\s/u.test(afterName ?? "")) {
-      cursor = open + 7
+    if (html[cursor] !== "<") {
+      cursor += 1
       continue
     }
-    const tagEnd = lower.indexOf(">", open + 7)
-    const close = tagEnd < 0 ? -1 : lower.indexOf("</script>", tagEnd + 1)
-    if (tagEnd < 0 || close < 0) return null
-    bodies.push(html.slice(tagEnd + 1, close))
-    cursor = close + 9
+    if (html.startsWith("<!--", cursor)) {
+      cursor += 4
+      let closed = false
+      while (cursor < html.length) {
+        if (html.startsWith("-->", cursor)) {
+          cursor += 3
+          closed = true
+          break
+        }
+        cursor += 1
+      }
+      if (!closed) return null
+      continue
+    }
+    if (html[cursor + 1] === "!" || html[cursor + 1] === "?") {
+      const end = scanMarkupEnd(html, cursor + 2)
+      if (end === null) return null
+      cursor = end
+      continue
+    }
+
+    const tag = readDataTag(html, cursor)
+    if (tag === null) return null
+    if (tag === NOT_A_TAG) {
+      cursor += 1
+      continue
+    }
+    cursor = tag.end
+    if (tag.closing || (tag.name !== "script" && !RAW_TEXT_NAMES.has(tag.name))) continue
+    if (tag.selfClosing) return null
+
+    const raw = scanRawElement(html, cursor, tag.name)
+    if (!raw) return null
+    if (tag.name === "script") bodies.push(html.slice(cursor, raw.bodyEnd))
+    cursor = raw.end
   }
   return bodies
+}
+```
+
+This is a single monotonic HTML pass: the outer cursor never moves backward, comment/tag scanners advance from that cursor, and raw-text/script scanners consume disjoint ranges before returning control. Do not lowercase the full page, use raw `<script`/`</script>` `indexOf`, or inspect markers during this pass. In raw-text and script state, only the corresponding case-insensitive end tag is markup; all other `<` text is consumed as body data. Any unclosed comment, declaration, attribute quote, relevant raw-text element, or script rejects the page.
+
+- [ ] **Step 4: Replace raw marker searches with bounded JavaScript lexical scanning**
+
+Delete `countLiteral`, marker `RegExp`/`matchAll` calls, the 33-character suffix slice, and the old body loop inside `parseOpenCodeGoHydration`. Keep `NUMBER_SOURCE`, `OBJECT_PATTERN`, `RECORDS`, `MAX_HTML_LENGTH`, and `MAX_ASSIGNMENT_LENGTH`. Implement the following scanner and aggregate flow:
+
+```typescript
+type CapturedRecord = { end: number; resetInSec: number; usagePercent: number }
+type RecordScan = { candidates: number; markers: number; values: CapturedRecord[] }
+type ScriptScan = Map<(typeof RECORDS)[number]["name"], RecordScan>
+const MARKER_PREFIXES = ["rollingUsage:$R", "weeklyUsage:$R", "monthlyUsage:$R"] as const
+
+function newScriptScan(): ScriptScan {
+  const result: ScriptScan = new Map()
+  for (const record of RECORDS) result.set(record.name, { candidates: 0, markers: 0, values: [] })
+  return result
+}
+
+function hasMarkerCandidate(source: string, start: number, end: number): boolean {
+  const boundedStart = Math.max(0, Math.min(source.length, start))
+  const boundedEnd = Math.max(boundedStart, Math.min(source.length, end))
+  const range = source.slice(boundedStart, boundedEnd)
+  return MARKER_PREFIXES.some((prefix) => range.indexOf(prefix) >= 0)
+}
+
+function readExactMarker(body: string, start: number, prefix: string): number | null {
+  let cursor = start + prefix.length
+  if (body[cursor] !== "[") return null
+  cursor += 1
+  const digitStart = cursor
+  while (body[cursor] !== undefined && body.charCodeAt(cursor) >= 48 && body.charCodeAt(cursor) <= 57) cursor += 1
+  if (cursor === digitStart || body[cursor] !== "]" || body[cursor + 1] !== "=") return null
+  return cursor + 2
+}
+
+function captureExactRecord(body: string, start: number): CapturedRecord | null {
+  if (body[start] !== "{") return null
+  const inspectionEnd = Math.min(body.length, start + MAX_ASSIGNMENT_LENGTH + 1)
+  let close = start
+  while (close < inspectionEnd && body[close] !== "}") close += 1
+  if (close === inspectionEnd || close - start + 1 > MAX_ASSIGNMENT_LENGTH) return null
+
+  const object = OBJECT_PATTERN.exec(body.slice(start, close + 1))
+  if (!object?.groups) return null
+
+  let suffix = close + 1
+  while (body[suffix] === " " || body[suffix] === "\t") suffix += 1
+  if (suffix < body.length && body[suffix] !== "," && body[suffix] !== ";"
+    && body[suffix] !== "}" && body[suffix] !== "\r" && body[suffix] !== "\n") return null
+
+  return {
+    end: close + 1,
+    resetInSec: Number(object.groups.reset),
+    usagePercent: Number(object.groups.usage),
+  }
+}
+
+function scanJavaScriptBody(body: string): ScriptScan | null {
+  const found = newScriptScan()
+  let state: "code" | "single" | "double" | "template" | "line-comment" | "block-comment" = "code"
+  let cursor = 0
+
+  while (cursor < body.length) {
+    const char = body[cursor]!
+    const next = body[cursor + 1]
+
+    if (state === "single" || state === "double") {
+      const quote = state === "single" ? "'" : '"'
+      if (char === "\\") {
+        if (next === undefined) return null
+        cursor += 2
+      } else if (char === quote) {
+        state = "code"
+        cursor += 1
+      } else if (char === "\r" || char === "\n") {
+        return null
+      } else cursor += 1
+      continue
+    }
+
+    if (state === "template") {
+      if (char === "\\") {
+        if (next === undefined) return null
+        cursor += 2
+      } else if (char === "`") {
+        state = "code"
+        cursor += 1
+      } else if (char === "$" && next === "{") {
+        if (hasMarkerCandidate(body, cursor + 2, body.length)) return null
+        return found
+      } else cursor += 1
+      continue
+    }
+
+    if (state === "line-comment") {
+      if (char === "\r" || char === "\n") state = "code"
+      cursor += 1
+      continue
+    }
+
+    if (state === "block-comment") {
+      if (char === "*" && next === "/") {
+        state = "code"
+        cursor += 2
+      } else cursor += 1
+      continue
+    }
+
+    if (char === "'") {
+      state = "single"
+      cursor += 1
+      continue
+    }
+    if (char === '"') {
+      state = "double"
+      cursor += 1
+      continue
+    }
+    if (char === "`") {
+      state = "template"
+      cursor += 1
+      continue
+    }
+    if (char === "/") {
+      if (next === "/") {
+        state = "line-comment"
+        cursor += 2
+        continue
+      }
+      if (next === "*") {
+        state = "block-comment"
+        cursor += 2
+        continue
+      }
+      let lineEnd = cursor + 1
+      while (lineEnd < body.length && body[lineEnd] !== "\r" && body[lineEnd] !== "\n") lineEnd += 1
+      if (hasMarkerCandidate(body, cursor, lineEnd)) return null
+      cursor = lineEnd
+      continue
+    }
+
+    let handledCandidate = false
+    for (const record of RECORDS) {
+      const prefix = `${record.name}:$R`
+      if (!body.startsWith(prefix, cursor)) continue
+      handledCandidate = true
+      const bucket = found.get(record.name)!
+      bucket.candidates += 1
+      const objectStart = readExactMarker(body, cursor, prefix)
+      if (objectStart !== null) {
+        bucket.markers += 1
+        const value = captureExactRecord(body, objectStart)
+        if (value) {
+          bucket.values.push(value)
+          cursor = value.end
+        } else cursor += 1
+      } else cursor += 1
+      break
+    }
+    if (!handledCandidate) cursor += 1
+  }
+
+  if (state === "single" || state === "double" || state === "template" || state === "block-comment") return null
+  return found
 }
 
 export function parseOpenCodeGoHydration(html: string, receivedAt: number): OpenCodeGoQuotaData | null {
   if (html.length > MAX_HTML_LENGTH || !Number.isFinite(receivedAt)) return null
-  const bodies = scriptBodies(html)
+  const bodies = scanScriptBodies(html)
   if (!bodies) return null
+
+  const aggregate = newScriptScan()
+  for (const body of bodies) {
+    const scanned = scanJavaScriptBody(body)
+    if (!scanned) return null
+    for (const record of RECORDS) {
+      const target = aggregate.get(record.name)!
+      const source = scanned.get(record.name)!
+      target.candidates += source.candidates
+      target.markers += source.markers
+      target.values.push(...source.values)
+    }
+  }
+
   const output: Partial<OpenCodeGoQuotaData> = {}
-
   for (const record of RECORDS) {
-    const pattern = () => new RegExp(String.raw`${record.name}:\$R\[(?<index>\d+)\]=`, "gu")
-    const allMatches = [...html.matchAll(pattern())]
-    const scriptMatches = bodies.flatMap((body) => [...body.matchAll(pattern())].map((match) => ({ body, match })))
-    if (countLiteral(html, `${record.name}:$R`) !== 1 || allMatches.length !== 1 || scriptMatches.length !== 1) return null
-
-    const { body, match } = scriptMatches[0]!
-    if (match.index === undefined) return null
-    const start = match.index + match[0].length
-    const bounded = body.slice(start, start + MAX_ASSIGNMENT_LENGTH + 1)
-    if (!bounded.startsWith("{")) return null
-    const close = bounded.indexOf("}")
-    if (close < 0 || close + 1 > MAX_ASSIGNMENT_LENGTH) return null
-    const object = OBJECT_PATTERN.exec(bounded.slice(0, close + 1))
-    const suffix = body.slice(start + close + 1, start + close + 34)
-    if (!object?.groups || !/^[\t ]*(?:[,;}\r\n]|$)/u.test(suffix)) return null
-
-    const resetInSec = Number(object.groups.reset)
-    const usagePercent = Number(object.groups.usage)
+    const result = aggregate.get(record.name)!
+    if (result.candidates !== 1 || result.markers !== 1 || result.values.length !== 1) return null
+    const { resetInSec, usagePercent } = result.values[0]!
     const resetEpoch = receivedAt + resetInSec * 1_000
     if (!Number.isFinite(resetInSec) || resetInSec < 0
       || !Number.isFinite(usagePercent) || usagePercent < 0 || usagePercent > 100
@@ -946,83 +1193,46 @@ export function parseOpenCodeGoHydration(html: string, receivedAt: number): Open
       resetEpoch,
     }
   }
-
   return output as OpenCodeGoQuotaData
 }
 ```
 
-- [ ] **Step 5: Add fixed transport with static classifications**
+The scoped ambiguity rule is exact. `hasMarkerCandidate` creates one bounded slice and calls `indexOf` at most once for each of the three fixed public prefixes; it is the only approved marker pre-scan and is shared by both ambiguity branches. It never searches raw HTML, never decides code context, and never uses a broad regex.
 
-Append this implementation; it never logs or embeds caught values:
+In code state, `//` and `/*` enter comments. Any other `/` starts an unsupported regex-versus-division remainder: scan monotonically to the next actual CR, LF, or body end. A JavaScript regex literal cannot contain an unescaped line terminator, so ambiguity cannot extend beyond that boundary. Reject if the bounded line remainder contains a marker candidate. Otherwise set the cursor to the line boundary and resume normal code scanning, so a marker on the next line remains eligible. A division expression followed by a real marker on the same line is conservatively rejected.
 
-```typescript
-export async function fetchOpenCodeGoQuota(
-  config: OpenCodeGoConfig,
-  signal: AbortSignal,
-  dependencies: OpenCodeGoFetchDependencies,
-): Promise<OpenCodeGoFetchResult> {
-  const url = `${OPENCODE_ORIGIN}/workspace/${encodeURIComponent(config.workspaceId)}/go`
-  let response: Response
-  try {
-    response = await dependencies.fetch(url, {
-      method: "GET",
-      headers: { Accept: "text/html", Cookie: `auth=${config.workspaceToken}` },
-      redirect: "manual",
-      signal,
-    })
-  } catch {
-    return { kind: "transient-failure" }
-  }
+A no-substitution template consumes escapes until its closing backtick and then resumes code scanning. On an unescaped `${`, reject if the rest of that actual script body contains any marker candidate. If none exists, return `found` immediately for that body; no later quota candidate can be skipped because the bounded remainder search proved none exists. Other actual script bodies continue to scan and can supply all three records. Do not add regex-literal recognition, division parsing, template-expression brace tracking, automatic semicolon insertion, or general JavaScript parsing. A line comment may end at the actual script-body end; single/double strings, no-substitution templates, and block comments may not.
 
-  if (response.status === 401 || response.status === 403) return { kind: "authentication-required" }
-  if (response.status >= 300 && response.status < 400) {
-    try {
-      const location = new URL(response.headers.get("location") ?? "", OPENCODE_ORIGIN)
-      if (location.origin === OPENCODE_ORIGIN
-        && (location.pathname.startsWith("/login") || location.pathname.startsWith("/auth"))) {
-        return { kind: "authentication-required" }
-      }
-    } catch {
-      return { kind: "invalid-response" }
-    }
-    return { kind: "invalid-response" }
-  }
-  if (response.status === 408 || response.status === 429 || (response.status >= 500 && response.status <= 599)) {
-    return { kind: "transient-failure" }
-  }
-  if (response.status !== 200
-    || !/^text\/html(?:\s*;|$)/iu.test(response.headers.get("content-type") ?? "")) {
-    return { kind: "invalid-response" }
-  }
+The object capture checks at most 4,097 code units so an object of exactly 4,096 is accepted and 4,097 is rejected. The suffix loop walks the actual body, regardless of whitespace length, and accepts only an actual delimiter or `suffix === body.length`; it never applies `$` to a temporary slice.
 
-  let html: string
-  try {
-    html = await response.text()
-  } catch {
-    return { kind: "transient-failure" }
-  }
-  const data = parseOpenCodeGoHydration(html, dependencies.now())
-  return data ? { kind: "success", data } : { kind: "invalid-response" }
-}
-```
-
-- [ ] **Step 6: Run the exact transport/parser GREEN gates**
+- [ ] **Step 5: Run contract and focused scanner GREEN gates**
 
 Run: `node --test tests/provider-opencode-go-contract.test.mjs && node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go parser|OpenCode Go transport" tests/provider-opencode-go.test.mjs`
 
-Expected: contract gate PASS with 5 tests, every parser/transport test PASS, and 0 failures.
+Expected: exit 0. The fixture-only contract gate passes 5/5. The focused provider file passes 14/14 matching tests: ten parser tests (the original two plus eight regressions) and four unchanged transport tests, with 0 failures. Candidate-free `1/2`, `/safe/`, and `` `before ${answer}` `` scripts do not invalidate records in another script body; slash lines resume at the next line; marker-bearing ambiguous remainders reject.
+
+- [ ] **Step 6: Run type and diff-scope GREEN gates**
 
 Run: `npm run typecheck`
 
-Expected: exit 0 with no diagnostics.
+Expected: exit 0 with no TypeScript diagnostics. The existing unrelated npm `allow-scripts` deprecation warning may appear.
 
-- [ ] **Step 7: Commit the GREEN transport/parser unit atomically**
+Run: `git diff --check -- tests/provider-opencode-go.test.mjs tui/providers/opencode-go.ts && git status --short`
+
+Expected: `git diff --check` exits 0. Status shows only the Task 3 test/provider modifications plus the three pre-existing deleted report paths and any already-approved documentation corrections; no implementation file other than `tui/providers/opencode-go.ts` and no test file other than `tests/provider-opencode-go.test.mjs` is changed.
+
+- [ ] **Step 7: Commit the GREEN lexical-scanner fix atomically**
 
 ```bash
 git status --short &&
 git add tests/provider-opencode-go.test.mjs tui/providers/opencode-go.ts &&
-git commit -m "feat(quota): parse OpenCode Go hydration"
+git diff --cached --check &&
+git commit -m "fix(quota): harden OpenCode Go hydration scanning"
 ```
+
+Expected: one fix commit containing only `tests/provider-opencode-go.test.mjs` and `tui/providers/opencode-go.ts`. Never stage the three deleted report files or the design/plan correction documents as part of the implementation fix commit.
+
+The review gate for Task 3 must confirm: actual-tag HTML context, code-state-only marker uniqueness, scoped fixed-prefix ambiguity checks, acceptance of unrelated candidate-free slash/template-expression scripts, rejection of marker-bearing ambiguous remainders, real-remainder suffix validation, exact size boundaries, atomic three-record acceptance, unchanged fixed transport, and no DOM/parser dependency, execution, broad regex, or unbounded loop.
 
 ### Task 4: Three-Window Semantic Mapper TDD
 
@@ -2013,8 +2223,10 @@ Expected: no local config, full HTML, HAR, screenshot, log, or secret-bearing pa
 - [ ] Native configuration is exactly `quota.opencodego.{workspaceId, workspaceToken}` and no redirectable origin, URL, header, or cookie option exists.
 - [ ] Transport is fixed GET HTML with `Accept`, `auth` cookie, manual redirects, and one 20-second abort timeout per request.
 - [ ] Task 1 fixture lines remain exactly `rollingUsage:$R[0]=...`, `weeklyUsage:$R[1]=...`, and `monthlyUsage:$R[2]=...` in order, with only `status:"ok"` and synthetic numeric fields.
-- [ ] Production parsing uses the narrow `${name}:$R` candidate gate, requires exactly one `<name>:$R[digits]=` marker and literal `{status:"ok",resetInSec:<number>,usagePercent:<number>}` record, bounds captures to 4,096 code units, and rejects every malformed, duplicate, trick, overflow, or oversized complete snapshot.
-- [ ] No `.*`, broad `[^}]+`, script execution, object-literal JSONification, general object conversion, visible-text scraping, local estimate, partial snapshot, or credential-bearing diagnostic exists.
+- [ ] Production parsing uses one bounded HTML lexical pass and bounded per-script JavaScript lexical passes; only actual script bodies and unambiguous code-state `${name}:$R` candidates participate in the exactly-one `<name>:$R[digits]=` and literal `{status:"ok",resetInSec:<number>,usagePercent:<number>}` checks.
+- [ ] HTML comments, quoted attributes, visible/raw-text elements, JavaScript strings/templates/comments, truncated suffix slices, malformed/unclosed constructs, malformed/duplicate markers, overflow, and captures over 4,096 code units all reject or remain ignored as specified; exact 1,000,000/1,000,001 HTML and 4,096/4,097 record boundaries are covered.
+- [ ] Candidate-free division, regex, and template-expression scripts do not invalidate quota markers in another actual script body; ambiguous slash-line or post-`${` remainders reject only when bounded `hasMarkerCandidate` finds one of the three fixed prefixes, with same-line post-division markers documented as a scoped false-negative rejection.
+- [ ] No `.*`, broad `[^}]+`, DOM or parser dependency, script execution, object-literal JSONification, general object conversion, visible-text scraping, local estimate, partial snapshot, or credential-bearing diagnostic exists.
 - [ ] `/Users/aam/.graphify/repos/ridho9/opencode-go-usage/index.js:137-149` remains evidence only and is neither imported nor copied into repository artifacts.
 - [ ] OpenCode Go displays `OpenCode GO:`, 5H, 7D, and 1M in order; compact summary contains only 5H/7D.
 - [ ] Authentication, protocol drift, transient failure, stale expiry, reset boundaries, request serialization, one-second countdowns, and disposal match the canonical spec.
