@@ -7,6 +7,7 @@ const fixture = (name) => readFileSync(`tests/fixtures/opencode-go/${name}`, "ut
 const manifest = JSON.parse(fixture("request-manifest.json"))
 const now = Date.UTC(2026, 6, 14, 12, 0, 0)
 const {
+  createOpenCodeGoProvider,
   fetchOpenCodeGoQuota,
   mapOpenCodeGoPanelState,
   normalizeOpenCodeGoConfig,
@@ -25,6 +26,89 @@ const expectedQuota = {
 
 function item(model, id) {
   return model.groups.flatMap((group) => group.items).find((candidate) => candidate.id === id)
+}
+
+function deferred() {
+  let resolve
+  let reject
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
+
+function fakeClock() {
+  let current = now
+  const timers = []
+  const originals = {
+    now: Date.now,
+    setTimeout: globalThis.setTimeout,
+    clearTimeout: globalThis.clearTimeout,
+    setInterval: globalThis.setInterval,
+    clearInterval: globalThis.clearInterval,
+  }
+  const addTimer = (callback, delay, kind, args) => {
+    const timer = {
+      active: true,
+      callback: undefined,
+      delay: Number(delay ?? 0),
+      kind,
+      unref() {},
+    }
+    timer.callback = () => {
+      if (!timer.active) return undefined
+      if (kind === "timeout") timer.active = false
+      return callback(...args)
+    }
+    timers.push(timer)
+    return timer
+  }
+  const clearTimer = (timer) => {
+    if (timer) timer.active = false
+  }
+
+  Date.now = () => current
+  globalThis.setTimeout = (callback, delay, ...args) => addTimer(callback, delay, "timeout", args)
+  globalThis.clearTimeout = clearTimer
+  globalThis.setInterval = (callback, delay, ...args) => addTimer(callback, delay, "interval", args)
+  globalThis.clearInterval = clearTimer
+
+  return {
+    advance(ms) {
+      current += ms
+      for (const timer of timers.filter((entry) => entry.active && entry.delay <= ms)) timer.callback()
+    },
+    active(kind, delay) {
+      return timers.filter((entry) => entry.active && entry.kind === kind && entry.delay === delay)
+    },
+    activeTimers() {
+      return timers.filter((entry) => entry.active)
+    },
+    restore() {
+      Date.now = originals.now
+      globalThis.setTimeout = originals.setTimeout
+      globalThis.clearTimeout = originals.clearTimeout
+      globalThis.setInterval = originals.setInterval
+      globalThis.clearInterval = originals.clearInterval
+    },
+  }
+}
+
+const flushMicrotasks = async () => {
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
+function cleanupLifecycle(t, clock, adapter, pending = []) {
+  t.after(async () => {
+    adapter.current?.dispose()
+    for (const request of pending) request.resolve(response(503))
+    await flushMicrotasks()
+    const active = clock.activeTimers()
+    clock.restore()
+    assert.deepEqual(active, [])
+  })
 }
 
 test("OpenCode Go mapper emits stable 5H 7D and 1M remaining windows", () => {
@@ -413,4 +497,346 @@ test("OpenCode Go transport emits static secret-safe results and never follows r
   } finally {
     console.error = original
   }
+})
+
+test("OpenCode Go lifecycle starts one request immediately", (t) => {
+  const clock = fakeClock()
+  const request = deferred()
+  const adapter = { current: null }
+  let requests = 0
+  cleanupLifecycle(t, clock, adapter, [request])
+  const testFetch = () => {
+    requests += 1
+    return request.promise
+  }
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  assert.equal(requests, 1)
+})
+
+test("OpenCode Go lifecycle sends no request without valid configuration", async (t) => {
+  const clock = fakeClock()
+  let requests = 0
+  const adapter = createOpenCodeGoProvider({}, {
+    config: null,
+    fetch: async () => {
+      requests += 1
+      throw new Error("unexpected request")
+    },
+  })
+  t.after(() => {
+    adapter.dispose()
+    const active = clock.activeTimers()
+    clock.restore()
+    assert.deepEqual(active, [])
+  })
+  await adapter.refresh()
+  assert.equal(requests, 0)
+  assert.equal(clock.activeTimers().length, 0)
+  assert.equal(item(adapter.panel(), "opencode-go:header").detail, "Configuration required")
+})
+
+test("OpenCode Go lifecycle uses the default polling interval", (t) => {
+  const clock = fakeClock()
+  const request = deferred()
+  const adapter = { current: null }
+  cleanupLifecycle(t, clock, adapter, [request])
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    fetch: () => request.promise,
+  })
+  assert.equal(clock.active("interval", 10_000).length, 1)
+})
+
+test("OpenCode Go lifecycle uses a custom polling interval and one-second tick", (t) => {
+  const clock = fakeClock()
+  const request = deferred()
+  const adapter = { current: null }
+  cleanupLifecycle(t, clock, adapter, [request])
+  const testFetch = () => request.promise
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  assert.equal(clock.active("interval", 2_500).length, 1)
+  assert.equal(clock.active("interval", 1_000).length, 1)
+})
+
+test("OpenCode Go lifecycle owns one abort timeout per request and clears it", async (t) => {
+  const clock = fakeClock()
+  const request = deferred()
+  const adapter = { current: null }
+  cleanupLifecycle(t, clock, adapter, [request])
+  const testFetch = () => request.promise
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  const refresh = adapter.current.refresh()
+  assert.equal(clock.active("timeout", 20_000).length, 1)
+  request.resolve(response(503))
+  await refresh
+  assert.equal(clock.active("timeout", 20_000).length, 0)
+})
+
+test("OpenCode Go lifecycle serializes ordinary triggers without a follow-up", async (t) => {
+  const clock = fakeClock()
+  const request = deferred()
+  const adapter = { current: null }
+  let requests = 0
+  cleanupLifecycle(t, clock, adapter, [request])
+  const testFetch = () => {
+    requests += 1
+    return request.promise
+  }
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  const first = adapter.current.refresh()
+  const second = adapter.current.refresh()
+  const third = clock.active("interval", 2_500)[0].callback()
+  assert.strictEqual(second, first)
+  assert.strictEqual(third, first)
+  assert.equal(requests, 1)
+  request.resolve(response(503))
+  await first
+  await flushMicrotasks()
+  assert.equal(requests, 1)
+})
+
+test("OpenCode Go lifecycle schedules the nearest future reset boundary", async (t) => {
+  const clock = fakeClock()
+  const adapter = { current: null }
+  cleanupLifecycle(t, clock, adapter)
+  const testFetch = async () => response(200, fixture("success.html"), { "content-type": "text/html" })
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  await adapter.current.refresh()
+  assert.equal(clock.active("timeout", expectedQuota.fiveHour.resetEpoch - now).length, 1)
+})
+
+test("OpenCode Go lifecycle queues one refresh when an older request crosses a boundary", async (t) => {
+  const clock = fakeClock()
+  const older = deferred()
+  const followUp = deferred()
+  const adapter = { current: null }
+  let initial = true
+  let requests = 0
+  cleanupLifecycle(t, clock, adapter, [older, followUp])
+  const testFetch = async () => {
+    if (initial) {
+      initial = false
+      return response(200, fixture("success.html"), { "content-type": "text/html" })
+    }
+    requests += 1
+    return requests === 1 ? older.promise : followUp.promise
+  }
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  await adapter.current.refresh()
+  const pending = adapter.current.refresh()
+  assert.equal(requests, 1)
+  clock.active("timeout", expectedQuota.fiveHour.resetEpoch - now)[0].callback()
+  older.resolve(response(200, fixture("success.html"), { "content-type": "text/html" }))
+  await pending
+  await flushMicrotasks()
+  assert.equal(requests, 2)
+})
+
+test("OpenCode Go lifecycle advances from 5H to 7D and 1M boundaries", async (t) => {
+  const clock = fakeClock()
+  const adapter = { current: null }
+  let requests = 0
+  cleanupLifecycle(t, clock, adapter)
+  const testFetch = async () => {
+    requests += 1
+    let html = fixture("success.html")
+    if (requests >= 2) html = html.replace("resetInSec:1800", "resetInSec:0")
+    if (requests >= 3) html = html.replace("resetInSec:172800", "resetInSec:0")
+    return response(200, html, { "content-type": "text/html" })
+  }
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  await adapter.current.refresh()
+  clock.advance(expectedQuota.fiveHour.resetEpoch - now)
+  await adapter.current.refresh()
+  assert.equal(clock.active("timeout", 172_800_000).length, 1)
+  clock.advance(172_800_000)
+  await adapter.current.refresh()
+  assert.equal(clock.active("timeout", 1_209_600_000).length, 1)
+})
+
+test("OpenCode Go lifecycle retains stale rows and recovers on success", async (t) => {
+  const clock = fakeClock()
+  const adapter = { current: null }
+  const results = [
+    response(200, fixture("success.html"), { "content-type": "text/html" }),
+    response(503),
+    response(200, fixture("success.html"), { "content-type": "text/html" }),
+  ]
+  cleanupLifecycle(t, clock, adapter)
+  const testFetch = async () => results.shift()
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  await adapter.current.refresh()
+  assert.equal(adapter.current.freshness(), "ready")
+  await adapter.current.refresh()
+  assert.equal(adapter.current.freshness(), "stale")
+  assert.equal(item(adapter.current.panel(), "opencode-go:5h").value, 87.5)
+  assert.equal(item(adapter.current.panel(), "opencode-go:stale").text, "~stale")
+  await adapter.current.refresh()
+  assert.equal(adapter.current.freshness(), "ready")
+  assert.equal(item(adapter.current.panel(), "opencode-go:stale"), undefined)
+})
+
+test("OpenCode Go lifecycle expires stale rows only after 600000ms", async (t) => {
+  const clock = fakeClock()
+  const adapter = { current: null }
+  let requests = 0
+  cleanupLifecycle(t, clock, adapter)
+  const testFetch = async () => {
+    requests += 1
+    return requests === 1
+      ? response(200, fixture("success.html"), { "content-type": "text/html" })
+      : response(503)
+  }
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  await adapter.current.refresh()
+  await adapter.current.refresh()
+  clock.advance(600_000)
+  await flushMicrotasks()
+  assert.equal(adapter.current.freshness(), "stale")
+  assert.ok(item(adapter.current.panel(), "opencode-go:5h"))
+  clock.advance(1)
+  clock.active("interval", 1_000)[0].callback()
+  assert.equal(adapter.current.freshness(), "unavailable")
+  assert.equal(item(adapter.current.panel(), "opencode-go:5h"), undefined)
+})
+
+test("OpenCode Go lifecycle clears rows for authentication and invalid responses", async (t) => {
+  const clock = fakeClock()
+  const adapter = { current: null }
+  const results = [
+    response(200, fixture("success.html"), { "content-type": "text/html" }),
+    response(403),
+    response(200, fixture("success.html"), { "content-type": "text/html" }),
+    response(200, "invalid", { "content-type": "text/html" }),
+  ]
+  cleanupLifecycle(t, clock, adapter)
+  const testFetch = async () => results.shift()
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  await adapter.current.refresh()
+  await adapter.current.refresh()
+  assert.equal(item(adapter.current.panel(), "opencode-go:header").detail, "Configuration required")
+  assert.equal(item(adapter.current.panel(), "opencode-go:5h"), undefined)
+  await adapter.current.refresh()
+  await adapter.current.refresh()
+  assert.equal(item(adapter.current.panel(), "opencode-go:header").detail, "Usage unavailable")
+  assert.equal(item(adapter.current.panel(), "opencode-go:5h"), undefined)
+})
+
+test("OpenCode Go lifecycle disposal aborts and clears all scheduled work", async (t) => {
+  const clock = fakeClock()
+  const request = deferred()
+  const adapter = { current: null }
+  let calls = 0
+  let activeSignal
+  cleanupLifecycle(t, clock, adapter, [request])
+  const testFetch = async (_url, init) => {
+    calls += 1
+    activeSignal = init.signal
+    return calls === 1
+      ? response(200, fixture("success.html"), { "content-type": "text/html" })
+      : request.promise
+  }
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  await adapter.current.refresh()
+  const pending = adapter.current.refresh()
+  assert.equal(clock.activeTimers().length, 4)
+  adapter.current.dispose()
+  assert.equal(activeSignal.aborted, true)
+  assert.equal(clock.activeTimers().length, 0)
+  request.resolve(response(503))
+  await pending
+})
+
+test("OpenCode Go lifecycle ignores late fulfillment after disposal", async (t) => {
+  const clock = fakeClock()
+  const request = deferred()
+  const adapter = { current: null }
+  let requests = 0
+  cleanupLifecycle(t, clock, adapter, [request])
+  const testFetch = () => {
+    requests += 1
+    return request.promise
+  }
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  const pending = adapter.current.refresh()
+  adapter.current.dispose()
+  request.resolve(response(200, fixture("success.html"), { "content-type": "text/html" }))
+  await pending
+  await flushMicrotasks()
+  assert.equal(requests, 1)
+  assert.equal(item(adapter.current.panel(), "opencode-go:header").detail, "Loading OpenCode GO...")
+  assert.equal(clock.activeTimers().length, 0)
+})
+
+test("OpenCode Go lifecycle ignores late rejection after disposal", async (t) => {
+  const clock = fakeClock()
+  const request = deferred()
+  const adapter = { current: null }
+  let requests = 0
+  cleanupLifecycle(t, clock, adapter, [request])
+  const testFetch = () => {
+    requests += 1
+    return request.promise
+  }
+  adapter.current = createOpenCodeGoProvider({}, {
+    config: sentinel,
+    refreshIntervalMs: 2_500,
+    fetch: testFetch,
+  })
+  const pending = adapter.current.refresh()
+  adapter.current.dispose()
+  request.reject(new Error("late failure"))
+  await pending
+  await flushMicrotasks()
+  assert.equal(requests, 1)
+  assert.equal(item(adapter.current.panel(), "opencode-go:header").detail, "Loading OpenCode GO...")
+  assert.equal(clock.activeTimers().length, 0)
 })

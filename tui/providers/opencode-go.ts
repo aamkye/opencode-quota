@@ -1,4 +1,13 @@
+import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
+import { createRoot, createSignal, onCleanup } from "solid-js"
+
 import type { PanelItem, PanelModel } from "../presentation/types.js"
+import type { ProviderFreshness, QuotaProviderAdapter, QuotaProviderOptions } from "./types.js"
+
+const DEFAULT_REFRESH_INTERVAL_MS = 10_000
+const TICK_MS = 1_000
+const FETCH_TIMEOUT_MS = 20_000
+const STALE_MAX_MS = 600_000
 
 export type OpenCodeGoOptions = {
   workspaceId?: string
@@ -9,6 +18,11 @@ export type OpenCodeGoConfig = Readonly<{
   workspaceId: string
   workspaceToken: string
 }>
+
+export type OpenCodeGoProviderOptions = QuotaProviderOptions & {
+  config: OpenCodeGoConfig | null
+  fetch?: typeof globalThis.fetch
+}
 
 export type OpenCodeGoWindow = {
   usedPct: number
@@ -522,4 +536,170 @@ export function mapOpenCodeGoPanelState(state: OpenCodeGoPanelState): PanelModel
     collapsedSummary: state.data ? { kind: "text", text: `${Math.round(state.data.fiveHour.remainingPct)}%` } : undefined,
     groups: [{ id: "opencode-go:quota", order: 10, items }],
   }
+}
+
+function unref(timer: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>): void {
+  (timer as { unref?: () => void }).unref?.()
+}
+
+export function createOpenCodeGoProvider(
+  api: TuiPluginApi,
+  options: OpenCodeGoProviderOptions,
+): QuotaProviderAdapter {
+  void api
+  const refreshIntervalMs = typeof options.refreshIntervalMs === "number"
+    && Number.isFinite(options.refreshIntervalMs)
+    && options.refreshIntervalMs > 0
+    ? options.refreshIntervalMs
+    : DEFAULT_REFRESH_INTERVAL_MS
+
+  return createRoot((disposeRoot) => {
+    const [data, setData] = createSignal<OpenCodeGoQuotaData | null>(null)
+    const [phase, setPhase] = createSignal<OpenCodeGoPanelPhase>(options.config ? "loading" : "configuration-required")
+    const [lastSuccessAt, setLastSuccessAt] = createSignal(0)
+    const [now, setNow] = createSignal(Date.now())
+    let disposed = false
+    let refreshInFlight: Promise<void> | null = null
+    let refreshStartedAt = 0
+    let pendingBoundary = 0
+    let refreshedBoundary = 0
+    let activeController: AbortController | null = null
+    let activeRequestTimeout: ReturnType<typeof setTimeout> | null = null
+    let boundaryTimer: ReturnType<typeof setTimeout> | null = null
+
+    const clearBoundary = (): void => {
+      if (!boundaryTimer) return
+      clearTimeout(boundaryTimer)
+      boundaryTimer = null
+    }
+
+    const scheduleBoundary = (snapshot: OpenCodeGoQuotaData): void => {
+      if (disposed) return
+      clearBoundary()
+      const current = Date.now()
+      const epochs = [snapshot.fiveHour.resetEpoch, snapshot.weekly.resetEpoch, snapshot.monthly.resetEpoch]
+        .filter((epoch) => epoch > current && epoch !== refreshedBoundary)
+      if (epochs.length === 0) return
+      const epoch = Math.min(...epochs)
+      boundaryTimer = setTimeout(() => {
+        boundaryTimer = null
+        if (disposed) return
+        if (refreshInFlight && refreshStartedAt < epoch) {
+          pendingBoundary = Math.max(pendingBoundary, epoch)
+          return
+        }
+        refreshedBoundary = epoch
+        void refresh()
+      }, Math.max(0, epoch - current))
+      unref(boundaryTimer)
+    }
+
+    const applyResult = (result: OpenCodeGoFetchResult): void => {
+      switch (result.kind) {
+        case "success":
+          setData(result.data)
+          setPhase("ready")
+          setLastSuccessAt(Date.now())
+          scheduleBoundary(result.data)
+          break
+        case "authentication-required":
+          setData(null)
+          setPhase("configuration-required")
+          clearBoundary()
+          break
+        case "invalid-response":
+          setData(null)
+          setPhase("unavailable")
+          clearBoundary()
+          break
+        case "transient-failure":
+          setPhase(data() ? "stale" : "unavailable")
+          break
+      }
+    }
+
+    const refresh = (): Promise<void> => {
+      if (disposed || !options.config) return Promise.resolve()
+      if (refreshInFlight) return refreshInFlight
+      const startedAt = Date.now()
+      const controller = new AbortController()
+      activeController = controller
+      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+      activeRequestTimeout = timeout
+      unref(timeout)
+      const request = (async () => {
+        const result = await fetchOpenCodeGoQuota(options.config!, controller.signal, {
+          fetch: options.fetch ?? globalThis.fetch,
+          now: Date.now,
+        })
+        if (disposed) return
+        applyResult(result)
+      })().finally(() => {
+        clearTimeout(timeout)
+        if (activeRequestTimeout === timeout) activeRequestTimeout = null
+        if (activeController === controller) activeController = null
+      })
+      refreshInFlight = request
+      refreshStartedAt = startedAt
+      const settled = () => {
+        if (refreshInFlight !== request) return
+        refreshInFlight = null
+        refreshStartedAt = 0
+        if (disposed || pendingBoundary <= 0) return
+        refreshedBoundary = pendingBoundary
+        pendingBoundary = 0
+        void refresh()
+      }
+      void request.then(settled, settled)
+      return request
+    }
+
+    if (options.config) {
+      const poll = setInterval(refresh, refreshIntervalMs)
+      unref(poll)
+      onCleanup(() => clearInterval(poll))
+
+      const tick = setInterval(() => {
+        if (disposed) return
+        const current = Date.now()
+        setNow(current)
+        if (lastSuccessAt() && current - lastSuccessAt() > STALE_MAX_MS && data()) {
+          setData(null)
+          setPhase("unavailable")
+          clearBoundary()
+        }
+      }, TICK_MS)
+      unref(tick)
+      onCleanup(() => clearInterval(tick))
+      onCleanup(clearBoundary)
+
+      void refresh()
+    }
+
+    return {
+      id: "opencode-go",
+      order: 130,
+      panel: () => mapOpenCodeGoPanelState({ phase: phase(), data: data(), now: now() }),
+      home: () => null,
+      freshness: (): ProviderFreshness => {
+        const current = phase()
+        return current === "configuration-required" ? "unavailable" : current
+      },
+      refresh,
+      setSessionID(sessionID: string): void {
+        void sessionID
+      },
+      dispose(): void {
+        if (disposed) return
+        disposed = true
+        pendingBoundary = 0
+        activeController?.abort()
+        if (activeRequestTimeout) {
+          clearTimeout(activeRequestTimeout)
+          activeRequestTimeout = null
+        }
+        disposeRoot()
+      },
+    }
+  })
 }
