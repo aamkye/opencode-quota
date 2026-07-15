@@ -20,5 +20,5 @@
 
 ## 4. Verify And Deploy
 
-- [ ] 4.1 Run focused tests, typechecking, the complete automated suite, production build tests, and deployment tests.
+- [x] 4.1 Run focused tests, typechecking, the complete automated suite, production build tests, and deployment tests.
 - [ ] 4.2 Deploy locally, verify artifact parity, and manually validate real 5H/7D/1M data, resets, polling, provider switching, stale behavior, configuration removal, and secret-safe output.

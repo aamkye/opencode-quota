@@ -2121,25 +2121,25 @@ git commit -m "docs(quota): document OpenCode Go setup"
 - Consumes: Tasks 1-8.
 - Produces: command evidence for focused tests, strict typechecking, complete tests, production builds, deployment tests, diff safety, and secret-safe scope.
 
-- [ ] **Step 1: Run focused OpenCode Go and composition tests**
+- [x] **Step 1: Run focused OpenCode Go and composition tests**
 
 Run: `node --test tests/provider-opencode-go-contract.test.mjs && node tests/compile-presentation.mjs && node --test tests/provider-opencode-go.test.mjs tests/quota-composition.test.mjs tests/presentation-layout.test.mjs tests/shared-boundary.test.mjs`
 
 Expected: contract gate PASS with 5 tests and every focused test PASS with 0 failures.
 
-- [ ] **Step 2: Run strict typechecking**
+- [x] **Step 2: Run strict typechecking**
 
 Run: `npm run typecheck`
 
 Expected: exit 0 from `tsc --noEmit` with no diagnostics.
 
-- [ ] **Step 3: Run the complete automated suite**
+- [x] **Step 3: Run the complete automated suite**
 
 Run: `npm test`
 
 Expected: both compile steps and every `tests/*.test.mjs` test PASS with 0 failures.
 
-- [ ] **Step 4: Run production build and build tests**
+- [x] **Step 4: Run production build and build tests**
 
 Run: `npm run build:plugins && node --test tests/plugin-build.test.mjs`
 
@@ -2151,13 +2151,13 @@ dist/opencode-tools-quota.js
 dist/plugins/opencode-tools-tokens.js
 ```
 
-- [ ] **Step 5: Run deployment tests**
+- [x] **Step 5: Run deployment tests**
 
 Run: `node --test tests/plugin-deploy.test.mjs`
 
 Expected: PASS with idempotent local/global fixtures, nested option preservation, and exact three-artifact parity.
 
-- [ ] **Step 6: Verify diff and secret-safe scope**
+- [x] **Step 6: Verify diff and secret-safe scope**
 
 Run: `git diff --check && git diff --name-status f94168f...HEAD && git status --short`
 
