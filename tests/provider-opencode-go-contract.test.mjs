@@ -62,12 +62,21 @@ function wrap(lines) {
 }
 
 test("OpenCode Go contract records the fixed authenticated page request", () => {
-  assert.deepEqual(manifest().request, {
-    method: "GET",
-    url: "https://opencode.ai/workspace/wrk_TESTWORKSPACE/go",
-    headers: { Accept: "text/html", Cookie: "auth=TOKEN_TEST_ONLY_DO_NOT_USE" },
-    redirect: "manual",
-    timeoutMs: 20000,
+  assert.deepEqual(manifest(), {
+    request: {
+      method: "GET",
+      url: "https://opencode.ai/workspace/wrk_TESTWORKSPACE/go",
+      headers: { Accept: "text/html", Cookie: "auth=TOKEN_TEST_ONLY_DO_NOT_USE" },
+      redirect: "manual",
+      timeoutMs: 20000,
+    },
+    success: {
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      records: ["rollingUsage", "weeklyUsage", "monthlyUsage"],
+    },
+    authenticationStatuses: [401, 403],
+    transientStatuses: [408, 429, 500, 503],
   })
 })
 
