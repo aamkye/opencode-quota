@@ -1260,7 +1260,7 @@ The review gate for Task 3 must confirm: actual-tag HTML context, code-state-onl
 - Produces: `OpenCodeGoPanelPhase`, `OpenCodeGoPanelState`, `openCodeGoHomeQuotaSummary(data)`, and `mapOpenCodeGoPanelState(state): PanelModel`.
 - Owns mapper tests and implementation only; no timers, fetches, aliases, or construction are introduced.
 
-- [ ] **Step 1: Add focused mapper tests**
+- [x] **Step 1: Add focused mapper tests**
 
 Replace Task 3's provider-module destructuring with the expanded binding below, then append the mapper tests:
 
@@ -1331,13 +1331,13 @@ test("OpenCode Go mapper covers timer stale and unavailable states", () => {
 })
 ```
 
-- [ ] **Step 2: Run the exact mapper RED gate**
+- [x] **Step 2: Run the exact mapper RED gate**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go mapper" tests/provider-opencode-go.test.mjs`
 
 Expected: FAIL in the focused test callbacks with `TypeError: mapOpenCodeGoPanelState is not a function`, which is the first missing binding invoked. Dynamic-import object destructuring binds both mapper properties to `undefined` without failing module import.
 
-- [ ] **Step 3: Add the exact mapper contracts and implementation**
+- [x] **Step 3: Add the exact mapper contracts and implementation**
 
 Add `import type { PanelItem, PanelModel } from "../presentation/types.js"` at the top of `tui/providers/opencode-go.ts`, then append:
 
@@ -1411,7 +1411,7 @@ export function mapOpenCodeGoPanelState(state: OpenCodeGoPanelState): PanelModel
 }
 ```
 
-- [ ] **Step 4: Run the exact mapper GREEN gates**
+- [x] **Step 4: Run the exact mapper GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go mapper" tests/provider-opencode-go.test.mjs`
 
@@ -1421,7 +1421,7 @@ Run: `npm run typecheck`
 
 Expected: exit 0 with no diagnostics.
 
-- [ ] **Step 5: Commit the GREEN mapper unit atomically**
+- [x] **Step 5: Commit the GREEN mapper unit atomically**
 
 ```bash
 git status --short &&
