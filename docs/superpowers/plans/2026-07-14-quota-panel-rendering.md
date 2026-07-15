@@ -1526,7 +1526,7 @@ git commit -m "fix(tui): dim quota metadata"
 - Consumes: all task interfaces and the three-artifact build contract.
 - Produces: verification evidence only; no additional source behavior and no commit.
 
-- [ ] **Step 1: Run the focused regression set once from a clean test compilation**
+- [x] **Step 1: Run the focused regression set once from a clean test compilation**
 
 Run:
 
@@ -1536,7 +1536,7 @@ node tests/compile-presentation.mjs && node --test tests/presentation-layout.tes
 
 Expected: all focused tests PASS with `fail 0`.
 
-- [ ] **Step 2: Run static typechecking**
+- [x] **Step 2: Run static typechecking**
 
 Run:
 
@@ -1546,7 +1546,7 @@ npm run typecheck
 
 Expected: `tsc --noEmit` exits `0` with no diagnostics.
 
-- [ ] **Step 3: Run the complete automated suite**
+- [x] **Step 3: Run the complete automated suite**
 
 Run:
 
@@ -1556,7 +1556,7 @@ npm test
 
 Expected: both compile scripts and every `tests/*.test.mjs` test PASS with `fail 0`.
 
-- [ ] **Step 4: Build and validate all three production artifacts**
+- [x] **Step 4: Build and validate all three production artifacts**
 
 Run:
 
@@ -1566,7 +1566,7 @@ npm run build && node --test tests/plugin-build.test.mjs
 
 Expected: build exits `0`; these files exist and are non-empty minified ESM: `dist/opencode-tools-shared.js`, `dist/opencode-tools-quota.js`, and `dist/plugins/opencode-tools-tokens.js`. Artifact tests PASS, including hermetic combined-TUI activation, host-owned Solid reactivity, lifecycle cleanup, and exported provider constructors.
 
-- [ ] **Step 5: Exercise idempotent deployment tests**
+- [x] **Step 5: Exercise idempotent deployment tests**
 
 Run:
 
@@ -1576,7 +1576,7 @@ node --test tests/plugin-deploy.test.mjs
 
 Expected: all deployment tests PASS, including option preservation and the exact three-artifact deployed layout.
 
-- [ ] **Step 6: Deploy locally**
+- [x] **Step 6: Deploy locally**
 
 Run:
 
@@ -1627,7 +1627,7 @@ First run with no `refreshIntervalSeconds`, then set the deployed quota entry op
 
 Restore the desired local option after the timing check; do not commit generated local configuration unless it was already intentionally tracked for this change.
 
-- [ ] **Step 10: Inspect the final change range and worktree**
+- [x] **Step 10: Inspect the final change range and worktree**
 
 Run:
 

@@ -15,6 +15,6 @@
 
 ## 3. Verify and Deploy
 
-- [ ] 3.1 Run focused tests, typechecking, the full automated suite, and the three-artifact production build.
+- [x] 3.1 Run focused tests, typechecking, the full automated suite, and the three-artifact production build.
 - [ ] 3.2 Deploy locally and manually validate normal/collapsed and normal/constrained-width behavior in OpenCode.
 - [ ] 3.3 Manually validate the default/custom refresh interval and provider switching from the active session model.
