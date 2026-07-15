@@ -34,7 +34,7 @@ const model = {
           kind: "table",
           columns: [
             { id: "identity", order: 10, title: "Identity" },
-            { id: "model", order: 20, title: "Model" },
+            { id: "model", order: 20, title: "Model", align: "center" },
             { id: "remaining", order: 30, title: "Remaining", align: "end" },
           ],
           rows: [
@@ -273,7 +273,10 @@ test("mounts compact tables as clipped non-wrapping parent-width flex rows", () 
       tableRows[0].props.children.map((cell) => cell.props.children.props.children),
       ["Identity", "Model", "Remaining"],
     )
-    assert.equal(tableRows[0].props.children[2].props.justifyContent, "flex-end")
+    assert.deepEqual(
+      tableRows[0].props.children.map((cell) => cell.props.justifyContent),
+      ["flex-start", "center", "flex-end"],
+    )
     assert.equal(tableRows[1].props.children[2].props.children.props.fg, "#00ff00")
   } finally {
     dispose()

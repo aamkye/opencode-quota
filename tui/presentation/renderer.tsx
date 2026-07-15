@@ -408,7 +408,7 @@ function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> 
                       flexShrink={1}
                       minWidth={0}
                       overflow="hidden"
-                      justifyContent={column.align === "end" ? "flex-end" : "flex-start"}
+                      justifyContent={column.align === "end" ? "flex-end" : column.align === "center" ? "center" : "flex-start"}
                     >
                       <text
                         flexShrink={1}
