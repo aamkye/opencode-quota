@@ -17,7 +17,7 @@ base-ref: f94168f
 ## Global Constraints
 
 - The first deliverable is a sanitized, minimal page-contract fixture. Do not start production parser or transport code until its fixture-only contract test passes.
-- Only the purpose-built Task 1 sanitizer may read ignored `.opencode/tui.json` credentials programmatically; the credential owner may edit them directly for Task 13 live validation. Credentials, raw HTML, request headers, real identifiers, and real usage/reset values must never be printed, logged, reported, persisted, committed, or included in an exception message.
+- Only the purpose-built Task 1 sanitizer may read ignored `.opencode/tui.json` credentials programmatically; the credential owner may edit them directly for Task 10 live validation. Credentials, raw HTML, request headers, real identifiers, and real usage/reset values must never be printed, logged, reported, persisted, committed, or included in an exception message.
 - The sanitizer fetches the authenticated page once and the unauthenticated redirect once, accepts only exact markers shaped `<name>:$R[<digits>]=` followed by a bounded flat object, replaces hydration indexes and observed numeric data with synthetic values in memory, writes only allowlist-validated minimal fixtures, and self-deletes from the approved temporary directory. Never open, inspect, or reuse the existing unsafe full-HTML temporary capture.
 - Exact quota data comes only from exactly one bounded Solid hydration assignment for each of `rollingUsage`, `weeklyUsage`, and `monthlyUsage`: `rollingUsage:$R[digits]=`, `weeklyUsage:$R[digits]=`, and `monthlyUsage:$R[digits]=`. Each assignment must use the observed flat `{status:"ok",resetInSec:<number>,usagePercent:<number>}` shape; the parser validates and discards `status`. Visible text, localized labels, local cost estimates, and broad object searches are forbidden.
 - Safe reference evidence is limited to `/Users/aam/.graphify/repos/ridho9/opencode-go-usage/index.js:137-149`, which confirms the three marker shapes. Do not add that external file to this repository, copy its permissive `[^}]+` captures, or copy its object-literal-to-JSON conversion.
@@ -41,7 +41,7 @@ base-ref: f94168f
 - Create `tests/fixtures/opencode-go/success.html`: minimal sanitized HTML containing only the observed bounded Solid assignment shapes with synthetic values.
 - Create `tests/fixtures/opencode-go/login-redirect.json`: synthetic observed manual login redirect metadata.
 - Create `tests/provider-opencode-go-contract.test.mjs`: fixture-only hard gate that imports no production code.
-- Create `tests/provider-opencode-go.test.mjs`: configuration, security, parser, transport, mapper, polling, reset, stale, and disposal tests.
+- Create `tests/provider-opencode-go.test.mjs`: configuration, security, parser, transport, mapper, polling, reset, stale, and disposal tests, added in the same GREEN task as each minimal implementation.
 - Create `tui/providers/opencode-go.ts`: OpenCode Go options, transport, hydration extraction, semantic mapping, and adapter lifecycle.
 - Modify `tests/compile-presentation.mjs`: compile `.tmp-test/provider-opencode-go.mjs` with browser-compatible conditions.
 - Modify `tui/providers/types.ts`: add `OpenCodeGoHomeQuotaSummary` to `HomeQuotaSummary`.
@@ -59,18 +59,18 @@ base-ref: f94168f
 | OpenSpec task | Plan task | Reviewable deliverable |
 | --- | ---: | --- |
 | 1.1 | 1 | Sanitized HTML request/hydration/authentication contract and fixture-only gate |
-| 1.2 | 2 | RED nested-option, fixed-origin, and credential-safety tests |
-| 1.3 | 3 | RED bounded parser, transport classification, and semantic mapper tests |
-| 1.4 | 4 | RED no-config, polling, serialization, boundary, stale, disposal, alias, and ordering tests |
-| 2.1 | 5 | Native `quota.opencodego` normalization |
-| 2.2 | 6 | Fixed authenticated page request and strict atomic hydration parser |
-| 2.3 | 7 | 5H/7D/1M panel and compact summary mapping |
-| 2.4 | 8 | Shared-interval lifecycle with serialized and disposal-safe refreshes |
-| 3.1 | 9 | Shared facade exports, adapter construction, and runtime aliases |
-| 3.2 | 10 | Three-provider composition and deployment-option regressions |
-| 3.3 | 11 | Local secret and undocumented hydration-contract documentation |
-| 4.1 | 12 | Focused, typecheck, complete-suite, build, and deployment gates |
-| 4.2 | 13 | Local deployment, artifact parity, and live secret-safe validation |
+| 1.2 | 2 | Native-option and credential-safety tests paired with immutable configuration normalization |
+| 2.1 | 2 | Native `quota.opencodego` normalization and quota-option wiring |
+| 1.3 | 3 (partial), 4 (complete) | Transport/bounded-parser coverage first, then mapper coverage |
+| 2.2 | 3 | Fixed authenticated page request and strict atomic hydration parser |
+| 2.3 | 4 | 5H/7D/1M panel and compact summary mapping |
+| 1.4 | 5 (partial), 6 (complete) | Lifecycle coverage first, then construction, aliases, active refresh, and ordering integration |
+| 2.4 | 5 | Shared-interval lifecycle with serialized and disposal-safe refreshes |
+| 3.1 | 6 | Shared facade/types, quota-only construction, runtime aliases, and build boundary |
+| 3.2 | 7 | Three-provider composition, max-width, and deployment-option regressions |
+| 3.3 | 8 | Local secret and undocumented hydration-contract documentation |
+| 4.1 | 9 | Focused, typecheck, complete-suite, build, and deployment gates |
+| 4.2 | 10 | Local deployment, artifact parity, and live secret-safe validation |
 
 ---
 
@@ -158,12 +158,21 @@ function wrap(lines) {
 }
 
 test("OpenCode Go contract records the fixed authenticated page request", () => {
-  assert.deepEqual(manifest().request, {
-    method: "GET",
-    url: "https://opencode.ai/workspace/wrk_TESTWORKSPACE/go",
-    headers: { Accept: "text/html", Cookie: "auth=TOKEN_TEST_ONLY_DO_NOT_USE" },
-    redirect: "manual",
-    timeoutMs: 20000,
+  assert.deepEqual(manifest(), {
+    request: {
+      method: "GET",
+      url: "https://opencode.ai/workspace/wrk_TESTWORKSPACE/go",
+      headers: { Accept: "text/html", Cookie: "auth=TOKEN_TEST_ONLY_DO_NOT_USE" },
+      redirect: "manual",
+      timeoutMs: 20000,
+    },
+    success: {
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      records: ["rollingUsage", "weeklyUsage", "monthlyUsage"],
+    },
+    authenticationStatuses: [401, 403],
+    transientStatuses: [408, 429, 500, 503],
   })
 })
 
@@ -462,31 +471,34 @@ git add tests/fixtures/opencode-go/request-manifest.json tests/fixtures/opencode
 git commit -m "test(quota): capture OpenCode Go page contract"
 ```
 
-### Task 2: Add RED Native-Option And Secret-Safety Tests
+### Task 2: Configuration TDD
 
-**OpenSpec:** 1.2
+**OpenSpec:** 1.2 + 2.1
 
 **Files:**
 - Create: `tests/provider-opencode-go.test.mjs`
+- Create: `tui/providers/opencode-go.ts`
 - Modify: `tests/compile-presentation.mjs:4-20`
 - Modify: `tests/quota-composition.test.mjs`
+- Modify: `shared/opencode-tools-shared.ts`
+- Modify: `tui/quota.tsx:7-12,28-48,57-62,109-124`
+- Modify: `tsconfig.json:21-31`
 
 **Interfaces:**
-- Consumes: Task 1 synthetic sentinels and existing `normalizeQuotaOptions(value?: TuiPluginOptions)`.
-- Produces tests for `OpenCodeGoOptions`, immutable `OpenCodeGoConfig`, `normalizeOpenCodeGoConfig(value: unknown): OpenCodeGoConfig | null`, and `NormalizedQuotaOptions.openCodeGo`.
-- Required native input: `quota.opencodego.{workspaceId, workspaceToken}`; no native `openCodeGo`, `cookie`, origin, URL, or header option exists.
+- Consumes: Task 1 synthetic sentinels and `normalizeQuotaOptions(value?: TuiPluginOptions)`.
+- Produces: `OpenCodeGoOptions`, immutable `OpenCodeGoConfig`, and `normalizeOpenCodeGoConfig(value: unknown): OpenCodeGoConfig | null`.
+- Produces: `QuotaPluginOptions.quota?.opencodego?: OpenCodeGoOptions` and `NormalizedQuotaOptions.openCodeGo: OpenCodeGoConfig | null`.
+- Does not produce or import `createOpenCodeGoProvider`; that constructor first exists in Task 5 and quota construction first consumes it in Task 6.
 
-- [ ] **Step 1: Add the provider test bundle entry**
+- [ ] **Step 1: Add the compile entry and focused failing tests**
 
-Add `provider-opencode-go` to the cleanup names and this tuple after `provider-openai` in `tests/compile-presentation.mjs`:
+Add `provider-opencode-go` to the cleanup array in `tests/compile-presentation.mjs`, then add this tuple immediately after `provider-openai`:
 
 ```javascript
 ["tui/providers/opencode-go.ts", ".tmp-test/provider-opencode-go.mjs", ["browser"]],
 ```
 
-- [ ] **Step 2: Write failing normalization tests**
-
-Create `tests/provider-opencode-go.test.mjs` with imports and focused tests:
+Create `tests/provider-opencode-go.test.mjs` exactly with the configuration boundary tests below. These tests import only the normalizer; they do not name an adapter constructor.
 
 ```javascript
 import assert from "node:assert/strict"
@@ -494,272 +506,91 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 const providerModule = await import("../.tmp-test/provider-opencode-go.mjs")
+const { normalizeOpenCodeGoConfig } = providerModule
 const sentinel = {
   workspaceId: "wrk_TESTWORKSPACE",
   workspaceToken: "TOKEN_TEST_ONLY_DO_NOT_USE",
 }
 
 test("OpenCode Go options normalize valid credentials without diagnostics", () => {
-  const config = providerModule.normalizeOpenCodeGoConfig({
-    workspaceId: " wrk_TESTWORKSPACE ",
-    workspaceToken: " TOKEN_TEST_ONLY_DO_NOT_USE ",
-  })
-  assert.deepEqual(config, sentinel)
-  assert.equal(Object.isFrozen(config), true)
+  const diagnostics = []
+  const original = console.error
+  console.error = (...args) => diagnostics.push(args)
+  try {
+    const config = normalizeOpenCodeGoConfig({
+      workspaceId: ` ${sentinel.workspaceId} `,
+      workspaceToken: ` ${sentinel.workspaceToken} `,
+    })
+    assert.deepEqual(config, sentinel)
+    assert.equal(Object.isFrozen(config), true)
+    assert.deepEqual(Object.keys(config), ["workspaceId", "workspaceToken"])
+    assert.deepEqual(diagnostics, [])
+  } finally {
+    console.error = original
+  }
 })
 
-test("OpenCode Go options reject missing malformed blank and line-bearing values", () => {
-  for (const value of [
-    undefined,
-    {},
-    { workspaceId: "workspace", workspaceToken: sentinel.workspaceToken },
-    { workspaceId: sentinel.workspaceId, workspaceToken: "" },
-    { workspaceId: sentinel.workspaceId, workspaceToken: "x\r\nX-Test: leaked" },
-  ]) assert.equal(providerModule.normalizeOpenCodeGoConfig(value), null)
+test("OpenCode Go options reject invalid credentials without secret-derived output", () => {
+  const diagnostics = []
+  const errors = []
+  const original = console.error
+  console.error = (...args) => diagnostics.push(args)
+  try {
+    for (const value of [
+      undefined,
+      null,
+      [],
+      {},
+      { workspaceId: "workspace", workspaceToken: sentinel.workspaceToken },
+      { workspaceId: sentinel.workspaceId, workspaceToken: "" },
+      { workspaceId: sentinel.workspaceId, workspaceToken: "   " },
+      { workspaceId: sentinel.workspaceId, workspaceToken: "x\rX-Test: leaked" },
+      { workspaceId: sentinel.workspaceId, workspaceToken: "x\nX-Test: leaked" },
+    ]) {
+      try {
+        assert.equal(normalizeOpenCodeGoConfig(value), null)
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error))
+      }
+    }
+  } finally {
+    console.error = original
+  }
+  const serialized = JSON.stringify({ diagnostics, errors })
+  assert.deepEqual(errors, [])
+  for (const secret of Object.values(sentinel)) assert.equal(serialized.includes(secret), false)
+})
+
+test("OpenCode Go options expose no redirectable transport control", () => {
+  const source = readFileSync("tui/providers/opencode-go.ts", "utf8")
+  for (const forbidden of ["origin?:", "url?:", "headers?:", "cookie?:"]) {
+    assert.equal(source.includes(forbidden), false)
+  }
 })
 ```
 
-Add a focused composition test named `OpenCode Go options normalize through native quota options` in `tests/quota-composition.test.mjs`:
+In `tests/quota-composition.test.mjs`, add the same `sentinel` object and this test beside the existing option-normalization tests:
 
 ```javascript
 test("OpenCode Go options normalize through native quota options", () => {
   assert.equal(normalizeQuotaOptions().openCodeGo, null)
-  assert.deepEqual(normalizeQuotaOptions({
-    quota: { opencodego: sentinel },
-  }).openCodeGo, sentinel)
+  assert.deepEqual(normalizeQuotaOptions({ quota: { opencodego: sentinel } }).openCodeGo, sentinel)
   assert.equal(normalizeQuotaOptions({
     quota: { opencodego: { workspaceId: "bad", workspaceToken: "x" } },
   }).openCodeGo, null)
+  assert.equal(normalizeQuotaOptions({ openCodeGo: sentinel }).openCodeGo, null)
 })
 ```
 
-- [ ] **Step 3: Write failing fixed-origin and diagnostic-safety tests**
-
-Name these tests with the prefix `OpenCode Go transport`, so Task 5's option-only GREEN gate skips them. Read the synthetic manifest only. Inject a fetch spy and assert the eventual request uses the manifest URL, method, headers, `redirect: "manual"`, and an `AbortSignal`; ensure no API accepts an origin override. For rejected fetch, malformed response, and authentication response cases, capture returned values, thrown messages, and `console.error` arguments, then assert all serialized diagnostics exclude both sentinel fields:
-
-```javascript
-for (const secret of Object.values(sentinel)) {
-  assert.equal(JSON.stringify({ results, errors, diagnostics }).includes(secret), false)
-}
-```
-
-- [ ] **Step 4: Run the exact RED gate**
+- [ ] **Step 2: Run the exact RED gate**
 
 Run: `node tests/compile-presentation.mjs`
 
-Expected: FAIL from esbuild with `Could not resolve "tui/providers/opencode-go.ts"`.
+Expected: FAIL from esbuild with `Could not resolve "tui/providers/opencode-go.ts"`; no test or broken build is committed.
 
-- [ ] **Step 5: Commit the RED tests only**
+- [ ] **Step 3: Add the minimal immutable configuration module**
 
-```bash
-git status --short &&
-git add tests/compile-presentation.mjs tests/provider-opencode-go.test.mjs tests/quota-composition.test.mjs &&
-git commit -m "test(quota): specify OpenCode Go options"
-```
-
-### Task 3: Add RED Transport, Parser, And Mapper Tests
-
-**OpenSpec:** 1.3
-
-**Files:**
-- Modify: `tests/provider-opencode-go.test.mjs`
-
-**Interfaces:**
-- Consumes: Task 1 `success.html` with exact `rollingUsage:$R[0]=`, `weeklyUsage:$R[1]=`, and `monthlyUsage:$R[2]=` synthetic markers, request manifest, and login redirect fixture.
-- Produces tests for `parseOpenCodeGoHydration(html: string, receivedAt: number): OpenCodeGoQuotaData | null`, `fetchOpenCodeGoQuota(config: OpenCodeGoConfig, signal: AbortSignal, dependencies: OpenCodeGoFetchDependencies): Promise<OpenCodeGoFetchResult>`, `openCodeGoHomeQuotaSummary(data)`, and `mapOpenCodeGoPanelState(state)`.
-
-- [ ] **Step 1: Add atomic bounded-parser success and rejection cases**
-
-At `const now = Date.UTC(2026, 6, 14, 12, 0, 0)`, assert the synthetic fixture maps exactly to:
-
-```javascript
-{
-  fiveHour: { usedPct: 12.5, remainingPct: 87.5, resetEpoch: now + 1_800_000 },
-  weekly: { usedPct: 34, remainingPct: 66, resetEpoch: now + 172_800_000 },
-  monthly: { usedPct: 56.75, remainingPct: 43.25, resetEpoch: now + 1_209_600_000 },
-}
-```
-
-Start from the three exact synthetic marker lines in Task 1. First replace indexes `0`, `1`, and `2` with other nonempty digit sequences and assert production parsing still succeeds; index values are hydration metadata, not quota data. Reorder the source assignments and assert the returned semantic object still maps rolling/weekly/monthly to 5H/7D/1M. Add a valid variant containing an unrelated `monthlyUsage:` identifier outside the exact marker and assert it is ignored. Add table-driven mutations that independently remove and duplicate each complete assignment and duplicate a valid marker beside a malformed `${name}:$R` candidate for the same record name. Replace `$R[0]` with `$R[x]`, `$R[-1]`, `$R["0"]`, `$R[ 0 ]`, `$R[]`, and `$R [0]`; every malformed marker candidate must reject the complete snapshot. Replace each numeric literal with `NaN`, `Infinity`, `-Infinity`, `-1`, and for percentages `101`; use `1e309` for finite-grammar overflow.
-
-Add inputs over 1,000,000 code units, record captures over 4,096 code units, comments or whitespace between marker/object/fields, quoted numeric values, non-`ok` status strings, marker-shaped strings, nested objects, arrays, getters, methods, spreads, extra fields, `__proto__`, fragments placed only in visible `<div>` text, and a valid script marker duplicated in visible text. Assert every invalid case returns `null`, leaves the input unchanged, and exposes no partial data.
-
-- [ ] **Step 2: Add status/content-type/redirect transport classification tests**
-
-Use real `Response` objects and one non-aborted `AbortController.signal`. Assert this exact matrix:
-
-```text
-success                  200 + text/html (parameters allowed) + valid fixture
-authentication-required  401; 403; manual same-origin /login or /auth redirect
-transient-failure        fetch rejection; AbortError; body-read rejection; 408; 429; every 5xx
-invalid-response         other 2xx/4xx; cross-origin or non-login redirect; 200 non-HTML; malformed/oversized HTML; any parser rejection
-```
-
-Assert `fetch` receives exactly one call with:
-
-```javascript
-[
-  "https://opencode.ai/workspace/wrk_TESTWORKSPACE/go",
-  {
-    method: "GET",
-    headers: { Accept: "text/html", Cookie: "auth=TOKEN_TEST_ONLY_DO_NOT_USE" },
-    redirect: "manual",
-    signal,
-  },
-]
-```
-
-Assert a redirect body is never read, redirects are never followed, and serialized results/diagnostics contain no sentinel credential.
-
-- [ ] **Step 3: Add semantic mapper tests**
-
-Assert stable IDs, orders, labels, values, and timer labels:
-
-```javascript
-[
-  ["opencode-go:header", 10, "OpenCode GO:"],
-  ["opencode-go:5h", 20, "5H", 87.5],
-  ["opencode-go:5h-reset", 30, "5H reset"],
-  ["opencode-go:7d", 40, "7D", 66],
-  ["opencode-go:7d-reset", 50, "7D reset"],
-  ["opencode-go:1m", 60, "1M", 43.25],
-  ["opencode-go:1m-reset", 70, "1M reset"],
-]
-```
-
-Cover `idle` at 100% remaining, `countdown` before reset, `expired` at/after reset, stale marker order 15, no rows for `configuration-required` or `unavailable`, details `Configuration required` and `Usage unavailable`, and compact summary `{ provider: "OpenCode GO", plan: "Subscription", primaryPct: 87.5, secondaryPct: 66 }`.
-
-- [ ] **Step 4: Run the exact RED gate**
-
-Run: `node tests/compile-presentation.mjs`
-
-Expected: FAIL with the same missing `tui/providers/opencode-go.ts` resolution error.
-
-- [ ] **Step 5: Commit the RED tests**
-
-```bash
-git status --short &&
-git add tests/provider-opencode-go.test.mjs &&
-git commit -m "test(quota): specify OpenCode Go page parsing"
-```
-
-### Task 4: Add RED Lifecycle And Composition Tests
-
-**OpenSpec:** 1.4
-
-**Files:**
-- Modify: `tests/provider-opencode-go.test.mjs`
-- Modify: `tests/quota-composition.test.mjs`
-
-**Interfaces:**
-- Consumes: `createOpenCodeGoProvider(api, options)` and existing `composeQuotaPanel`, `selectedQuotaProviderID`, `selectedSessionQuotaProviderID`, and `createQuotaSelection` functions.
-- Produces: fake-clock lifecycle coverage and aggregate alias/refresh/order regression tests.
-
-- [ ] **Step 1: Add the fake-clock provider harness**
-
-Mirror the established OpenAI test clock: intercepted timeout/interval handles expose `active`, `delay`, `callback`, and `unref()`. Construct with this exact options shape:
-
-```javascript
-{
-  config: {
-    workspaceId: "wrk_TESTWORKSPACE",
-    workspaceToken: "TOKEN_TEST_ONLY_DO_NOT_USE",
-  },
-  refreshIntervalMs: 2500,
-  fetch: testFetch,
-}
-```
-
-Each test cleanup disposes the adapter, settles deferred requests, restores globals, and asserts zero active timers.
-
-- [ ] **Step 2: Add failing lifecycle cases**
-
-Add tests prefixed `OpenCode Go lifecycle` that prove:
-
-```text
-valid construction refreshes immediately
-null configuration sends no request and displays Configuration required
-default polling is 10000ms and custom polling is 2500ms
-countdown time updates every 1000ms
-each request has one 20000ms abort timeout
-manual refresh and poll triggers share one in-flight promise
-ordinary triggers during a request do not queue another request
-a boundary crossed during an older request queues exactly one refresh after settlement
-the nearest future 5H/7D/1M boundary is scheduled and later boundaries advance in order
-success followed by transient failure retains data as stale
-success after stale returns ready
-stale data disappears only after more than 600000ms
-authentication-required clears data into configuration-required immediately
-invalid-response clears data into unavailable immediately
-disposal aborts in-flight work and clears poll/tick/boundary/timeout handles
-late resolution/rejection after disposal cannot mutate state or start queued work
-```
-
-Use this focused missing-configuration case so the acceptance test depends on the adapter implemented in Task 8 rather than Task 5's normalizer:
-
-```javascript
-test("OpenCode Go lifecycle sends no request without valid configuration", async (t) => {
-  let requests = 0
-  const adapter = createTestAdapter(t, {
-    config: null,
-    fetch: async () => {
-      requests += 1
-      throw new Error("unexpected request")
-    },
-  })
-  await adapter.refresh()
-  assert.equal(requests, 0)
-  assert.equal(item(adapter.panel(), "opencode-go:header").detail, "Configuration required")
-})
-```
-
-- [ ] **Step 3: Add failing aliases, active refresh, and ordering cases**
-
-Create a fake adapter with `id: "opencode-go"`, `order: 130`, 5H/7D/1M rows, and 5H/7D home summary. Assert:
-
-```javascript
-assert.equal(selectedQuotaProviderID([{ id: "opencode-go" }], providers), "opencode-go")
-assert.equal(selectedQuotaProviderID([{ id: "opencode-go-subscription" }], providers), "opencode-go")
-```
-
-Extend the reactive selection test so a latest user message switching to `opencode-go-subscription` performs one immediate OpenCode Go refresh and promotes its quota group. Switching to OpenAI promotes OpenAI while ready/stale OpenCode Go remains in `Other providers`; unavailable OpenCode Go is omitted when it is not selected.
-
-- [ ] **Step 4: Run the exact RED gate**
-
-Run: `node tests/compile-presentation.mjs`
-
-Expected: FAIL because `tui/providers/opencode-go.ts` is absent. After Task 5 creates it, the focused lifecycle and alias tests remain RED until Tasks 8 and 9.
-
-- [ ] **Step 5: Commit the RED tests**
-
-```bash
-git status --short &&
-git add tests/provider-opencode-go.test.mjs tests/quota-composition.test.mjs &&
-git commit -m "test(quota): specify OpenCode Go lifecycle"
-```
-
-### Task 5: Implement Native OpenCode Go Configuration
-
-**OpenSpec:** 2.1
-
-**Files:**
-- Create: `tui/providers/opencode-go.ts`
-- Modify: `shared/opencode-tools-shared.ts`
-- Modify: `tui/quota.tsx:7-12,28-48,109-124`
-
-**Interfaces:**
-- Produces `OpenCodeGoOptions`, `OpenCodeGoConfig`, and `normalizeOpenCodeGoConfig(value: unknown): OpenCodeGoConfig | null`.
-- Produces `QuotaPluginOptions.quota?.opencodego` and `NormalizedQuotaOptions.openCodeGo: OpenCodeGoConfig | null`.
-
-- [ ] **Step 1: Confirm the focused option tests are RED**
-
-Run: `node tests/compile-presentation.mjs`
-
-Expected: FAIL with `Could not resolve "tui/providers/opencode-go.ts"`.
-
-- [ ] **Step 2: Add the minimal immutable configuration boundary**
-
-Start `tui/providers/opencode-go.ts` with:
+Create `tui/providers/opencode-go.ts` with exactly this initial API:
 
 ```typescript
 export type OpenCodeGoOptions = {
@@ -779,16 +610,23 @@ export function normalizeOpenCodeGoConfig(value: unknown): OpenCodeGoConfig | nu
   const input = value as OpenCodeGoOptions
   const workspaceId = typeof input.workspaceId === "string" ? input.workspaceId.trim() : ""
   const workspaceToken = typeof input.workspaceToken === "string" ? input.workspaceToken.trim() : ""
-  if (!WORKSPACE_ID.test(workspaceId) || !workspaceToken || /[\r\n]/.test(workspaceToken)) return null
+  if (!WORKSPACE_ID.test(workspaceId) || !workspaceToken || /[\r\n]/u.test(workspaceToken)) return null
   return Object.freeze({ workspaceId, workspaceToken })
 }
 ```
 
 Do not return validation reasons, rejected values, lengths, hashes, prefixes, or suffixes.
 
-- [ ] **Step 3: Normalize the nested native option**
+- [ ] **Step 4: Wire only the normalized native option**
 
-Export the normalizer and types from `shared/opencode-tools-shared.ts`. Extend `tui/quota.tsx` with:
+Add this narrow export to `shared/opencode-tools-shared.ts`; Task 6 expands the same facade with the constructor and all semantic types:
+
+```typescript
+export { normalizeOpenCodeGoConfig } from "../tui/providers/opencode-go.js";
+export type { OpenCodeGoConfig, OpenCodeGoOptions } from "../tui/providers/opencode-go.js";
+```
+
+Import those three names from the shared facade in `tui/quota.tsx`, then use these exact option types:
 
 ```typescript
 export type QuotaPluginOptions = {
@@ -806,42 +644,198 @@ export type NormalizedQuotaOptions = NormalizedCompositionOptions & {
 }
 ```
 
-Set `DEFAULT_OPTIONS.openCodeGo` to `null` and return `openCodeGo: normalizeOpenCodeGoConfig(input.quota?.opencodego)` from `normalizeQuotaOptions`.
+Add `openCodeGo: null` to `DEFAULT_OPTIONS`, and add exactly this property to the object returned by `normalizeQuotaOptions`:
 
-- [ ] **Step 4: Run the focused GREEN gate**
+```typescript
+openCodeGo: normalizeOpenCodeGoConfig(input.quota?.opencodego),
+```
+
+Add `openCodeGo: null` to each existing expected object in `normalizes native polling and progress color defaults` and `normalizes custom thresholds and rejects invalid native options`; this keeps all pre-existing normalization assertions GREEN after the return type gains the field.
+
+Add `"tui/providers/opencode-go.ts"` after `"tui/providers/openai.ts"` in `tsconfig.json` so the new interface is typechecked before later tasks import it.
+
+- [ ] **Step 5: Run the exact GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go options" tests/provider-opencode-go.test.mjs tests/quota-composition.test.mjs`
 
-Expected: PASS for all matching option-normalization tests with 0 failures. Transport, mapper, lifecycle, and integration tests are skipped; no adapter constructor is required by this gate.
+Expected: PASS for every matching configuration/security test with 0 failures; no adapter constructor is imported.
 
-- [ ] **Step 5: Commit**
+Run: `npm run typecheck && node --test tests/shared-boundary.test.mjs`
+
+Expected: PASS with no TypeScript diagnostics and no loadable entry bypassing the shared facade.
+
+- [ ] **Step 6: Commit the GREEN configuration unit atomically**
 
 ```bash
 git status --short &&
-git add tui/providers/opencode-go.ts shared/opencode-tools-shared.ts tui/quota.tsx &&
+git add tests/compile-presentation.mjs tests/provider-opencode-go.test.mjs tests/quota-composition.test.mjs tui/providers/opencode-go.ts shared/opencode-tools-shared.ts tui/quota.tsx tsconfig.json &&
 git commit -m "feat(quota): normalize OpenCode Go options"
 ```
 
-### Task 6: Implement Fixed Page Transport And Atomic Hydration Parsing
+### Task 3: Page Transport And Bounded Parser TDD
 
-**OpenSpec:** 2.2
+**OpenSpec:** 1.3 (partial) + 2.2
 
 **Files:**
+- Modify: `tests/provider-opencode-go.test.mjs`
 - Modify: `tui/providers/opencode-go.ts`
-- Test: `tests/provider-opencode-go-contract.test.mjs`
-- Test: `tests/provider-opencode-go.test.mjs`
 
 **Interfaces:**
-- Consumes: Task 1 exact synthetic assignment syntax and `OpenCodeGoConfig`.
-- Produces `OpenCodeGoWindow`, `OpenCodeGoQuotaData`, `OpenCodeGoFetchResult`, `OpenCodeGoFetchDependencies`, `parseOpenCodeGoHydration`, and `fetchOpenCodeGoQuota`.
+- Consumes: Task 1 `success.html`, `request-manifest.json`, `login-redirect.json`, and Task 2 `OpenCodeGoConfig`.
+- Produces: `OpenCodeGoWindow`, `OpenCodeGoQuotaData`, `OpenCodeGoFetchResult`, `OpenCodeGoFetchDependencies`, `parseOpenCodeGoHydration(html: string, receivedAt: number): OpenCodeGoQuotaData | null`, and `fetchOpenCodeGoQuota(config, signal, dependencies): Promise<OpenCodeGoFetchResult>`.
+- Task 4 is the only owner of panel mapper tests and implementation.
 
-- [ ] **Step 1: Confirm transport/parser tests are RED**
+- [ ] **Step 1: Add focused parser tests using the confirmed hydration shape**
 
-Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go transport|OpenCode Go parser" tests/provider-opencode-go.test.mjs`
+Extend `tests/provider-opencode-go.test.mjs` with `fixture`, `manifest`, and the Task 3 exports. Replace Task 2's `const { normalizeOpenCodeGoConfig } = providerModule` line with this expanded object destructuring so the module is imported only once:
 
-Expected: FAIL because `parseOpenCodeGoHydration` and `fetchOpenCodeGoQuota` are absent.
+```javascript
+const fixture = (name) => readFileSync(`tests/fixtures/opencode-go/${name}`, "utf8")
+const manifest = JSON.parse(fixture("request-manifest.json"))
+const now = Date.UTC(2026, 6, 14, 12, 0, 0)
+const {
+  fetchOpenCodeGoQuota,
+  normalizeOpenCodeGoConfig,
+  parseOpenCodeGoHydration,
+} = providerModule
 
-- [ ] **Step 2: Add exact semantic and transport types**
+const expectedQuota = {
+  fiveHour: { usedPct: 12.5, remainingPct: 87.5, resetEpoch: now + 1_800_000 },
+  weekly: { usedPct: 34, remainingPct: 66, resetEpoch: now + 172_800_000 },
+  monthly: { usedPct: 56.75, remainingPct: 43.25, resetEpoch: now + 1_209_600_000 },
+}
+
+test("OpenCode Go parser decodes the three confirmed flat hydration records atomically", () => {
+  const source = fixture("success.html")
+  assert.deepEqual(parseOpenCodeGoHydration(source, now), expectedQuota)
+  assert.deepEqual(parseOpenCodeGoHydration(
+    source.replace("$R[0]", "$R[17]").replace("$R[1]", "$R[203]").replace("$R[2]", "$R[9]"),
+    now,
+  ), expectedQuota)
+  const reordered = `<script>\n${source.slice(8, -11).split("\n").reverse().join("\n")}\n</script>\n`
+  assert.deepEqual(parseOpenCodeGoHydration(reordered, now), expectedQuota)
+  assert.deepEqual(parseOpenCodeGoHydration(`${source}<script>const metadata={monthlyUsage:null}</script>`, now), expectedQuota)
+})
+
+test("OpenCode Go parser rejects malformed duplicate trick and oversized records without partial data", () => {
+  const valid = fixture("success.html")
+  const rolling = 'rollingUsage:$R[0]={status:"ok",resetInSec:1800,usagePercent:12.5}'
+  const invalid = [
+    valid.replace(`${rolling}\n`, ""),
+    valid.replace(rolling, `${rolling}\n${rolling}`),
+    valid.replace(rolling, `${rolling}\nrollingUsage:$R[x]={status:"ok",resetInSec:1,usagePercent:1}`),
+    ...["$R[x]", "$R[-1]", '$R["0"]', "$R[ 0 ]", "$R[]", "$R [0]"].map((marker) => valid.replace("$R[0]", marker)),
+    valid.replace("usagePercent:12.5", "usagePercent:NaN"),
+    valid.replace("usagePercent:12.5", "usagePercent:Infinity"),
+    valid.replace("usagePercent:12.5", "usagePercent:1e309"),
+    valid.replace("usagePercent:12.5", "usagePercent:-1"),
+    valid.replace("usagePercent:12.5", "usagePercent:101"),
+    valid.replace("resetInSec:1800", "resetInSec:-1"),
+    valid.replace('status:"ok"', 'status:"other"'),
+    valid.replace("resetInSec:1800", 'resetInSec:"1800"'),
+    valid.replace("={", "=/*comment*/{"),
+    valid.replace("={", "={nested:{},"),
+    valid.replace("}", ",extra:1}"),
+    valid.replace("}", ",__proto__:null}"),
+    valid.replace(rolling, `"${rolling}"`),
+    `<div>${rolling}</div>`,
+    `${valid}<div>${rolling}</div>`,
+    `${valid}${"x".repeat(1_000_001)}`,
+    valid.replace("={", `={${"x".repeat(4_097)}`),
+  ]
+  for (const source of invalid) {
+    const before = source
+    assert.equal(parseOpenCodeGoHydration(source, now), null)
+    assert.equal(source, before)
+  }
+})
+```
+
+- [ ] **Step 2: Add focused fixed-request and response-classification tests**
+
+Append these helpers and tests:
+
+```javascript
+const config = normalizeOpenCodeGoConfig(sentinel)
+const signal = new AbortController().signal
+const response = (status, body = "", headers = {}) => new Response(status === 204 ? null : body, { status, headers })
+
+async function transportWith(result) {
+  const calls = []
+  const value = await fetchOpenCodeGoQuota(config, signal, {
+    now: () => now,
+    fetch: async (...args) => {
+      calls.push(args)
+      if (result instanceof Error) throw result
+      return result
+    },
+  })
+  return { calls, value }
+}
+
+test("OpenCode Go transport sends the exact fixed-origin manual request", async () => {
+  const { calls, value } = await transportWith(response(200, fixture("success.html"), {
+    "content-type": "text/html; charset=utf-8",
+  }))
+  assert.deepEqual(value, { kind: "success", data: expectedQuota })
+  assert.deepEqual(calls, [[manifest.request.url, {
+    method: "GET",
+    headers: manifest.request.headers,
+    redirect: "manual",
+    signal,
+  }]])
+})
+
+test("OpenCode Go transport classifies authentication transient and invalid responses", async () => {
+  for (const status of [401, 403]) {
+    assert.deepEqual((await transportWith(response(status))).value, { kind: "authentication-required" })
+  }
+  for (const location of ["/login", "/auth/authorize"]) {
+    assert.deepEqual((await transportWith(response(302, "", { location }))).value, { kind: "authentication-required" })
+  }
+  for (const status of [408, 429, 500, 503, 599]) {
+    assert.deepEqual((await transportWith(response(status))).value, { kind: "transient-failure" })
+  }
+  assert.deepEqual((await transportWith(new Error("TOKEN_TEST_ONLY_DO_NOT_USE"))).value, { kind: "transient-failure" })
+  for (const value of [
+    response(200, fixture("success.html"), { "content-type": "application/json" }),
+    response(200, "<html>missing records</html>", { "content-type": "text/html" }),
+    response(204),
+    response(302, "", { location: "https://example.com/login" }),
+    response(302, "", { location: "/workspace" }),
+    response(404),
+  ]) assert.deepEqual((await transportWith(value)).value, { kind: "invalid-response" })
+})
+
+test("OpenCode Go transport emits static secret-safe results and never follows redirects", async () => {
+  const diagnostics = []
+  const original = console.error
+  console.error = (...args) => diagnostics.push(args)
+  try {
+    const results = [
+      (await transportWith(new Error(sentinel.workspaceToken))).value,
+      (await transportWith(response(403))).value,
+      (await transportWith(response(200, sentinel.workspaceId, { "content-type": "text/html" }))).value,
+    ]
+    const serialized = JSON.stringify({ results, diagnostics })
+    for (const secret of Object.values(sentinel)) assert.equal(serialized.includes(secret), false)
+  } finally {
+    console.error = original
+  }
+})
+```
+
+For body-read failure, add a response-like object with `status: 200`, `headers: new Headers({ "content-type": "text/html" })`, and `text: async () => { throw new Error("body failed") }`; assert `transient-failure`. For redirect bodies, add `text()` that increments a counter and assert the counter remains zero after a same-origin `/auth/authorize` response. These objects contain only static synthetic strings.
+
+- [ ] **Step 3: Run the exact RED gate**
+
+Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go parser|OpenCode Go transport" tests/provider-opencode-go.test.mjs`
+
+Expected: FAIL in the focused test callbacks with `TypeError: parseOpenCodeGoHydration is not a function`; transport callbacks that run also report `TypeError: fetchOpenCodeGoQuota is not a function`. Object destructuring reads missing dynamic-import properties as `undefined`, so module import itself succeeds.
+
+- [ ] **Step 4: Add exact transport/parser contracts and bounded extraction**
+
+Append these exported types and constants to `tui/providers/opencode-go.ts`:
 
 ```typescript
 export type OpenCodeGoWindow = {
@@ -867,28 +861,14 @@ export type OpenCodeGoFetchDependencies = {
   now: () => number
 }
 
-export function parseOpenCodeGoHydration(html: string, receivedAt: number): OpenCodeGoQuotaData | null
-
-export async function fetchOpenCodeGoQuota(
-  config: OpenCodeGoConfig,
-  signal: AbortSignal,
-  dependencies: OpenCodeGoFetchDependencies,
-): Promise<OpenCodeGoFetchResult>
-```
-
-- [ ] **Step 3: Implement the strict bounded assignment extractor**
-
-Use constants `MAX_HTML_LENGTH = 1_000_000` and `MAX_ASSIGNMENT_LENGTH = 4_096`. Define three descriptors mapping `rollingUsage -> fiveHour`, `weeklyUsage -> weekly`, and `monthlyUsage -> monthly`. The external reference at `/Users/aam/.graphify/repos/ridho9/opencode-go-usage/index.js:137-149` is evidence only for the marker strings; do not import it, bundle it, or copy its `[^}]+` and JSONification approach.
-
-Use this restricted grammar and bounded extraction shape in `tui/providers/opencode-go.ts`:
-
-```typescript
+const OPENCODE_ORIGIN = "https://opencode.ai"
+const MAX_HTML_LENGTH = 1_000_000
+const MAX_ASSIGNMENT_LENGTH = 4_096
 const NUMBER_SOURCE = String.raw`-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?`
 const OBJECT_PATTERN = new RegExp(
   String.raw`^\{status:"ok",resetInSec:(?<reset>${NUMBER_SOURCE}),usagePercent:(?<usage>${NUMBER_SOURCE})\}$`,
   "u",
 )
-
 const RECORDS = [
   { name: "rollingUsage", output: "fiveHour" },
   { name: "weeklyUsage", output: "weekly" },
@@ -896,74 +876,247 @@ const RECORDS = [
 ] as const
 ```
 
-Scan `<script>` bodies with bounded `indexOf("<script")`, tag-end, and `indexOf("</script>")` operations rather than a dot-all regex. For each descriptor:
+Append this bounded implementation. It uses the narrow `${name}:$R` candidate gate, never `.*` or `[^}]+`, and validates the exact confirmed `{status:"ok",resetInSec:<number>,usagePercent:<number>}` shape:
 
 ```typescript
-const markerPattern = new RegExp(String.raw`${record.name}:\$R\[(?<index>\d+)\]=`, "gu")
-```
+function countLiteral(source: string, value: string): number {
+  let count = 0
+  let cursor = 0
+  while (true) {
+    const index = source.indexOf(value, cursor)
+    if (index < 0) return count
+    count += 1
+    cursor = index + value.length
+  }
+}
 
-Require exactly one `${record.name}:$R` marker candidate and exactly one exact marker in the complete HTML, then require that same sole exact marker exactly once across extracted script bodies. An unrelated `${record.name}:` identifier is not a marker candidate and is ignored. This still rejects malformed or duplicate `$R` candidates and visible-text-only exact markers. Starting immediately after the script-body marker, take at most `MAX_ASSIGNMENT_LENGTH + 1` code units. Require the first character to be `{`, find the first `}`, reject when it is absent or makes the capture exceed 4,096 code units, and run only `OBJECT_PATTERN` against the complete bounded slice. After the closing brace, allow only observed assignment terminators from the literal set end-of-script, comma, semicolon, closing brace, CR, or LF, with horizontal whitespace before the terminator.
+function scriptBodies(html: string): string[] | null {
+  const lower = html.toLowerCase()
+  const bodies: string[] = []
+  let cursor = 0
+  while (cursor < html.length) {
+    const open = lower.indexOf("<script", cursor)
+    if (open < 0) break
+    const afterName = lower[open + 7]
+    if (afterName !== ">" && !/\s/u.test(afterName ?? "")) {
+      cursor = open + 7
+      continue
+    }
+    const tagEnd = lower.indexOf(">", open + 7)
+    const close = tagEnd < 0 ? -1 : lower.indexOf("</script>", tagEnd + 1)
+    if (tagEnd < 0 || close < 0) return null
+    bodies.push(html.slice(tagEnd + 1, close))
+    cursor = close + 9
+  }
+  return bodies
+}
 
-This deliberately admits no whitespace inside `<name>:$R[digits]=` or the observed flat object; Task 1 evidence shows none there. It validates the exact literal `status:"ok"` and discards it. It rejects malformed `$R` indexes, visible text outside scripts, other strings or status values, comments, nested braces, arrays, computed expressions, methods, accessors, spreads, extra fields, quoted/prototype keys, and any unallowlisted property. If the contract gate discovers another shape, stop unless its literal name, order, and scalar grammar can be explicitly allowlisted in Task 1 and mirrored here; never add `.*`, `[^}]+`, recursive search, or general object conversion.
+export function parseOpenCodeGoHydration(html: string, receivedAt: number): OpenCodeGoQuotaData | null {
+  if (html.length > MAX_HTML_LENGTH || !Number.isFinite(receivedAt)) return null
+  const bodies = scriptBodies(html)
+  if (!bodies) return null
+  const output: Partial<OpenCodeGoQuotaData> = {}
 
-Validate `Number.isFinite(usagePercent)`, `0 <= usagePercent <= 100`, `Number.isFinite(resetInSec)`, `resetInSec >= 0`, and `Number.isFinite(receivedAt + resetInSec * 1000)`. Build data only after all three records pass:
+  for (const record of RECORDS) {
+    const pattern = () => new RegExp(String.raw`${record.name}:\$R\[(?<index>\d+)\]=`, "gu")
+    const allMatches = [...html.matchAll(pattern())]
+    const scriptMatches = bodies.flatMap((body) => [...body.matchAll(pattern())].map((match) => ({ body, match })))
+    if (countLiteral(html, `${record.name}:$R`) !== 1 || allMatches.length !== 1 || scriptMatches.length !== 1) return null
 
-```typescript
-{
-  usedPct: usagePercent,
-  remainingPct: Math.min(100, Math.max(0, 100 - usagePercent)),
-  resetEpoch: receivedAt + resetInSec * 1_000,
+    const { body, match } = scriptMatches[0]!
+    if (match.index === undefined) return null
+    const start = match.index + match[0].length
+    const bounded = body.slice(start, start + MAX_ASSIGNMENT_LENGTH + 1)
+    if (!bounded.startsWith("{")) return null
+    const close = bounded.indexOf("}")
+    if (close < 0 || close + 1 > MAX_ASSIGNMENT_LENGTH) return null
+    const object = OBJECT_PATTERN.exec(bounded.slice(0, close + 1))
+    const suffix = body.slice(start + close + 1, start + close + 34)
+    if (!object?.groups || !/^[\t ]*(?:[,;}\r\n]|$)/u.test(suffix)) return null
+
+    const resetInSec = Number(object.groups.reset)
+    const usagePercent = Number(object.groups.usage)
+    const resetEpoch = receivedAt + resetInSec * 1_000
+    if (!Number.isFinite(resetInSec) || resetInSec < 0
+      || !Number.isFinite(usagePercent) || usagePercent < 0 || usagePercent > 100
+      || !Number.isFinite(resetEpoch)) return null
+    output[record.output] = {
+      usedPct: usagePercent,
+      remainingPct: Math.min(100, Math.max(0, 100 - usagePercent)),
+      resetEpoch,
+    }
+  }
+
+  return output as OpenCodeGoQuotaData
 }
 ```
 
-- [ ] **Step 4: Implement fixed transport and static classification**
+- [ ] **Step 5: Add fixed transport with static classifications**
 
-Use `const OPENCODE_ORIGIN = "https://opencode.ai"`. Construct the URL only as:
+Append this implementation; it never logs or embeds caught values:
 
 ```typescript
-const url = `${OPENCODE_ORIGIN}/workspace/${encodeURIComponent(config.workspaceId)}/go`
+export async function fetchOpenCodeGoQuota(
+  config: OpenCodeGoConfig,
+  signal: AbortSignal,
+  dependencies: OpenCodeGoFetchDependencies,
+): Promise<OpenCodeGoFetchResult> {
+  const url = `${OPENCODE_ORIGIN}/workspace/${encodeURIComponent(config.workspaceId)}/go`
+  let response: Response
+  try {
+    response = await dependencies.fetch(url, {
+      method: "GET",
+      headers: { Accept: "text/html", Cookie: `auth=${config.workspaceToken}` },
+      redirect: "manual",
+      signal,
+    })
+  } catch {
+    return { kind: "transient-failure" }
+  }
+
+  if (response.status === 401 || response.status === 403) return { kind: "authentication-required" }
+  if (response.status >= 300 && response.status < 400) {
+    try {
+      const location = new URL(response.headers.get("location") ?? "", OPENCODE_ORIGIN)
+      if (location.origin === OPENCODE_ORIGIN
+        && (location.pathname.startsWith("/login") || location.pathname.startsWith("/auth"))) {
+        return { kind: "authentication-required" }
+      }
+    } catch {
+      return { kind: "invalid-response" }
+    }
+    return { kind: "invalid-response" }
+  }
+  if (response.status === 408 || response.status === 429 || (response.status >= 500 && response.status <= 599)) {
+    return { kind: "transient-failure" }
+  }
+  if (response.status !== 200
+    || !/^text\/html(?:\s*;|$)/iu.test(response.headers.get("content-type") ?? "")) {
+    return { kind: "invalid-response" }
+  }
+
+  let html: string
+  try {
+    html = await response.text()
+  } catch {
+    return { kind: "transient-failure" }
+  }
+  const data = parseOpenCodeGoHydration(html, dependencies.now())
+  return data ? { kind: "success", data } : { kind: "invalid-response" }
+}
 ```
 
-Call injected fetch with the exact request init from Task 3. Before reading a body, classify 401/403 and manual redirects whose resolved URL remains on `https://opencode.ai` and whose pathname starts with `/login` or `/auth` as `authentication-required`. Classify network/abort/body-read errors, 408, 429, and 500-599 as `transient-failure`. For status 200, require `Content-Type` media type `text/html` case-insensitively while allowing parameters, read text once, and parse it. Every other status, redirect, content type, or parser result is `invalid-response`.
+- [ ] **Step 6: Run the exact GREEN gates**
 
-Return only the four discriminated result shapes. Do not log or attach caught values.
+Run: `node --test tests/provider-opencode-go-contract.test.mjs && node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go parser|OpenCode Go transport" tests/provider-opencode-go.test.mjs`
 
-- [ ] **Step 5: Run contract and transport GREEN gates**
+Expected: contract gate PASS with 5 tests, every parser/transport test PASS, and 0 failures.
 
-Run: `node --test tests/provider-opencode-go-contract.test.mjs`
+Run: `npm run typecheck`
 
-Expected: PASS with 5 tests and 0 failures.
+Expected: exit 0 with no diagnostics.
 
-Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go transport|OpenCode Go parser" tests/provider-opencode-go.test.mjs`
-
-Expected: PASS for every matching parser, classification, fixed-request, and secret-safety test with 0 failures.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit the GREEN transport/parser unit atomically**
 
 ```bash
 git status --short &&
-git add tui/providers/opencode-go.ts &&
+git add tests/provider-opencode-go.test.mjs tui/providers/opencode-go.ts &&
 git commit -m "feat(quota): parse OpenCode Go hydration"
 ```
 
-### Task 7: Implement Three-Window Semantic Mapping
+### Task 4: Three-Window Semantic Mapper TDD
 
-**OpenSpec:** 2.3
+**OpenSpec:** 1.3 (complete) + 2.3
 
 **Files:**
+- Modify: `tests/provider-opencode-go.test.mjs`
 - Modify: `tui/providers/opencode-go.ts`
 
 **Interfaces:**
-- Consumes: `OpenCodeGoQuotaData` and existing `PanelModel`/`PanelItem` types.
-- Produces `OpenCodeGoPanelPhase`, `OpenCodeGoPanelState`, `openCodeGoHomeQuotaSummary(data)`, and `mapOpenCodeGoPanelState(state): PanelModel`; Task 9 adds the inferred summary shape to the shared `HomeQuotaSummary` union.
+- Consumes: Task 3 `OpenCodeGoQuotaData` and existing `PanelItem`/`PanelModel`.
+- Produces: `OpenCodeGoPanelPhase`, `OpenCodeGoPanelState`, `openCodeGoHomeQuotaSummary(data)`, and `mapOpenCodeGoPanelState(state): PanelModel`.
+- Owns mapper tests and implementation only; no timers, fetches, aliases, or construction are introduced.
 
-- [ ] **Step 1: Confirm mapper tests are RED**
+- [ ] **Step 1: Add focused mapper tests**
+
+Replace Task 3's provider-module destructuring with the expanded binding below, then append the mapper tests:
+
+```javascript
+const {
+  fetchOpenCodeGoQuota,
+  mapOpenCodeGoPanelState,
+  normalizeOpenCodeGoConfig,
+  openCodeGoHomeQuotaSummary,
+  parseOpenCodeGoHydration,
+} = providerModule
+```
+
+```javascript
+function item(model, id) {
+  return model.groups.flatMap((group) => group.items).find((candidate) => candidate.id === id)
+}
+
+test("OpenCode Go mapper emits stable 5H 7D and 1M remaining windows", () => {
+  const model = mapOpenCodeGoPanelState({ phase: "ready", data: expectedQuota, now })
+  assert.equal(model.id, "opencode-go")
+  assert.equal(model.order, 130)
+  assert.equal(model.title, "OpenCode GO")
+  assert.equal(model.groups[0].id, "opencode-go:quota")
+  assert.deepEqual(model.groups[0].items.map((entry) => [
+    entry.id,
+    entry.order,
+    entry.kind === "header" ? entry.title : entry.label,
+    entry.kind === "progress" ? entry.value : undefined,
+  ]), [
+    ["opencode-go:header", 10, "OpenCode GO:", undefined],
+    ["opencode-go:5h", 20, "5H", 87.5],
+    ["opencode-go:5h-reset", 30, "5H reset", undefined],
+    ["opencode-go:7d", 40, "7D", 66],
+    ["opencode-go:7d-reset", 50, "7D reset", undefined],
+    ["opencode-go:1m", 60, "1M", 43.25],
+    ["opencode-go:1m-reset", 70, "1M reset", undefined],
+  ])
+  assert.deepEqual(openCodeGoHomeQuotaSummary(expectedQuota), {
+    provider: "OpenCode GO",
+    plan: "Subscription",
+    primaryPct: 87.5,
+    secondaryPct: 66,
+  })
+})
+
+test("OpenCode Go mapper covers timer stale and unavailable states", () => {
+  const full = structuredClone(expectedQuota)
+  full.fiveHour.remainingPct = 100
+  assert.equal(item(mapOpenCodeGoPanelState({ phase: "ready", data: full, now }), "opencode-go:5h-reset").state, "idle")
+  assert.equal(item(mapOpenCodeGoPanelState({ phase: "ready", data: expectedQuota, now }), "opencode-go:5h-reset").state, "countdown")
+  assert.equal(item(mapOpenCodeGoPanelState({ phase: "ready", data: expectedQuota, now: expectedQuota.fiveHour.resetEpoch }), "opencode-go:5h-reset").state, "expired")
+  assert.deepEqual(item(mapOpenCodeGoPanelState({ phase: "stale", data: expectedQuota, now }), "opencode-go:stale"), {
+    id: "opencode-go:stale",
+    order: 15,
+    kind: "text",
+    text: "~stale",
+    status: "warning",
+  })
+  for (const [phase, detail] of [["configuration-required", "Configuration required"], ["unavailable", "Usage unavailable"]]) {
+    const model = mapOpenCodeGoPanelState({ phase, now })
+    const header = item(model, "opencode-go:header")
+    assert.equal(header.title, "OpenCode GO:")
+    assert.equal(header.detail, detail)
+    assert.equal(model.groups[0].items.some((entry) => entry.kind === "progress"), false)
+    assert.equal(model.collapsedSummary, undefined)
+  }
+})
+```
+
+- [ ] **Step 2: Run the exact RED gate**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go mapper" tests/provider-opencode-go.test.mjs`
 
-Expected: FAIL because mapper exports are absent.
+Expected: FAIL in the focused test callbacks with `TypeError: mapOpenCodeGoPanelState is not a function`, which is the first missing binding invoked. Dynamic-import object destructuring binds both mapper properties to `undefined` without failing module import.
 
-- [ ] **Step 2: Add phase/state contracts and compact summary**
+- [ ] **Step 3: Add the exact mapper contracts and implementation**
+
+Add `import type { PanelItem, PanelModel } from "../presentation/types.js"` at the top of `tui/providers/opencode-go.ts`, then append:
 
 ```typescript
 export type OpenCodeGoPanelPhase =
@@ -987,124 +1140,424 @@ export function openCodeGoHomeQuotaSummary(data: OpenCodeGoQuotaData) {
     secondaryPct: data.weekly.remainingPct,
   }
 }
+
+function openCodeGoTimer(window: OpenCodeGoWindow, now: number): "idle" | "countdown" | "expired" {
+  if (window.remainingPct >= 100) return "idle"
+  return window.resetEpoch > now ? "countdown" : "expired"
+}
+
+function openCodeGoWindowItems(
+  id: "5h" | "7d" | "1m",
+  label: "5H" | "7D" | "1M",
+  order: 20 | 40 | 60,
+  window: OpenCodeGoWindow,
+  now: number,
+): PanelItem[] {
+  return [
+    { id: `opencode-go:${id}`, order, kind: "progress", label, value: window.remainingPct, total: 100 },
+    { id: `opencode-go:${id}-reset`, order: order + 10, kind: "timer", label: `${label} reset`, state: openCodeGoTimer(window, now), epoch: window.resetEpoch },
+  ]
+}
+
+export function mapOpenCodeGoPanelState(state: OpenCodeGoPanelState): PanelModel {
+  const items: PanelItem[] = []
+  if (!state.data) {
+    const detail = state.phase === "configuration-required"
+      ? "Configuration required"
+      : state.phase === "loading"
+        ? "Loading OpenCode GO..."
+        : "Usage unavailable"
+    items.push({ id: "opencode-go:header", order: 10, kind: "header", title: "OpenCode GO:", detail })
+  } else {
+    items.push({ id: "opencode-go:header", order: 10, kind: "header", title: "OpenCode GO:" })
+    if (state.phase === "stale") {
+      items.push({ id: "opencode-go:stale", order: 15, kind: "text", text: "~stale", status: "warning" })
+    }
+    items.push(...openCodeGoWindowItems("5h", "5H", 20, state.data.fiveHour, state.now))
+    items.push(...openCodeGoWindowItems("7d", "7D", 40, state.data.weekly, state.now))
+    items.push(...openCodeGoWindowItems("1m", "1M", 60, state.data.monthly, state.now))
+  }
+
+  return {
+    id: "opencode-go",
+    order: 130,
+    title: "OpenCode GO",
+    collapsedSummary: state.data ? { kind: "text", text: `${Math.round(state.data.fiveHour.remainingPct)}%` } : undefined,
+    groups: [{ id: "opencode-go:quota", order: 10, items }],
+  }
+}
 ```
 
-- [ ] **Step 3: Map the exact semantic panel**
-
-Return panel ID `opencode-go`, provider order `130`, title `OpenCode GO`, and group ID `opencode-go:quota`. Ready/stale data starts with header `{ id: "opencode-go:header", order: 10, kind: "header", title: "OpenCode GO:" }`; stale adds `{ id: "opencode-go:stale", order: 15, kind: "text", text: "~stale", status: "warning" }`.
-
-Add progress/timer pairs for 5H at 20/30, 7D at 40/50, and 1M at 60/70 using Task 3 IDs. Timer state is `idle` when remaining is 100, `countdown` when reset epoch is greater than `now`, and `expired` otherwise. `configuration-required` uses header detail `Configuration required`; `loading` uses `Loading OpenCode GO...`; `unavailable` uses `Usage unavailable`. States without data return no quota rows or collapsed provider summary.
-
-- [ ] **Step 4: Run the mapper GREEN gate**
+- [ ] **Step 4: Run the exact GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go mapper" tests/provider-opencode-go.test.mjs`
 
-Expected: PASS with 0 failures.
+Expected: every mapper test PASS with 0 failures.
 
-- [ ] **Step 5: Commit**
+Run: `npm run typecheck`
+
+Expected: exit 0 with no diagnostics.
+
+- [ ] **Step 5: Commit the GREEN mapper unit atomically**
 
 ```bash
 git status --short &&
-git add tui/providers/opencode-go.ts &&
+git add tests/provider-opencode-go.test.mjs tui/providers/opencode-go.ts &&
 git commit -m "feat(quota): map OpenCode Go windows"
 ```
 
-### Task 8: Implement Polling And Disposal-Safe Lifecycle
+### Task 5: Reactive Lifecycle TDD
 
-**OpenSpec:** 2.4
+**OpenSpec:** 1.4 (partial) + 2.4
 
 **Files:**
+- Modify: `tests/provider-opencode-go.test.mjs`
 - Modify: `tui/providers/opencode-go.ts`
 
 **Interfaces:**
-- Consumes: `QuotaProviderOptions`, `QuotaProviderAdapter`, normalized config, transport, and mapper.
-- Produces `OpenCodeGoProviderOptions` and `createOpenCodeGoProvider(api, options): QuotaProviderAdapter`.
+- Consumes: Tasks 3-4 parser, transport, mapper, `QuotaProviderOptions`, and `QuotaProviderAdapter`.
+- Produces: `OpenCodeGoProviderOptions` and `createOpenCodeGoProvider(api: TuiPluginApi, options: OpenCodeGoProviderOptions): QuotaProviderAdapter`.
+- Owns lifecycle behavior only. Task 6 owns quota construction, aliases, selection, shared type exports, and build boundary tests.
 
-- [ ] **Step 1: Confirm lifecycle tests are RED**
+- [ ] **Step 1: Add the deterministic fake-clock lifecycle harness**
+
+Replace Task 4's provider-module destructuring with the expanded binding below. Add a fake clock whose timeout/interval records are `{ active, callback, delay, kind, unref() {} }`, replaces `Date.now`, `setTimeout`, `clearTimeout`, `setInterval`, and `clearInterval`, and exposes:
+
+```javascript
+const {
+  createOpenCodeGoProvider,
+  fetchOpenCodeGoQuota,
+  mapOpenCodeGoPanelState,
+  normalizeOpenCodeGoConfig,
+  openCodeGoHomeQuotaSummary,
+  parseOpenCodeGoHydration,
+} = providerModule
+```
+
+```javascript
+{
+  advance(ms) {
+    current += ms
+    for (const timer of timers.filter((entry) => entry.active && entry.delay <= ms)) timer.callback()
+  },
+  active(kind, delay) {
+    return timers.filter((entry) => entry.active && entry.kind === kind && entry.delay === delay)
+  },
+  restore() {
+    Date.now = originals.now
+    globalThis.setTimeout = originals.setTimeout
+    globalThis.clearTimeout = originals.clearTimeout
+    globalThis.setInterval = originals.setInterval
+    globalThis.clearInterval = originals.clearInterval
+  },
+}
+```
+
+Use a `deferred()` helper returning `{ promise, resolve, reject }`. Construct every configured adapter with:
+
+```javascript
+createOpenCodeGoProvider({}, {
+  config: sentinel,
+  refreshIntervalMs: 2_500,
+  fetch: testFetch,
+})
+```
+
+Each test registers `t.after()` that disposes the adapter, settles deferred responses, restores globals, and asserts no fake timer remains active.
+
+- [ ] **Step 2: Add focused lifecycle tests**
+
+Add tests prefixed `OpenCode Go lifecycle` for these exact transitions and timer counts:
+
+```text
+valid construction starts one request immediately
+null configuration starts zero requests and renders Configuration required
+omitted refreshIntervalMs creates a 10000ms poll; 2500 creates a 2500ms poll
+configured construction creates one 1000ms countdown/stale tick
+each request owns one 20000ms abort timeout and clears it after settlement
+two manual refreshes plus a poll while pending return the same promise and keep one request
+ordinary triggers while pending queue no follow-up request
+the nearest future reset creates one boundary timeout
+a boundary crossed by an older request queues exactly one post-settlement refresh
+later 7D and 1M boundaries become nearest after earlier resets
+success then transient failure retains rows and adds ~stale; later success returns ready
+stale rows remain at exactly 600000ms and disappear after 600001ms
+authentication-required clears rows and renders Configuration required
+invalid-response clears rows and renders Usage unavailable
+dispose aborts the request and clears poll, tick, boundary, and request timeout
+late fulfillment or rejection after dispose cannot mutate panel state or start work
+```
+
+Use `fixture("success.html")` for success responses, `response(503)` for transient failure, `response(403)` for authentication failure, and `response(200, "invalid", { "content-type": "text/html" })` for protocol failure. The missing-configuration assertion is exactly:
+
+```javascript
+test("OpenCode Go lifecycle sends no request without valid configuration", async (t) => {
+  let requests = 0
+  const adapter = createOpenCodeGoProvider({}, {
+    config: null,
+    fetch: async () => {
+      requests += 1
+      throw new Error("unexpected request")
+    },
+  })
+  t.after(() => adapter.dispose())
+  await adapter.refresh()
+  assert.equal(requests, 0)
+  assert.equal(item(adapter.panel(), "opencode-go:header").detail, "Configuration required")
+})
+```
+
+For serialization, retain the three returned promises and assert strict identity. For boundary serialization, begin a request before `expectedQuota.fiveHour.resetEpoch`, fire that boundary, resolve the request, await two microtask turns, and assert the request count advances from 1 to exactly 2. For stale expiry, advance the fake wall clock by 600,000 then 1 milliseconds and invoke the 1,000ms tick after each advance.
+
+- [ ] **Step 3: Run the exact RED gate**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go lifecycle" tests/provider-opencode-go.test.mjs`
 
-Expected: FAIL because `createOpenCodeGoProvider` is absent.
+Expected: FAIL in the focused test callbacks with `TypeError: createOpenCodeGoProvider is not a function`. Dynamic-import object destructuring binds the missing constructor to `undefined`; importing the compiled module still succeeds.
 
-- [ ] **Step 2: Add the provider construction interface**
+- [ ] **Step 4: Add lifecycle imports, contracts, and scheduling constants**
+
+At the top of `tui/providers/opencode-go.ts`, add:
 
 ```typescript
+import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
+import { createRoot, createSignal, onCleanup } from "solid-js"
+import type { ProviderFreshness, QuotaProviderAdapter, QuotaProviderOptions } from "./types.js"
+
+const DEFAULT_REFRESH_INTERVAL_MS = 10_000
+const TICK_MS = 1_000
+const FETCH_TIMEOUT_MS = 20_000
+const STALE_MAX_MS = 600_000
+
 export type OpenCodeGoProviderOptions = QuotaProviderOptions & {
   config: OpenCodeGoConfig | null
   fetch?: typeof globalThis.fetch
 }
-
-export function createOpenCodeGoProvider(
-  _api: TuiPluginApi,
-  options: OpenCodeGoProviderOptions,
-): QuotaProviderAdapter
 ```
 
-Use `createRoot`, `createSignal`, `createEffect`, and `onCleanup`. Keep local non-reactive fields for `disposed`, `refreshInFlight`, `refreshStartedAt`, `pendingBoundary`, and `activeController`. `_api` exists only for constructor consistency; do not read provider keys, state, KV, or lifecycle secrets from it.
+- [ ] **Step 5: Implement one serialized request and all result transitions**
 
-- [ ] **Step 3: Implement immediate refresh and result transitions**
+Implement `createOpenCodeGoProvider` as one `createRoot`. Use signals `data`, `phase`, `lastSuccessAt`, and `now`; mutable fields `disposed`, `refreshInFlight`, `refreshStartedAt`, `pendingBoundary`, `refreshedBoundary`, `activeController`, and `boundaryTimer`; and these exact result transitions:
 
-For `config: null`, initialize `configuration-required`, schedule no polling or boundary work, and make `refresh()` resolve without fetch. For valid config, initialize `loading`, schedule polling/ticks, and call `refresh()` immediately.
-
-Each request creates an `AbortController`, schedules exactly one 20,000ms abort timeout, and calls Task 6 transport with `{ fetch: options.fetch ?? globalThis.fetch, now: Date.now }`. Apply results only while not disposed:
-
-```text
-success                 replace data; ready; update lastSuccessAt
-authentication-required clear data; configuration-required
-invalid-response        clear data; unavailable
-transient with data     retain data; stale
-transient without data  unavailable
+```typescript
+switch (result.kind) {
+  case "success":
+    setData(result.data)
+    setPhase("ready")
+    setLastSuccessAt(Date.now())
+    scheduleBoundary(result.data)
+    break
+  case "authentication-required":
+    setData(null)
+    setPhase("configuration-required")
+    clearBoundary()
+    break
+  case "invalid-response":
+    setData(null)
+    setPhase("unavailable")
+    clearBoundary()
+    break
+  case "transient-failure":
+    setPhase(data() ? "stale" : "unavailable")
+    break
+}
 ```
 
-- [ ] **Step 4: Implement polling, countdown, stale expiry, and boundaries**
+The request body must be exactly:
 
-Normalize `refreshIntervalMs` to a finite positive value or 10,000ms. Use one interval for polling and one 1,000ms interval to update `now` and expire data when `current - lastSuccessAt > 600_000`. Do not add exhausted backoff.
+```typescript
+const refresh = (): Promise<void> => {
+  if (disposed || !options.config) return Promise.resolve()
+  if (refreshInFlight) return refreshInFlight
+  const startedAt = Date.now()
+  const controller = new AbortController()
+  activeController = controller
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  unref(timeout)
+  const request = (async () => {
+    const result = await fetchOpenCodeGoQuota(options.config!, controller.signal, {
+      fetch: options.fetch ?? globalThis.fetch,
+      now: Date.now,
+    })
+    if (disposed) return
+    applyResult(result)
+  })().finally(() => {
+    clearTimeout(timeout)
+    if (activeController === controller) activeController = null
+  })
+  refreshInFlight = request
+  refreshStartedAt = startedAt
+  const settled = () => {
+    if (refreshInFlight !== request) return
+    refreshInFlight = null
+    refreshStartedAt = 0
+    if (disposed || pendingBoundary <= 0) return
+    refreshedBoundary = pendingBoundary
+    pendingBoundary = 0
+    void refresh()
+  }
+  void request.then(settled, settled)
+  return request
+}
+```
 
-After each success, schedule one timeout for the minimum reset epoch strictly greater than `Date.now()` across all three windows. Track the last refreshed boundary so a past epoch cannot loop. If a boundary fires while a request started before that boundary remains in flight, retain only the latest pending boundary epoch and start one follow-up refresh after settlement. Manual, polling, and active-selection refresh calls during an in-flight request return the same promise and queue nothing.
+Define `unref(timer)` as `(timer as { unref?: () => void }).unref?.()` without a leading empty statement.
 
-- [ ] **Step 5: Make disposal final**
+- [ ] **Step 6: Implement poll, tick, nearest-boundary, and final disposal behavior**
 
-`dispose()` sets `disposed`, clears pending boundary state, aborts the active controller, and disposes the Solid root. Every asynchronous continuation checks `disposed` before state mutation, rescheduling, or queued refresh. `setSessionID` is a no-op. Return home summary for ready or stale data, and map `configuration-required` freshness to `unavailable` so selected state remains renderable while unselected unavailable state is omitted by composition.
+Normalize `options.refreshIntervalMs` to a finite positive value or 10,000. For valid configuration only, create one poll interval and one 1,000ms tick. The tick sets `now` and, only when `current - lastSuccessAt() > STALE_MAX_MS`, clears stale data, sets `unavailable`, and clears the boundary timer.
 
-- [ ] **Step 6: Run the lifecycle GREEN gate**
+`scheduleBoundary(snapshot)` computes the minimum of the three reset epochs strictly greater than `Date.now()` and different from `refreshedBoundary`; it clears the old boundary timer before setting one timeout. Its callback uses exactly this serialization rule:
+
+```typescript
+if (refreshInFlight && refreshStartedAt < epoch) {
+  pendingBoundary = Math.max(pendingBoundary, epoch)
+  return
+}
+refreshedBoundary = epoch
+void refresh()
+```
+
+Call `void refresh()` once after valid construction. Return this adapter shape:
+
+```typescript
+return {
+  id: "opencode-go",
+  order: 130,
+  panel: () => mapOpenCodeGoPanelState({ phase: phase(), data: data(), now: now() }),
+  home: () => null,
+  freshness: (): ProviderFreshness => {
+    const current = phase()
+    return current === "configuration-required" ? "unavailable" : current
+  },
+  refresh,
+  setSessionID(sessionID: string): void {
+    void sessionID
+  },
+  dispose(): void {
+    if (disposed) return
+    disposed = true
+    pendingBoundary = 0
+    activeController?.abort()
+    disposeRoot()
+  },
+}
+```
+
+The temporary `home: () => null` keeps Task 5 type-correct before `OpenCodeGoHomeQuotaSummary` joins the shared union. Task 6 owns that type and replaces this one line with the ready/stale summary accessor during integration. Register `onCleanup` to clear poll, tick, and boundary timers. Every asynchronous continuation checks `disposed` before state mutation, timer creation, or queued work. Do not add exhausted backoff or refactor generic polling.
+
+- [ ] **Step 7: Run the exact GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go lifecycle" tests/provider-opencode-go.test.mjs`
 
-Expected: PASS with 0 failures, one request maximum in flight, and no active fake timers after cleanup.
+Expected: every lifecycle test PASS, request concurrency never exceeds one, and every cleanup reports zero active timers.
 
-- [ ] **Step 7: Commit**
+Run: `npm run typecheck`
+
+Expected: exit 0 with no diagnostics.
+
+- [ ] **Step 8: Commit the GREEN lifecycle unit atomically**
 
 ```bash
 git status --short &&
-git add tui/providers/opencode-go.ts &&
+git add tests/provider-opencode-go.test.mjs tui/providers/opencode-go.ts &&
 git commit -m "feat(quota): schedule OpenCode Go refreshes"
 ```
 
-### Task 9: Integrate The Provider Through The Shared Boundary
+### Task 6: Shared Integration And Selection TDD
 
-**OpenSpec:** 3.1
+**OpenSpec:** 1.4 (complete) + 3.1
 
 **Files:**
+- Modify: `tests/quota-composition.test.mjs`
+- Modify: `tests/shared-boundary.test.mjs`
+- Modify: `tests/plugin-build.test.mjs`
+- Modify: `tui/providers/opencode-go.ts`
 - Modify: `tui/providers/types.ts:5-21`
 - Modify: `shared/opencode-tools-shared.ts`
 - Modify: `tui/quota.tsx:7-12,63-69,342-348`
-- Modify: `tests/shared-boundary.test.mjs`
-- Modify: `tests/plugin-build.test.mjs`
-- Modify: `tsconfig.json:21-31`
 
 **Interfaces:**
-- Consumes: `createOpenCodeGoProvider` and normalized `openCodeGo` config.
-- Produces: public shared exports, adapter construction, and aliases `opencode-go -> opencode-go` and `opencode-go-subscription -> opencode-go`.
+- Consumes: Task 5 `createOpenCodeGoProvider`, Task 2 `NormalizedQuotaOptions.openCodeGo`, and existing selection/composition functions.
+- Produces: `OpenCodeGoHomeQuotaSummary`, complete shared exports, quota-only adapter construction, and aliases `opencode-go -> opencode-go` plus `opencode-go-subscription -> opencode-go`.
+- Leaves `QuotaProviderAdapter`, `PanelModel`, `PanelRenderer`, `tui/home.tsx`, generic polling, and renderer width logic unchanged.
 
-- [ ] **Step 1: Confirm integration tests are RED**
+- [ ] **Step 1: Add failing alias, active-refresh, and construction tests**
 
-Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go integration|shared owns computation|artifacts expose" tests/quota-composition.test.mjs tests/shared-boundary.test.mjs tests/plugin-build.test.mjs`
+In `tests/quota-composition.test.mjs`, add a fake adapter with `id: "opencode-go"`, `order: 130`, freshness accessor, `refreshCalls`, 5H/7D/1M progress rows, and a 5H/7D home summary. Add:
 
-Expected: FAIL because aliases, adapter construction, summary union, and build assertions are incomplete.
+```javascript
+test("OpenCode Go integration resolves both runtime aliases", () => {
+  const providers = [provider({ id: "opencode-go", title: "OpenCode GO", order: 130, primaryPct: 87.5, secondaryPct: 66 })]
+  assert.equal(selectedQuotaProviderID([{ id: "opencode-go" }], providers), "opencode-go")
+  assert.equal(selectedQuotaProviderID([{ id: "opencode-go-subscription" }], providers), "opencode-go")
+  assert.equal(selectedSessionQuotaProviderID([
+    { role: "user", model: { providerID: "opencode-go-subscription" } },
+  ], providers), "opencode-go")
+})
+```
 
-- [ ] **Step 2: Add the summary union member**
+Extend the existing reactive selection fixture with a latest user message using `opencode-go-subscription`; after the effect flush, assert OpenCode Go `refreshCalls === 1`, its selected group precedes `Other providers`, switching to OpenAI refreshes OpenAI and retains ready/stale OpenCode Go under `Other providers`, and an unavailable unselected OpenCode Go group is omitted.
 
-In `tui/providers/types.ts` add:
+Extend the plugin construction test by passing:
+
+```javascript
+{
+  refreshIntervalSeconds: 2.5,
+  quota: { opencodego: sentinel },
+}
+```
+
+Import `readFileSync` alongside the existing `mkdtempSync`/`rmSync`, define `openCodeGoManifest` and `openCodeGoHtml` from Task 1 fixtures, and add this exact branch to the `aggregatePanel` fetch stub before its unexpected-URL error:
+
+```javascript
+if (url === openCodeGoManifest.request.url) {
+  assert.deepEqual(requestOptions, {
+    method: "GET",
+    headers: openCodeGoManifest.request.headers,
+    redirect: "manual",
+    signal: requestOptions.signal,
+  })
+  assert.equal(requestOptions.signal instanceof AbortSignal, true)
+  observations.requests.push({ provider: "opencode-go", authorization: undefined })
+  return new Response(openCodeGoHtml, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } })
+}
+```
+
+Assert the first OpenCode Go request matches the Task 1 manifest, the active 2,500ms poll count is three, polling each timer produces exactly one request from `openai`, `opencode-go`, and `zai`, and disposal runs through the registered lifecycle callback. This is the first quota test that requires adapter construction.
+
+- [ ] **Step 2: Add failing shared-boundary, type, and build assertions**
+
+In `tests/shared-boundary.test.mjs`, extend `shared facade exports computation without plugin registration or JSX` with:
+
+```javascript
+assert.match(shared, /createOpenCodeGoProvider/)
+assert.doesNotMatch(source("tui/quota.tsx"), /from ["']\.\/providers\/opencode-go/)
+assert.doesNotMatch(source("tui/home.tsx"), /opencode-go/)
+```
+
+In `tests/plugin-build.test.mjs`, add a test named `artifacts expose OpenCode Go only through shared computation` that asserts:
+
+```javascript
+assert.deepEqual(Object.keys(buildResults).sort(), ["quota", "shared", "tokens"])
+assert.equal(Object.keys(buildResults.shared.metafile.inputs).some((path) => path.endsWith("/tui/providers/opencode-go.ts") || path === "tui/providers/opencode-go.ts"), true)
+assert.equal(Object.keys(buildResults.quota.metafile.inputs).some((path) => path.endsWith("tui/providers/opencode-go.ts")), false)
+assert.equal(Object.keys(buildResults.tokens.metafile.inputs).some((path) => path.endsWith("tui/providers/opencode-go.ts")), false)
+const sharedModule = await import(`${pathToFileURL(resolve(root, "dist/opencode-tools-shared.js")).href}?opencode-go`)
+assert.equal(typeof sharedModule.createOpenCodeGoProvider, "function")
+```
+
+Keep the existing host-runtime assertions for `solid-js`, `@opentui/*`, `@opencode-ai/plugin`, SDK modules, and runtime built-ins external.
+
+- [ ] **Step 3: Run the exact RED gate**
+
+Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go integration|shared facade exports|artifacts expose OpenCode Go" tests/quota-composition.test.mjs tests/shared-boundary.test.mjs tests/plugin-build.test.mjs`
+
+Expected: FAIL because `selectedQuotaProviderID` returns `undefined` for both OpenCode Go IDs, the shared facade does not export `createOpenCodeGoProvider`, and quota construction has only Z.AI/OpenAI.
+
+- [ ] **Step 4: Add the summary union before shared imports consume it**
+
+In `tui/providers/types.ts`, add:
 
 ```typescript
 export type OpenCodeGoHomeQuotaSummary = {
@@ -1120,18 +1573,52 @@ export type HomeQuotaSummary =
   | OpenCodeGoHomeQuotaSummary
 ```
 
-- [ ] **Step 3: Complete shared exports and quota-only construction**
+Do not change `QuotaProviderAdapter` or `ProviderFreshness`.
 
-Export the constructor, normalizer, options/config/window/data/result/dependency/panel/summary types, parser, fetcher, mapper, and summary helper from `shared/opencode-tools-shared.ts`.
+- [ ] **Step 5: Complete shared exports and quota-only construction**
 
-Add to `ADAPTER_ID_BY_PROVIDER_ID` in `tui/quota.tsx`:
+Replace the narrow Task 2 OpenCode Go facade export with this complete block in `shared/opencode-tools-shared.ts`:
+
+```typescript
+export {
+  createOpenCodeGoProvider,
+  fetchOpenCodeGoQuota,
+  mapOpenCodeGoPanelState,
+  normalizeOpenCodeGoConfig,
+  openCodeGoHomeQuotaSummary,
+  parseOpenCodeGoHydration,
+} from "../tui/providers/opencode-go.js";
+export type {
+  OpenCodeGoConfig,
+  OpenCodeGoFetchDependencies,
+  OpenCodeGoFetchResult,
+  OpenCodeGoOptions,
+  OpenCodeGoPanelPhase,
+  OpenCodeGoPanelState,
+  OpenCodeGoProviderOptions,
+  OpenCodeGoQuotaData,
+  OpenCodeGoWindow,
+} from "../tui/providers/opencode-go.js";
+```
+
+Add `OpenCodeGoHomeQuotaSummary` to the existing type export from `tui/providers/types.ts`.
+
+Now that the union accepts the OpenCode Go summary, replace Task 5's temporary `home: () => null` in `createOpenCodeGoProvider` with:
+
+```typescript
+home: () => (phase() === "ready" || phase() === "stale") && data()
+  ? openCodeGoHomeQuotaSummary(data()!)
+  : null,
+```
+
+Import `createOpenCodeGoProvider` in the existing shared-facade import in `tui/quota.tsx`. Add exactly these aliases:
 
 ```typescript
 "opencode-go": "opencode-go",
 "opencode-go-subscription": "opencode-go",
 ```
 
-Append after OpenAI construction:
+Append exactly this construction after OpenAI construction:
 
 ```typescript
 providers.push(createOpenCodeGoProvider(api, {
@@ -1140,69 +1627,150 @@ providers.push(createOpenCodeGoProvider(api, {
 }))
 ```
 
-Do not instantiate OpenCode Go in `tui/home.tsx`, add a renderer branch, or change `QuotaProviderAdapter`.
+Do not instantiate OpenCode Go in `tui/home.tsx` because that legacy entry has no native options path.
 
-- [ ] **Step 4: Extend boundary/build/typecheck assertions**
+- [ ] **Step 6: Run the exact GREEN gates**
 
-In `tests/shared-boundary.test.mjs`, assert the shared facade directly exports `createOpenCodeGoProvider`, and quota/home/token loadable sources do not import `tui/providers/opencode-go.ts` except through the shared facade. In `tests/plugin-build.test.mjs`, assert shared build inputs include `/tui/providers/opencode-go.ts`, quota/tokens inputs exclude provider implementation modules, the built shared module exports the constructor, host Solid remains external, and built result keys remain exactly `shared`, `quota`, and `tokens`.
+Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go integration|shared facade exports|artifacts expose OpenCode Go" tests/quota-composition.test.mjs tests/shared-boundary.test.mjs tests/plugin-build.test.mjs`
 
-Add `tui/providers/opencode-go.ts` to `tsconfig.json` immediately after `tui/providers/openai.ts`.
+Expected: every matching integration/boundary/build test PASS, both aliases select one adapter, active selection refreshes once, and build result keys remain exactly `quota`, `shared`, and `tokens`.
 
-- [ ] **Step 5: Run the integration GREEN gate**
+Run: `npm run typecheck && npm run build:plugins`
 
-Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go integration|shared owns computation|artifacts expose" tests/quota-composition.test.mjs tests/shared-boundary.test.mjs tests/plugin-build.test.mjs`
+Expected: both commands exit 0; exactly the existing three artifacts are built.
 
-Expected: PASS with 0 failures and exactly the existing three build results.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit the GREEN integration unit atomically**
 
 ```bash
 git status --short &&
-git add tui/providers/types.ts shared/opencode-tools-shared.ts tui/quota.tsx tests/shared-boundary.test.mjs tests/plugin-build.test.mjs tsconfig.json &&
+git add tests/quota-composition.test.mjs tests/shared-boundary.test.mjs tests/plugin-build.test.mjs tui/providers/opencode-go.ts tui/providers/types.ts shared/opencode-tools-shared.ts tui/quota.tsx &&
 git commit -m "feat(quota): integrate OpenCode Go provider"
 ```
 
-### Task 10: Verify Three-Provider Aggregate Behavior
+### Task 7: Three-Provider Aggregate And Deployment Regressions
 
 **OpenSpec:** 3.2
 
 **Files:**
 - Modify: `tests/quota-composition.test.mjs`
 - Modify: `tests/plugin-deploy.test.mjs`
-- Modify only if a test proves necessary: `tui/quota.tsx`
 
 **Interfaces:**
-- Consumes: integrated adapter and unchanged generic composition functions.
-- Produces: provider priority/retention, compact summary, remaining/used conversion, color threshold, sorting, max-width, native option forwarding, and deployment-option coverage.
+- Consumes: Task 6 integrated adapter and unchanged generic composition/layout functions.
+- Produces: regression coverage for three-provider priority/retention, collapsed summary, remaining/used conversion, color thresholds, sorting, 37-column layouts, nested option deployment, idempotence, and three-artifact parity.
+- Makes no production-code change; the minimal GREEN implementation is concrete three-provider test data plus nested deployment fixture data.
 
-- [ ] **Step 1: Add aggregate assertions before production changes**
+- [ ] **Step 1: Add aggregate assertions before adding the third-provider fixture**
 
-Add `three providers preserve OpenCode Go aggregate semantics` using Z.AI, OpenAI, and OpenCode Go adapters. Assert:
+Add a test named `three providers preserve OpenCode Go aggregate semantics` that calls `openCodeGoRegressionProvider()` together with existing Z.AI/OpenAI fake adapters and asserts:
 
-```text
-selected OpenCode Go quota group is first
-ready/stale Z.AI and OpenAI remain under Other providers
-switching selection moves only the selected provider
-collapsed remaining summary is 88%/66%
-collapsed used summary is 13%/34%
-expanded used 5H/7D/1M rows are 12.5/34/56.75
-progress status still derives from remaining percentage in used mode
-1M remains expanded-only
-secondary sorting follows configured metric and direction
-rendered extended/semi-collapsed/collapsed layouts remain within 37 cells
+```javascript
+const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 75, secondaryPct: 60 })
+const openai = provider({ id: "openai", title: "OpenAI", order: 120, primaryPct: 70, secondaryPct: 55 })
+const openCodeGo = openCodeGoRegressionProvider()
+const remaining = composeQuotaPanel("opencode-go", [zai, openai, openCodeGo], {
+  percentageMode: "remaining",
+  sortDirection: "desc",
+  progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
+})
+const used = composeQuotaPanel("opencode-go", [zai, openai, openCodeGo], {
+  percentageMode: "used",
+  sortDirection: "asc",
+  progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
+})
+assert.equal(remaining.groups[0].id, "opencode-go:quota")
+assert.equal(remaining.groups.some((group) => group.header?.title === "Other providers"), true)
+assert.deepEqual(remaining.collapsedSummary, { kind: "text", text: "88%/66%", status: "success" })
+assert.deepEqual(used.collapsedSummary, { kind: "text", text: "13%/34%", status: "success" })
+assert.deepEqual(used.groups.flatMap((group) => group.items)
+  .filter((entry) => ["opencode-go:5h", "opencode-go:7d", "opencode-go:1m"].includes(entry.id))
+  .map((entry) => entry.value), [12.5, 34, 56.75])
+assert.equal(used.groups.flatMap((group) => group.items).find((entry) => entry.id === "opencode-go:5h").status, "success")
+assert.equal(String(used.collapsedSummary.text).includes("1M"), false)
 ```
 
-Extend the existing normalized polling test to three adapters and assert OpenCode Go receives the shared `refreshIntervalMs`. Serve Task 1 HTML only for the fixed URL and exact synthetic cookie.
+Render extended, semi-collapsed, and collapsed layouts with `availableCells: 37`; flatten each rendered row to its total cell width and assert every value is `<= 37`. Assert selecting OpenAI moves only OpenAI first while ready/stale OpenCode Go remains in `Other providers`, and assert ascending/descending secondary ordering uses the configured displayed metric.
 
-- [ ] **Step 2: Run the composition RED/GREEN diagnostic gate**
+Extend the compiled renderer import to:
 
-Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go|three providers|forwards normalized|max-width" tests/quota-composition.test.mjs tests/presentation-layout.test.mjs`
+```javascript
+const { normalizePanelModel, renderPanelLayout } = await import("../.tmp-test/presentation-renderer.mjs")
+```
 
-Expected: PASS if Task 9 uses generic composition correctly. A failure must identify a missing alias/forwarding/composition detail; make only that minimal correction in `tui/quota.tsx`, never the renderer or generic polling code.
+Call `renderPanelLayout(remaining, { availableCells: 37 })` for extended content, with `collapsed: new Set(["other-providers"])` for semi-collapsed content, and with `collapsed: new Set(["quota"])` for collapsed content. For each layout, sum every header/progress/table row's declared cell widths and compare plain text/timer row string lengths; assert every measured row is at most 37 cells.
 
-- [ ] **Step 3: Add deployment option preservation coverage**
+Before `openCodeGoRegressionProvider` exists, run the focused command in Step 2.
 
-Extend `localOptions` in `tests/plugin-deploy.test.mjs`:
+- [ ] **Step 2: Run the exact aggregate RED gate**
+
+Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="three providers preserve" tests/quota-composition.test.mjs`
+
+Expected: FAIL with `ReferenceError: openCodeGoRegressionProvider is not defined`.
+
+- [ ] **Step 3: Add the minimal synthetic third-provider fixture**
+
+Add this helper above the aggregate test:
+
+```javascript
+function openCodeGoRegressionProvider(freshness = "ready") {
+  const resetBase = Date.UTC(2026, 6, 14, 12, 0, 0)
+  const panel = {
+    id: "opencode-go",
+    order: 130,
+    title: "OpenCode GO",
+    groups: [{
+      id: "opencode-go:quota",
+      order: 10,
+      items: [
+        { id: "opencode-go:header", order: 10, kind: "header", title: "OpenCode GO:" },
+        ...(freshness === "stale" ? [{ id: "opencode-go:stale", order: 15, kind: "text", text: "~stale", status: "warning" }] : []),
+        { id: "opencode-go:5h", order: 20, kind: "progress", label: "5H", value: 87.5, total: 100 },
+        { id: "opencode-go:5h-reset", order: 30, kind: "timer", label: "5H reset", state: "countdown", epoch: resetBase + 1_800_000 },
+        { id: "opencode-go:7d", order: 40, kind: "progress", label: "7D", value: 66, total: 100 },
+        { id: "opencode-go:7d-reset", order: 50, kind: "timer", label: "7D reset", state: "countdown", epoch: resetBase + 172_800_000 },
+        { id: "opencode-go:1m", order: 60, kind: "progress", label: "1M", value: 43.25, total: 100 },
+        { id: "opencode-go:1m-reset", order: 70, kind: "timer", label: "1M reset", state: "countdown", epoch: resetBase + 1_209_600_000 },
+      ],
+    }],
+  }
+  return {
+    id: "opencode-go",
+    order: 130,
+    panel: () => panel,
+    home: () => ({ provider: "OpenCode GO", plan: "Subscription", primaryPct: 87.5, secondaryPct: 66 }),
+    freshness: () => freshness,
+    refresh: async () => {},
+    setSessionID: () => {},
+    dispose: () => {},
+  }
+}
+```
+
+- [ ] **Step 4: Add deployment assertions before extending deployment options**
+
+In `tests/plugin-deploy.test.mjs`, add assertions that the selected `./opencode-tools-quota.js` entry options equal:
+
+```javascript
+{
+  otherProviders: { percentageMode: "used", sortDirection: "asc" },
+  quota: {
+    opencodego: {
+      workspaceId: "wrk_TESTWORKSPACE",
+      workspaceToken: "TOKEN_TEST_ONLY_DO_NOT_USE",
+    },
+  },
+}
+```
+
+- [ ] **Step 5: Run the exact deployment RED gate**
+
+Run: `node --test tests/plugin-deploy.test.mjs`
+
+Expected: FAIL with a deep-equality difference because `localOptions` still contains only `otherProviders`.
+
+- [ ] **Step 6: Add the minimal nested deployment fixture**
+
+Replace `localOptions` with:
 
 ```javascript
 const localOptions = {
@@ -1216,50 +1784,37 @@ const localOptions = {
 }
 ```
 
-Assert local/global cleanup preserves the nested options on the selected `./opencode-tools-quota.js` entry, remains idempotent, and copies exactly the same three artifacts.
+Keep assertions that two local deploys are byte-for-byte idempotent, project-to-global option migration preserves the nested object, unrelated entries remain unchanged, and artifact paths remain exactly `opencode-tools-shared.js`, `opencode-tools-quota.js`, and `plugins/opencode-tools-tokens.js`.
 
-- [ ] **Step 4: Run composition/deployment GREEN gates**
+- [ ] **Step 7: Run the exact GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/quota-composition.test.mjs tests/presentation-layout.test.mjs tests/plugin-deploy.test.mjs`
 
-Expected: PASS with 0 failures and no renderer snapshot changes outside existing width behavior.
+Expected: all composition, max-width, and deployment tests PASS with 0 failures; no renderer snapshot or generic polling source changes.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 8: Commit the GREEN regression unit atomically**
 
 ```bash
 git status --short &&
-git add tests/quota-composition.test.mjs tests/plugin-deploy.test.mjs tui/quota.tsx &&
+git add tests/quota-composition.test.mjs tests/plugin-deploy.test.mjs &&
 git commit -m "test(quota): verify three-provider composition"
 ```
 
-### Task 11: Document Local Secret Configuration And Limitations
+### Task 8: Documentation TDD
 
 **OpenSpec:** 3.3
 
 **Files:**
-- Modify: `README.md:8-10,29-99,152-202`
 - Modify: `tests/plugin-wiring.test.mjs`
+- Modify: `README.md`
 
 **Interfaces:**
-- Consumes: final nested option names and behavior.
-- Produces: user instructions containing only the synthetic workspace/token values.
+- Consumes: final nested option names and behavior from Tasks 2-7.
+- Produces: local secret-handling, supported-window, polling, rotation, fixed-origin, and undocumented-contract guidance containing only synthetic values.
 
-- [ ] **Step 1: Write the documentation regression assertions**
+- [ ] **Step 1: Add the exact documentation regression test**
 
-Extend `tests/plugin-wiring.test.mjs` with a test named `documents secret-safe OpenCode Go configuration` that reads `README.md` and requires these literal strings:
-
-```text
-quota.opencodego.workspaceId
-quota.opencodego.workspaceToken
-workspaceToken is the plaintext auth cookie value
-https://opencode.ai
-rolling 5H
-weekly 7D
-subscription month 1M
-undocumented Solid hydration contract
-```
-
-Use this exact assertion shape so the documentation describes only the authenticated page contract and cannot acquire an unsafe credential example:
+Ensure `tests/plugin-wiring.test.mjs` imports `readFileSync`, then append:
 
 ```javascript
 test("documents secret-safe OpenCode Go configuration", () => {
@@ -1273,25 +1828,27 @@ test("documents secret-safe OpenCode Go configuration", () => {
     "weekly 7D",
     "subscription month 1M",
     "undocumented Solid hydration contract",
+    "must not be committed",
+    "rotate",
   ]) assert.equal(readme.includes(text), true, `missing README text: ${text}`)
 
-  assert.doesNotMatch(readme, /private (?:JSON|query) endpoint/i)
-  assert.doesNotMatch(readme, /[".]openCodeGo[".]/)
-  assert.doesNotMatch(readme, /(?:copy|save|export).{0,40}(?:full HTML|response body|HAR)/i)
-  const tokenValues = [...readme.matchAll(/"workspaceToken"\s*:\s*"([^"]+)"/g)].map((match) => match[1])
+  assert.doesNotMatch(readme, /private (?:JSON|query) endpoint/iu)
+  assert.doesNotMatch(readme, /[".]openCodeGo[".]/u)
+  assert.doesNotMatch(readme, /(?:copy|save|export).{0,40}(?:full HTML|response body|HAR)/iu)
+  const tokenValues = [...readme.matchAll(/"workspaceToken"\s*:\s*"([^"]+)"/gu)].map((match) => match[1])
   assert.deepEqual(tokenValues, ["TOKEN_TEST_ONLY_DO_NOT_USE"])
 })
 ```
 
-- [ ] **Step 2: Run the documentation test to verify it fails**
+- [ ] **Step 2: Run the exact RED gate**
 
-Run: `node --test tests/plugin-wiring.test.mjs tests/provider-opencode-go-contract.test.mjs`
+Run: `node --test --test-name-pattern="documents secret-safe OpenCode Go" tests/plugin-wiring.test.mjs`
 
-Expected: FAIL because the README does not yet document OpenCode Go.
+Expected: FAIL with `missing README text: quota.opencodego.workspaceId`.
 
 - [ ] **Step 3: Add exact local configuration and safety guidance**
 
-Extend the JSON plugin options example with:
+Extend the quota plugin JSON example in `README.md` with:
 
 ```json
 "quota": {
@@ -1302,21 +1859,27 @@ Extend the JSON plugin options example with:
 }
 ```
 
-Document that `workspaceToken` is the plaintext `auth` cookie value stored only in local `.opencode/tui.json`; it must never be committed or shared and must be replaced when the console session expires or is revoked. State that requests are fixed to `https://opencode.ai`, the values do not replace the inference API key, exact remaining usage covers rolling 5H/weekly 7D/subscription-month 1M windows, and the provider fails closed if the undocumented Solid hydration contract changes. Explicitly state there is no visible-text scraper or local-estimate fallback.
+Add prose containing these exact statements:
 
-Update the provider/source tables and polling description without claiming the OpenCode Go adapter uses exhausted backoff.
+```text
+`quota.opencodego.workspaceId` identifies the OpenCode Go workspace. `quota.opencodego.workspaceToken` authenticates the console request; workspaceToken is the plaintext auth cookie value. Keep both values only in local `.opencode/tui.json`: they must not be committed or shared, and you must rotate the console session when it expires, is revoked, or is exposed.
 
-- [ ] **Step 4: Run documentation GREEN and secret-safety gates**
+Requests are fixed to `https://opencode.ai`; these values do not replace the OpenCode-managed inference API key. The sidebar reports exact remaining usage for rolling 5H, weekly 7D, and subscription month 1M windows. OpenCode Go uses the undocumented Solid hydration contract from the authenticated page and fails closed if that contract changes. It does not scrape visible text, save page HTML, or estimate quota from local cost.
+```
+
+Add OpenCode Go to the provider/source table and state that it uses the shared default/custom polling interval, one-second countdowns, reset-boundary refresh, and ten-minute stale horizon without exhausted backoff.
+
+- [ ] **Step 4: Run the exact GREEN gates**
 
 Run: `node --test tests/plugin-wiring.test.mjs tests/provider-opencode-go-contract.test.mjs`
 
-Expected: PASS with 0 failures.
+Expected: all documentation and contract tests PASS with 0 failures.
 
-Run: `git diff --check -- README.md tests/plugin-wiring.test.mjs tests/provider-opencode-go-contract.test.mjs`
+Run: `git diff --check -- README.md tests/plugin-wiring.test.mjs`
 
-Expected: exit 0. Inspect only the tracked diff; it contains synthetic values and no private local config.
+Expected: exit 0; the tracked diff contains only synthetic credential values and no raw page content.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit the GREEN documentation unit atomically**
 
 ```bash
 git status --short &&
@@ -1324,26 +1887,22 @@ git add README.md tests/plugin-wiring.test.mjs &&
 git commit -m "docs(quota): document OpenCode Go setup"
 ```
 
-### Task 12: Run Automated Release Gates
+### Task 9: Run Automated Release Gates
 
 **OpenSpec:** 4.1
 
 **Files:**
-- Verify only; do not modify source, tests, generated artifacts, OpenSpec artifacts, Comet state, or unrelated deleted reports.
+- Verify only; do not modify or commit source, tests, generated artifacts, OpenSpec artifacts, Comet state, or unrelated deleted reports.
 
 **Interfaces:**
-- Consumes: Tasks 1-11.
-- Produces: command evidence for focused tests, strict typechecking, complete tests, production builds, deployment tests, and diff safety.
+- Consumes: Tasks 1-8.
+- Produces: command evidence for focused tests, strict typechecking, complete tests, production builds, deployment tests, diff safety, and secret-safe scope.
 
 - [ ] **Step 1: Run focused OpenCode Go and composition tests**
 
-Run: `node --test tests/provider-opencode-go-contract.test.mjs`
+Run: `node --test tests/provider-opencode-go-contract.test.mjs && node tests/compile-presentation.mjs && node --test tests/provider-opencode-go.test.mjs tests/quota-composition.test.mjs tests/presentation-layout.test.mjs tests/shared-boundary.test.mjs`
 
-Expected: PASS with 5 tests and 0 failures.
-
-Run: `node tests/compile-presentation.mjs && node --test tests/provider-opencode-go.test.mjs tests/quota-composition.test.mjs tests/presentation-layout.test.mjs tests/shared-boundary.test.mjs`
-
-Expected: all focused tests PASS with 0 failures.
+Expected: contract gate PASS with 5 tests and every focused test PASS with 0 failures.
 
 - [ ] **Step 2: Run strict typechecking**
 
@@ -1355,7 +1914,7 @@ Expected: exit 0 from `tsc --noEmit` with no diagnostics.
 
 Run: `npm test`
 
-Expected: compile steps and every `tests/*.test.mjs` test PASS with 0 failures.
+Expected: both compile steps and every `tests/*.test.mjs` test PASS with 0 failures.
 
 - [ ] **Step 4: Run production build and build tests**
 
@@ -1373,17 +1932,17 @@ dist/plugins/opencode-tools-tokens.js
 
 Run: `node --test tests/plugin-deploy.test.mjs`
 
-Expected: PASS with idempotent local/global fixtures and exact three-artifact parity.
+Expected: PASS with idempotent local/global fixtures, nested option preservation, and exact three-artifact parity.
 
 - [ ] **Step 6: Verify diff and secret-safe scope**
 
 Run: `git diff --check && git diff --name-status f94168f...HEAD && git status --short`
 
-Expected: committed implementation changes are limited to paths named in this plan. The only unrelated worktree entries are the three pre-existing deleted reports. No `.opencode/tui.json`, temporary HTML, HAR, screenshot, log, or credential-bearing report is tracked.
+Expected: implementation changes are limited to paths named in Tasks 1-8. The only unrelated worktree entries are deleted `task-7-report.md`, `task-9-report.md`, and `task-10-report.md`. No `.opencode/tui.json`, temporary HTML, HAR, screenshot, log, or credential-bearing report is tracked.
 
-**Commit checkpoint:** No commit. `dist/` and `.tmp-test/` are ignored verification outputs.
+**Commit checkpoint:** No commit. `dist/` and `.tmp-test/` are ignored verification outputs. Task 9 ends GREEN only when every command above passes.
 
-### Task 13: Deploy Locally And Perform Live Secret-Safe Validation
+### Task 10: Deploy Locally And Perform Live Secret-Safe Validation
 
 **OpenSpec:** 4.2
 
@@ -1395,22 +1954,22 @@ Expected: committed implementation changes are limited to paths named in this pl
 - Never modify tracked `tui.json` with a live secret.
 
 **Interfaces:**
-- Consumes: a real workspace ID and auth-cookie value entered manually into ignored local config without agent inspection.
-- Produces: byte-for-byte deployment parity and manual behavioral evidence; no credential-bearing report or capture is created.
+- Consumes: a real workspace ID and auth-cookie value entered manually by the credential owner without agent inspection.
+- Produces: byte-for-byte deployment parity and manual behavioral evidence; no credential-bearing report, capture, screenshot, or commit is created.
 
 - [ ] **Step 1: Verify the local config path is ignored before manual configuration**
 
 Run: `git check-ignore -v .opencode/tui.json && git status --short --untracked-files=all`
 
-Expected: `.opencode/tui.json` is ignored and absent from status; only intended branch changes and the three unrelated deletions appear. Do not read or print the file.
+Expected: `.opencode/tui.json` is ignored and absent from status; only intended branch changes and the three unrelated report deletions appear. Do not read or print the file.
 
-Have the credential owner edit `.opencode/tui.json` directly in a local editor and add `quota.opencodego.workspaceId` plus `quota.opencodego.workspaceToken` to the quota plugin options. The implementation worker must not open, read, diff, copy, or quote those values.
+The credential owner edits `.opencode/tui.json` directly in a local editor and adds `quota.opencodego.workspaceId` plus `quota.opencodego.workspaceToken` to the quota plugin options. The implementation worker must not open, read, diff, copy, quote, or shell-expand those values.
 
-- [ ] **Step 2: Deploy locally**
+- [ ] **Step 2: Deploy locally from the GREEN build**
 
 Run: `npm run deploy:local`
 
-Expected: `Deployed opencode-tools plugins to .../.opencode` and exactly three deployed artifacts. The command must not print plugin options.
+Expected: `Deployed opencode-tools plugins to .../.opencode`; the command prints no options or credentials and deploys exactly three artifacts.
 
 - [ ] **Step 3: Verify byte-for-byte artifact parity**
 
@@ -1418,15 +1977,15 @@ Run: `cmp -s dist/opencode-tools-shared.js .opencode/opencode-tools-shared.js &&
 
 Expected: exit 0.
 
-- [ ] **Step 4: Restart OpenCode and validate manually without logging requests**
+- [ ] **Step 4: Restart OpenCode and validate without request logging**
 
-The credential owner, not an automated capture, verifies:
+The credential owner verifies each item manually:
 
 ```text
 sidebar 5H/7D/1M percentages and reset durations match the authenticated Go page
 countdowns update once per second
 default polling and a temporary custom refreshIntervalSeconds are observable
-opencode-go and opencode-go-subscription selection promote and immediately refresh one adapter
+opencode-go and opencode-go-subscription promote and immediately refresh one adapter
 switching providers retains ready/stale OpenCode Go under Other providers
 remaining and used modes are complementary while colors follow remaining quota
 a temporary network interruption marks bounded data ~stale and later success restores ready
@@ -1438,28 +1997,29 @@ no terminal output, report, screenshot, capture, or shell history contains eithe
 
 - [ ] **Step 5: Remove live values and confirm repository safety**
 
-Have the credential owner remove the live `opencodego` object or restore their prior ignored local configuration in an editor. Rotate the console session if it was exposed anywhere outside that file.
+The credential owner removes the live `opencodego` object or restores the prior ignored local configuration in an editor. Rotate the console session if it was exposed anywhere outside that ignored file.
 
 Run: `git status --short --untracked-files=all && git diff --name-status f94168f...HEAD`
 
-Expected: no local config, full HTML, HAR, screenshot, log, or secret-bearing path is tracked; unrelated deleted reports remain unstaged and absent from implementation commits.
+Expected: no local config, full HTML, HAR, screenshot, log, or secret-bearing path is tracked; the three unrelated report deletions remain unstaged and absent from implementation commits.
 
-**Commit checkpoint:** No commit. Deployment output and live credentials remain ignored and local.
+**Commit checkpoint:** No commit. Deployment outputs and live credentials remain ignored and local. Task 10 ends GREEN only after parity and every live checklist item passes.
 
 ## Final Acceptance Checklist
 
-- [ ] Task 1 passed before production transport/parser work and contains only minimal synthetic page-contract data.
-- [ ] OpenSpec tasks 1.1 through 4.2 map one-to-one to Tasks 1 through 13.
-- [ ] Native configuration is exactly `quota.opencodego.{workspaceId, workspaceToken}` and no redirectable origin exists.
-- [ ] Transport is fixed GET HTML with `Accept`, `auth` cookie, manual redirects, and a 20-second timeout.
-- [ ] Task 1 fixture lines are exactly `rollingUsage:$R[0]=...`, `weeklyUsage:$R[1]=...`, and `monthlyUsage:$R[2]=...` in order, with only the observed static `status:"ok"` and synthetic numeric fields.
-- [ ] Production parsing requires exactly one `<name>:$R[digits]=` marker and the literal `{status:"ok",resetInSec:<number>,usagePercent:<number>}` shape per record, bounds each capture to 4,096 code units, and rejects the entire snapshot for malformed/duplicate/trick/oversized cases.
+- [ ] Completed Task 1 remains unchanged, passed before production transport/parser work, and contains only minimal synthetic page-contract data.
+- [ ] All 13 OpenSpec checkboxes map across Tasks 1-10; OpenSpec 1.3 is partial in Task 3 and complete in Task 4, while OpenSpec 1.4 is partial in Task 5 and complete in Task 6.
+- [ ] Every implementation task records an exact RED failure, adds only the minimal paired implementation, runs exact GREEN gates, and commits no failing test or build state.
+- [ ] Native configuration is exactly `quota.opencodego.{workspaceId, workspaceToken}` and no redirectable origin, URL, header, or cookie option exists.
+- [ ] Transport is fixed GET HTML with `Accept`, `auth` cookie, manual redirects, and one 20-second abort timeout per request.
+- [ ] Task 1 fixture lines remain exactly `rollingUsage:$R[0]=...`, `weeklyUsage:$R[1]=...`, and `monthlyUsage:$R[2]=...` in order, with only `status:"ok"` and synthetic numeric fields.
+- [ ] Production parsing uses the narrow `${name}:$R` candidate gate, requires exactly one `<name>:$R[digits]=` marker and literal `{status:"ok",resetInSec:<number>,usagePercent:<number>}` record, bounds captures to 4,096 code units, and rejects every malformed, duplicate, trick, overflow, or oversized complete snapshot.
 - [ ] No `.*`, broad `[^}]+`, script execution, object-literal JSONification, general object conversion, visible-text scraping, local estimate, partial snapshot, or credential-bearing diagnostic exists.
 - [ ] `/Users/aam/.graphify/repos/ridho9/opencode-go-usage/index.js:137-149` remains evidence only and is neither imported nor copied into repository artifacts.
 - [ ] OpenCode Go displays `OpenCode GO:`, 5H, 7D, and 1M in order; compact summary contains only 5H/7D.
-- [ ] Authentication, protocol drift, transient failure, stale expiry, reset boundaries, serialization, and disposal match the canonical spec.
-- [ ] Both runtime aliases select and refresh one adapter while other ready/stale providers remain visible.
-- [ ] Renderer, max-width behavior, generic provider interface, legacy home construction, and three-artifact deployment remain unchanged.
+- [ ] Authentication, protocol drift, transient failure, stale expiry, reset boundaries, request serialization, one-second countdowns, and disposal match the canonical spec.
+- [ ] Both runtime aliases select and refresh one quota-sidebar adapter while other ready/stale providers remain visible.
+- [ ] Renderer, 37-column max-width behavior, generic provider interface, legacy home construction, generic polling architecture, and three-artifact deployment remain unchanged.
 - [ ] Focused tests, typecheck, complete suite, production build, deployment tests, local parity, and live checks pass.
-- [ ] No real workspace ID, token, usage value, full HTML, or temporary capture is committed or printed.
+- [ ] No real workspace ID, token, usage/reset value, full HTML, or temporary capture is committed, printed, or persisted.
 - [ ] `task-7-report.md`, `task-9-report.md`, and `task-10-report.md` are never restored, staged, edited, or committed.
