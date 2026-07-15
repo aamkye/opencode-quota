@@ -582,7 +582,7 @@ test("OpenCode Go options normalize through native quota options", () => {
 })
 ```
 
-- [x] **Step 2: Run the exact RED gate**
+- [x] **Step 2: Run the exact configuration RED gate**
 
 Run: `node tests/compile-presentation.mjs`
 
@@ -654,7 +654,7 @@ Add `openCodeGo: null` to each existing expected object in `normalizes native po
 
 Add `"tui/providers/opencode-go.ts"` after `"tui/providers/openai.ts"` in `tsconfig.json` so the new interface is typechecked before later tasks import it.
 
-- [x] **Step 5: Run the exact GREEN gates**
+- [x] **Step 5: Run the exact configuration GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go options" tests/provider-opencode-go.test.mjs tests/quota-composition.test.mjs`
 
@@ -827,7 +827,7 @@ test("OpenCode Go transport emits static secret-safe results and never follows r
 
 For body-read failure, add a response-like object with `status: 200`, `headers: new Headers({ "content-type": "text/html" })`, and `text: async () => { throw new Error("body failed") }`; assert `transient-failure`. For redirect bodies, add `text()` that increments a counter and assert the counter remains zero after a same-origin `/auth/authorize` response. These objects contain only static synthetic strings.
 
-- [ ] **Step 3: Run the exact RED gate**
+- [ ] **Step 3: Run the exact transport/parser RED gate**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go parser|OpenCode Go transport" tests/provider-opencode-go.test.mjs`
 
@@ -1006,7 +1006,7 @@ export async function fetchOpenCodeGoQuota(
 }
 ```
 
-- [ ] **Step 6: Run the exact GREEN gates**
+- [ ] **Step 6: Run the exact transport/parser GREEN gates**
 
 Run: `node --test tests/provider-opencode-go-contract.test.mjs && node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go parser|OpenCode Go transport" tests/provider-opencode-go.test.mjs`
 
@@ -1108,7 +1108,7 @@ test("OpenCode Go mapper covers timer stale and unavailable states", () => {
 })
 ```
 
-- [ ] **Step 2: Run the exact RED gate**
+- [ ] **Step 2: Run the exact mapper RED gate**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go mapper" tests/provider-opencode-go.test.mjs`
 
@@ -1188,7 +1188,7 @@ export function mapOpenCodeGoPanelState(state: OpenCodeGoPanelState): PanelModel
 }
 ```
 
-- [ ] **Step 4: Run the exact GREEN gates**
+- [ ] **Step 4: Run the exact mapper GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go mapper" tests/provider-opencode-go.test.mjs`
 
@@ -1309,7 +1309,7 @@ test("OpenCode Go lifecycle sends no request without valid configuration", async
 
 For serialization, retain the three returned promises and assert strict identity. For boundary serialization, begin a request before `expectedQuota.fiveHour.resetEpoch`, fire that boundary, resolve the request, await two microtask turns, and assert the request count advances from 1 to exactly 2. For stale expiry, advance the fake wall clock by 600,000 then 1 milliseconds and invoke the 1,000ms tick after each advance.
 
-- [ ] **Step 3: Run the exact RED gate**
+- [ ] **Step 3: Run the exact lifecycle RED gate**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go lifecycle" tests/provider-opencode-go.test.mjs`
 
@@ -1446,7 +1446,7 @@ return {
 
 The temporary `home: () => null` keeps Task 5 type-correct before `OpenCodeGoHomeQuotaSummary` joins the shared union. Task 6 owns that type and replaces this one line with the ready/stale summary accessor during integration. Register `onCleanup` to clear poll, tick, and boundary timers. Every asynchronous continuation checks `disposed` before state mutation, timer creation, or queued work. Do not add exhausted backoff or refactor generic polling.
 
-- [ ] **Step 7: Run the exact GREEN gates**
+- [ ] **Step 7: Run the exact lifecycle GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go lifecycle" tests/provider-opencode-go.test.mjs`
 
@@ -1549,7 +1549,7 @@ assert.equal(typeof sharedModule.createOpenCodeGoProvider, "function")
 
 Keep the existing host-runtime assertions for `solid-js`, `@opentui/*`, `@opencode-ai/plugin`, SDK modules, and runtime built-ins external.
 
-- [ ] **Step 3: Run the exact RED gate**
+- [ ] **Step 3: Run the exact integration RED gate**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go integration|shared facade exports|artifacts expose OpenCode Go" tests/quota-composition.test.mjs tests/shared-boundary.test.mjs tests/plugin-build.test.mjs`
 
@@ -1629,7 +1629,7 @@ providers.push(createOpenCodeGoProvider(api, {
 
 Do not instantiate OpenCode Go in `tui/home.tsx` because that legacy entry has no native options path.
 
-- [ ] **Step 6: Run the exact GREEN gates**
+- [ ] **Step 6: Run the exact integration GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go integration|shared facade exports|artifacts expose OpenCode Go" tests/quota-composition.test.mjs tests/shared-boundary.test.mjs tests/plugin-build.test.mjs`
 
@@ -1786,7 +1786,7 @@ const localOptions = {
 
 Keep assertions that two local deploys are byte-for-byte idempotent, project-to-global option migration preserves the nested object, unrelated entries remain unchanged, and artifact paths remain exactly `opencode-tools-shared.js`, `opencode-tools-quota.js`, and `plugins/opencode-tools-tokens.js`.
 
-- [ ] **Step 7: Run the exact GREEN gates**
+- [ ] **Step 7: Run the exact aggregate/deployment GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/quota-composition.test.mjs tests/presentation-layout.test.mjs tests/plugin-deploy.test.mjs`
 
@@ -1840,7 +1840,7 @@ test("documents secret-safe OpenCode Go configuration", () => {
 })
 ```
 
-- [ ] **Step 2: Run the exact RED gate**
+- [ ] **Step 2: Run the exact documentation RED gate**
 
 Run: `node --test --test-name-pattern="documents secret-safe OpenCode Go" tests/plugin-wiring.test.mjs`
 
@@ -1869,7 +1869,7 @@ Requests are fixed to `https://opencode.ai`; these values do not replace the Ope
 
 Add OpenCode Go to the provider/source table and state that it uses the shared default/custom polling interval, one-second countdowns, reset-boundary refresh, and ten-minute stale horizon without exhausted backoff.
 
-- [ ] **Step 4: Run the exact GREEN gates**
+- [ ] **Step 4: Run the exact documentation GREEN gates**
 
 Run: `node --test tests/plugin-wiring.test.mjs tests/provider-opencode-go-contract.test.mjs`
 
