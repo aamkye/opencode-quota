@@ -60,6 +60,7 @@ The mounted renderer will stop using a guessed `availableCells` value. OpenTUI r
 - Panel header: fixed two-cell marker (`"▼ "` or `"▶ "`), flexible title, fixed summary.
 - Progress: fixed three-cell label, flexible bar, one-cell separator, fixed four-cell percentage.
 - Provider header: flexible title and fixed right-aligned detail/status.
+- Segmented provider header: optional ordered detail segments, each with its own semantic status, rendered at the same right-aligned edge.
 - Timer: fixed three-cell indent followed by muted timer text without the redundant window label.
 - Standalone quantity: muted label and value unless the item carries an explicit semantic status.
 
@@ -88,6 +89,8 @@ OpenAI derives labels from `limit_window_seconds`. Exact hour, day, week, and 30
 
 Z.AI maps current Peak/Off-Peak text and semantic status into its header detail. The renderer aligns that detail at the right edge. The existing collapsed summary remains available for home and panel summaries.
 
+Header details retain the existing single-string path and add optional semantic text segments. Stale OpenAI emits one warning-colored `stale` segment. Stale Z.AI emits its colored Peak/Off-Peak segment, a `textMuted` ` / ` separator, and a warning-colored `stale` segment. Neither provider emits the previous standalone `~stale` row.
+
 ## Refresh And Selection Flow
 
 The quota entry normalizes options before constructing adapters and passes `refreshIntervalMs` into both constructors. Each adapter uses it for non-exhausted polling. Exhausted primary quota retains the existing five-minute backoff. Adapters preserve their immediate initial fetch, timeout, stale expiry, one-second state clock, reset-boundary timer, and lifecycle cleanup.
@@ -101,6 +104,8 @@ A Solid effect watches the resolved adapter ID. On change, it calls that adapter
 Each OpenAI/Z.AI adapter owns its active abort controller and credential generation. Replacing a non-empty credential while quota exists immediately marks that quota stale, aborts and invalidates the old request, and starts one replacement request. Only a response whose captured generation still matches may publish. Success replaces stale data and returns to ready; failure leaves the previous quota stale.
 
 Credential removal clears the prior account's quota and moves the provider to unavailable. Disposal aborts the active request and clears its timeout immediately. The existing disposed guard remains a second boundary against late fulfillment or rejection.
+
+Abort is an expected control-flow result for credential replacement, timeout ownership, and disposal. Fetch helpers return without logging an error when their signal is aborted; non-abort transport and parsing failures retain existing diagnostics.
 
 ## Error Handling
 
@@ -120,6 +125,7 @@ TDD starts with focused failing tests:
 - Composition tests assert progress statuses, colors disabled, custom thresholds, remaining-quota semantics in used mode, progress-led grouping, and tool details at the bottom.
 - Composition tests physically shuffle semantic item order and use multiple provider groups to prove partitioning remains group-local.
 - OpenAI tests assert duration-derived labels for weekly-only and multi-window responses. Z.AI tests assert semantic Peak/Off-Peak header detail.
+- Provider and mounted tests assert right-aligned segmented stale headers: OpenAI warning `stale`, and Z.AI colored Peak/Off-Peak plus muted separator plus warning `stale`, with no standalone stale row.
 - Controlled-timer adapter tests assert the 10-second default and custom polling interval.
 - Deferred-request tests replace credentials mid-flight and verify stale transition, old-generation suppression, one replacement request, failure retention, and credential removal for both providers.
 - Disposal tests leave requests unresolved and assert immediate signal abortion, cleared timeouts, and inert late settlement.

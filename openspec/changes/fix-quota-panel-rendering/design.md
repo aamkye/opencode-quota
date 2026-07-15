@@ -45,6 +45,8 @@ Composition will assign each displayed progress value an `error`, `warning`, or 
 
 Provider header details continue to carry their own semantic status, allowing Z.AI Peak/Off-Peak to align independently at the right edge.
 
+Provider headers may optionally expose ordered text segments, each with its own semantic status, while retaining the existing single detail string for compatibility. Stale OpenAI uses one warning-colored `stale` segment. Stale Z.AI uses its Peak/Off-Peak segment, a muted ` / ` segment, and a warning-colored `stale` segment. Mounted rendering colors each segment independently and stale providers no longer emit a standalone `~stale` row.
+
 Only the filled bar segment and percentage receive the threshold status. The label stays neutral and the empty bar uses the muted theme color. Thresholds always evaluate remaining quota, including when the panel displays used percentage.
 
 Timer and standalone quantity rows are subordinate metadata, so the mounted renderer uses `textMuted` when they do not carry an explicit semantic status. An explicit status still overrides that default. Keeping this default in the renderer applies the same hierarchy to reset rows from every provider and to Z.AI tool usage without duplicating presentation policy in each adapter.
@@ -71,6 +73,7 @@ Removing a credential clears prior account data and moves the adapter to unavail
 - [Ten-second polling increases provider traffic] -> Keep the interval configurable and preserve timeout, lifecycle cleanup, and reset-boundary controls.
 - [A replaced credential can race an old response] -> Abort the old request and require a matching credential generation before publishing.
 - [Mounted table cells can overflow narrow parents] -> Use clipped non-wrapping flex cells and cover three-column contraction in mounted tests.
+- [A combined stale header needs multiple colors] -> Add optional semantic text segments without removing the compatible single-detail path.
 
 ## Migration Plan
 

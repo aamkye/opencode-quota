@@ -75,6 +75,15 @@ The quota panel SHALL preserve provider window groups, derive OpenAI window labe
 - **AND** reset, quantity, text, and table details remain attached to the progress window in their own group
 - **AND** one group's preamble or details do not attach to another group's window
 
+#### Scenario: Provider quota is stale
+- **WHEN** OpenAI displays stale quota
+- **THEN** yellow `stale` text is right-aligned in the provider header
+- **AND** no standalone stale row is rendered
+- **WHEN** Z.AI displays stale quota
+- **THEN** its Peak/Off-Peak header segment retains its semantic color
+- **AND** a muted ` / ` separator precedes yellow `stale` text
+- **AND** no standalone stale row is rendered
+
 ### Requirement: Configurable provider refresh
 The quota panel SHALL poll provider APIs at a configurable interval and SHALL default that interval to 10 seconds.
 
