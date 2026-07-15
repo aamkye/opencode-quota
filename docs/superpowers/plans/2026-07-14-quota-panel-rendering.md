@@ -1714,7 +1714,7 @@ Fully restart OpenCode and confirm every short `---` divider end uses the muted 
 - Produces: each native table row receives the cell boxes as a direct array expression, so `presentation-mounted.fixture.ts` observes three cell boxes in `row.props.children` rather than one nested `For` component.
 - Preserves: `CompactTableAllocation`, `normalizePanelModel(model, { availableCells })`, `renderItemLayout()`, and `renderPanelLayout()` for deterministic pure tests.
 
-- [ ] **Step 1: Add the failing mounted three-column contraction test**
+- [x] **Step 1: Add the failing mounted three-column contraction test**
 
 Append this test to `tests/presentation-mounted.test.mjs`; it uses the existing `limits` table in `model` and deliberately rejects any numeric width inherited from the 80-cell deterministic allocation:
 
@@ -1760,7 +1760,7 @@ test("mounts compact tables as clipped non-wrapping parent-width flex rows", () 
 })
 ```
 
-- [ ] **Step 2: Run the mounted renderer test and verify RED**
+- [x] **Step 2: Run the mounted renderer test and verify RED**
 
 Run:
 
@@ -1770,7 +1770,7 @@ node tests/compile-presentation.mjs && node --test tests/presentation-mounted.te
 
 Expected: FAIL at `tableRows.length` with `0 !== 2`, because the current mounted table branch calls `renderItemLayout()` and emits row boxes without `width="100%"` or clipping plus fixed-width `<text width={cell.width}>` children from the 80-cell fallback allocation.
 
-- [ ] **Step 3: Replace only the mounted table branch with flex cells**
+- [x] **Step 3: Replace only the mounted table branch with flex cells**
 
 Replace the `case "table"` branch in `MountedItem()` in `tui/presentation/renderer.tsx` with:
 
@@ -1820,7 +1820,7 @@ Replace the `case "table"` branch in `MountedItem()` in `tui/presentation/render
 
 The outer `For` retains reactive row reconciliation. The direct `columns.map(...)` expression emits the native row's cell children as an inspectable array while preserving exact column order, status fallback, clipping, non-wrapping, truncation, and right alignment. Do not remove `allocation` from `NormalizedItem`, change `normalizeItem()`, or change `renderItemLayout()`; those paths remain the deterministic pure-render contract.
 
-- [ ] **Step 4: Run focused mounted/pure tests and typechecking to verify GREEN**
+- [x] **Step 4: Run focused mounted/pure tests and typechecking to verify GREEN**
 
 Run:
 
@@ -1830,7 +1830,7 @@ node tests/compile-presentation.mjs && node --test tests/presentation-mounted.te
 
 Expected: all focused tests PASS, the new mounted test finds two responsive three-cell rows with no numeric cell widths, deterministic pure table tests still PASS, and TypeScript exits `0`.
 
-- [ ] **Step 5: Commit the mounted compact-table slice**
+- [x] **Step 5: Commit the mounted compact-table slice**
 
 ```bash
 git add tui/presentation/renderer.tsx tests/presentation-mounted.test.mjs
