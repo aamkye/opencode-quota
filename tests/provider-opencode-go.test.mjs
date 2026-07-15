@@ -79,6 +79,9 @@ function fakeClock() {
       current += ms
       for (const timer of timers.filter((entry) => entry.active && entry.delay <= ms)) timer.callback()
     },
+    advanceWall(ms) {
+      current += ms
+    },
     active(kind, delay) {
       return timers.filter((entry) => entry.active && entry.kind === kind && entry.delay === delay)
     },
@@ -647,26 +650,52 @@ test("OpenCode Go lifecycle queues one refresh when an older request crosses a b
     fetch: testFetch,
   })
   await adapter.current.refresh()
+  const boundaryDelay = expectedQuota.fiveHour.resetEpoch - now
+  const boundary = clock.active("timeout", boundaryDelay)[0]
+  assert.ok(boundary)
   const pending = adapter.current.refresh()
   assert.equal(requests, 1)
-  clock.active("timeout", expectedQuota.fiveHour.resetEpoch - now)[0].callback()
+  clock.advanceWall(boundaryDelay)
+  assert.strictEqual(clock.active("interval", 2_500)[0].callback(), pending)
+  assert.equal(requests, 1)
+  boundary.callback()
+  assert.equal(requests, 1)
   older.resolve(response(200, fixture("success.html"), { "content-type": "text/html" }))
   await pending
   await flushMicrotasks()
   assert.equal(requests, 2)
+  const queued = adapter.current.refresh()
+  followUp.resolve(response(200, fixture("success.html"), { "content-type": "text/html" }))
+  await queued
+  await flushMicrotasks()
+  assert.equal(requests, 2)
+  assert.equal(clock.active("timeout", 20_000).length, 0)
+  assert.equal(clock.active("timeout", 1_800_000).length, 1)
+  const stableTimers = clock.activeTimers()
+  await flushMicrotasks()
+  assert.equal(requests, 2)
+  assert.deepEqual(clock.activeTimers(), stableTimers)
 })
 
 test("OpenCode Go lifecycle advances from 5H to 7D and 1M boundaries", async (t) => {
   const clock = fakeClock()
+  const beforeFiveHour = deferred()
+  const afterFiveHour = deferred()
+  const beforeWeekly = deferred()
+  const afterWeekly = deferred()
   const adapter = { current: null }
   let requests = 0
-  cleanupLifecycle(t, clock, adapter)
-  const testFetch = async () => {
+  cleanupLifecycle(t, clock, adapter, [beforeFiveHour, afterFiveHour, beforeWeekly, afterWeekly])
+  const fiveHourReset = fixture("success.html").replace("resetInSec:1800", "resetInSec:0")
+  const weeklyReset = fiveHourReset.replace("resetInSec:172800", "resetInSec:0")
+  const testFetch = () => {
     requests += 1
-    let html = fixture("success.html")
-    if (requests >= 2) html = html.replace("resetInSec:1800", "resetInSec:0")
-    if (requests >= 3) html = html.replace("resetInSec:172800", "resetInSec:0")
-    return response(200, html, { "content-type": "text/html" })
+    if (requests === 1) return Promise.resolve(response(200, fixture("success.html"), { "content-type": "text/html" }))
+    if (requests === 2) return beforeFiveHour.promise
+    if (requests === 3) return afterFiveHour.promise
+    if (requests === 4) return beforeWeekly.promise
+    if (requests === 5) return afterWeekly.promise
+    throw new Error(`unexpected request ${requests}`)
   }
   adapter.current = createOpenCodeGoProvider({}, {
     config: sentinel,
@@ -674,12 +703,44 @@ test("OpenCode Go lifecycle advances from 5H to 7D and 1M boundaries", async (t)
     fetch: testFetch,
   })
   await adapter.current.refresh()
-  clock.advance(expectedQuota.fiveHour.resetEpoch - now)
-  await adapter.current.refresh()
+  assert.equal(requests, 1)
+
+  const fiveHourDelay = expectedQuota.fiveHour.resetEpoch - now
+  const fiveHourBoundary = clock.active("timeout", fiveHourDelay)[0]
+  assert.ok(fiveHourBoundary)
+  const fiveHourPending = adapter.current.refresh()
+  assert.equal(requests, 2)
+  clock.advanceWall(fiveHourDelay)
+  fiveHourBoundary.callback()
+  assert.equal(requests, 2)
+  beforeFiveHour.resolve(response(200, fiveHourReset, { "content-type": "text/html" }))
+  await fiveHourPending
+  await flushMicrotasks()
+  assert.equal(requests, 3)
+  const fiveHourFollowUp = adapter.current.refresh()
+  afterFiveHour.resolve(response(200, fiveHourReset, { "content-type": "text/html" }))
+  await fiveHourFollowUp
+  await flushMicrotasks()
+  assert.equal(requests, 3)
   assert.equal(clock.active("timeout", 172_800_000).length, 1)
-  clock.advance(172_800_000)
-  await adapter.current.refresh()
+
+  const weeklyBoundary = clock.active("timeout", 172_800_000)[0]
+  const weeklyPending = adapter.current.refresh()
+  assert.equal(requests, 4)
+  clock.advanceWall(172_800_000)
+  weeklyBoundary.callback()
+  assert.equal(requests, 4)
+  beforeWeekly.resolve(response(200, weeklyReset, { "content-type": "text/html" }))
+  await weeklyPending
+  await flushMicrotasks()
+  assert.equal(requests, 5)
+  const weeklyFollowUp = adapter.current.refresh()
+  afterWeekly.resolve(response(200, weeklyReset, { "content-type": "text/html" }))
+  await weeklyFollowUp
+  await flushMicrotasks()
+  assert.equal(requests, 5)
   assert.equal(clock.active("timeout", 1_209_600_000).length, 1)
+  assert.equal(clock.active("timeout", 20_000).length, 0)
 })
 
 test("OpenCode Go lifecycle retains stale rows and recovers on success", async (t) => {
