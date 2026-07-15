@@ -2180,7 +2180,7 @@ Expected: implementation changes are limited to paths named in Tasks 1-8. The on
 - Consumes: a real workspace ID and auth-cookie value entered manually by the credential owner without agent inspection.
 - Produces: byte-for-byte deployment parity and manual behavioral evidence; no credential-bearing report, capture, screenshot, or commit is created.
 
-- [ ] **Step 1: Verify the local config path is ignored before manual configuration**
+- [x] **Step 1: Verify the local config path is ignored before manual configuration**
 
 Run: `git check-ignore -v .opencode/tui.json && git status --short --untracked-files=all`
 
@@ -2188,19 +2188,19 @@ Expected: `.opencode/tui.json` is ignored and absent from status; only intended 
 
 The credential owner edits `.opencode/tui.json` directly in a local editor and adds `quota.opencodego.workspaceId` plus `quota.opencodego.workspaceToken` to the quota plugin options. The implementation worker must not open, read, diff, copy, quote, or shell-expand those values.
 
-- [ ] **Step 2: Deploy locally from the GREEN build**
+- [x] **Step 2: Deploy locally from the GREEN build**
 
 Run: `npm run deploy:local`
 
 Expected: `Deployed opencode-tools plugins to .../.opencode`; the command prints no options or credentials and deploys exactly three artifacts.
 
-- [ ] **Step 3: Verify byte-for-byte artifact parity**
+- [x] **Step 3: Verify byte-for-byte artifact parity**
 
 Run: `cmp -s dist/opencode-tools-shared.js .opencode/opencode-tools-shared.js && cmp -s dist/opencode-tools-quota.js .opencode/opencode-tools-quota.js && cmp -s dist/plugins/opencode-tools-tokens.js .opencode/plugins/opencode-tools-tokens.js`
 
 Expected: exit 0.
 
-- [ ] **Step 4: Restart OpenCode and validate without request logging**
+- [x] **Step 4: Restart OpenCode and validate without request logging**
 
 The credential owner verifies each item manually:
 

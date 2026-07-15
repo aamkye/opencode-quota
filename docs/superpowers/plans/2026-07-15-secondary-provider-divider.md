@@ -33,7 +33,7 @@
 - Consumes: `PanelItem`, `normalizePanelModel`, `renderPanelLayout`, `PanelRenderer`, `composeQuotaPanel`, and the existing `GroupDivider` component.
 - Produces: `PanelItem` with `kind: "divider"` and stable secondary-provider boundary rows named `other-providers:<provider-id>:divider`.
 
-- [ ] **Step 1: Add the failing composition regression**
+- [x] **Step 1: Add the failing composition regression**
 
 Add this test to `tests/quota-composition.test.mjs`:
 
@@ -61,7 +61,7 @@ test("separates adjacent providers inside the shared Other providers group", () 
 })
 ```
 
-- [ ] **Step 2: Add the failing mounted-renderer regression**
+- [x] **Step 2: Add the failing mounted-renderer regression**
 
 Add this test to `tests/presentation-mounted.test.mjs`:
 
@@ -99,7 +99,7 @@ test("renders a semantic divider inside one panel group", () => {
 })
 ```
 
-- [ ] **Step 3: Run the focused RED gate**
+- [x] **Step 3: Run the focused RED gate**
 
 Run:
 
@@ -109,7 +109,7 @@ node tests/compile-presentation.mjs && node --test --test-name-pattern="separate
 
 Expected: both new tests fail because quota composition emits no divider and `MountedItem` does not render `kind: "divider"`.
 
-- [ ] **Step 4: Add the semantic divider type and renderer support**
+- [x] **Step 4: Add the semantic divider type and renderer support**
 
 In `tui/presentation/types.ts`, add `divider` to `PanelItemKind` and to the `PanelItem` union:
 
@@ -173,7 +173,7 @@ case "divider":
   return <GroupDivider />
 ```
 
-- [ ] **Step 5: Insert stable boundaries during quota composition**
+- [x] **Step 5: Insert stable boundaries during quota composition**
 
 Replace the `secondary.flatMap` expression in `composeQuotaPanel` with:
 
@@ -205,7 +205,7 @@ Update the existing exact secondary-order assertion to include divider IDs immed
 "beta:header", "beta:5H", "beta:5H:reset", "beta:7D", "beta:7D:reset",
 ```
 
-- [ ] **Step 6: Run focused GREEN gates**
+- [x] **Step 6: Run focused GREEN gates**
 
 Run:
 
@@ -216,7 +216,7 @@ npm run typecheck
 
 Expected: every focused test passes and TypeScript reports no diagnostics.
 
-- [ ] **Step 7: Run release and deployment regressions**
+- [x] **Step 7: Run release and deployment regressions**
 
 Run:
 
@@ -230,7 +230,7 @@ git diff --check
 
 Expected: all tests, build checks, deployment checks, local deployment, parity comparisons, and whitespace checks exit 0. The deployment command must not print local options or credentials.
 
-- [ ] **Step 8: Commit the fix atomically**
+- [x] **Step 8: Commit the fix atomically**
 
 ```bash
 git status --short
@@ -240,6 +240,6 @@ git commit -m "fix(quota): separate secondary providers"
 
 Expected: only the five named files enter the commit. The three unrelated root report deletions remain unstaged.
 
-- [ ] **Step 9: Complete credential-owner validation**
+- [x] **Step 9: Complete credential-owner validation**
 
 Restart OpenCode. The credential owner verifies that a flexible `--- ... ---` divider appears between OpenCode Go and Z.AI in expanded `Other providers`, remains within 37 columns, and disappears when that group collapses. Do not create a screenshot, capture, log, or report containing credentials or authenticated page data.
