@@ -7,6 +7,9 @@ import { sortByOrderThenId } from "./presentation/types.js"
 import {
   createOpenAiProvider,
   createZaiProvider,
+  normalizeOpenCodeGoConfig,
+  type OpenCodeGoConfig,
+  type OpenCodeGoOptions,
   type QuotaProviderAdapter,
 } from "../shared/opencode-tools-shared.js"
 
@@ -29,6 +32,9 @@ export type QuotaPluginOptions = {
   refreshIntervalSeconds?: number
   progressColors?: ProgressColorOptions
   otherProviders?: Pick<QuotaCompositionOptions, "percentageMode" | "sortDirection">
+  quota?: {
+    opencodego?: OpenCodeGoOptions
+  }
 }
 
 type NormalizedProgressColors = {
@@ -45,6 +51,7 @@ type NormalizedCompositionOptions = {
 
 export type NormalizedQuotaOptions = NormalizedCompositionOptions & {
   refreshIntervalMs: number
+  openCodeGo: OpenCodeGoConfig | null
 }
 
 const SIDEBAR_ORDER = 110
@@ -59,6 +66,7 @@ const DEFAULT_OPTIONS: NormalizedQuotaOptions = {
   sortDirection: "desc",
   refreshIntervalMs: 10_000,
   progressColors: DEFAULT_PROGRESS_COLORS,
+  openCodeGo: null,
 }
 const ADAPTER_ID_BY_PROVIDER_ID: Record<string, string> = {
   "zai-coding-plan": "zai",
@@ -120,6 +128,7 @@ export function normalizeQuotaOptions(value?: TuiPluginOptions): NormalizedQuota
   return {
     ...compositionOptions({ ...otherProviders, progressColors: input.progressColors }),
     refreshIntervalMs,
+    openCodeGo: normalizeOpenCodeGoConfig(input.quota?.opencodego),
   }
 }
 

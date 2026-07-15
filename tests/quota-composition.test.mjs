@@ -4,6 +4,10 @@ import { tmpdir } from "node:os"
 import { resolve } from "node:path"
 import test, { after } from "node:test"
 
+const sentinel = {
+  workspaceId: "wrk_TESTWORKSPACE",
+  workspaceToken: "TOKEN_TEST_ONLY_DO_NOT_USE",
+}
 const originalProviderEnvironment = {
   HOME: process.env.HOME,
   XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
@@ -84,6 +88,7 @@ test("normalizes native polling and progress color defaults", () => {
     sortDirection: "desc",
     refreshIntervalMs: 10_000,
     progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
+    openCodeGo: null,
   })
 })
 
@@ -97,6 +102,7 @@ test("normalizes custom thresholds and rejects invalid native options", () => {
     sortDirection: "asc",
     refreshIntervalMs: 2_500,
     progressColors: { enabled: false, errorBelow: 0, warningBelow: 100 },
+    openCodeGo: null,
   })
 
   assert.deepEqual(normalizeQuotaOptions({
@@ -107,7 +113,17 @@ test("normalizes custom thresholds and rejects invalid native options", () => {
     sortDirection: "desc",
     refreshIntervalMs: 10_000,
     progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
+    openCodeGo: null,
   })
+})
+
+test("OpenCode Go options normalize through native quota options", () => {
+  assert.equal(normalizeQuotaOptions().openCodeGo, null)
+  assert.deepEqual(normalizeQuotaOptions({ quota: { opencodego: sentinel } }).openCodeGo, sentinel)
+  assert.equal(normalizeQuotaOptions({
+    quota: { opencodego: { workspaceId: "bad", workspaceToken: "x" } },
+  }).openCodeGo, null)
+  assert.equal(normalizeQuotaOptions({ openCodeGo: sentinel }).openCodeGo, null)
 })
 
 test("colors progress by remaining quota even when displaying used quota", () => {

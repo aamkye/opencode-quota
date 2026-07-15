@@ -1,4 +1,6 @@
 export { createOpenAiProvider } from "../tui/providers/openai.js";
+export { normalizeOpenCodeGoConfig } from "../tui/providers/opencode-go.js";
+export type { OpenCodeGoConfig, OpenCodeGoOptions } from "../tui/providers/opencode-go.js";
 export { createZaiProvider } from "../tui/providers/zai.js";
 export type {
   HomeQuotaSummary,

@@ -27,6 +27,7 @@
     "tui/home.tsx",
     "tui/presentation/renderer.tsx",
     "tui/providers/zai.ts",
-    "tui/providers/openai.ts"
+    "tui/providers/openai.ts",
+    "tui/providers/opencode-go.ts"
   ]
 }
