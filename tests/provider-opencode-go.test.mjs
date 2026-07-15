@@ -142,6 +142,19 @@ test("OpenCode Go parser ignores unique records in visible comment attribute and
   }
 })
 
+test("OpenCode Go parser accepts actual script records while HTML ignored contexts contain duplicates", () => {
+  const duplicateRecords = recordLines.map((line) => `${line};`).join("\n")
+  const hiddenDuplicateContexts = [
+    `<div>${duplicateRecords}</div>`,
+    `<!-- <script>${duplicateRecords}</script> -->`,
+    `<div data-record='<script>${duplicateRecords}</script>'></div>`,
+    ...rawTextNames.map((name) => `<${name}><script>${duplicateRecords}</script></${name}>`),
+  ]
+  for (const hidden of hiddenDuplicateContexts) {
+    assert.deepEqual(parseOpenCodeGoHydration(`${hidden}\n${fixtureScript}`, now), expectedQuota)
+  }
+})
+
 test("OpenCode Go parser rejects pages whose three records exist only outside actual scripts", () => {
   const allRecords = recordLines.map((line) => `${line};`).join("\n")
   for (const source of [
