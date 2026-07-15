@@ -1,4 +1,4 @@
-export type PanelItemKind = "header" | "text" | "progress" | "timer" | "quantity" | "table"
+export type PanelItemKind = "divider" | "header" | "text" | "progress" | "timer" | "quantity" | "table"
 
 export type TimerState = "unavailable" | "idle" | "countdown" | "expired"
 
@@ -32,6 +32,7 @@ type PanelItemBase = {
 }
 
 export type PanelItem =
+  | (PanelItemBase & { kind: "divider" })
   | (PanelItemBase & {
       kind: "header"
       title: string

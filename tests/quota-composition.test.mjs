@@ -348,6 +348,28 @@ test("uses remaining percentages and descending secondary order by default", () 
   assert.ok(!headers(others).includes("Offline"))
 })
 
+test("separates adjacent providers inside the shared Other providers group", () => {
+  const openai = provider({ id: "openai", title: "OpenAI", order: 120, primaryPct: 90 })
+  const openCodeGo = openCodeGoProvider()
+  const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50 })
+  const model = composeQuotaPanel("openai", [zai, openai, openCodeGo])
+  const others = model.groups.find((group) => group.id === "other-providers")
+
+  assert.deepEqual(others.items.filter((entry) => entry.kind === "divider"), [
+    { id: "other-providers:zai:divider", order: 999, kind: "divider" },
+  ])
+  const boundary = others.items.map((entry) => entry.id)
+  assert.ok(boundary.indexOf("opencode-go:1M:reset") < boundary.indexOf("other-providers:zai:divider"))
+  assert.ok(boundary.indexOf("other-providers:zai:divider") < boundary.indexOf("zai:header"))
+
+  const normalized = normalizePanelModel(model).groups.find((group) => group.id === "other-providers")
+  assert.equal(normalized.items.filter((entry) => entry.kind === "divider").length, 1)
+  const expanded = renderPanelLayout(model, { availableCells: 37 })
+  assert.equal(expanded.groups.find((group) => group.id === "other-providers").items.filter((entry) => entry.kind === "divider").length, 1)
+  const collapsed = renderPanelLayout(model, { availableCells: 37, collapsed: new Set(["group:other-providers"]) })
+  assert.deepEqual(collapsed.groups.find((group) => group.id === "other-providers").items, [])
+})
+
 test("falls back to descending selected metrics when sort direction is invalid", () => {
   const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50 })
   const alpha = provider({ id: "alpha", title: "Alpha", order: 130, primaryPct: 20 })
@@ -466,6 +488,7 @@ test("three providers preserve OpenCode Go aggregate semantics", () => {
       ...layout.groups.flatMap((group) => [
         ...(group.header ? [2 + group.header.title.length] : []),
         ...group.items.flatMap((entry) => {
+          if (entry.kind === "divider") return []
           if (entry.kind === "progress") return [entry.cells.reduce((total, cell) => total + cell.width, 0)]
           if (entry.kind === "table") return entry.rows.map((row) => row.reduce((total, cell) => total + cell.width, 0))
           return [entry.text.length + (entry.detail ? entry.detail.length + 1 : 0)]
@@ -514,7 +537,9 @@ test("orders configured secondary metrics by direction and keeps each header wit
 
   assert.deepEqual(others.items.map((entry) => entry.id), [
     "alpha:header", "alpha:5H", "alpha:5H:reset", "alpha:7D", "alpha:7D:reset",
+    "other-providers:gamma:divider",
     "gamma:header", "gamma:5H", "gamma:5H:reset", "gamma:7D", "gamma:7D:reset",
+    "other-providers:beta:divider",
     "beta:header", "beta:5H", "beta:5H:reset", "beta:7D", "beta:7D:reset",
   ])
 })

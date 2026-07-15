@@ -269,7 +269,16 @@ export function composeQuotaPanel(
           id: "other-providers",
           order: 1_000_000,
           header: { title: "Other providers", collapsible: true },
-          items: secondary.flatMap((provider, index) => providerItems(provider, options, index * 1_000)),
+          items: secondary.flatMap<PanelItem>((provider, index) => [
+            ...(index === 0
+              ? []
+              : [{
+                  id: `other-providers:${provider.id}:divider`,
+                  order: index * 1_000 - 1,
+                  kind: "divider" as const,
+                }]),
+            ...providerItems(provider, options, index * 1_000),
+          ]),
         }]
       : []),
   ]

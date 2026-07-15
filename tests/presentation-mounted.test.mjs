@@ -183,3 +183,35 @@ test("renders middle group dividers as short dashes with flexible spacing", () =
     dispose()
   }
 })
+
+test("renders a semantic divider inside one panel group", () => {
+  const dividerModel = {
+    id: "quota",
+    order: 10,
+    title: "Quota",
+    groups: [{
+      id: "other-providers",
+      order: 10,
+      header: { title: "Other providers", collapsible: true },
+      items: [
+        { id: "first", order: 10, kind: "text", text: "OpenCode GO" },
+        { id: "between", order: 20, kind: "divider" },
+        { id: "second", order: 30, kind: "text", text: "Z.AI" },
+      ],
+    }],
+  }
+  const { elements, dispose } = mountPanel(dividerModel)
+
+  try {
+    const dashEnds = elements.filter((element) => element.type === "text" && element.props.children === "---")
+    assert.equal(dashEnds.length, 2)
+    assert.ok(elements.some((element) =>
+      element.type === "box"
+      && element.props.width === "100%"
+      && element.props.flexDirection === "row"
+      && element.props.height === 1
+      && !element.props.border))
+  } finally {
+    dispose()
+  }
+})

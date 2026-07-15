@@ -26,6 +26,7 @@ type NormalizedGroupHeader = {
 }
 
 type NormalizedItem =
+  | { id: string; kind: "divider" }
   | { id: string; kind: "header"; title: string; detail?: string; status?: PanelStatus }
   | { id: string; kind: "text"; text: string; align: PanelAlignment; status?: PanelStatus }
   | { id: string; kind: "progress"; label: string; percent: string; allocation: ProgressRowAllocation; status?: PanelStatus }
@@ -67,6 +68,7 @@ type RenderedCell = {
 }
 
 type RenderedItem =
+  | { kind: "divider" }
   | { kind: "header" | "text" | "quantity"; text: string; status?: PanelStatus }
   | { kind: "progress"; cells: RenderedCell[] }
   | { kind: "timer"; text: string; detail?: string; status?: PanelStatus }
@@ -115,6 +117,8 @@ function formatItemQuantity(item: Extract<PanelItem, { kind: "quantity" }>): str
 
 function normalizeItem(item: PanelItem, availableCells: number, now: number): NormalizedItem {
   switch (item.kind) {
+    case "divider":
+      return { id: item.id, kind: item.kind }
     case "header":
       return { id: item.id, kind: item.kind, title: item.title, detail: item.detail, status: item.status }
     case "text":
@@ -222,6 +226,8 @@ function renderCell(text: string, width: number, align: PanelAlignment, status?:
 
 function renderItemLayout(item: NormalizedItem): RenderedItem {
   switch (item.kind) {
+    case "divider":
+      return { kind: item.kind }
     case "header":
       return { kind: item.kind, text: item.detail ? `${item.title}: ${item.detail}` : item.title, status: item.status }
     case "text":
@@ -334,6 +340,8 @@ function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> 
   const color = (status?: PanelStatus) => (status ? props.theme()[status] : undefined)
 
   switch (props.item.kind) {
+    case "divider":
+      return <GroupDivider />
     case "header":
       return (
         <box flexDirection="row" width="100%">
