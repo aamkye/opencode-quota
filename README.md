@@ -52,7 +52,8 @@ status, compact homepage summaries, and `/tokens_*` reports for **Z.AI (GLM)**,
 - **Subscription windows** — exact remaining usage for rolling 5H, weekly 7D,
   and subscription month 1M windows.
 - **Shared refresh behavior** — uses the configured polling interval,
-  one-second countdowns, reset-boundary refresh, and stale handling.
+  one-second countdowns, reset-boundary refresh, and a ten-minute stale horizon
+  without exhausted backoff.
 
 ### Shared
 
@@ -66,8 +67,8 @@ status, compact homepage summaries, and `/tokens_*` reports for **Z.AI (GLM)**,
   red at ≤10% remaining.
 - **Provider names, plan types, and bar labels** use the theme foreground
   colour; only the bar fills and percentages are colour-coded.
-- **Smart polling** — checks the quota API every 10s by default, backing off to 5min
-  when the primary window is exhausted.
+- **Smart polling (Z.AI and OpenAI)** — checks the quota API every 10s by
+  default, backing off to 5min when the primary window is exhausted.
 - **Expandable** — click the header to show weekly / tool / absolute details.
 - **Stale handling** — keeps showing the last known data (marked `~stale`)
   through transient fetch failures.
@@ -105,13 +106,23 @@ Native TUI options can be supplied with the local plugin entry:
 ]
 ```
 
-`quota.opencodego.workspaceId` identifies the OpenCode Go workspace. `quota.opencodego.workspaceToken` authenticates the console request; workspaceToken is the plaintext auth cookie value. Keep both values only in local `.opencode/tui.json`: they must not be committed or shared, and you must rotate the console session when it expires, is revoked, or is exposed.
+`quota.opencodego.workspaceId` identifies the OpenCode Go workspace.
+`quota.opencodego.workspaceToken` authenticates the console request;
+workspaceToken is the plaintext auth cookie value. Keep both values only in
+local `.opencode/tui.json`: they must not be committed or shared, and you must
+rotate the console session when it expires, is revoked, or is exposed.
 
-Requests are fixed to `https://opencode.ai`; these values do not replace the OpenCode-managed inference API key. The sidebar reports exact remaining usage for rolling 5H, weekly 7D, and subscription month 1M windows. OpenCode Go uses the undocumented Solid hydration contract from the authenticated page and fails closed if that contract changes. It does not scrape visible text, save page HTML, or estimate quota from local cost.
+The provider sends these workspace credentials only to the fixed
+`https://opencode.ai` origin; they do not replace the OpenCode-managed
+inference API key. The sidebar reports exact remaining usage for rolling 5H,
+weekly 7D, and subscription month 1M windows. OpenCode Go reads the
+undocumented Solid hydration contract from the authenticated page and fails
+closed if that contract changes. It does not scrape visible text, save page
+HTML, or estimate quota from local cost.
 
 OpenCode Go uses the shared default/custom polling interval, one-second
-countdowns, reset-boundary refresh, and ten-minute stale horizon. It does not
-use exhausted backoff.
+countdowns, reset-boundary refresh, and a ten-minute stale horizon without
+exhausted backoff.
 
 Polling defaults to 10 seconds when its value is invalid or non-positive.
 Color thresholds are clamped to `0-100`, and `errorBelow` cannot exceed
@@ -228,7 +239,8 @@ shown above. Legacy files and aliases are intentionally not provided.
 2. Reads quota data from the authenticated page's undocumented Solid hydration
    contract and fails closed when that contract changes.
 3. Renders the rolling 5H, weekly 7D, and subscription month 1M windows with
-   shared polling, countdown, reset, and stale behavior.
+   shared polling, countdown, reset, and a ten-minute stale horizon without
+   exhausted backoff.
 
 ### `/tokens_*` reports
 

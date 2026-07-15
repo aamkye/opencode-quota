@@ -43,11 +43,9 @@ test("documents secret-safe OpenCode Go configuration", () => {
     "quota.opencodego.workspaceId",
     "quota.opencodego.workspaceToken",
     "workspaceToken is the plaintext auth cookie value",
-    "https://opencode.ai",
     "rolling 5H",
     "weekly 7D",
     "subscription month 1M",
-    "undocumented Solid hydration contract",
     "must not be committed",
     "rotate",
   ]) assert.equal(readme.includes(text), true, `missing README text: ${text}`)
@@ -57,4 +55,33 @@ test("documents secret-safe OpenCode Go configuration", () => {
   assert.doesNotMatch(readme, /(?:copy|save|export).{0,40}(?:full HTML|response body|HAR)/iu)
   const tokenValues = [...readme.matchAll(/"workspaceToken"\s*:\s*"([^"]+)"/gu)].map((match) => match[1])
   assert.deepEqual(tokenValues, ["TOKEN_TEST_ONLY_DO_NOT_USE"])
+})
+
+test("documents OpenCode Go provider semantics without exhausted backoff", () => {
+  const readme = readFileSync("README.md", "utf8")
+  const configuration = readme.match(/`quota\.opencodego\.workspaceId` identifies[\s\S]*?(?=\nPolling defaults to)/u)?.[0]
+  const openCodeGoFeatures = readme.match(/### OpenCode Go\n\n([\s\S]*?)(?=\n### Shared)/u)?.[1]
+  const sharedFeatures = readme.match(/### Shared\n\n([\s\S]*?)(?=\n## Local-only usage)/u)?.[1]
+
+  assert.ok(configuration, "missing OpenCode Go configuration guidance")
+  assert.ok(openCodeGoFeatures, "missing OpenCode Go feature guidance")
+  assert.ok(sharedFeatures, "missing shared feature guidance")
+  assert.match(
+    configuration,
+    /The provider sends these workspace credentials only to the fixed\s+`https:\/\/opencode\.ai` origin; they do not replace the OpenCode-managed\s+inference API key\./u,
+  )
+  assert.match(
+    configuration,
+    /OpenCode Go reads the\s+undocumented Solid hydration contract from the\s+authenticated page and fails\s+closed if that contract changes\./u,
+  )
+  assert.match(
+    configuration,
+    /OpenCode Go uses the shared default\/custom polling interval, one-second\s+countdowns, reset-boundary refresh, and a ten-minute stale horizon without\s+exhausted backoff\./u,
+  )
+  assert.match(
+    openCodeGoFeatures,
+    /\*\*Shared refresh behavior\*\*[^.]*ten-minute stale horizon\s+without exhausted backoff\./u,
+  )
+  assert.match(sharedFeatures, /\*\*Smart polling \(Z\.AI and OpenAI\)\*\*[^.]*backing off to 5min[^.]*exhausted\./u)
+  assert.doesNotMatch(readme, /OpenCode Go[^.]{0,200}(?:backs? off|backing off)[^.]{0,100}exhaust/iu)
 })
