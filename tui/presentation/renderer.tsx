@@ -386,12 +386,43 @@ function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> 
         </box>
       )
     case "table": {
-      const rendered = renderItemLayout(props.item)
-      if (rendered.kind !== "table") return null
+      const item = props.item
+      const rows: { id: string; cells: { text: string; status?: PanelStatus }[] }[] = [
+        {
+          id: `${item.id}:header`,
+          cells: item.columns.map((column) => ({ text: column.title })),
+        },
+        ...item.rows,
+      ]
       return (
-        <box flexDirection="column">
-          <For each={rendered.rows}>
-            {(row) => <box flexDirection="row"><For each={row}>{(cell) => <text width={cell.width} fg={color(cell.status)}>{cell.text}</text>}</For></box>}
+        <box flexDirection="column" width="100%">
+          <For each={rows}>
+            {(row) => (
+              <box flexDirection="row" width="100%" overflow="hidden">
+                {item.columns.map((column, index) => {
+                  const cell = row.cells[index] ?? { text: "" }
+                  return (
+                    <box
+                      flexBasis={0}
+                      flexGrow={1}
+                      flexShrink={1}
+                      minWidth={0}
+                      overflow="hidden"
+                      justifyContent={column.align === "end" ? "flex-end" : "flex-start"}
+                    >
+                      <text
+                        flexShrink={1}
+                        wrapMode="none"
+                        truncate={true}
+                        fg={color(cell.status ?? item.status)}
+                      >
+                        {cell.text}
+                      </text>
+                    </box>
+                  )
+                })}
+              </box>
+            )}
           </For>
         </box>
       )

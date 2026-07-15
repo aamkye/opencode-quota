@@ -239,3 +239,43 @@ test("renders a semantic divider inside one panel group", () => {
     dispose()
   }
 })
+
+test("mounts compact tables as clipped non-wrapping parent-width flex rows", () => {
+  const { elements, dispose } = mountPanel(model)
+
+  try {
+    const tableRows = elements.filter((element) =>
+      element.type === "box"
+      && element.props.width === "100%"
+      && element.props.overflow === "hidden"
+      && Array.isArray(element.props.children)
+      && element.props.children.length === 3
+      && element.props.children.every((child) => child?.type === "box"),
+    )
+
+    assert.equal(tableRows.length, 2, "header and data rows use responsive table layout")
+    for (const row of tableRows) {
+      for (const cell of row.props.children) {
+        assert.equal(cell.props.flexBasis, 0)
+        assert.equal(cell.props.flexGrow, 1)
+        assert.equal(cell.props.flexShrink, 1)
+        assert.equal(cell.props.minWidth, 0)
+        assert.equal(cell.props.overflow, "hidden")
+        assert.equal(typeof cell.props.width, "undefined")
+        assert.equal(cell.props.children?.type, "text")
+        assert.equal(cell.props.children?.props.wrapMode, "none")
+        assert.equal(cell.props.children?.props.truncate, true)
+        assert.equal(typeof cell.props.children?.props.width, "undefined")
+      }
+    }
+
+    assert.deepEqual(
+      tableRows[0].props.children.map((cell) => cell.props.children.props.children),
+      ["Identity", "Model", "Remaining"],
+    )
+    assert.equal(tableRows[0].props.children[2].props.justifyContent, "flex-end")
+    assert.equal(tableRows[1].props.children[2].props.children.props.fg, "#00ff00")
+  } finally {
+    dispose()
+  }
+})
