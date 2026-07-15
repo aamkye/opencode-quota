@@ -683,11 +683,21 @@ test("OpenCode Go lifecycle advances from 5H to 7D and 1M boundaries", async (t)
   const afterFiveHour = deferred()
   const beforeWeekly = deferred()
   const afterWeekly = deferred()
+  const beforeMonthly = deferred()
+  const afterMonthly = deferred()
   const adapter = { current: null }
   let requests = 0
-  cleanupLifecycle(t, clock, adapter, [beforeFiveHour, afterFiveHour, beforeWeekly, afterWeekly])
+  cleanupLifecycle(t, clock, adapter, [
+    beforeFiveHour,
+    afterFiveHour,
+    beforeWeekly,
+    afterWeekly,
+    beforeMonthly,
+    afterMonthly,
+  ])
   const fiveHourReset = fixture("success.html").replace("resetInSec:1800", "resetInSec:0")
   const weeklyReset = fiveHourReset.replace("resetInSec:172800", "resetInSec:0")
+  const monthlyReset = weeklyReset.replace("resetInSec:1209600", "resetInSec:0")
   const testFetch = () => {
     requests += 1
     if (requests === 1) return Promise.resolve(response(200, fixture("success.html"), { "content-type": "text/html" }))
@@ -695,6 +705,8 @@ test("OpenCode Go lifecycle advances from 5H to 7D and 1M boundaries", async (t)
     if (requests === 3) return afterFiveHour.promise
     if (requests === 4) return beforeWeekly.promise
     if (requests === 5) return afterWeekly.promise
+    if (requests === 6) return beforeMonthly.promise
+    if (requests === 7) return afterMonthly.promise
     throw new Error(`unexpected request ${requests}`)
   }
   adapter.current = createOpenCodeGoProvider({}, {
@@ -740,7 +752,31 @@ test("OpenCode Go lifecycle advances from 5H to 7D and 1M boundaries", async (t)
   await flushMicrotasks()
   assert.equal(requests, 5)
   assert.equal(clock.active("timeout", 1_209_600_000).length, 1)
+
+  const monthlyBoundary = clock.active("timeout", 1_209_600_000)[0]
+  const monthlyPending = adapter.current.refresh()
+  assert.equal(requests, 6)
+  assert.strictEqual(adapter.current.refresh(), monthlyPending)
+  assert.strictEqual(clock.active("interval", 2_500)[0].callback(), monthlyPending)
+  assert.equal(requests, 6)
+  clock.advanceWall(1_209_600_000)
+  monthlyBoundary.callback()
+  assert.equal(requests, 6)
+  beforeMonthly.resolve(response(200, monthlyReset, { "content-type": "text/html" }))
+  await monthlyPending
+  await flushMicrotasks()
+  assert.equal(requests, 7)
+  const monthlyFollowUp = adapter.current.refresh()
+  afterMonthly.resolve(response(200, monthlyReset, { "content-type": "text/html" }))
+  await monthlyFollowUp
+  await flushMicrotasks()
+  assert.equal(requests, 7)
   assert.equal(clock.active("timeout", 20_000).length, 0)
+  assert.equal(clock.active("timeout", 1_209_600_000).length, 0)
+  const stableTimers = clock.activeTimers()
+  await flushMicrotasks()
+  assert.equal(requests, 7)
+  assert.deepEqual(clock.activeTimers(), stableTimers)
 })
 
 test("OpenCode Go lifecycle retains stale rows and recovers on success", async (t) => {
