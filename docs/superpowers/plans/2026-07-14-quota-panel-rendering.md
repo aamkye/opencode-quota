@@ -1687,7 +1687,7 @@ npm test && npm run build && node --test tests/plugin-build.test.mjs tests/plugi
 
 Expected: every command exits `0`, all three deployed artifacts match `dist`, and the worktree contains no unexpected source changes.
 
-- [ ] **Step 7: Manually validate muted short dividers**
+- [x] **Step 7: Manually validate muted short dividers**
 
 Fully restart OpenCode and confirm every short `---` divider end uses the muted text color while the top/bottom full-width border dividers and surrounding content remain unchanged.
 

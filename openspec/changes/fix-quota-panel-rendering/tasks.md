@@ -19,4 +19,4 @@
 - [x] 3.1 Run focused tests, typechecking, the full automated suite, and the three-artifact production build.
 - [x] 3.2 Deploy locally and manually validate normal/collapsed and normal/constrained-width behavior in OpenCode.
 - [x] 3.3 Manually validate the default/custom refresh interval and provider switching from the active session model.
-- [ ] 3.4 Rebuild, redeploy, and manually validate muted short group dividers.
+- [x] 3.4 Rebuild, redeploy, and manually validate muted short group dividers.
