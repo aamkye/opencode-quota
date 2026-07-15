@@ -11,6 +11,7 @@
 - [x] 2.2 Preserve progress-led provider groups during aggregate ordering, carry semantic provider status into right-aligned headers, and derive OpenAI labels from API duration.
 - [x] 2.3 Normalize progress color options and apply semantic statuses consistently to bars, percentages, and collapsed summaries.
 - [x] 2.4 Pass the normalized polling interval into provider adapters and reactively resolve, refresh, and prioritize the current session model's provider.
+- [ ] 2.5 Render reset timers and standalone tool quantities with muted text while preserving explicit semantic status overrides.
 
 ## 3. Verify and Deploy
 

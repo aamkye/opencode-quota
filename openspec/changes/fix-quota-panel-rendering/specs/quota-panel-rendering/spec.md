@@ -14,13 +14,14 @@ The quota panel SHALL allocate mounted rows from the actual parent width, SHALL 
 - **AND** no precomputed 80-cell row overflows the parent
 
 ### Requirement: Standard panel framing
-The quota panel SHALL render a spaced collapse marker, a divider immediately below the `Quota` title, indented reset details without repeating the window label, and the active provider summary at the right edge when collapsed.
+The quota panel SHALL render a spaced collapse marker, a divider immediately below the `Quota` title, indented muted reset details without repeating the window label, and the active provider summary at the right edge when collapsed.
 
 #### Scenario: Expanded panel
 - **WHEN** the quota panel is expanded
 - **THEN** its title begins with `▼ Quota`
 - **AND** a divider follows the title row
 - **AND** reset rows begin with three spaces followed by the reset text
+- **AND** reset rows use the muted text color
 
 #### Scenario: Collapsed panel
 - **WHEN** the quota panel is collapsed with active provider percentages available
@@ -59,6 +60,7 @@ The quota panel SHALL preserve provider window groups, derive OpenAI window labe
 - **WHEN** Z.AI quota includes Peak/Off-Peak state and tool usage details
 - **THEN** the Peak/Off-Peak status is colored and aligned at the right edge of the Z.AI header
 - **AND** tool usage details remain below the quota windows
+- **AND** tool used and total quantities use the muted text color
 
 ### Requirement: Configurable provider refresh
 The quota panel SHALL poll provider APIs at a configurable interval and SHALL default that interval to 10 seconds.

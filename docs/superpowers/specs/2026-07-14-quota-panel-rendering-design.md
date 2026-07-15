@@ -56,7 +56,8 @@ The mounted renderer will stop using a guessed `availableCells` value. OpenTUI r
 - Panel header: fixed two-cell marker (`"▼ "` or `"▶ "`), flexible title, fixed summary.
 - Progress: fixed three-cell label, flexible bar, one-cell separator, fixed four-cell percentage.
 - Provider header: flexible title and fixed right-aligned detail/status.
-- Timer: fixed three-cell indent followed by timer text without the redundant window label.
+- Timer: fixed three-cell indent followed by muted timer text without the redundant window label.
+- Standalone quantity: muted label and value unless the item carries an explicit semantic status.
 
 The bar uses two zero-basis flex children. Their grow factors match filled and remaining percentages, so OpenTUI allocates glyph width from the parent. The filled child renders `█` with the threshold color; the empty child renders `░` with `textMuted`.
 
@@ -99,7 +100,7 @@ A Solid effect watches the resolved adapter ID. On change, it calls that adapter
 
 TDD starts with focused failing tests:
 
-- Pure layout and mounted tests assert marker spacing, top divider, three-cell bar start, responsive flex structure, visible percentage, timer indentation, colored summary, and right-aligned provider detail.
+- Pure layout and mounted tests assert marker spacing, top divider, three-cell bar start, responsive flex structure, visible percentage, muted timer/quantity metadata, colored summary, and right-aligned provider detail.
 - Composition tests assert progress statuses, colors disabled, custom thresholds, remaining-quota semantics in used mode, progress-led grouping, and tool details at the bottom.
 - OpenAI tests assert duration-derived labels for weekly-only and multi-window responses. Z.AI tests assert semantic Peak/Off-Peak header detail.
 - Controlled-timer adapter tests assert the 10-second default and custom polling interval.

@@ -1470,7 +1470,52 @@ git add tui/quota.tsx tests/quota-composition.test.mjs
 git commit -m "fix(tui): prioritize active model provider"
 ```
 
-### Task 7: Verify, Build, Deploy, And Manually Exercise The Plugin
+### Task 7: Dim Reset And Tool Metadata
+
+**Files:**
+- Modify: `tests/presentation-mounted.test.mjs`
+- Modify: `tui/presentation/renderer.tsx`
+
+**Interfaces:**
+- Consumes: normalized timer and standalone quantity items plus `PanelTheme.textMuted`.
+- Produces: mounted timer and quantity text that defaults to `textMuted` while preserving any explicit item status.
+
+- [ ] **Step 1: Add a focused failing mounted metadata-color test**
+
+Add standalone unstatused and explicitly status-colored quantity items to the mounted fixture model. Assert that the rendered reset text and unstatused quantity text both use `#888888`, and assert that the semantic status override still wins.
+
+- [ ] **Step 2: Run the focused mounted test and verify RED**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/presentation-mounted.test.mjs
+```
+
+Expected: FAIL because timer and unstatused quantity text currently render with `fg` unset instead of the theme's muted color.
+
+- [ ] **Step 3: Default mounted timer and quantity text to the muted theme**
+
+In `MountedItem()` in `tui/presentation/renderer.tsx`, use the item's explicit status color when present and otherwise use `props.theme().textMuted` for standalone quantity text, timer text, and timer detail text. Do not change progress labels, provider headers, tables, or explicitly status-colored items.
+
+- [ ] **Step 4: Run focused tests and typechecking to verify GREEN**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/presentation-mounted.test.mjs tests/presentation-render-model.test.mjs && npm run typecheck
+```
+
+Expected: all focused tests PASS and TypeScript exits `0`.
+
+- [ ] **Step 5: Commit the muted metadata correction**
+
+```bash
+git add tui/presentation/renderer.tsx tests/presentation-mounted.test.mjs
+git commit -m "fix(tui): dim quota metadata"
+```
+
+### Task 8: Verify, Build, Deploy, And Manually Exercise The Plugin
 
 **Files:**
 - Verify only: all files changed in Tasks 1-6
@@ -1552,6 +1597,7 @@ Fully restart OpenCode from `/Users/aam/Projects/priv/opencode-quota`, open a se
 [ ] Reset rows begin with three spaces and do not repeat "5H reset:" or "7D reset:".
 [ ] Provider status/detail is right-aligned; Z.AI shows colored Peak (3x) or Off-Peak (1x).
 [ ] Z.AI tool quota/reset/count/table rows remain below the 5H and 7D windows.
+[ ] Reset rows and Z.AI tool used/total quantities use the muted text color.
 [ ] Collapsing shows "▶ Quota" with the active percentage summary colored and right-aligned.
 ```
 
@@ -1593,7 +1639,7 @@ Expected: `git diff --check` prints nothing and exits `0`. `git status --short` 
 
 ## Self-Review Checklist
 
-- [x] Every canonical spec requirement maps to a task: responsive flex rows and framing (Task 1), progress colors and thresholds (Task 2), provider grouping and Z.AI status (Task 3), OpenAI duration labels (Task 4), configurable polling (Task 5), active-session selection (Task 6), and full verification/deployment/manual checks (Task 7).
+- [x] Every canonical spec requirement maps to a task: responsive flex rows and framing (Task 1), progress colors and thresholds (Task 2), provider grouping and Z.AI status (Task 3), OpenAI duration labels (Task 4), configurable polling (Task 5), active-session selection (Task 6), muted subordinate metadata (Task 7), and full verification/deployment/manual checks (Task 8).
 - [x] Every production edit in Tasks 1-6 is preceded by a focused failing test and an explicit RED command; each task ends with focused GREEN verification and an atomic commit command.
 - [x] No step changes provider endpoints, authentication, quota arithmetic, timeout/stale/reset behavior, home output, token reports, or model-name presentation.
 - [x] Signatures are consistent across tasks: `normalizeQuotaOptions()` produces `refreshIntervalMs`; both provider constructors consume `QuotaProviderOptions`; `createQuotaSelection()` exposes `selectedProviderID` and `setSessionID`; `PanelRenderer` no longer consumes `availableCells`.
