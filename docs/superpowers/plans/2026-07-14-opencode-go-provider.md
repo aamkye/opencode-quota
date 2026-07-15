@@ -2,6 +2,7 @@
 change: add-opencode-go-provider
 design-doc: docs/superpowers/specs/2026-07-14-opencode-go-provider-design.md
 base-ref: f94168f
+archived-with: 2026-07-15-add-opencode-go-provider
 ---
 
 # OpenCode Go Quota Provider Implementation Plan

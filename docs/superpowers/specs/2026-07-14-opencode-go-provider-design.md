@@ -2,6 +2,8 @@
 comet_change: add-opencode-go-provider
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-15-add-opencode-go-provider
+status: final
 ---
 
 # OpenCode Go Quota Provider Technical Design
