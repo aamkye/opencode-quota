@@ -1883,7 +1883,7 @@ git commit -m "feat(quota): integrate OpenCode Go provider"
 - Produces: regression coverage for three-provider priority/retention, collapsed summary, remaining/used conversion, color thresholds, sorting, 37-column layouts, nested option deployment, idempotence, and three-artifact parity.
 - Makes no production-code change; the minimal GREEN implementation is concrete three-provider test data plus nested deployment fixture data.
 
-- [ ] **Step 1: Add aggregate assertions before adding the third-provider fixture**
+- [x] **Step 1: Add aggregate assertions before adding the third-provider fixture**
 
 Add a test named `three providers preserve OpenCode Go aggregate semantics` that calls `openCodeGoRegressionProvider()` together with existing Z.AI/OpenAI fake adapters and asserts:
 
@@ -1924,13 +1924,13 @@ Call `renderPanelLayout(remaining, { availableCells: 37 })` for extended content
 
 Before `openCodeGoRegressionProvider` exists, run the focused command in Step 2.
 
-- [ ] **Step 2: Run the exact aggregate RED gate**
+- [x] **Step 2: Run the exact aggregate RED gate**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="three providers preserve" tests/quota-composition.test.mjs`
 
 Expected: FAIL with `ReferenceError: openCodeGoRegressionProvider is not defined`.
 
-- [ ] **Step 3: Add the minimal synthetic third-provider fixture**
+- [x] **Step 3: Add the minimal synthetic third-provider fixture**
 
 Add this helper above the aggregate test:
 
@@ -1969,7 +1969,7 @@ function openCodeGoRegressionProvider(freshness = "ready") {
 }
 ```
 
-- [ ] **Step 4: Add deployment assertions before extending deployment options**
+- [x] **Step 4: Add deployment assertions before extending deployment options**
 
 In `tests/plugin-deploy.test.mjs`, add assertions that the selected `./opencode-tools-quota.js` entry options equal:
 
@@ -1985,13 +1985,13 @@ In `tests/plugin-deploy.test.mjs`, add assertions that the selected `./opencode-
 }
 ```
 
-- [ ] **Step 5: Run the exact deployment RED gate**
+- [x] **Step 5: Run the exact deployment RED gate**
 
 Run: `node --test tests/plugin-deploy.test.mjs`
 
 Expected: FAIL with a deep-equality difference because `localOptions` still contains only `otherProviders`.
 
-- [ ] **Step 6: Add the minimal nested deployment fixture**
+- [x] **Step 6: Add the minimal nested deployment fixture**
 
 Replace `localOptions` with:
 
@@ -2009,13 +2009,13 @@ const localOptions = {
 
 Keep assertions that two local deploys are byte-for-byte idempotent, project-to-global option migration preserves the nested object, unrelated entries remain unchanged, and artifact paths remain exactly `opencode-tools-shared.js`, `opencode-tools-quota.js`, and `plugins/opencode-tools-tokens.js`.
 
-- [ ] **Step 7: Run the exact aggregate/deployment GREEN gates**
+- [x] **Step 7: Run the exact aggregate/deployment GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/quota-composition.test.mjs tests/presentation-layout.test.mjs tests/plugin-deploy.test.mjs`
 
 Expected: all composition, max-width, and deployment tests PASS with 0 failures; no renderer snapshot or generic polling source changes.
 
-- [ ] **Step 8: Commit the GREEN regression unit atomically**
+- [x] **Step 8: Commit the GREEN regression unit atomically**
 
 ```bash
 git status --short &&
