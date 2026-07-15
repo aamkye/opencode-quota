@@ -1705,7 +1705,7 @@ git commit -m "feat(quota): schedule OpenCode Go refreshes"
 - Produces: `OpenCodeGoHomeQuotaSummary`, complete shared exports, quota-only adapter construction, and aliases `opencode-go -> opencode-go` plus `opencode-go-subscription -> opencode-go`.
 - Leaves `QuotaProviderAdapter`, `PanelModel`, `PanelRenderer`, `tui/home.tsx`, generic polling, and renderer width logic unchanged.
 
-- [ ] **Step 1: Add failing alias, active-refresh, and construction tests**
+- [x] **Step 1: Add failing alias, active-refresh, and construction tests**
 
 In `tests/quota-composition.test.mjs`, add a fake adapter with `id: "opencode-go"`, `order: 130`, freshness accessor, `refreshCalls`, 5H/7D/1M progress rows, and a 5H/7D home summary. Add:
 
@@ -1749,7 +1749,7 @@ if (url === openCodeGoManifest.request.url) {
 
 Assert the first OpenCode Go request matches the Task 1 manifest, the active 2,500ms poll count is three, polling each timer produces exactly one request from `openai`, `opencode-go`, and `zai`, and disposal runs through the registered lifecycle callback. This is the first quota test that requires adapter construction.
 
-- [ ] **Step 2: Add failing shared-boundary, type, and build assertions**
+- [x] **Step 2: Add failing shared-boundary, type, and build assertions**
 
 In `tests/shared-boundary.test.mjs`, extend `shared facade exports computation without plugin registration or JSX` with:
 
@@ -1772,13 +1772,13 @@ assert.equal(typeof sharedModule.createOpenCodeGoProvider, "function")
 
 Keep the existing host-runtime assertions for `solid-js`, `@opentui/*`, `@opencode-ai/plugin`, SDK modules, and runtime built-ins external.
 
-- [ ] **Step 3: Run the exact integration RED gate**
+- [x] **Step 3: Run the exact integration RED gate**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go integration|shared facade exports|artifacts expose OpenCode Go" tests/quota-composition.test.mjs tests/shared-boundary.test.mjs tests/plugin-build.test.mjs`
 
 Expected: FAIL because `selectedQuotaProviderID` returns `undefined` for both OpenCode Go IDs, the shared facade does not export `createOpenCodeGoProvider`, and quota construction has only Z.AI/OpenAI.
 
-- [ ] **Step 4: Add the summary union before shared imports consume it**
+- [x] **Step 4: Add the summary union before shared imports consume it**
 
 In `tui/providers/types.ts`, add:
 
@@ -1798,7 +1798,7 @@ export type HomeQuotaSummary =
 
 Do not change `QuotaProviderAdapter` or `ProviderFreshness`.
 
-- [ ] **Step 5: Complete shared exports and quota-only construction**
+- [x] **Step 5: Complete shared exports and quota-only construction**
 
 Replace the narrow Task 2 OpenCode Go facade export with this complete block in `shared/opencode-tools-shared.ts`:
 
@@ -1852,7 +1852,7 @@ providers.push(createOpenCodeGoProvider(api, {
 
 Do not instantiate OpenCode Go in `tui/home.tsx` because that legacy entry has no native options path.
 
-- [ ] **Step 6: Run the exact integration GREEN gates**
+- [x] **Step 6: Run the exact integration GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go integration|shared facade exports|artifacts expose OpenCode Go" tests/quota-composition.test.mjs tests/shared-boundary.test.mjs tests/plugin-build.test.mjs`
 
@@ -1862,7 +1862,7 @@ Run: `npm run typecheck && npm run build:plugins`
 
 Expected: both commands exit 0; exactly the existing three artifacts are built.
 
-- [ ] **Step 7: Commit the GREEN integration unit atomically**
+- [x] **Step 7: Commit the GREEN integration unit atomically**
 
 ```bash
 git status --short &&
