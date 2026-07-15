@@ -8,7 +8,9 @@ const manifest = JSON.parse(fixture("request-manifest.json"))
 const now = Date.UTC(2026, 6, 14, 12, 0, 0)
 const {
   fetchOpenCodeGoQuota,
+  mapOpenCodeGoPanelState,
   normalizeOpenCodeGoConfig,
+  openCodeGoHomeQuotaSummary,
   parseOpenCodeGoHydration,
 } = providerModule
 const sentinel = {
@@ -20,6 +22,65 @@ const expectedQuota = {
   weekly: { usedPct: 34, remainingPct: 66, resetEpoch: now + 172_800_000 },
   monthly: { usedPct: 56.75, remainingPct: 43.25, resetEpoch: now + 1_209_600_000 },
 }
+
+function item(model, id) {
+  return model.groups.flatMap((group) => group.items).find((candidate) => candidate.id === id)
+}
+
+test("OpenCode Go mapper emits stable 5H 7D and 1M remaining windows", () => {
+  const model = mapOpenCodeGoPanelState({ phase: "ready", data: expectedQuota, now })
+  assert.equal(model.id, "opencode-go")
+  assert.equal(model.order, 130)
+  assert.equal(model.title, "OpenCode GO")
+  assert.equal(model.groups[0].id, "opencode-go:quota")
+  assert.deepEqual(model.groups[0].items.map((entry) => [
+    entry.id,
+    entry.order,
+    entry.kind === "header" ? entry.title : entry.label,
+    entry.kind === "progress" ? entry.value : undefined,
+  ]), [
+    ["opencode-go:header", 10, "OpenCode GO:", undefined],
+    ["opencode-go:5h", 20, "5H", 87.5],
+    ["opencode-go:5h-reset", 30, "5H reset", undefined],
+    ["opencode-go:7d", 40, "7D", 66],
+    ["opencode-go:7d-reset", 50, "7D reset", undefined],
+    ["opencode-go:1m", 60, "1M", 43.25],
+    ["opencode-go:1m-reset", 70, "1M reset", undefined],
+  ])
+  assert.deepEqual(openCodeGoHomeQuotaSummary(expectedQuota), {
+    provider: "OpenCode GO",
+    plan: "Subscription",
+    primaryPct: 87.5,
+    secondaryPct: 66,
+  })
+})
+
+test("OpenCode Go mapper covers timer stale and unavailable states", () => {
+  const full = structuredClone(expectedQuota)
+  full.fiveHour.remainingPct = 100
+  assert.equal(item(mapOpenCodeGoPanelState({ phase: "ready", data: full, now }), "opencode-go:5h-reset").state, "idle")
+  assert.equal(item(mapOpenCodeGoPanelState({ phase: "ready", data: expectedQuota, now }), "opencode-go:5h-reset").state, "countdown")
+  assert.equal(item(mapOpenCodeGoPanelState({ phase: "ready", data: expectedQuota, now: expectedQuota.fiveHour.resetEpoch }), "opencode-go:5h-reset").state, "expired")
+  assert.deepEqual(item(mapOpenCodeGoPanelState({ phase: "stale", data: expectedQuota, now }), "opencode-go:stale"), {
+    id: "opencode-go:stale",
+    order: 15,
+    kind: "text",
+    text: "~stale",
+    status: "warning",
+  })
+  for (const [phase, detail] of [
+    ["configuration-required", "Configuration required"],
+    ["loading", "Loading OpenCode GO..."],
+    ["unavailable", "Usage unavailable"],
+  ]) {
+    const model = mapOpenCodeGoPanelState({ phase, now })
+    const header = item(model, "opencode-go:header")
+    assert.equal(header.title, "OpenCode GO:")
+    assert.equal(header.detail, detail)
+    assert.equal(model.groups[0].items.some((entry) => entry.kind === "progress"), false)
+    assert.equal(model.collapsedSummary, undefined)
+  }
+})
 
 test("OpenCode Go options normalize valid credentials without diagnostics", () => {
   const diagnostics = []
