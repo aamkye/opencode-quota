@@ -688,9 +688,9 @@ git commit -m "feat(quota): normalize OpenCode Go options"
 - Task 4 is the only owner of panel mapper tests and implementation.
 - Starting point: commit `29a102d` contains the rejected Task 3 transport and parser. Preserve its exported types, exact object grammar, numeric validation, atomic output mapping, and fixed transport. Replace only parser scanning/context helpers and parser internals described below.
 
-- [ ] **Step 1: Append lexical-context and exact-boundary parser regressions**
+- [x] **Step 1: Append lexical-context and exact-boundary parser regressions**
 
-Append the following helpers and eight tests to `tests/provider-opencode-go.test.mjs` after the two existing parser tests and before `const config = ...`. Do not rewrite or delete the existing Task 3 tests. These cases isolate each review bypass, prove that hidden candidates do not affect code-state uniqueness, scope ambiguity to marker-bearing remainders, and pin both meaningful size boundaries:
+Append the following helpers and nine tests to `tests/provider-opencode-go.test.mjs` after the two existing parser tests and before `const config = ...`. Do not rewrite or delete the existing Task 3 tests except to remove the stale invalid-matrix entry that expected a valid script plus a visible duplicate to reject. These cases isolate each review bypass, prove that hidden candidates do not affect code-state uniqueness, scope ambiguity to marker-bearing remainders, and pin both meaningful size boundaries:
 
 ```javascript
 const fixtureScript = fixture("success.html").trimEnd()
@@ -711,6 +711,19 @@ test("OpenCode Go parser ignores unique records in visible comment attribute and
   ]
   for (const hidden of hiddenRollingContexts) {
     assert.equal(parseOpenCodeGoHydration(`${hidden}\n${script(weeklyRecord, monthlyRecord)}`, now), null)
+  }
+})
+
+test("OpenCode Go parser accepts actual script records while HTML ignored contexts contain duplicates", () => {
+  const duplicateRecords = recordLines.map((line) => `${line};`).join("\n")
+  const hiddenDuplicateContexts = [
+    `<div>${duplicateRecords}</div>`,
+    `<!-- <script>${duplicateRecords}</script> -->`,
+    `<div data-record='<script>${duplicateRecords}</script>'></div>`,
+    ...rawTextNames.map((name) => `<${name}><script>${duplicateRecords}</script></${name}>`),
+  ]
+  for (const hidden of hiddenDuplicateContexts) {
+    assert.deepEqual(parseOpenCodeGoHydration(`${hidden}\n${fixtureScript}`, now), expectedQuota)
   }
 })
 
@@ -828,13 +841,13 @@ test("OpenCode Go parser enforces exact HTML and record code-unit boundaries", (
 })
 ```
 
-- [ ] **Step 2: Run the lexical-scanner RED gate against rejected commit 29a102d**
+- [x] **Step 2: Run the lexical-scanner RED gate against rejected commit 29a102d**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go parser|OpenCode Go transport" tests/provider-opencode-go.test.mjs`
 
 Expected: exit 1 against `29a102d`. Existing transport tests, the original valid parser test, and candidate-free unrelated slash/template-expression cases remain green. At minimum, failures show that the old parser returns quota for script-like records in an HTML comment/raw-text/quoted-attribute context, returns quota when a required marker exists only in a JavaScript string/template/comment, returns `null` when valid code markers have ignored-context duplicates, accepts malformed/unclosed lexical state after valid records, accepts marker candidates after an ambiguous slash or template `${`, and accepts the 64-space suffix followed by `x`. The exact boundary assertions may already pass; they are regression locks, not required RED causes.
 
-- [ ] **Step 3: Replace raw HTML index searches with one deterministic lexical pass**
+- [x] **Step 3: Replace raw HTML index searches with one deterministic lexical pass**
 
 In `tui/providers/opencode-go.ts`, delete `scriptBodies` and replace it with the following concrete scanner shape. Keep ranges or strings internally; no scanner helper is exported. The pseudocode is TypeScript-complete in behavior: helper names may be adjusted, but every state, boundary, and failure below is mandatory.
 
@@ -996,7 +1009,7 @@ function scanScriptBodies(html: string): string[] | null {
 
 This is a single monotonic HTML pass: the outer cursor never moves backward, comment/tag scanners advance from that cursor, and raw-text/script scanners consume disjoint ranges before returning control. Do not lowercase the full page, use raw `<script`/`</script>` `indexOf`, or inspect markers during this pass. In raw-text and script state, only the corresponding case-insensitive end tag is markup; all other `<` text is consumed as body data. Any unclosed comment, declaration, attribute quote, relevant raw-text element, or script rejects the page.
 
-- [ ] **Step 4: Replace raw marker searches with bounded JavaScript lexical scanning**
+- [x] **Step 4: Replace raw marker searches with bounded JavaScript lexical scanning**
 
 Delete `countLiteral`, marker `RegExp`/`matchAll` calls, the 33-character suffix slice, and the old body loop inside `parseOpenCodeGoHydration`. Keep `NUMBER_SOURCE`, `OBJECT_PATTERN`, `RECORDS`, `MAX_HTML_LENGTH`, and `MAX_ASSIGNMENT_LENGTH`. Implement the following scanner and aggregate flow:
 
@@ -1205,13 +1218,13 @@ A no-substitution template consumes escapes until its closing backtick and then 
 
 The object capture checks at most 4,097 code units so an object of exactly 4,096 is accepted and 4,097 is rejected. The suffix loop walks the actual body, regardless of whitespace length, and accepts only an actual delimiter or `suffix === body.length`; it never applies `$` to a temporary slice.
 
-- [ ] **Step 5: Run contract and focused scanner GREEN gates**
+- [x] **Step 5: Run contract and focused scanner GREEN gates**
 
 Run: `node --test tests/provider-opencode-go-contract.test.mjs && node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go parser|OpenCode Go transport" tests/provider-opencode-go.test.mjs`
 
-Expected: exit 0. The fixture-only contract gate passes 5/5. The focused provider file passes 14/14 matching tests: ten parser tests (the original two plus eight regressions) and four unchanged transport tests, with 0 failures. Candidate-free `1/2`, `/safe/`, and `` `before ${answer}` `` scripts do not invalidate records in another script body; slash lines resume at the next line; marker-bearing ambiguous remainders reject.
+Expected: exit 0. The fixture-only contract gate passes 5/5. The focused provider file passes 15/15 matching tests: eleven parser tests (the original two plus nine regressions) and four unchanged transport tests, with 0 failures. Candidate-free `1/2`, `/safe/`, and `` `before ${answer}` `` scripts do not invalidate records in another script body; slash lines resume at the next line; marker-bearing ambiguous remainders reject.
 
-- [ ] **Step 6: Run type and diff-scope GREEN gates**
+- [x] **Step 6: Run type and diff-scope GREEN gates**
 
 Run: `npm run typecheck`
 
@@ -1221,7 +1234,7 @@ Run: `git diff --check -- tests/provider-opencode-go.test.mjs tui/providers/open
 
 Expected: `git diff --check` exits 0. Status shows only the Task 3 test/provider modifications plus the three pre-existing deleted report paths and any already-approved documentation corrections; no implementation file other than `tui/providers/opencode-go.ts` and no test file other than `tests/provider-opencode-go.test.mjs` is changed.
 
-- [ ] **Step 7: Commit the GREEN lexical-scanner fix atomically**
+- [x] **Step 7: Commit the GREEN lexical-scanner fix atomically**
 
 ```bash
 git status --short &&

@@ -8,7 +8,7 @@
 ## 2. Implement The OpenCode Go Provider
 
 - [x] 2.1 Normalize local `quota.opencodego.workspaceId` and `quota.opencodego.workspaceToken` options without exposing secrets through returned diagnostics or committed examples.
-- [ ] 2.2 Implement the fixed-origin authenticated Go page transport and strict atomic Solid hydration extraction behind a dedicated OpenCode Go module.
+- [x] 2.2 Implement the fixed-origin authenticated Go page transport and strict atomic Solid hydration extraction behind a dedicated OpenCode Go module.
 - [ ] 2.3 Map valid console snapshots to `OpenCode GO:` with 5H, 7D, and 1M semantic progress/reset windows plus ready, stale, unavailable, and configuration-required states.
 - [ ] 2.4 Implement shared-interval polling, immediate refresh, serialized requests, reset-boundary refresh, stale expiry, one-second countdowns, and disposal-safe updates.
 
