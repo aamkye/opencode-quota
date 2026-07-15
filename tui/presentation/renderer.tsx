@@ -326,12 +326,12 @@ function Divider() {
   return <box width="100%" height={1} border={["top"]} />
 }
 
-function GroupDivider() {
+function GroupDivider(props: { theme: Accessor<PanelTheme> }) {
   return (
     <box flexDirection="row" width="100%" height={1}>
-      <text>{"---"}</text>
+      <text fg={props.theme().textMuted}>{"---"}</text>
       <box flexBasis={0} flexGrow={1} height={1} />
-      <text>{"---"}</text>
+      <text fg={props.theme().textMuted}>{"---"}</text>
     </box>
   )
 }
@@ -342,7 +342,7 @@ function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> 
 
   switch (props.item.kind) {
     case "divider":
-      return <GroupDivider />
+      return <GroupDivider theme={props.theme} />
     case "header":
       return (
         <box flexDirection="row" width="100%">
@@ -440,7 +440,7 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Acces
                 <Show when={!groupCollapsed()}>
                   <For each={group.items}>{(item) => <MountedItem item={item} theme={props.theme} />}</For>
                 </Show>
-                {isLastGroup() ? <Divider /> : <GroupDivider />}
+                {isLastGroup() ? <Divider /> : <GroupDivider theme={props.theme} />}
               </box>
             )
           }}

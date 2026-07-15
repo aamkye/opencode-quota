@@ -193,6 +193,7 @@ test("renders middle group dividers as short dashes with flexible spacing", () =
     const dashEnds = elements.filter((element) =>
       element.type === "text" && element.props.children === "---")
     assert.equal(dashEnds.length, 2, "one middle divider with two --- ends")
+    assert.ok(dashEnds.every((element) => element.props.fg === "#888888"))
 
     const spacer = elements.find((element) =>
       element.type === "box"
@@ -227,6 +228,7 @@ test("renders a semantic divider inside one panel group", () => {
   try {
     const dashEnds = elements.filter((element) => element.type === "text" && element.props.children === "---")
     assert.equal(dashEnds.length, 2)
+    assert.ok(dashEnds.every((element) => element.props.fg === "#888888"))
     assert.ok(elements.some((element) =>
       element.type === "box"
       && element.props.width === "100%"
