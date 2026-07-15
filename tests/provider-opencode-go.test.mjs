@@ -111,7 +111,6 @@ test("OpenCode Go parser rejects malformed duplicate trick and oversized records
     valid.replace("}", ",__proto__:null}"),
     valid.replace(rolling, `"${rolling}"`),
     `<div>${rolling}</div>`,
-    `${valid}<div>${rolling}</div>`,
     `${valid}${"x".repeat(1_000_001)}`,
     valid.replace("={", `={${"x".repeat(4_097)}`),
   ]
@@ -120,6 +119,140 @@ test("OpenCode Go parser rejects malformed duplicate trick and oversized records
     assert.equal(parseOpenCodeGoHydration(source, now), null)
     assert.equal(source, before)
   }
+})
+
+const fixtureScript = fixture("success.html").trimEnd()
+const recordLines = fixtureScript
+  .slice("<script>\n".length, -"\n</script>".length)
+  .split("\n")
+const [rollingRecord, weeklyRecord, monthlyRecord] = recordLines
+const script = (...lines) => `<script>\n${lines.join("\n")}\n</script>`
+const rawTextNames = ["textarea", "title", "style", "xmp", "iframe", "noembed", "noframes"]
+const rollingObject = rollingRecord.slice(rollingRecord.indexOf("=") + 1)
+
+test("OpenCode Go parser ignores unique records in visible comment attribute and raw-text HTML contexts", () => {
+  const hiddenRollingContexts = [
+    `<div>${rollingRecord};</div>`,
+    `<!-- <script>${rollingRecord};</script> -->`,
+    `<div data-record='<script>${rollingRecord};</script>'></div>`,
+    ...rawTextNames.map((name) => `<${name}><script>${rollingRecord};</script></${name}>`),
+  ]
+  for (const hidden of hiddenRollingContexts) {
+    assert.equal(parseOpenCodeGoHydration(`${hidden}\n${script(weeklyRecord, monthlyRecord)}`, now), null)
+  }
+})
+
+test("OpenCode Go parser rejects pages whose three records exist only outside actual scripts", () => {
+  const allRecords = recordLines.map((line) => `${line};`).join("\n")
+  for (const source of [
+    `<!-- <script>${allRecords}</script> -->`,
+    `<div data-record='<script>${allRecords}</script>'></div>`,
+    `<textarea><script>${allRecords}</script></textarea>`,
+  ]) assert.equal(parseOpenCodeGoHydration(source, now), null)
+})
+
+test("OpenCode Go parser ignores markers in JavaScript strings templates and comments", () => {
+  const hiddenRollingContexts = [
+    `'${rollingRecord};';`,
+    `${JSON.stringify(`${rollingRecord};`)};`,
+    `\`${rollingRecord};\`;`,
+    `// ${rollingRecord};`,
+    `/* ${rollingRecord}; */`,
+  ]
+  for (const hidden of hiddenRollingContexts) {
+    assert.equal(parseOpenCodeGoHydration(script(hidden, weeklyRecord, monthlyRecord), now), null)
+  }
+})
+
+test("OpenCode Go parser accepts actual code markers while ignored JavaScript contexts contain duplicates", () => {
+  const source = script(
+    rollingRecord,
+    weeklyRecord,
+    monthlyRecord,
+    `'${rollingRecord};';`,
+    `${JSON.stringify(`${weeklyRecord};`)};`,
+    `\`${monthlyRecord};\`;`,
+    `// ${rollingRecord};`,
+    `/* ${weeklyRecord}; */`,
+  )
+  assert.deepEqual(parseOpenCodeGoHydration(source, now), expectedQuota)
+})
+
+test("OpenCode Go parser fails closed on malformed HTML and unclosed JavaScript lexical state", () => {
+  const malformedHtml = [
+    `<!-- ${fixtureScript}`,
+    `<div data-record='${fixtureScript}`,
+    ...rawTextNames.map((name) => `<${name}>${fixtureScript}`),
+    fixtureScript.replace("</script>", ""),
+  ]
+  const malformedJavaScript = [
+    script(...recordLines, "const value='unterminated"),
+    script(...recordLines, 'const value="unterminated'),
+    script(...recordLines, "const value=`unterminated"),
+    script(...recordLines, "/* unterminated"),
+  ]
+  for (const source of [...malformedHtml, ...malformedJavaScript]) {
+    assert.equal(parseOpenCodeGoHydration(source, now), null)
+  }
+})
+
+test("OpenCode Go parser scopes slash and template-expression ambiguity to marker-bearing remainders", () => {
+  const unrelatedBodies = [
+    "const ratio=1/2",
+    "const pattern=/safe/",
+    "const text=`before ${answer}`",
+  ]
+  for (const unrelated of unrelatedBodies) {
+    assert.deepEqual(parseOpenCodeGoHydration(`${script(unrelated)}\n${fixtureScript}`, now), expectedQuota)
+  }
+
+  assert.deepEqual(parseOpenCodeGoHydration(script("const ratio=1/2", ...recordLines), now), expectedQuota)
+  assert.deepEqual(parseOpenCodeGoHydration(script("const pattern=/safe/", ...recordLines), now), expectedQuota)
+  assert.deepEqual(parseOpenCodeGoHydration(script(...recordLines, "const text=`before ${answer}`"), now), expectedQuota)
+
+  for (const ambiguousLine of [
+    `const ratio=1/2; ${rollingRecord};`,
+    `const pattern=/safe/; ${rollingRecord};`,
+  ]) {
+    assert.equal(parseOpenCodeGoHydration(script(weeklyRecord, monthlyRecord, ambiguousLine), now), null)
+  }
+  assert.equal(parseOpenCodeGoHydration(
+    script(weeklyRecord, monthlyRecord, "const text=`before ${answer}`", rollingRecord),
+    now,
+  ), null)
+  assert.equal(parseOpenCodeGoHydration(
+    script(weeklyRecord, monthlyRecord, "const text=`before ${answer}`", `'${rollingRecord};';`),
+    now,
+  ), null)
+})
+
+test("OpenCode Go parser validates suffixes against the real script-body remainder", () => {
+  const source = fixtureScript.replace(rollingRecord, `${rollingRecord}${" ".repeat(64)}x`)
+  assert.equal(parseOpenCodeGoHydration(source, now), null)
+})
+
+test("OpenCode Go parser enforces exact HTML and record code-unit boundaries", () => {
+  const htmlAtLimit = fixtureScript.padEnd(1_000_000, " ")
+  assert.equal(htmlAtLimit.length, 1_000_000)
+  assert.deepEqual(parseOpenCodeGoHydration(htmlAtLimit, now), expectedQuota)
+  assert.equal(parseOpenCodeGoHydration(`${htmlAtLimit} `, now), null)
+
+  const objectAtLength = (length) => {
+    const prefix = '{status:"ok",resetInSec:0.'
+    const suffix = ",usagePercent:12.5}"
+    const zeros = length - prefix.length - suffix.length
+    assert.ok(zeros > 0)
+    return `${prefix}${"0".repeat(zeros)}${suffix}`
+  }
+  const exactObject = objectAtLength(4_096)
+  const oversizedObject = objectAtLength(4_097)
+  assert.equal(exactObject.length, 4_096)
+  assert.equal(oversizedObject.length, 4_097)
+  assert.deepEqual(
+    parseOpenCodeGoHydration(fixtureScript.replace(rollingObject, exactObject), now),
+    { ...expectedQuota, fiveHour: { usedPct: 12.5, remainingPct: 87.5, resetEpoch: now } },
+  )
+  assert.equal(parseOpenCodeGoHydration(fixtureScript.replace(rollingObject, oversizedObject), now), null)
 })
 
 const config = normalizeOpenCodeGoConfig(sentinel)
