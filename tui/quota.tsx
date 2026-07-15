@@ -6,6 +6,7 @@ import type { PanelItem, PanelModel, PanelStatus } from "./presentation/types.js
 import { sortByOrderThenId } from "./presentation/types.js"
 import {
   createOpenAiProvider,
+  createOpenCodeGoProvider,
   createZaiProvider,
   normalizeOpenCodeGoConfig,
   type OpenCodeGoConfig,
@@ -74,6 +75,8 @@ const ADAPTER_ID_BY_PROVIDER_ID: Record<string, string> = {
   codex: "openai",
   chatgpt: "openai",
   opencode: "openai",
+  "opencode-go": "opencode-go",
+  "opencode-go-subscription": "opencode-go",
 }
 
 type SessionModelMessage = {
@@ -354,6 +357,10 @@ const tui: TuiPlugin = async (api, rawOptions) => {
   api.lifecycle.onDispose(() => providers.forEach((provider) => provider.dispose()))
   providers.push(createZaiProvider(api, { refreshIntervalMs: options.refreshIntervalMs }))
   providers.push(createOpenAiProvider(api, { refreshIntervalMs: options.refreshIntervalMs }))
+  providers.push(createOpenCodeGoProvider(api, {
+    config: options.openCodeGo,
+    refreshIntervalMs: options.refreshIntervalMs,
+  }))
   const selection = createQuotaSelection(api, providers)
   const model = createMemo(() => composeQuotaPanel(selection.selectedProviderID(), providers, options))
   const theme = () => api.theme.current as PanelTheme

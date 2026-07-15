@@ -16,7 +16,17 @@ export type OpenAiHomeQuotaSummary = {
   secondaryPct?: number
 }
 
-export type HomeQuotaSummary = ZaiHomeQuotaSummary | OpenAiHomeQuotaSummary
+export type OpenCodeGoHomeQuotaSummary = {
+  provider: "OpenCode GO"
+  plan: "Subscription"
+  primaryPct: number
+  secondaryPct: number
+}
+
+export type HomeQuotaSummary =
+  | ZaiHomeQuotaSummary
+  | OpenAiHomeQuotaSummary
+  | OpenCodeGoHomeQuotaSummary
 
 export type ProviderFreshness = "loading" | "ready" | "stale" | "unavailable"
 

@@ -64,8 +64,12 @@ test("shared facade exports computation without plugin registration or JSX", () 
   assert.ok(shared, `missing ${sharedPath}`)
   assert.match(shared, /createZaiProvider/)
   assert.match(shared, /createOpenAiProvider/)
+  assert.match(shared, /createOpenCodeGoProvider/)
+  assert.match(shared, /OpenCodeGoHomeQuotaSummary/)
   assert.match(shared, /computeTokenReport/)
   assert.doesNotMatch(shared, /@opentui\/|slots\.register|export\s+default|<[a-z][^>]*>/i)
+  assert.doesNotMatch(source("tui/quota.tsx"), /from ["']\.\/providers\/opencode-go/)
+  assert.doesNotMatch(source("tui/home.tsx"), /opencode-go/)
 })
 
 test("token computation returns semantic data and presentation preserves markdown", async () => {

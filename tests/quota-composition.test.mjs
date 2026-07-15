@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { resolve } from "node:path"
 import test, { after } from "node:test"
@@ -8,6 +8,8 @@ const sentinel = {
   workspaceId: "wrk_TESTWORKSPACE",
   workspaceToken: "TOKEN_TEST_ONLY_DO_NOT_USE",
 }
+const openCodeGoManifest = JSON.parse(readFileSync("tests/fixtures/opencode-go/request-manifest.json", "utf8"))
+const openCodeGoHtml = readFileSync("tests/fixtures/opencode-go/success.html", "utf8")
 const originalProviderEnvironment = {
   HOME: process.env.HOME,
   XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
@@ -67,11 +69,34 @@ function provider({
       groups: groups ?? [{ id: `${id}:quota`, order: 10, items }],
     }),
     home: () => typeof primaryPct === "number" ? { provider: title, plan: "Plan", primaryPct, secondaryPct } : null,
-    freshness: () => freshness,
+    freshness: typeof freshness === "function" ? freshness : () => freshness,
     refresh: onRefresh,
     setSessionID: () => {},
     dispose: onDispose,
   }
+}
+
+function openCodeGoProvider({ freshness = () => "ready" } = {}) {
+  const adapter = provider({
+    id: "opencode-go",
+    title: "OpenCode GO",
+    order: 130,
+    freshness,
+    primaryPct: 87.5,
+    secondaryPct: 66,
+    windows: ["5H", "7D", "1M"],
+  })
+  adapter.refreshCalls = 0
+  adapter.refresh = async () => {
+    adapter.refreshCalls += 1
+  }
+  adapter.home = () => ({
+    provider: "OpenCode GO",
+    plan: "Subscription",
+    primaryPct: 87.5,
+    secondaryPct: 66,
+  })
+  return adapter
 }
 
 function headers(group) {
@@ -189,6 +214,17 @@ async function aggregatePanel(t, options, observations = { intervals: [], reques
         }),
       }
     }
+    if (url === openCodeGoManifest.request.url) {
+      assert.deepEqual(requestOptions, {
+        method: "GET",
+        headers: openCodeGoManifest.request.headers,
+        redirect: "manual",
+        signal: requestOptions.signal,
+      })
+      assert.equal(requestOptions.signal instanceof AbortSignal, true)
+      observations.requests.push({ provider: "opencode-go", authorization: undefined })
+      return new Response(openCodeGoHtml, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } })
+    }
     throw new Error(`Unexpected quota URL: ${url}`)
   }
   globalThis.React = { createElement: (component, props) => ({ component, props }) }
@@ -208,6 +244,11 @@ async function aggregatePanel(t, options, observations = { intervals: [], reques
     try {
       for (const dispose of cleanup.reverse()) await dispose()
       await flushEffects()
+      assert.equal(
+        observations.intervals.filter((timer) => timer.active && timer.delay === 2_500).length,
+        0,
+        "provider polling must be disposed through the registered lifecycle callback",
+      )
     } finally {
       globalThis.fetch = originalFetch
       globalThis.setInterval = originalSetInterval
@@ -248,12 +289,19 @@ async function aggregatePanel(t, options, observations = { intervals: [], reques
   return element.props.model()
 }
 
-test("forwards normalized refreshIntervalSeconds to both providers", async (t) => {
+test("OpenCode Go integration constructs quota-only polling with normalized options", async (t) => {
   const observations = { intervals: [], requests: [] }
-  await aggregatePanel(t, { refreshIntervalSeconds: 2.5 }, observations)
+  await aggregatePanel(t, {
+    refreshIntervalSeconds: 2.5,
+    quota: { opencodego: sentinel },
+  }, observations)
   const activePolls = observations.intervals.filter((timer) => timer.active && timer.delay === 2_500)
 
-  assert.equal(activePolls.length, 2)
+  assert.deepEqual(observations.requests.find((request) => request.provider === "opencode-go"), {
+    provider: "opencode-go",
+    authorization: undefined,
+  })
+  assert.equal(activePolls.length, 3)
   const polledProviders = []
   for (const poll of activePolls) {
     const requestCount = observations.requests.length
@@ -265,9 +313,10 @@ test("forwards normalized refreshIntervalSeconds to both providers", async (t) =
   }
   assert.deepEqual(polledProviders.sort((left, right) => left.provider.localeCompare(right.provider)), [
     { provider: "openai", authorization: "Bearer test-openai-token" },
+    { provider: "opencode-go", authorization: undefined },
     { provider: "zai", authorization: "Bearer test-zai-key" },
   ])
-  assert.equal(observations.intervals.filter((timer) => timer.active && timer.delay === 2_500).length, 2)
+  assert.equal(observations.intervals.filter((timer) => timer.active && timer.delay === 2_500).length, 3)
 })
 
 test("keeps the selected supported provider first while loading or unavailable", () => {
@@ -431,6 +480,15 @@ test("maps native credential provider IDs to their aggregate adapters", () => {
   assert.equal(selectedQuotaProviderID([{ id: "codex" }], [zai, openai]), "openai")
 })
 
+test("OpenCode Go integration resolves both runtime aliases", () => {
+  const providers = [provider({ id: "opencode-go", title: "OpenCode GO", order: 130, primaryPct: 87.5, secondaryPct: 66 })]
+  assert.equal(selectedQuotaProviderID([{ id: "opencode-go" }], providers), "opencode-go")
+  assert.equal(selectedQuotaProviderID([{ id: "opencode-go-subscription" }], providers), "opencode-go")
+  assert.equal(selectedSessionQuotaProviderID([
+    { role: "user", model: { providerID: "opencode-go-subscription" } },
+  ], providers), "opencode-go")
+})
+
 test("resolves the newest supported user model and falls back without usable metadata", () => {
   const zai = provider({ id: "zai", title: "Z.AI", order: 110 })
   const openai = provider({ id: "openai", title: "OpenAI", order: 120 })
@@ -447,37 +505,58 @@ test("resolves the newest supported user model and falls back without usable met
   ], providers, "zai"), "zai")
 })
 
-test("reacts to host messages without refreshing repeated or same-provider sidebar selections", async () => {
+test("OpenCode Go integration reacts to active-session selection and preserves available providers", async () => {
   const refreshes = []
   const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 60, onRefresh: async () => refreshes.push("zai") })
   const openai = provider({ id: "openai", title: "OpenAI", order: 120, primaryPct: 70, onRefresh: async () => refreshes.push("openai") })
+  let openCodeGoFreshness = "ready"
+  const openCodeGo = openCodeGoProvider({ freshness: () => openCodeGoFreshness })
   const host = createQuotaSelectionHost({
     provider: [{ id: "zai-coding-plan" }],
     messages: {
-      "session-1": [{ id: "z1", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } }],
+      "session-1": [
+        { id: "z1", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } },
+        { id: "g1", role: "user", model: { providerID: "opencode-go-subscription", modelID: "go" } },
+      ],
     },
   })
 
-  const selection = mountQuotaSelection(host.api, [zai, openai])
+  const providers = [zai, openai, openCodeGo]
+  const selection = mountQuotaSelection(host.api, providers)
 
   try {
     selection.renderSidebar("session-1")
     await flushEffects()
+    assert.equal(openCodeGo.refreshCalls, 1)
+    let model = composeQuotaPanel(selection.selectedProviderID(), providers)
+    assert.equal(model.groups[0].id, "opencode-go:quota")
+    assert.equal(model.groups[1].header.title, "Other providers")
+
     selection.renderSidebar("session-1")
     await flushEffects()
     host.setMessages("session-1", [
-      { id: "z2", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7-flash" } },
+      { id: "g2", role: "user", model: { providerID: "opencode-go", modelID: "go-fast" } },
     ])
     await flushEffects()
+    assert.equal(openCodeGo.refreshCalls, 1)
     host.setMessages("session-1", [
       { id: "o1", role: "user", model: { providerID: "openai", modelID: "gpt-5" } },
     ])
     await flushEffects()
 
-    assert.deepEqual(refreshes, ["zai", "openai"])
-    const model = composeQuotaPanel(selection.selectedProviderID(), [zai, openai])
+    assert.deepEqual(refreshes, ["openai"])
+    model = composeQuotaPanel(selection.selectedProviderID(), providers)
     assert.equal(model.groups[0].id, "openai:quota")
     assert.equal(model.groups[1].header.title, "Other providers")
+    assert.ok(headers(model.groups[1]).includes("OpenCode GO"))
+
+    openCodeGoFreshness = "stale"
+    model = composeQuotaPanel(selection.selectedProviderID(), providers)
+    assert.ok(headers(model.groups[1]).includes("OpenCode GO"))
+
+    openCodeGoFreshness = "unavailable"
+    model = composeQuotaPanel(selection.selectedProviderID(), providers)
+    assert.equal(headers(model.groups[1]).includes("OpenCode GO"), false)
     assert.equal(JSON.stringify(model).includes("gpt-5"), false)
   } finally {
     await host.dispose()

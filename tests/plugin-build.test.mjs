@@ -125,6 +125,15 @@ test("shared owns computation while loadable entries contain presentation and re
   }
 })
 
+test("artifacts expose OpenCode Go only through shared computation", async () => {
+  assert.deepEqual(Object.keys(buildResults).sort(), ["quota", "shared", "tokens"])
+  assert.equal(Object.keys(buildResults.shared.metafile.inputs).some((path) => path.endsWith("/tui/providers/opencode-go.ts") || path === "tui/providers/opencode-go.ts"), true)
+  assert.equal(Object.keys(buildResults.quota.metafile.inputs).some((path) => path.endsWith("tui/providers/opencode-go.ts")), false)
+  assert.equal(Object.keys(buildResults.tokens.metafile.inputs).some((path) => path.endsWith("tui/providers/opencode-go.ts")), false)
+  const sharedModule = await import(`${pathToFileURL(resolve(root, "dist/opencode-tools-shared.js")).href}?opencode-go`)
+  assert.equal(typeof sharedModule.createOpenCodeGoProvider, "function")
+})
+
 test("all host and built-in dependencies remain external", () => {
   const builtins = new Set(builtinModules.flatMap((name) => [name, name.replace(/^node:/, "")]))
 

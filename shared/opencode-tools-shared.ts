@@ -1,10 +1,28 @@
 export { createOpenAiProvider } from "../tui/providers/openai.js";
-export { normalizeOpenCodeGoConfig } from "../tui/providers/opencode-go.js";
-export type { OpenCodeGoConfig, OpenCodeGoOptions } from "../tui/providers/opencode-go.js";
+export {
+  createOpenCodeGoProvider,
+  fetchOpenCodeGoQuota,
+  mapOpenCodeGoPanelState,
+  normalizeOpenCodeGoConfig,
+  openCodeGoHomeQuotaSummary,
+  parseOpenCodeGoHydration,
+} from "../tui/providers/opencode-go.js";
+export type {
+  OpenCodeGoConfig,
+  OpenCodeGoFetchDependencies,
+  OpenCodeGoFetchResult,
+  OpenCodeGoOptions,
+  OpenCodeGoPanelPhase,
+  OpenCodeGoPanelState,
+  OpenCodeGoProviderOptions,
+  OpenCodeGoQuotaData,
+  OpenCodeGoWindow,
+} from "../tui/providers/opencode-go.js";
 export { createZaiProvider } from "../tui/providers/zai.js";
 export type {
   HomeQuotaSummary,
   OpenAiHomeQuotaSummary,
+  OpenCodeGoHomeQuotaSummary,
   ProviderFreshness,
   QuotaProviderAdapter,
   ZaiHomeQuotaSummary,

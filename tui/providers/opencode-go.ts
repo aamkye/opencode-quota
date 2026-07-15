@@ -680,7 +680,9 @@ export function createOpenCodeGoProvider(
       id: "opencode-go",
       order: 130,
       panel: () => mapOpenCodeGoPanelState({ phase: phase(), data: data(), now: now() }),
-      home: () => null,
+      home: () => (phase() === "ready" || phase() === "stale") && data()
+        ? openCodeGoHomeQuotaSummary(data()!)
+        : null,
       freshness: (): ProviderFreshness => {
         const current = phase()
         return current === "configuration-required" ? "unavailable" : current
