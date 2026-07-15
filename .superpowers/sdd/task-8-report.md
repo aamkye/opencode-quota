@@ -24,7 +24,7 @@ All exit codes below are from this verification run.
 1. Comet ambient-resume probe, initial malformed invocation:
 
    ```bash
-   printf '%s' '{"utterance":"Execute Task 8 verification and deployment as a fresh subagent for the active Comet task; do not modify workflow state.","cwd":"/Users/aam/Projects/priv/opencode-quota"}' | node "/Users/aam/.config/opencode/skills/comet/scripts/comet-resume-probe.mjs" probe --stdin
+   printf '%s' '{"utterance":"Execute Task 8 verification and deployment as a fresh subagent for the active Comet task; do not modify workflow state.","cwd":"<project-root>"}' | node "/Users/aam/.config/opencode/skills/comet/scripts/comet-resume-probe.mjs" probe --stdin
    ```
 
    Exit code: `1`. Output: `Invalid CometResumeProbeInput: schema_version must
@@ -187,7 +187,7 @@ All exit codes below are from this verification run.
 
      dist/plugins/opencode-tools-tokens.js  11.7kb
    Done in 27ms
-   Deployed opencode-tools plugins to /Users/aam/Projects/priv/opencode-quota/.opencode
+   Deployed opencode-tools plugins to <project-root>/.opencode
    ```
 
    The same non-fatal npm `allow-scripts` warning appeared. Inspection of

@@ -1648,11 +1648,11 @@ Expected: `git diff --check` prints nothing and exits `0`. `git status --short` 
 - Consumes: `PanelTheme.textMuted` in the mounted group-divider path.
 - Produces: both `---` divider ends in the muted theme color without changing the flexible middle or full-width panel dividers.
 
-- [ ] **Step 1: Add a focused failing mounted divider-color assertion**
+- [x] **Step 1: Add a focused failing mounted divider-color assertion**
 
 Extend the existing mounted group-divider test to assert that both `---` text elements use `#888888`. Cover both a divider between panel groups and a semantic divider item without changing their existing layout assertions.
 
-- [ ] **Step 2: Run the focused mounted test and verify RED**
+- [x] **Step 2: Run the focused divider test and verify RED**
 
 ```bash
 node tests/compile-presentation.mjs && node --test tests/presentation-mounted.test.mjs
@@ -1660,11 +1660,11 @@ node tests/compile-presentation.mjs && node --test tests/presentation-mounted.te
 
 Expected: FAIL because `GroupDivider` currently renders both `---` ends without `fg`.
 
-- [ ] **Step 3: Pass the theme into group dividers and apply `textMuted`**
+- [x] **Step 3: Pass the theme into group dividers and apply `textMuted`**
 
 Update `GroupDivider` to consume the renderer theme and set `fg={theme().textMuted}` on both `---` text elements. Pass the theme from both call sites: semantic divider items in `MountedItem` and inter-group dividers in `PanelRenderer`. Do not color full-width border dividers or alter divider sizing.
 
-- [ ] **Step 4: Run focused tests and typechecking to verify GREEN**
+- [x] **Step 4: Run divider focused tests and typechecking to verify GREEN**
 
 ```bash
 node tests/compile-presentation.mjs && node --test tests/presentation-mounted.test.mjs tests/presentation-render-model.test.mjs && npm run typecheck
@@ -1672,14 +1672,14 @@ node tests/compile-presentation.mjs && node --test tests/presentation-mounted.te
 
 Expected: all focused tests PASS and TypeScript exits `0`.
 
-- [ ] **Step 5: Commit the muted divider correction**
+- [x] **Step 5: Commit the muted divider correction**
 
 ```bash
 git add tui/presentation/renderer.tsx tests/presentation-mounted.test.mjs
 git commit -m "fix(tui): dim quota dividers"
 ```
 
-- [ ] **Step 6: Rerun the full suite, build, and local deployment**
+- [x] **Step 6: Rerun the full suite, build, and local deployment**
 
 ```bash
 npm test && npm run build && node --test tests/plugin-build.test.mjs tests/plugin-deploy.test.mjs && npm run deploy:local

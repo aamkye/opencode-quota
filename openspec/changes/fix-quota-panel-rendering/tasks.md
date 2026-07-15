@@ -12,7 +12,7 @@
 - [x] 2.3 Normalize progress color options and apply semantic statuses consistently to bars, percentages, and collapsed summaries.
 - [x] 2.4 Pass the normalized polling interval into provider adapters and reactively resolve, refresh, and prioritize the current session model's provider.
 - [x] 2.5 Render reset timers and standalone tool quantities with muted text while preserving explicit semantic status overrides.
-- [ ] 2.6 Render short group-divider marks with the muted theme color.
+- [x] 2.6 Render short group-divider marks with the muted theme color.
 
 ## 3. Verify and Deploy
 
