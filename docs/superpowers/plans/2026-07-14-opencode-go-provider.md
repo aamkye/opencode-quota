@@ -2218,7 +2218,7 @@ extended, semi-collapsed, and collapsed quota layouts remain within 37 columns
 no terminal output, report, screenshot, capture, or shell history contains either credential
 ```
 
-- [ ] **Step 5: Remove live values and confirm repository safety**
+- [x] **Step 5: Remove live values and confirm repository safety**
 
 The credential owner removes the live `opencodego` object or restores the prior ignored local configuration in an editor. Rotate the console session if it was exposed anywhere outside that ignored file.
 
@@ -2230,21 +2230,21 @@ Expected: no local config, full HTML, HAR, screenshot, log, or secret-bearing pa
 
 ## Final Acceptance Checklist
 
-- [ ] Completed Task 1 remains unchanged, passed before production transport/parser work, and contains only minimal synthetic page-contract data.
-- [ ] All 13 OpenSpec checkboxes map across Tasks 1-10; OpenSpec 1.3 is partial in Task 3 and complete in Task 4, while OpenSpec 1.4 is partial in Task 5 and complete in Task 6.
-- [ ] Every implementation task records an exact RED failure, adds only the minimal paired implementation, runs exact GREEN gates, and commits no failing test or build state.
-- [ ] Native configuration is exactly `quota.opencodego.{workspaceId, workspaceToken}` and no redirectable origin, URL, header, or cookie option exists.
-- [ ] Transport is fixed GET HTML with `Accept`, `auth` cookie, manual redirects, and one 20-second abort timeout per request.
-- [ ] Task 1 fixture lines remain exactly `rollingUsage:$R[0]=...`, `weeklyUsage:$R[1]=...`, and `monthlyUsage:$R[2]=...` in order, with only `status:"ok"` and synthetic numeric fields.
-- [ ] Production parsing uses one bounded HTML lexical pass and bounded per-script JavaScript lexical passes; only actual script bodies and unambiguous code-state `${name}:$R` candidates participate in the exactly-one `<name>:$R[digits]=` and literal `{status:"ok",resetInSec:<number>,usagePercent:<number>}` checks.
-- [ ] HTML comments, quoted attributes, visible/raw-text elements, JavaScript strings/templates/comments, truncated suffix slices, malformed/unclosed constructs, malformed/duplicate markers, overflow, and captures over 4,096 code units all reject or remain ignored as specified; exact 1,000,000/1,000,001 HTML and 4,096/4,097 record boundaries are covered.
-- [ ] Candidate-free division, regex, and template-expression scripts do not invalidate quota markers in another actual script body; ambiguous slash-line or post-`${` remainders reject only when bounded `hasMarkerCandidate` finds one of the three fixed prefixes, with same-line post-division markers documented as a scoped false-negative rejection.
-- [ ] No `.*`, broad `[^}]+`, DOM or parser dependency, script execution, object-literal JSONification, general object conversion, visible-text scraping, local estimate, partial snapshot, or credential-bearing diagnostic exists.
-- [ ] `/Users/aam/.graphify/repos/ridho9/opencode-go-usage/index.js:137-149` remains evidence only and is neither imported nor copied into repository artifacts.
-- [ ] OpenCode Go displays `OpenCode GO:`, 5H, 7D, and 1M in order; compact summary contains only 5H/7D.
-- [ ] Authentication, protocol drift, transient failure, stale expiry, reset boundaries, request serialization, one-second countdowns, and disposal match the canonical spec.
-- [ ] Both runtime aliases select and refresh one quota-sidebar adapter while other ready/stale providers remain visible.
-- [ ] Renderer, 37-column max-width behavior, generic provider interface, legacy home construction, generic polling architecture, and three-artifact deployment remain unchanged.
-- [ ] Focused tests, typecheck, complete suite, production build, deployment tests, local parity, and live checks pass.
-- [ ] No real workspace ID, token, usage/reset value, full HTML, or temporary capture is committed, printed, or persisted.
-- [ ] `task-7-report.md`, `task-9-report.md`, and `task-10-report.md` are never restored, staged, edited, or committed.
+- [x] Completed Task 1 remains unchanged, passed before production transport/parser work, and contains only minimal synthetic page-contract data.
+- [x] All 13 OpenSpec checkboxes map across Tasks 1-10; OpenSpec 1.3 is partial in Task 3 and complete in Task 4, while OpenSpec 1.4 is partial in Task 5 and complete in Task 6.
+- [x] Every implementation task records an exact RED failure, adds only the minimal paired implementation, runs exact GREEN gates, and commits no failing test or build state.
+- [x] Native configuration is exactly `quota.opencodego.{workspaceId, workspaceToken}` and no redirectable origin, URL, header, or cookie option exists.
+- [x] Transport is fixed GET HTML with `Accept`, `auth` cookie, manual redirects, and one 20-second abort timeout per request.
+- [x] Task 1 fixture lines remain exactly `rollingUsage:$R[0]=...`, `weeklyUsage:$R[1]=...`, and `monthlyUsage:$R[2]=...` in order, with only `status:"ok"` and synthetic numeric fields.
+- [x] Production parsing uses one bounded HTML lexical pass and bounded per-script JavaScript lexical passes; only actual script bodies and unambiguous code-state `${name}:$R` candidates participate in the exactly-one `<name>:$R[digits]=` and literal `{status:"ok",resetInSec:<number>,usagePercent:<number>}` checks.
+- [x] HTML comments, quoted attributes, visible/raw-text elements, JavaScript strings/templates/comments, truncated suffix slices, malformed/unclosed constructs, malformed/duplicate markers, overflow, and captures over 4,096 code units all reject or remain ignored as specified; exact 1,000,000/1,000,001 HTML and 4,096/4,097 record boundaries are covered.
+- [x] Candidate-free division, regex, and template-expression scripts do not invalidate quota markers in another actual script body; ambiguous slash-line or post-`${` remainders reject only when bounded `hasMarkerCandidate` finds one of the three fixed prefixes, with same-line post-division markers documented as a scoped false-negative rejection.
+- [x] No `.*`, broad `[^}]+`, DOM or parser dependency, script execution, object-literal JSONification, general object conversion, visible-text scraping, local estimate, partial snapshot, or credential-bearing diagnostic exists.
+- [x] `/Users/aam/.graphify/repos/ridho9/opencode-go-usage/index.js:137-149` remains evidence only and is neither imported nor copied into repository artifacts.
+- [x] OpenCode Go displays `OpenCode GO:`, 5H, 7D, and 1M in order; compact summary contains only 5H/7D.
+- [x] Authentication, protocol drift, transient failure, stale expiry, reset boundaries, request serialization, one-second countdowns, and disposal match the canonical spec.
+- [x] Both runtime aliases select and refresh one quota-sidebar adapter while other ready/stale providers remain visible.
+- [x] Renderer, 37-column max-width behavior, generic provider interface, legacy home construction, generic polling architecture, and three-artifact deployment remain unchanged.
+- [x] Focused tests, typecheck, complete suite, production build, deployment tests, local parity, and live checks pass.
+- [x] No real workspace ID, token, usage/reset value, full HTML, or temporary capture is committed, printed, or persisted.
+- [x] `task-7-report.md`, `task-9-report.md`, and `task-10-report.md` are never restored, staged, edited, or committed.
