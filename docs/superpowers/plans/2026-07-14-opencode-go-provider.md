@@ -1442,7 +1442,7 @@ git commit -m "feat(quota): map OpenCode Go windows"
 - Produces: `OpenCodeGoProviderOptions` and `createOpenCodeGoProvider(api: TuiPluginApi, options: OpenCodeGoProviderOptions): QuotaProviderAdapter`.
 - Owns lifecycle behavior only. Task 6 owns quota construction, aliases, selection, shared type exports, and build boundary tests.
 
-- [ ] **Step 1: Add the deterministic fake-clock lifecycle harness**
+- [x] **Step 1: Add the deterministic fake-clock lifecycle harness**
 
 Replace Task 4's provider-module destructuring with the expanded binding below. Add a fake clock whose timeout/interval records are `{ active, callback, delay, kind, unref() {} }`, replaces `Date.now`, `setTimeout`, `clearTimeout`, `setInterval`, and `clearInterval`, and exposes:
 
@@ -1488,7 +1488,7 @@ createOpenCodeGoProvider({}, {
 
 Each test registers `t.after()` that disposes the adapter, settles deferred responses, restores globals, and asserts no fake timer remains active.
 
-- [ ] **Step 2: Add focused lifecycle tests**
+- [x] **Step 2: Add focused lifecycle tests**
 
 Add tests prefixed `OpenCode Go lifecycle` for these exact transitions and timer counts:
 
@@ -1532,13 +1532,13 @@ test("OpenCode Go lifecycle sends no request without valid configuration", async
 
 For serialization, retain the three returned promises and assert strict identity. For boundary serialization, begin a request before `expectedQuota.fiveHour.resetEpoch`, fire that boundary, resolve the request, await two microtask turns, and assert the request count advances from 1 to exactly 2. For stale expiry, advance the fake wall clock by 600,000 then 1 milliseconds and invoke the 1,000ms tick after each advance.
 
-- [ ] **Step 3: Run the exact lifecycle RED gate**
+- [x] **Step 3: Run the exact lifecycle RED gate**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go lifecycle" tests/provider-opencode-go.test.mjs`
 
 Expected: FAIL in the focused test callbacks with `TypeError: createOpenCodeGoProvider is not a function`. Dynamic-import object destructuring binds the missing constructor to `undefined`; importing the compiled module still succeeds.
 
-- [ ] **Step 4: Add lifecycle imports, contracts, and scheduling constants**
+- [x] **Step 4: Add lifecycle imports, contracts, and scheduling constants**
 
 At the top of `tui/providers/opencode-go.ts`, add:
 
@@ -1558,7 +1558,7 @@ export type OpenCodeGoProviderOptions = QuotaProviderOptions & {
 }
 ```
 
-- [ ] **Step 5: Implement one serialized request and all result transitions**
+- [x] **Step 5: Implement one serialized request and all result transitions**
 
 Implement `createOpenCodeGoProvider` as one `createRoot`. Use signals `data`, `phase`, `lastSuccessAt`, and `now`; mutable fields `disposed`, `refreshInFlight`, `refreshStartedAt`, `pendingBoundary`, `refreshedBoundary`, `activeController`, and `boundaryTimer`; and these exact result transitions:
 
@@ -1626,7 +1626,7 @@ const refresh = (): Promise<void> => {
 
 Define `unref(timer)` as `(timer as { unref?: () => void }).unref?.()` without a leading empty statement.
 
-- [ ] **Step 6: Implement poll, tick, nearest-boundary, and final disposal behavior**
+- [x] **Step 6: Implement poll, tick, nearest-boundary, and final disposal behavior**
 
 Normalize `options.refreshIntervalMs` to a finite positive value or 10,000. For valid configuration only, create one poll interval and one 1,000ms tick. The tick sets `now` and, only when `current - lastSuccessAt() > STALE_MAX_MS`, clears stale data, sets `unavailable`, and clears the boundary timer.
 
@@ -1669,7 +1669,7 @@ return {
 
 The temporary `home: () => null` keeps Task 5 type-correct before `OpenCodeGoHomeQuotaSummary` joins the shared union. Task 6 owns that type and replaces this one line with the ready/stale summary accessor during integration. Register `onCleanup` to clear poll, tick, and boundary timers. Every asynchronous continuation checks `disposed` before state mutation, timer creation, or queued work. Do not add exhausted backoff or refactor generic polling.
 
-- [ ] **Step 7: Run the exact lifecycle GREEN gates**
+- [x] **Step 7: Run the exact lifecycle GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go lifecycle" tests/provider-opencode-go.test.mjs`
 
@@ -1679,7 +1679,7 @@ Run: `npm run typecheck`
 
 Expected: exit 0 with no diagnostics.
 
-- [ ] **Step 8: Commit the GREEN lifecycle unit atomically**
+- [x] **Step 8: Commit the GREEN lifecycle unit atomically**
 
 ```bash
 git status --short &&
