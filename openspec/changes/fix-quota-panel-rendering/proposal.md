@@ -12,11 +12,12 @@ The deployed quota panel renders against a fixed 80-cell assumption and loses se
 
 ## What Changes
 
-- Make quota rows responsive to the actual parent layout, with the bar beginning after the three-cell label and the percentage fixed at the right edge.
+- Make quota rows and mounted compact tables responsive to the actual parent layout, with the bar beginning after the three-cell label and the percentage fixed at the right edge.
 - Restore panel-header spacing, the divider below `Quota`, indented reset rows, collapsed summaries, and right-aligned provider status.
 - Keep each provider's auxiliary rows after its quota windows and derive OpenAI window labels from API durations.
 - Add native TUI options for enabling progress colors and configuring warning/error percentage thresholds.
 - Add a configurable provider polling interval with a 10-second default, and refresh/reorder quota providers when the active session model changes.
+- Sort and partition each provider group independently, and make OpenAI/Z.AI credential replacement and disposal safe for active requests.
 
 ## Capabilities
 

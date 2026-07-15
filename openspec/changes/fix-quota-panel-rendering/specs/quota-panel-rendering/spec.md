@@ -13,6 +13,12 @@ The quota panel SHALL allocate mounted rows from the actual parent width, SHALL 
 - **THEN** the bar shrinks before the label or percentage is removed
 - **AND** no precomputed 80-cell row overflows the parent
 
+#### Scenario: Constrained compact table
+- **WHEN** a mounted compact table renders in a constrained sidebar
+- **THEN** each row stays within the actual parent width
+- **AND** its cells shrink and clip without wrapping
+- **AND** production table layout does not use the deterministic 80-cell fallback allocation
+
 ### Requirement: Standard panel framing
 The quota panel SHALL render a spaced collapse marker, a divider immediately below the `Quota` title, muted short group dividers, indented muted reset details without repeating the window label, and the active provider summary at the right edge when collapsed.
 
@@ -63,6 +69,12 @@ The quota panel SHALL preserve provider window groups, derive OpenAI window labe
 - **AND** tool usage details remain below the quota windows
 - **AND** tool used and total quantities use the muted text color
 
+#### Scenario: Provider groups and items arrive out of physical order
+- **WHEN** a provider model contains multiple groups or items whose array order differs from semantic `order`
+- **THEN** each provider group is sorted and partitioned independently
+- **AND** reset, quantity, text, and table details remain attached to the progress window in their own group
+- **AND** one group's preamble or details do not attach to another group's window
+
 ### Requirement: Configurable provider refresh
 The quota panel SHALL poll provider APIs at a configurable interval and SHALL default that interval to 10 seconds.
 
@@ -83,6 +95,29 @@ The quota panel SHALL poll provider APIs at a configurable interval and SHALL de
 #### Scenario: Invalid polling configuration
 - **WHEN** the refresh interval is absent, non-numeric, or non-positive
 - **THEN** provider polling falls back to 10 seconds
+
+### Requirement: Credential-safe provider lifecycle
+The OpenAI and Z.AI quota adapters SHALL prevent replaced-credential requests from publishing current data and SHALL abort active requests when their provider lifecycle ends.
+
+#### Scenario: Credentials change while quota is visible
+- **WHEN** a replacement credential arrives while a request is active
+- **THEN** the existing quota remains visible with `stale` status
+- **AND** the active old-credential request is aborted
+- **AND** its result cannot publish current provider state
+- **AND** exactly one request starts for the replacement credential
+- **AND** a successful replacement response publishes new quota with ready status
+- **AND** a failed replacement response leaves the prior quota stale
+
+#### Scenario: Credentials are removed
+- **WHEN** the current provider credential is removed
+- **THEN** prior account quota is cleared
+- **AND** the provider becomes unavailable
+
+#### Scenario: Provider is disposed during a request
+- **WHEN** the provider lifecycle is disposed while a request is unresolved
+- **THEN** the active request is aborted immediately
+- **AND** its timeout is cleared
+- **AND** late fulfillment or rejection cannot mutate provider state
 
 ### Requirement: Active provider prioritization
 The quota panel SHALL use the current sidebar session's latest selected model to prioritize and refresh its quota provider.
