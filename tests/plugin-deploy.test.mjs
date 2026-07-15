@@ -8,7 +8,15 @@ import test, { after, before } from "node:test"
 const projectRoot = resolve(import.meta.dirname, "..")
 const obsoleteNamespace = ["opencode", "quota"].join("-")
 const rootOptions = { otherProviders: { percentageMode: "remaining", sortDirection: "asc" } }
-const localOptions = { otherProviders: { percentageMode: "used", sortDirection: "asc" } }
+const localOptions = {
+  otherProviders: { percentageMode: "used", sortDirection: "asc" },
+  quota: {
+    opencodego: {
+      workspaceId: "wrk_TESTWORKSPACE",
+      workspaceToken: "TOKEN_TEST_ONLY_DO_NOT_USE",
+    },
+  },
+}
 const globalOptions = { otherProviders: { percentageMode: "remaining", sortDirection: "desc" } }
 const temporaryRoots = []
 let deployPlugins
@@ -84,6 +92,15 @@ test("local deployment builds, cleans managed entries, and is idempotent", async
     ["file:///tmp/unrelated/tokens.ts?version=1", { preserve: "tokens" }],
     ["./opencode-tools-quota.js", localOptions],
   ])
+  assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
+    otherProviders: { percentageMode: "used", sortDirection: "asc" },
+    quota: {
+      opencodego: {
+        workspaceId: "wrk_TESTWORKSPACE",
+        workspaceToken: "TOKEN_TEST_ONLY_DO_NOT_USE",
+      },
+    },
+  })
   assert.equal(config.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-quota.js").length, 1)
   assert.ok(config.plugin.every((entry) => !/^@aamkye\/opencode-(?:tools|quota)/.test(Array.isArray(entry) ? entry[0] : entry)))
 

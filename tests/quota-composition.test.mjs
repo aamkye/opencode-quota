@@ -22,7 +22,7 @@ process.env.XDG_DATA_HOME = isolatedProviderHome
 
 const { default: quotaPlugin, composeQuotaPanel, normalizeQuotaOptions, selectedQuotaProviderID, selectedSessionQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
 const { createQuotaSelectionHost, mountQuotaSelection } = await import("../.tmp-test/quota-selection.mjs")
-const { normalizePanelModel } = await import("../.tmp-test/presentation-renderer.mjs")
+const { normalizePanelModel, renderPanelLayout } = await import("../.tmp-test/presentation-renderer.mjs")
 
 after(async () => {
   await flushEffects()
@@ -378,6 +378,96 @@ test("uses selected used percentages and ascending secondary order when configur
   assert.equal(model.collapsedSummary.text, "30%/80%")
   assert.deepEqual(headers(others), ["Beta", "Alpha"])
   assert.equal(others.items.find((item) => item.id === "beta:5H").value, 20)
+})
+
+function openCodeGoRegressionProvider(freshness = "ready") {
+  const resetBase = Date.UTC(2026, 6, 14, 12, 0, 0)
+  const panel = {
+    id: "opencode-go",
+    order: 130,
+    title: "OpenCode GO",
+    groups: [{
+      id: "opencode-go:quota",
+      order: 10,
+      items: [
+        { id: "opencode-go:header", order: 10, kind: "header", title: "OpenCode GO:" },
+        ...(freshness === "stale" ? [{ id: "opencode-go:stale", order: 15, kind: "text", text: "~stale", status: "warning" }] : []),
+        { id: "opencode-go:5h", order: 20, kind: "progress", label: "5H", value: 87.5, total: 100 },
+        { id: "opencode-go:5h-reset", order: 30, kind: "timer", label: "5H reset", state: "countdown", epoch: resetBase + 1_800_000 },
+        { id: "opencode-go:7d", order: 40, kind: "progress", label: "7D", value: 66, total: 100 },
+        { id: "opencode-go:7d-reset", order: 50, kind: "timer", label: "7D reset", state: "countdown", epoch: resetBase + 172_800_000 },
+        { id: "opencode-go:1m", order: 60, kind: "progress", label: "1M", value: 43.25, total: 100 },
+        { id: "opencode-go:1m-reset", order: 70, kind: "timer", label: "1M reset", state: "countdown", epoch: resetBase + 1_209_600_000 },
+      ],
+    }],
+  }
+  return {
+    id: "opencode-go",
+    order: 130,
+    panel: () => panel,
+    home: () => ({ provider: "OpenCode GO", plan: "Subscription", primaryPct: 87.5, secondaryPct: 66 }),
+    freshness: () => freshness,
+    refresh: async () => {},
+    setSessionID: () => {},
+    dispose: () => {},
+  }
+}
+
+test("three providers preserve OpenCode Go aggregate semantics", () => {
+  const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 75, secondaryPct: 60 })
+  const openai = provider({ id: "openai", title: "OpenAI", order: 120, primaryPct: 70, secondaryPct: 55 })
+  const openCodeGo = openCodeGoRegressionProvider()
+  const remaining = composeQuotaPanel("opencode-go", [zai, openai, openCodeGo], {
+    percentageMode: "remaining",
+    sortDirection: "desc",
+    progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
+  })
+  const used = composeQuotaPanel("opencode-go", [zai, openai, openCodeGo], {
+    percentageMode: "used",
+    sortDirection: "asc",
+    progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
+  })
+
+  assert.equal(remaining.groups[0].id, "opencode-go:quota")
+  assert.equal(remaining.groups.some((group) => group.header?.title === "Other providers"), true)
+  assert.deepEqual(remaining.collapsedSummary, { kind: "text", text: "88%/66%", status: "success" })
+  assert.deepEqual(used.collapsedSummary, { kind: "text", text: "13%/34%", status: "success" })
+  assert.deepEqual(used.groups.flatMap((group) => group.items)
+    .filter((entry) => ["opencode-go:5h", "opencode-go:7d", "opencode-go:1m"].includes(entry.id))
+    .map((entry) => entry.value), [12.5, 34, 56.75])
+  assert.equal(item(used, "opencode-go:5h").status, "success")
+  assert.equal(String(used.collapsedSummary.text).includes("1M"), false)
+  assert.deepEqual(headers(remaining.groups.find((group) => group.id === "other-providers")), ["Z.AI", "OpenAI"])
+  assert.deepEqual(headers(used.groups.find((group) => group.id === "other-providers")), ["Z.AI", "OpenAI"])
+
+  for (const freshness of ["ready", "stale"]) {
+    const selectedOpenAi = composeQuotaPanel("openai", [zai, openai, openCodeGoRegressionProvider(freshness)])
+    assert.equal(selectedOpenAi.groups[0].id, "openai:quota")
+    assert.deepEqual(headers(selectedOpenAi.groups.find((group) => group.id === "other-providers")), ["OpenCode GO:", "Z.AI"])
+  }
+
+  const layouts = [
+    renderPanelLayout(remaining, { availableCells: 37 }),
+    renderPanelLayout(remaining, { availableCells: 37, collapsed: new Set(["group:other-providers"]) }),
+    renderPanelLayout(remaining, { availableCells: 37, collapsed: new Set(["panel:quota"]) }),
+  ]
+  assert.equal(layouts[1].groups.find((group) => group.id === "other-providers").collapsed, true)
+  assert.equal(layouts[2].collapsed, true)
+
+  for (const layout of layouts) {
+    const widths = [
+      layout.header.cells.reduce((total, cell) => total + cell.width, 0),
+      ...layout.groups.flatMap((group) => [
+        ...(group.header ? [2 + group.header.title.length] : []),
+        ...group.items.flatMap((entry) => {
+          if (entry.kind === "progress") return [entry.cells.reduce((total, cell) => total + cell.width, 0)]
+          if (entry.kind === "table") return entry.rows.map((row) => row.reduce((total, cell) => total + cell.width, 0))
+          return [entry.text.length + (entry.detail ? entry.detail.length + 1 : 0)]
+        }),
+      ]),
+    ]
+    assert.equal(widths.every((width) => width <= 37), true)
+  }
 })
 
 test("orders configured secondary metrics by direction and keeps each header with its quota rows", () => {
