@@ -36,3 +36,25 @@ test("tracked project files contain no active legacy identifier", () => {
     assert.equal(content.includes(legacyIdentifier), false, `${file} retains a legacy project identifier`)
   }
 })
+
+test("documents secret-safe OpenCode Go configuration", () => {
+  const readme = readFileSync("README.md", "utf8")
+  for (const text of [
+    "quota.opencodego.workspaceId",
+    "quota.opencodego.workspaceToken",
+    "workspaceToken is the plaintext auth cookie value",
+    "https://opencode.ai",
+    "rolling 5H",
+    "weekly 7D",
+    "subscription month 1M",
+    "undocumented Solid hydration contract",
+    "must not be committed",
+    "rotate",
+  ]) assert.equal(readme.includes(text), true, `missing README text: ${text}`)
+
+  assert.doesNotMatch(readme, /private (?:JSON|query) endpoint/iu)
+  assert.doesNotMatch(readme, /[".]openCodeGo[".]/u)
+  assert.doesNotMatch(readme, /(?:copy|save|export).{0,40}(?:full HTML|response body|HAR)/iu)
+  const tokenValues = [...readme.matchAll(/"workspaceToken"\s*:\s*"([^"]+)"/gu)].map((match) => match[1])
+  assert.deepEqual(tokenValues, ["TOKEN_TEST_ONLY_DO_NOT_USE"])
+})

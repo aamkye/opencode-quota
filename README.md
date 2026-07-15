@@ -6,8 +6,8 @@
 > - [farrukh2002/opencode-glm-reset](https://github.com/farrukh2002/opencode-glm-reset)
 
 OpenCode TUI plugins that show quota usage, reset countdowns, rate-limit
-status, compact homepage summaries, and `/tokens_*` reports for **Z.AI (GLM)**
-and **OpenAI (ChatGPT Plus/Pro)**.
+status, compact homepage summaries, and `/tokens_*` reports for **Z.AI (GLM)**,
+**OpenAI (ChatGPT Plus/Pro)**, and **OpenCode Go**.
 
 ![opencode-tools homepage bottom](img/img0.jpg)
 
@@ -46,6 +46,13 @@ and **OpenAI (ChatGPT Plus/Pro)**.
 - **7D weekly window** — same bar + countdown.
 - **Plan type** — Plus / Pro / Pro Lite / Team.
 - **Limited indicator** — shows when rate limit is reached.
+
+### OpenCode Go
+
+- **Subscription windows** — exact remaining usage for rolling 5H, weekly 7D,
+  and subscription month 1M windows.
+- **Shared refresh behavior** — uses the configured polling interval,
+  one-second countdowns, reset-boundary refresh, and stale handling.
 
 ### Shared
 
@@ -87,10 +94,24 @@ Native TUI options can be supplied with the local plugin entry:
     "otherProviders": {
       "percentageMode": "remaining",
       "sortDirection": "desc"
+    },
+    "quota": {
+      "opencodego": {
+        "workspaceId": "wrk_TESTWORKSPACE",
+        "workspaceToken": "TOKEN_TEST_ONLY_DO_NOT_USE"
+      }
     }
   }
 ]
 ```
+
+`quota.opencodego.workspaceId` identifies the OpenCode Go workspace. `quota.opencodego.workspaceToken` authenticates the console request; workspaceToken is the plaintext auth cookie value. Keep both values only in local `.opencode/tui.json`: they must not be committed or shared, and you must rotate the console session when it expires, is revoked, or is exposed.
+
+Requests are fixed to `https://opencode.ai`; these values do not replace the OpenCode-managed inference API key. The sidebar reports exact remaining usage for rolling 5H, weekly 7D, and subscription month 1M windows. OpenCode Go uses the undocumented Solid hydration contract from the authenticated page and fails closed if that contract changes. It does not scrape visible text, save page HTML, or estimate quota from local cost.
+
+OpenCode Go uses the shared default/custom polling interval, one-second
+countdowns, reset-boundary refresh, and ten-minute stale horizon. It does not
+use exhausted backoff.
 
 Polling defaults to 10 seconds when its value is invalid or non-positive.
 Color thresholds are clamped to `0-100`, and `errorBelow` cannot exceed
@@ -155,7 +176,7 @@ change that title.
 | --------------------------- | --------------------------------------------------------------------- |
 | `tui/quota.tsx`             | Aggregate sidebar registration and quota composition                  |
 | `tui/home.tsx`              | Compact homepage registration and formatter                           |
-| `tui/providers/`            | Z.AI and OpenAI provider adapters                                     |
+| `tui/providers/`            | Z.AI, OpenAI, and OpenCode Go provider adapters                       |
 | `opencode-tools-tokens.ts`  | Server plugin entry for `/tokens_*` commands                          |
 | `lib/tokens/`               | Vendored token reporting library ([upstream](https://github.com/slkiser/opencode-quota), MIT) |
 | `build-plugins.mjs`         | Builds the three minified local ESM artifacts                          |
@@ -199,6 +220,15 @@ shown above. Legacy files and aliases are intentionally not provided.
 3. Polls `https://chatgpt.com/backend-api/wham/usage` every 10s (5min
    when the primary window is exhausted).
 4. Renders plan type + primary (5H) / secondary (7D) / code review windows.
+
+### OpenCode Go
+
+1. Sends the configured workspace credentials only to the fixed
+   `https://opencode.ai` origin.
+2. Reads quota data from the authenticated page's undocumented Solid hydration
+   contract and fails closed when that contract changes.
+3. Renders the rolling 5H, weekly 7D, and subscription month 1M windows with
+   shared polling, countdown, reset, and stale behavior.
 
 ### `/tokens_*` reports
 
