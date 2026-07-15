@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { basename, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -7,7 +7,15 @@ import test, { after, before } from "node:test"
 
 const projectRoot = resolve(import.meta.dirname, "..")
 const obsoleteNamespace = ["opencode", "quota"].join("-")
-const rootOptions = { otherProviders: { percentageMode: "remaining", sortDirection: "asc" } }
+const rootOptions = {
+  otherProviders: { percentageMode: "remaining", sortDirection: "asc" },
+  quota: {
+    opencodego: {
+      workspaceId: "wrk_FALLBACK_TEST",
+      workspaceToken: "TOKEN_FALLBACK_TEST_ONLY_DO_NOT_USE",
+    },
+  },
+}
 const localOptions = {
   otherProviders: { percentageMode: "used", sortDirection: "asc" },
   quota: {
@@ -17,7 +25,15 @@ const localOptions = {
     },
   },
 }
-const globalOptions = { otherProviders: { percentageMode: "remaining", sortDirection: "desc" } }
+const globalOptions = {
+  otherProviders: { percentageMode: "remaining", sortDirection: "desc" },
+  quota: {
+    opencodego: {
+      workspaceId: "wrk_GLOBAL_TEST",
+      workspaceToken: "TOKEN_GLOBAL_TEST_ONLY_DO_NOT_USE",
+    },
+  },
+}
 const temporaryRoots = []
 let deployPlugins
 let resolveGlobalConfigRoot
@@ -69,6 +85,15 @@ async function snapshot(root) {
   return Object.fromEntries(await Promise.all(files.map(async (file) => [file, await readFile(join(root, file), "utf8")])))
 }
 
+async function managedArtifactPaths(root, relative = "") {
+  const entries = await readdir(join(root, relative), { withFileTypes: true })
+  const paths = await Promise.all(entries.map(async (entry) => {
+    const path = relative ? `${relative}/${entry.name}` : entry.name
+    return entry.isDirectory() ? managedArtifactPaths(root, path) : [path]
+  }))
+  return paths.flat().filter((path) => /(?:^|\/)opencode-tools-[^/]+\.(?:js|ts)$/.test(path)).sort()
+}
+
 test("local deployment builds, cleans managed entries, and is idempotent", async () => {
   const root = await fixture()
 
@@ -114,6 +139,11 @@ test("local deployment builds, cleans managed entries, and is idempotent", async
   ]) {
     assert.equal(first[deployed], await readFile(resolve(projectRoot, built), "utf8"))
   }
+  assert.deepEqual(await managedArtifactPaths(root), [
+    "opencode-tools-quota.js",
+    "opencode-tools-shared.js",
+    "plugins/opencode-tools-tokens.js",
+  ])
 })
 
 test("local deployment merges root and selected .opencode configs without duplicate managed plugins", async () => {
@@ -136,10 +166,12 @@ test("local deployment merges root and selected .opencode configs without duplic
     theme: "selected-theme",
     plugin: [
       "./selected-unrelated.js",
-      ["./opencode-tools-quota.js", localOptions],
       "./tui/home.tsx",
     ],
   }, null, 2))
+
+  const initialSelectedConfig = JSON.parse(await readFile(join(configRoot, "tui.json"), "utf8"))
+  assert.equal(JSON.stringify(initialSelectedConfig).includes("opencodego"), false)
 
   await deployPlugins(configRoot, { logLevel: "silent", projectConfigRoot: root })
 
@@ -150,8 +182,17 @@ test("local deployment merges root and selected .opencode configs without duplic
   assert.equal(selectedConfig.theme, "selected-theme")
   assert.deepEqual(selectedConfig.plugin, [
     "./selected-unrelated.js",
-    ["./opencode-tools-quota.js", localOptions],
+    ["./opencode-tools-quota.js", rootOptions],
   ])
+  assert.deepEqual(selectedConfig.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
+    otherProviders: { percentageMode: "remaining", sortDirection: "asc" },
+    quota: {
+      opencodego: {
+        workspaceId: "wrk_FALLBACK_TEST",
+        workspaceToken: "TOKEN_FALLBACK_TEST_ONLY_DO_NOT_USE",
+      },
+    },
+  })
 
   const activeManagedEntries = [
     ...rootConfig.plugin.map((entry) => ({ entry, root })),
@@ -185,8 +226,12 @@ test("global config resolution honors XDG_CONFIG_HOME and deploys the same layou
     ],
   }))
   await deployPlugins(root, { logLevel: "silent" })
+  const first = await readFile(join(root, "tui.json"), "utf8")
+  await deployPlugins(root, { logLevel: "silent" })
+  const second = await readFile(join(root, "tui.json"), "utf8")
 
-  const config = JSON.parse(await readFile(join(root, "tui.json"), "utf8"))
+  assert.equal(second, first)
+  const config = JSON.parse(second)
   assert.deepEqual(config.plugin, [
     "file:///tmp/other.js",
     ["file:///tmp/unrelated/tui/quota.tsx", { preserve: "quota" }],
@@ -195,6 +240,15 @@ test("global config resolution honors XDG_CONFIG_HOME and deploys the same layou
     "file:///tmp/unrelated/tokens.ts",
     ["./opencode-tools-quota.js", globalOptions],
   ])
+  assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
+    otherProviders: { percentageMode: "remaining", sortDirection: "desc" },
+    quota: {
+      opencodego: {
+        workspaceId: "wrk_GLOBAL_TEST",
+        workspaceToken: "TOKEN_GLOBAL_TEST_ONLY_DO_NOT_USE",
+      },
+    },
+  })
   assert.equal(basename(root), "opencode")
   assert.equal((await readFile(join(root, "plugins", "opencode-tools-tokens.js"), "utf8")).length > 0, true)
 })

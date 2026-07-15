@@ -427,6 +427,11 @@ test("three providers preserve OpenCode Go aggregate semantics", () => {
     sortDirection: "asc",
     progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
   })
+  const usedDescending = composeQuotaPanel("opencode-go", [zai, openai, openCodeGo], {
+    percentageMode: "used",
+    sortDirection: "desc",
+    progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
+  })
 
   assert.equal(remaining.groups[0].id, "opencode-go:quota")
   assert.equal(remaining.groups.some((group) => group.header?.title === "Other providers"), true)
@@ -439,6 +444,7 @@ test("three providers preserve OpenCode Go aggregate semantics", () => {
   assert.equal(String(used.collapsedSummary.text).includes("1M"), false)
   assert.deepEqual(headers(remaining.groups.find((group) => group.id === "other-providers")), ["Z.AI", "OpenAI"])
   assert.deepEqual(headers(used.groups.find((group) => group.id === "other-providers")), ["Z.AI", "OpenAI"])
+  assert.deepEqual(headers(usedDescending.groups.find((group) => group.id === "other-providers")), ["OpenAI", "Z.AI"])
 
   for (const freshness of ["ready", "stale"]) {
     const selectedOpenAi = composeQuotaPanel("openai", [zai, openai, openCodeGoRegressionProvider(freshness)])
