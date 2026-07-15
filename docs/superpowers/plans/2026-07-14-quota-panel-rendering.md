@@ -1480,11 +1480,11 @@ git commit -m "fix(tui): prioritize active model provider"
 - Consumes: normalized timer and standalone quantity items plus `PanelTheme.textMuted`.
 - Produces: mounted timer and quantity text that defaults to `textMuted` while preserving any explicit item status.
 
-- [ ] **Step 1: Add a focused failing mounted metadata-color test**
+- [x] **Step 1: Add a focused failing mounted metadata-color test**
 
 Add standalone unstatused and explicitly status-colored quantity items to the mounted fixture model. Assert that the rendered reset text and unstatused quantity text both use `#888888`, and assert that the semantic status override still wins.
 
-- [ ] **Step 2: Run the focused mounted test and verify RED**
+- [x] **Step 2: Run the focused mounted test and verify RED**
 
 Run:
 
@@ -1494,11 +1494,11 @@ node tests/compile-presentation.mjs && node --test tests/presentation-mounted.te
 
 Expected: FAIL because timer and unstatused quantity text currently render with `fg` unset instead of the theme's muted color.
 
-- [ ] **Step 3: Default mounted timer and quantity text to the muted theme**
+- [x] **Step 3: Default mounted timer and quantity text to the muted theme**
 
 In `MountedItem()` in `tui/presentation/renderer.tsx`, use the item's explicit status color when present and otherwise use `props.theme().textMuted` for standalone quantity text, timer text, and timer detail text. Do not change progress labels, provider headers, tables, or explicitly status-colored items.
 
-- [ ] **Step 4: Run focused tests and typechecking to verify GREEN**
+- [x] **Step 4: Run focused tests and typechecking to verify GREEN**
 
 Run:
 
@@ -1508,7 +1508,7 @@ node tests/compile-presentation.mjs && node --test tests/presentation-mounted.te
 
 Expected: all focused tests PASS and TypeScript exits `0`.
 
-- [ ] **Step 5: Commit the muted metadata correction**
+- [x] **Step 5: Commit the muted metadata correction**
 
 ```bash
 git add tui/presentation/renderer.tsx tests/presentation-mounted.test.mjs
