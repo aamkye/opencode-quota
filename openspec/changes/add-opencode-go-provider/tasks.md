@@ -1,13 +1,13 @@
 ## 1. Capture The Page Contract And Regressions
 
 - [x] 1.1 Sanitize the authenticated Go workspace page contract, including fixed URL shape, `auth` cookie behavior, login redirect, and the three Solid hydration usage assignments.
-- [ ] 1.2 Add failing native-option and security tests for workspace/token validation, missing configuration, fixed-origin requests, and token-safe diagnostics.
+- [x] 1.2 Add failing native-option and security tests for workspace/token validation, missing configuration, fixed-origin requests, and token-safe diagnostics.
 - [ ] 1.3 Add failing page transport, bounded hydration parser, and mapper tests for atomic rolling/weekly/monthly validation, remaining percentages, reset epochs, malformed markup, and authentication expiry.
 - [ ] 1.4 Add failing adapter and composition tests for polling, request serialization, reset boundaries, stale expiry, disposal, runtime aliases, active-provider refresh, and ordering.
 
 ## 2. Implement The OpenCode Go Provider
 
-- [ ] 2.1 Normalize local `quota.opencodego.workspaceId` and `quota.opencodego.workspaceToken` options without exposing secrets through returned diagnostics or committed examples.
+- [x] 2.1 Normalize local `quota.opencodego.workspaceId` and `quota.opencodego.workspaceToken` options without exposing secrets through returned diagnostics or committed examples.
 - [ ] 2.2 Implement the fixed-origin authenticated Go page transport and strict atomic Solid hydration extraction behind a dedicated OpenCode Go module.
 - [ ] 2.3 Map valid console snapshots to `OpenCode GO:` with 5H, 7D, and 1M semantic progress/reset windows plus ready, stale, unavailable, and configuration-required states.
 - [ ] 2.4 Implement shared-interval polling, immediate refresh, serialized requests, reset-boundary refresh, stale expiry, one-second countdowns, and disposal-safe updates.

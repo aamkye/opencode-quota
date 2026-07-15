@@ -490,7 +490,7 @@ git commit -m "test(quota): capture OpenCode Go page contract"
 - Produces: `QuotaPluginOptions.quota?.opencodego?: OpenCodeGoOptions` and `NormalizedQuotaOptions.openCodeGo: OpenCodeGoConfig | null`.
 - Does not produce or import `createOpenCodeGoProvider`; that constructor first exists in Task 5 and quota construction first consumes it in Task 6.
 
-- [ ] **Step 1: Add the compile entry and focused failing tests**
+- [x] **Step 1: Add the compile entry and focused failing tests**
 
 Add `provider-opencode-go` to the cleanup array in `tests/compile-presentation.mjs`, then add this tuple immediately after `provider-openai`:
 
@@ -582,13 +582,13 @@ test("OpenCode Go options normalize through native quota options", () => {
 })
 ```
 
-- [ ] **Step 2: Run the exact RED gate**
+- [x] **Step 2: Run the exact RED gate**
 
 Run: `node tests/compile-presentation.mjs`
 
 Expected: FAIL from esbuild with `Could not resolve "tui/providers/opencode-go.ts"`; no test or broken build is committed.
 
-- [ ] **Step 3: Add the minimal immutable configuration module**
+- [x] **Step 3: Add the minimal immutable configuration module**
 
 Create `tui/providers/opencode-go.ts` with exactly this initial API:
 
@@ -617,7 +617,7 @@ export function normalizeOpenCodeGoConfig(value: unknown): OpenCodeGoConfig | nu
 
 Do not return validation reasons, rejected values, lengths, hashes, prefixes, or suffixes.
 
-- [ ] **Step 4: Wire only the normalized native option**
+- [x] **Step 4: Wire only the normalized native option**
 
 Add this narrow export to `shared/opencode-tools-shared.ts`; Task 6 expands the same facade with the constructor and all semantic types:
 
@@ -654,7 +654,7 @@ Add `openCodeGo: null` to each existing expected object in `normalizes native po
 
 Add `"tui/providers/opencode-go.ts"` after `"tui/providers/openai.ts"` in `tsconfig.json` so the new interface is typechecked before later tasks import it.
 
-- [ ] **Step 5: Run the exact GREEN gates**
+- [x] **Step 5: Run the exact GREEN gates**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="OpenCode Go options" tests/provider-opencode-go.test.mjs tests/quota-composition.test.mjs`
 
@@ -664,7 +664,7 @@ Run: `npm run typecheck && node --test tests/shared-boundary.test.mjs`
 
 Expected: PASS with no TypeScript diagnostics and no loadable entry bypassing the shared facade.
 
-- [ ] **Step 6: Commit the GREEN configuration unit atomically**
+- [x] **Step 6: Commit the GREEN configuration unit atomically**
 
 ```bash
 git status --short &&
