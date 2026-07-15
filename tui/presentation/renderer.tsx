@@ -338,6 +338,7 @@ function GroupDivider() {
 
 function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> }) {
   const color = (status?: PanelStatus) => (status ? props.theme()[status] : undefined)
+  const metadataColor = (status?: PanelStatus) => (status ? props.theme()[status] : props.theme().textMuted)
 
   switch (props.item.kind) {
     case "divider":
@@ -354,7 +355,7 @@ function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> 
     case "text":
       return <text fg={color(props.item.status)}>{props.item.text}</text>
     case "quantity":
-      return <text fg={color(props.item.status)}>{`${props.item.label}: ${props.item.value}`}</text>
+      return <text fg={metadataColor(props.item.status)}>{`${props.item.label}: ${props.item.value}`}</text>
     case "progress": {
       const filled = Math.max(0, Math.min(100, Number.parseInt(props.item.percent, 10)))
       return (
@@ -374,12 +375,12 @@ function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> 
         <box flexDirection="column">
           <box flexDirection="row" width="100%">
             <text width={3}>   </text>
-            <text fg={color(props.item.status)}>{props.item.text}</text>
+            <text fg={metadataColor(props.item.status)}>{props.item.text}</text>
           </box>
           <Show when={props.item.detail}>
             <box flexDirection="row" width="100%">
               <text width={3}>   </text>
-              <text fg={color(props.item.status)}>{props.item.detail}</text>
+              <text fg={metadataColor(props.item.status)}>{props.item.detail}</text>
             </box>
           </Show>
         </box>

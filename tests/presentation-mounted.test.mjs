@@ -25,7 +25,9 @@ const model = {
         { id: "status", order: 10, kind: "header", title: "Primary", detail: "Limited", status: "error" },
         { id: "detail", order: 20, kind: "text", text: "Visible only while expanded" },
         { id: "five-hour", order: 30, kind: "progress", label: "5H", value: 25, total: 100, status: "warning" },
-        { id: "five-hour-reset", order: 40, kind: "timer", label: "5H reset", state: "countdown", epoch: Date.now() + 3_600_000 },
+        { id: "five-hour-reset", order: 40, kind: "timer", label: "5H reset", state: "countdown", epoch: Date.now() + 3_600_000, detail: "Next cycle" },
+        { id: "tools-used", order: 50, kind: "quantity", label: "Tools used", value: 0, unit: "count" },
+        { id: "tools-total", order: 60, kind: "quantity", label: "Tools total", value: 4_000, unit: "count", status: "success" },
         {
           id: "limits",
           order: 30,
@@ -116,6 +118,26 @@ test("mounts responsive framing, bars, reset indentation, and right-aligned stat
       && element.props.height === 1
       && element.props.border?.[0] === "top")
     assert.equal(dividers.length, 2, "one top divider and one group divider")
+  } finally {
+    dispose()
+  }
+})
+
+test("defaults mounted timer and quantity metadata to muted while preserving explicit status", () => {
+  const { elements, dispose } = mountPanel(model)
+  const text = elements.filter((element) => element.type === "text")
+
+  try {
+    const reset = text.find((element) =>
+      typeof element.props.children === "string" && element.props.children.startsWith("resets in "))
+    const timerDetail = text.find((element) => element.props.children === "Next cycle")
+    const toolsUsed = text.find((element) => element.props.children === "Tools used: 0")
+    const toolsTotal = text.find((element) => element.props.children === "Tools total: 4K")
+
+    assert.equal(reset?.props.fg, "#888888")
+    assert.equal(timerDetail?.props.fg, "#888888")
+    assert.equal(toolsUsed?.props.fg, "#888888")
+    assert.equal(toolsTotal?.props.fg, "#00ff00")
   } finally {
     dispose()
   }
