@@ -12,9 +12,11 @@
 - [x] 2.3 Normalize progress color options and apply semantic statuses consistently to bars, percentages, and collapsed summaries.
 - [x] 2.4 Pass the normalized polling interval into provider adapters and reactively resolve, refresh, and prioritize the current session model's provider.
 - [x] 2.5 Render reset timers and standalone tool quantities with muted text while preserving explicit semantic status overrides.
+- [ ] 2.6 Render short group-divider marks with the muted theme color.
 
 ## 3. Verify and Deploy
 
 - [x] 3.1 Run focused tests, typechecking, the full automated suite, and the three-artifact production build.
-- [ ] 3.2 Deploy locally and manually validate normal/collapsed and normal/constrained-width behavior in OpenCode.
-- [ ] 3.3 Manually validate the default/custom refresh interval and provider switching from the active session model.
+- [x] 3.2 Deploy locally and manually validate normal/collapsed and normal/constrained-width behavior in OpenCode.
+- [x] 3.3 Manually validate the default/custom refresh interval and provider switching from the active session model.
+- [ ] 3.4 Rebuild, redeploy, and manually validate muted short group dividers.

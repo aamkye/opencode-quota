@@ -61,7 +61,7 @@ The mounted renderer will stop using a guessed `availableCells` value. OpenTUI r
 
 The bar uses two zero-basis flex children. Their grow factors match filled and remaining percentages, so OpenTUI allocates glyph width from the parent. The filled child renders `█` with the threshold color; the empty child renders `░` with `textMuted`.
 
-The renderer inserts a parent-width divider immediately after the panel header. Group dividers remain at group boundaries. Pure normalization keeps explicit widths for deterministic tests, but production JSX does not use those widths to size mounted headers or bars.
+The renderer inserts a parent-width divider immediately after the panel header. Group dividers remain at group boundaries, with both short `---` ends rendered in `textMuted`. Pure normalization keeps explicit widths for deterministic tests, but production JSX does not use those widths to size mounted headers or bars.
 
 ## Provider Item Grouping
 
@@ -100,7 +100,7 @@ A Solid effect watches the resolved adapter ID. On change, it calls that adapter
 
 TDD starts with focused failing tests:
 
-- Pure layout and mounted tests assert marker spacing, top divider, three-cell bar start, responsive flex structure, visible percentage, muted timer/quantity metadata, colored summary, and right-aligned provider detail.
+- Pure layout and mounted tests assert marker spacing, top divider, muted short group dividers, three-cell bar start, responsive flex structure, visible percentage, muted timer/quantity metadata, colored summary, and right-aligned provider detail.
 - Composition tests assert progress statuses, colors disabled, custom thresholds, remaining-quota semantics in used mode, progress-led grouping, and tool details at the bottom.
 - OpenAI tests assert duration-derived labels for weekly-only and multi-window responses. Z.AI tests assert semantic Peak/Off-Peak header detail.
 - Controlled-timer adapter tests assert the 10-second default and custom polling interval.

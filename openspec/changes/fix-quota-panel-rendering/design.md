@@ -43,6 +43,8 @@ Only the filled bar segment and percentage receive the threshold status. The lab
 
 Timer and standalone quantity rows are subordinate metadata, so the mounted renderer uses `textMuted` when they do not carry an explicit semantic status. An explicit status still overrides that default. Keeping this default in the renderer applies the same hierarchy to reset rows from every provider and to Z.AI tool usage without duplicating presentation policy in each adapter.
 
+Short group dividers are subordinate framing rather than content. Their two `---` text ends use the same `textMuted` theme color while the flexible middle remains empty, preserving the responsive divider width and visual hierarchy.
+
 ### Refresh from the active session model
 
 Native options expose `refreshIntervalSeconds`, defaulting to 10. The quota entry normalizes invalid or non-positive values to the default and passes milliseconds into both provider adapters. Non-exhausted provider polling uses this interval while exhausted primary quota retains its five-minute backoff. Countdown rendering continues on its one-second clock and reset-boundary refreshes remain immediate.

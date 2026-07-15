@@ -14,12 +14,13 @@ The quota panel SHALL allocate mounted rows from the actual parent width, SHALL 
 - **AND** no precomputed 80-cell row overflows the parent
 
 ### Requirement: Standard panel framing
-The quota panel SHALL render a spaced collapse marker, a divider immediately below the `Quota` title, indented muted reset details without repeating the window label, and the active provider summary at the right edge when collapsed.
+The quota panel SHALL render a spaced collapse marker, a divider immediately below the `Quota` title, muted short group dividers, indented muted reset details without repeating the window label, and the active provider summary at the right edge when collapsed.
 
 #### Scenario: Expanded panel
 - **WHEN** the quota panel is expanded
 - **THEN** its title begins with `▼ Quota`
 - **AND** a divider follows the title row
+- **AND** short `---` group-divider marks use the muted text color
 - **AND** reset rows begin with three spaces followed by the reset text
 - **AND** reset rows use the muted text color
 
