@@ -89,7 +89,7 @@ base-ref: f94168f
 - Produces: a synthetic request manifest and minimal HTML fixture that Tasks 3 and 6 treat as the only page-contract authority.
 - Produces fixture values: rolling `{ status: "ok", resetInSec: 1800, usagePercent: 12.5 }`, weekly `{ status: "ok", resetInSec: 172800, usagePercent: 34 }`, monthly `{ status: "ok", resetInSec: 1209600, usagePercent: 56.75 }`.
 
-- [ ] **Step 1: Write the fixture-only contract test before creating fixtures**
+- [x] **Step 1: Write the fixture-only contract test before creating fixtures**
 
 Create `tests/provider-opencode-go-contract.test.mjs`. This decoder is intentionally independent of production code. Based only on the marker evidence in `/Users/aam/.graphify/repos/ridho9/opencode-go-usage/index.js:137-149`, it accepts exactly three lines shaped `<name>:$R[<synthetic index>]=<restricted flat object>` inside one minimal script. It requires deterministic indexes `0`, `1`, and `2`, exact-one semantics, and rolling/weekly/monthly order; it does not import or reproduce the reference parser.
 
@@ -214,13 +214,13 @@ test("OpenCode Go contract records manual same-origin login redirection", () => 
 })
 ```
 
-- [ ] **Step 2: Run the contract test to verify it fails**
+- [x] **Step 2: Run the contract test to verify it fails**
 
 Run: `node --test tests/provider-opencode-go-contract.test.mjs`
 
 Expected: FAIL with `ENOENT` for `tests/fixtures/opencode-go/request-manifest.json`; no production module is imported.
 
-- [ ] **Step 3: Create the temporary one-shot sanitizer outside the repository**
+- [x] **Step 3: Create the temporary one-shot sanitizer outside the repository**
 
 First verify the approved temporary parent and ignored config path without reading the config:
 
@@ -389,13 +389,13 @@ try {
 
 Do not add debug output if the sanitizer exits 1. Fix only static code/fixture-shape assumptions after reviewing the approved design; never print the config, request, response, headers, caught error, or unsafe capture.
 
-- [ ] **Step 4: Run the sanitizer and prove the temporary script self-deleted**
+- [x] **Step 4: Run the sanitizer and prove the temporary script self-deleted**
 
 Run: `node "/var/folders/vh/srpy49dj1cld13b3wq7hjnw80000gn/T/opencode/opencode-go-contract-sanitize.mjs" && test ! -e "/var/folders/vh/srpy49dj1cld13b3wq7hjnw80000gn/T/opencode/opencode-go-contract-sanitize.mjs" || (rm -f "/var/folders/vh/srpy49dj1cld13b3wq7hjnw80000gn/T/opencode/opencode-go-contract-sanitize.mjs" && exit 1)`
 
 Expected: exit 0 and no output. Only the three minimal synthetic fixture files are created; no raw page, request, header, credential, real identifier, or real usage/reset value is written anywhere.
 
-- [ ] **Step 5: Verify the synthetic manifest and redirect fixture shapes**
+- [x] **Step 5: Verify the synthetic manifest and redirect fixture shapes**
 
 The generated `request-manifest.json` must contain exactly this synthetic request and these static classifications:
 
@@ -444,7 +444,7 @@ The generated `login-redirect.json` must contain only the observed synthetic sta
 
 Do not manually edit `success.html`; it must be the sanitizer's assignment-only synthetic output. If the sanitizer cannot validate exactly one assignment for every record without broadening the restricted grammar, stop with `BLOCKED: bounded OpenCode Go hydration assignments could not be sanitized` and do not continue to Task 2.
 
-- [ ] **Step 6: Run the hard gate and inspect only synthetic file metadata**
+- [x] **Step 6: Run the hard gate and inspect only synthetic file metadata**
 
 Run: `node --test tests/provider-opencode-go-contract.test.mjs`
 
@@ -454,7 +454,7 @@ Run: `git diff --check -- tests/fixtures/opencode-go tests/provider-opencode-go-
 
 Expected: the test and three synthetic fixtures are new; the only unrelated entries are the three pre-existing deleted reports. Do not print `success.html` or any local configuration to the terminal.
 
-- [ ] **Step 7: Commit the contract gate atomically**
+- [x] **Step 7: Commit the contract gate atomically**
 
 ```bash
 git status --short &&

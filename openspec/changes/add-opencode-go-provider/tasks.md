@@ -1,6 +1,6 @@
 ## 1. Capture The Page Contract And Regressions
 
-- [ ] 1.1 Sanitize the authenticated Go workspace page contract, including fixed URL shape, `auth` cookie behavior, login redirect, and the three Solid hydration usage assignments.
+- [x] 1.1 Sanitize the authenticated Go workspace page contract, including fixed URL shape, `auth` cookie behavior, login redirect, and the three Solid hydration usage assignments.
 - [ ] 1.2 Add failing native-option and security tests for workspace/token validation, missing configuration, fixed-origin requests, and token-safe diagnostics.
 - [ ] 1.3 Add failing page transport, bounded hydration parser, and mapper tests for atomic rolling/weekly/monthly validation, remaining percentages, reset epochs, malformed markup, and authentication expiry.
 - [ ] 1.4 Add failing adapter and composition tests for polling, request serialization, reset boundaries, stale expiry, disposal, runtime aliases, active-provider refresh, and ordering.
