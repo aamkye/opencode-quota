@@ -108,39 +108,70 @@ function item(model, id) {
   return model.groups.flatMap((group) => group.items).find((candidate) => candidate.id === id)
 }
 
-test("normalizes native polling and progress color defaults", () => {
-  assert.deepEqual(normalizeQuotaOptions(), {
-    percentageMode: "remaining",
-    sortDirection: "desc",
-    refreshIntervalMs: 10_000,
-    progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
-    openCodeGo: null,
+test("normalizes the complete nested quota hierarchy and ignores legacy root options", () => {
+  const normalized = normalizeQuotaOptions({
+    refreshIntervalSeconds: 1,
+    progressColors: { enabled: false },
+    otherProviders: { percentageMode: "used", sortDirection: "asc" },
+    quota: {
+      refreshIntervalSeconds: 15,
+      progressColors: { enabled: false, errorBelow: 5, warningBelow: 25 },
+      percentageMode: "used",
+      hideInactive: true,
+      openai: { hideInactive: false },
+      zai: { hideTools: true },
+      opencodego: {
+        workspaceId: "wrk_TESTWORKSPACE",
+        workspaceToken: "token",
+        hideInactive: false,
+      },
+      otherProviders: { sortDirection: "asc" },
+    },
   })
+
+  assert.equal(normalized.refreshIntervalMs, 15_000)
+  assert.deepEqual(normalized.progressColors, { enabled: false, errorBelow: 5, warningBelow: 25 })
+  assert.equal(normalized.percentageMode, "used")
+  assert.equal(normalized.sortDirection, "asc")
+  assert.equal(normalized.hideInactive, true)
+  assert.deepEqual(normalized.openai, { hideInactive: false })
+  assert.deepEqual(normalized.zai, { hideTools: true, hideInactive: undefined })
+  assert.equal(normalized.openCodeGo?.workspaceId, "wrk_TESTWORKSPACE")
+  assert.equal(normalized.openCodeGoHideInactive, false)
+
+  const rootOnly = normalizeQuotaOptions({
+    refreshIntervalSeconds: 1,
+    progressColors: { enabled: false },
+    otherProviders: { percentageMode: "used", sortDirection: "asc" },
+  })
+  assert.equal(rootOnly.refreshIntervalMs, 10_000)
+  assert.deepEqual(rootOnly.progressColors, { enabled: true, errorBelow: 10, warningBelow: 30 })
+  assert.equal(rootOnly.percentageMode, "remaining")
+  assert.equal(rootOnly.sortDirection, "desc")
+  assert.equal(rootOnly.openCodeGo, null)
 })
 
-test("normalizes custom thresholds and rejects invalid native options", () => {
-  assert.deepEqual(normalizeQuotaOptions({
-    refreshIntervalSeconds: 2.5,
-    progressColors: { enabled: false, errorBelow: -5, warningBelow: 120 },
-    otherProviders: { percentageMode: "used", sortDirection: "asc" },
-  }), {
-    percentageMode: "used",
-    sortDirection: "asc",
-    refreshIntervalMs: 2_500,
-    progressColors: { enabled: false, errorBelow: 0, warningBelow: 100 },
-    openCodeGo: null,
+test("falls back from invalid nested quota options and preserves omitted inactive values", () => {
+  const normalized = normalizeQuotaOptions({
+    quota: {
+      refreshIntervalSeconds: 0,
+      progressColors: { enabled: "yes", errorBelow: 80, warningBelow: 20 },
+      percentageMode: "invalid",
+      otherProviders: { sortDirection: "sideways" },
+      openai: {},
+      zai: {},
+      opencodego: sentinel,
+    },
   })
 
-  assert.deepEqual(normalizeQuotaOptions({
-    refreshIntervalSeconds: 0,
-    progressColors: { enabled: "yes", errorBelow: 80, warningBelow: 20 },
-  }), {
-    percentageMode: "remaining",
-    sortDirection: "desc",
-    refreshIntervalMs: 10_000,
-    progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
-    openCodeGo: null,
-  })
+  assert.equal(normalized.refreshIntervalMs, 10_000)
+  assert.deepEqual(normalized.progressColors, { enabled: true, errorBelow: 10, warningBelow: 30 })
+  assert.equal(normalized.percentageMode, "remaining")
+  assert.equal(normalized.sortDirection, "desc")
+  assert.equal(normalized.hideInactive, undefined)
+  assert.equal(normalized.openai.hideInactive, undefined)
+  assert.equal(normalized.zai.hideInactive, undefined)
+  assert.equal(normalized.openCodeGoHideInactive, undefined)
 })
 
 test("OpenCode Go options normalize through native quota options", () => {
@@ -404,8 +435,7 @@ async function aggregatePanel(t, options, observations = { intervals: [], reques
 test("OpenCode Go integration constructs quota-only polling with normalized options", async (t) => {
   const observations = { intervals: [], requests: [] }
   await aggregatePanel(t, {
-    refreshIntervalSeconds: 2.5,
-    quota: { opencodego: sentinel },
+    quota: { refreshIntervalSeconds: 2.5, opencodego: sentinel },
   }, observations)
   const activePolls = observations.intervals.filter((timer) => timer.active && timer.delay === 2_500)
 
@@ -1117,14 +1147,14 @@ test("does not retain a selection root when activation reaches an already dispos
   assert.deepEqual(refreshes, [])
 })
 
-test("falls back to remaining descending options when native values are invalid", async (t) => {
-  const model = await aggregatePanel(t, { otherProviders: { percentageMode: "invalid", sortDirection: "sideways" } })
+test("falls back to remaining descending options when nested values are invalid", async (t) => {
+  const model = await aggregatePanel(t, { quota: { percentageMode: "invalid", otherProviders: { sortDirection: "sideways" } } })
 
   assert.equal(item(model, "zai:5h").value, 75)
 })
 
-test("forwards native TUI options into aggregate composition", async (t) => {
-  const model = await aggregatePanel(t, { otherProviders: { percentageMode: "used", sortDirection: "asc" } })
+test("forwards nested quota options into aggregate composition", async (t) => {
+  const model = await aggregatePanel(t, { quota: { percentageMode: "used", otherProviders: { sortDirection: "asc" } } })
 
   assert.equal(item(model, "zai:5h").value, 25)
 })

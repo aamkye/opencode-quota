@@ -30,11 +30,15 @@ export type QuotaCompositionOptions = {
 }
 
 export type QuotaPluginOptions = {
-  refreshIntervalSeconds?: number
-  progressColors?: ProgressColorOptions
-  otherProviders?: Pick<QuotaCompositionOptions, "percentageMode" | "sortDirection">
   quota?: {
-    opencodego?: OpenCodeGoOptions
+    refreshIntervalSeconds?: number
+    progressColors?: ProgressColorOptions
+    percentageMode?: PercentageMode
+    hideInactive?: boolean
+    openai?: { hideInactive?: boolean }
+    zai?: { hideTools?: boolean; hideInactive?: boolean }
+    opencodego?: OpenCodeGoOptions & { hideInactive?: boolean }
+    otherProviders?: { sortDirection?: SortDirection }
   }
 }
 
@@ -52,7 +56,11 @@ type NormalizedCompositionOptions = {
 
 export type NormalizedQuotaOptions = NormalizedCompositionOptions & {
   refreshIntervalMs: number
+  hideInactive?: boolean
+  openai: { hideInactive?: boolean }
+  zai: { hideTools: boolean; hideInactive?: boolean }
   openCodeGo: OpenCodeGoConfig | null
+  openCodeGoHideInactive?: boolean
 }
 
 const SIDEBAR_ORDER = 110
@@ -67,7 +75,11 @@ const DEFAULT_OPTIONS: NormalizedQuotaOptions = {
   sortDirection: "desc",
   refreshIntervalMs: 10_000,
   progressColors: DEFAULT_PROGRESS_COLORS,
+  hideInactive: undefined,
+  openai: { hideInactive: undefined },
+  zai: { hideTools: false, hideInactive: undefined },
   openCodeGo: null,
+  openCodeGoHideInactive: undefined,
 }
 const ADAPTER_ID_BY_PROVIDER_ID: Record<string, string> = {
   "zai-coding-plan": "zai",
@@ -117,21 +129,36 @@ function compositionOptions(options?: QuotaCompositionOptions): NormalizedCompos
   }
 }
 
+const hideInactive = (value: unknown): boolean | undefined =>
+  typeof value === "boolean" ? value : undefined
+
 export function normalizeQuotaOptions(value?: TuiPluginOptions): NormalizedQuotaOptions {
   const input = value && typeof value === "object" ? value as QuotaPluginOptions : {}
-  const otherProviders = input.otherProviders && typeof input.otherProviders === "object"
-    ? input.otherProviders
+  const quota = input.quota && typeof input.quota === "object" ? input.quota : undefined
+  const otherProviders = quota?.otherProviders && typeof quota.otherProviders === "object"
+    ? quota.otherProviders
     : undefined
-  const refreshIntervalMs = typeof input.refreshIntervalSeconds === "number"
-    && Number.isFinite(input.refreshIntervalSeconds)
-    && input.refreshIntervalSeconds > 0
-    ? input.refreshIntervalSeconds * 1_000
+  const refreshIntervalMs = typeof quota?.refreshIntervalSeconds === "number"
+    && Number.isFinite(quota.refreshIntervalSeconds)
+    && quota.refreshIntervalSeconds > 0
+    ? quota.refreshIntervalSeconds * 1_000
     : DEFAULT_OPTIONS.refreshIntervalMs
 
   return {
-    ...compositionOptions({ ...otherProviders, progressColors: input.progressColors }),
+    ...compositionOptions({
+      percentageMode: quota?.percentageMode,
+      sortDirection: otherProviders?.sortDirection,
+      progressColors: quota?.progressColors,
+    }),
     refreshIntervalMs,
-    openCodeGo: normalizeOpenCodeGoConfig(input.quota?.opencodego),
+    hideInactive: hideInactive(quota?.hideInactive),
+    openai: { hideInactive: hideInactive(quota?.openai?.hideInactive) },
+    zai: {
+      hideTools: quota?.zai?.hideTools === true,
+      hideInactive: hideInactive(quota?.zai?.hideInactive),
+    },
+    openCodeGo: normalizeOpenCodeGoConfig(quota?.opencodego),
+    openCodeGoHideInactive: hideInactive(quota?.opencodego?.hideInactive),
   }
 }
 
