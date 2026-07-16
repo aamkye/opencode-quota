@@ -87,21 +87,23 @@ Native TUI options can be supplied with the local plugin entry:
 [
   "./opencode-tools-quota.js",
   {
-    "refreshIntervalSeconds": 10,
-    "progressColors": {
-      "enabled": true,
-      "errorBelow": 10,
-      "warningBelow": 30
-    },
-    "otherProviders": {
-      "percentageMode": "remaining",
-      "sortDirection": "desc"
-    },
     "quota": {
+      "refreshIntervalSeconds": 10,
+      "progressColors": {
+        "enabled": true,
+        "errorBelow": 10,
+        "warningBelow": 30
+      },
+      "percentageMode": "remaining",
+      "hideInactive": false,
+      "openai": { "hideInactive": false },
+      "zai": { "hideTools": false, "hideInactive": false },
       "opencodego": {
         "workspaceId": "wrk_TESTWORKSPACE",
-        "workspaceToken": "TOKEN_TEST_ONLY_DO_NOT_USE"
-      }
+        "workspaceToken": "TOKEN_TEST_ONLY_DO_NOT_USE",
+        "hideInactive": false
+      },
+      "otherProviders": { "sortDirection": "desc" }
     }
   }
 ]
@@ -125,10 +127,28 @@ OpenCode Go uses the shared default/custom polling interval, one-second
 countdowns, reset-boundary refresh, and a ten-minute stale horizon without
 exhausted backoff.
 
+Defaults are `quota.refreshIntervalSeconds: 10`,
+`quota.progressColors.enabled: true`, `quota.progressColors.errorBelow: 10`,
+`quota.progressColors.warningBelow: 30`,
+`quota.percentageMode: "remaining"`, `quota.hideInactive: false`,
+`quota.zai.hideTools: false`, and `quota.otherProviders.sortDirection: "desc"`.
+Provider `hideInactive` overrides resolve as
+`providerOverride ?? quota.hideInactive ?? false`. Inactive controls affect
+only configured providers that are not selected; the selected provider remains
+visible. Set `quota.zai.hideTools` to `true` to remove every Z.AI tool-limit
+row and its quantities.
+
 Polling defaults to 10 seconds when its value is invalid or non-positive.
 Color thresholds are clamped to `0-100`, and `errorBelow` cannot exceed
-`warningBelow`. Set `progressColors.enabled` to `false` to disable semantic
-bar and percentage colors.
+`warningBelow`. Set `quota.progressColors.enabled` to `false` to disable
+semantic bar and percentage colors.
+
+#### Breaking configuration migration
+
+The root-level `refreshIntervalSeconds`, `progressColors`, and
+`otherProviders` paths are ignored. Move them to
+`quota.refreshIntervalSeconds`, `quota.progressColors`, and
+`quota.otherProviders` respectively.
 
 ### Build and deploy
 
