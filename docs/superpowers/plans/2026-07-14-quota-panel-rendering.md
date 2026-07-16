@@ -2,6 +2,7 @@
 change: fix-quota-panel-rendering
 design-doc: docs/superpowers/specs/2026-07-14-quota-panel-rendering-design.md
 base-ref: 67c36679448d9b45890006ae2bf728241756c09b
+archived-with: 2026-07-16-fix-quota-panel-rendering
 ---
 
 # Quota Panel Rendering Implementation Plan

@@ -2,6 +2,8 @@
 comet_change: fix-quota-panel-rendering
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-16-fix-quota-panel-rendering
+status: final
 ---
 
 # Quota Panel Rendering Design
