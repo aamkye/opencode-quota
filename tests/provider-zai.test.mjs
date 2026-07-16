@@ -14,7 +14,8 @@ process.env.HOME = isolatedProviderHome
 process.env.XDG_CONFIG_HOME = isolatedProviderHome
 process.env.XDG_DATA_HOME = isolatedProviderHome
 
-const { createZaiProvider, mapZaiPanelState } = await import("../.tmp-test/provider-zai.mjs")
+const { createZaiProvider, fetchZaiQuota, mapZaiPanelState } = await import("../.tmp-test/provider-zai.mjs")
+const { createReactiveZaiAdapter } = await import("../.tmp-test/provider-lifecycle.mjs")
 
 after(async () => {
   await flushEffects()
@@ -64,14 +65,14 @@ function observableState(adapter) {
   }
 }
 
-function quotaResponse(nextResetTime = now + 60 * 60 * 1000) {
+function quotaResponse(nextResetTime = now + 60 * 60 * 1000, percentage = 25) {
   return {
     ok: true,
     json: async () => ({
       code: 200,
       data: {
         level: "pro",
-        limits: [{ type: "TOKENS_LIMIT", unit: 3, percentage: 25, nextResetTime }],
+        limits: [{ type: "TOKENS_LIMIT", unit: 3, percentage, nextResetTime }],
       },
     }),
   }
@@ -103,6 +104,49 @@ function createTestAdapter(t, { api = adapterApi(), fetch: testFetch, clock, pro
     }
   })
   return adapter
+}
+
+function createReactiveTestAdapter(t, {
+  initialKey = "test-key",
+  fetch: testFetch,
+  clock,
+  providerOptions,
+} = {}) {
+  const originalFetch = globalThis.fetch
+  if (testFetch) globalThis.fetch = testFetch
+  const reactive = createReactiveZaiAdapter(initialKey, providerOptions)
+  t.after(async () => {
+    try {
+      reactive.adapter.dispose()
+      await flushEffects()
+    } finally {
+      globalThis.fetch = originalFetch
+      clock?.restore()
+    }
+  })
+  return reactive
+}
+
+function deferredRequests() {
+  const requests = []
+  return {
+    requests,
+    fetch: async (_url, options) => {
+      let resolve
+      let reject
+      const promise = new Promise((resolvePromise, rejectPromise) => {
+        resolve = resolvePromise
+        reject = rejectPromise
+      })
+      requests.push({
+        authorization: options.headers.Authorization,
+        signal: options.signal,
+        resolve,
+        reject,
+      })
+      return promise
+    },
+  }
 }
 
 function installFakeClock(start) {
@@ -224,19 +268,24 @@ test("maps loading and unavailable Z.AI states without hiding the provider", () 
   assert.equal(item(mapZaiPanelState({ phase: "unavailable", now }), "zai:header").detail, "No Z.AI account linked")
 })
 
-test("retains ready values and exposes stale state after a transient failure", () => {
+test("retains Z.AI quota with Peak and stale header segments", () => {
   const ready = mapZaiPanelState({ phase: "ready", data: quota(), now })
   const stale = mapZaiPanelState({ phase: "stale", data: quota(), now })
 
   assert.deepEqual(item(stale, "zai:5h"), item(ready, "zai:5h"))
   assert.deepEqual(item(stale, "zai:7d"), item(ready, "zai:7d"))
-  assert.deepEqual(item(stale, "zai:stale"), {
-    id: "zai:stale",
-    order: 15,
-    kind: "text",
-    text: "~stale",
-    status: "warning",
+  assert.deepEqual(item(stale, "zai:header"), {
+    id: "zai:header",
+    order: 10,
+    kind: "header",
+    title: "Z.AI: Pro",
+    detailSegments: [
+      { text: "Peak (3x)", status: "error" },
+      { text: " / ", status: "textMuted" },
+      { text: "stale", status: "warning" },
+    ],
   })
+  assert.equal(item(stale, "zai:stale"), undefined)
 })
 
 test("uses idle timers for unused full windows and countdown timers for exhausted windows", () => {
@@ -393,6 +442,154 @@ test("preserves Z.AI state when a pending refresh rejects after dispose", async 
   rejectFetch(new Error("request failed after disposal"))
   await flushEffects()
 
+  assert.deepEqual(observableState(adapter), stateAtDispose)
+})
+
+test("suppresses expected Z.AI abort logs but diagnoses non-abort failures", async (t) => {
+  const originalFetch = globalThis.fetch
+  const originalError = console.error
+  const errors = []
+  console.error = (...args) => errors.push(args)
+  t.after(() => {
+    globalThis.fetch = originalFetch
+    console.error = originalError
+  })
+
+  globalThis.fetch = async (_url, options) => new Promise((_resolve, reject) => {
+    options.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true })
+  })
+  const controller = new AbortController()
+  const aborted = fetchZaiQuota("key", controller.signal)
+  controller.abort()
+  assert.equal(await aborted, null)
+  assert.equal(errors.length, 0)
+
+  globalThis.fetch = async () => {
+    throw new Error("transport failed")
+  }
+  assert.equal(await fetchZaiQuota("key", new AbortController().signal), null)
+  assert.equal(errors.length, 1)
+  assert.equal(errors[0][0], "[quota-zai] fetchQuota error:")
+})
+
+test("replaces Z.AI credentials without publishing the old generation", async (t) => {
+  const pending = deferredRequests()
+  const { adapter, setCredential } = createReactiveTestAdapter(t, {
+    initialKey: "key-a",
+    fetch: pending.fetch,
+  })
+  await flushEffects()
+
+  pending.requests[0].resolve(quotaResponse(now + 3_600_000, 25))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "ready")
+  assert.equal(item(adapter.panel(), "zai:5h").value, 75)
+
+  void adapter.refresh()
+  await flushEffects()
+  assert.equal(pending.requests.length, 2)
+  setCredential("key-b")
+  await flushEffects()
+
+  assert.equal(pending.requests[1].signal.aborted, true)
+  assert.equal(pending.requests.length, 3, "one replacement request starts")
+  assert.equal(pending.requests[2].authorization, "Bearer key-b")
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "zai:5h").value, 75)
+  assert.deepEqual(item(adapter.panel(), "zai:header").detailSegments, [
+    { text: "Peak (3x)", status: "error" },
+    { text: " / ", status: "textMuted" },
+    { text: "stale", status: "warning" },
+  ])
+  assert.equal(item(adapter.panel(), "zai:stale"), undefined)
+
+  pending.requests[1].resolve(quotaResponse(now + 3_600_000, 99))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "zai:5h").value, 75)
+
+  pending.requests[2].resolve(quotaResponse(now + 3_600_000, 40))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "ready")
+  assert.equal(item(adapter.panel(), "zai:5h").value, 60)
+
+  void adapter.refresh()
+  await flushEffects()
+  setCredential("key-c")
+  await flushEffects()
+  assert.equal(pending.requests[3].signal.aborted, true)
+  assert.equal(pending.requests.length, 5, "one failed replacement request starts")
+  pending.requests[4].resolve({ ok: false })
+  await flushEffects()
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "zai:5h").value, 60)
+  assert.deepEqual(item(adapter.panel(), "zai:header").detailSegments, [
+    { text: "Peak (3x)", status: "error" },
+    { text: " / ", status: "textMuted" },
+    { text: "stale", status: "warning" },
+  ])
+  assert.equal(item(adapter.panel(), "zai:stale"), undefined)
+
+  pending.requests[3].resolve(quotaResponse(now + 3_600_000, 10))
+  await flushEffects()
+  assert.equal(item(adapter.panel(), "zai:5h").value, 60)
+
+  setCredential(null)
+  await flushEffects()
+  assert.equal(adapter.freshness(), "unavailable")
+  assert.equal(item(adapter.panel(), "zai:5h"), undefined)
+  assert.equal(item(adapter.panel(), "zai:header").detail, "No Z.AI account linked")
+})
+
+test("does not carry a Z.AI reset boundary into a replacement generation", async (t) => {
+  const clock = installFakeClock(now)
+  const oldResetAt = now + 15 * 60 * 1_000
+  const pending = deferredRequests()
+  const { adapter, setCredential } = createReactiveTestAdapter(t, {
+    initialKey: "key-a",
+    fetch: pending.fetch,
+    clock,
+  })
+  await flushEffects()
+
+  pending.requests[0].resolve(quotaResponse(oldResetAt, 25))
+  await flushEffects()
+  const oldBoundary = clock.timeouts.find((timer) =>
+    timer.active && timer.delay === oldResetAt - now)
+  assert.ok(oldBoundary)
+
+  setCredential("key-b")
+  await flushEffects()
+  assert.equal(oldBoundary.active, false, "replacement synchronously clears the old boundary")
+  assert.equal(pending.requests.length, 2, "exactly one replacement request starts")
+
+  clock.advance(oldResetAt - now)
+  oldBoundary.callback()
+  await flushEffects()
+  assert.equal(pending.requests.length, 2, "the old callback cannot queue a replacement follow-up")
+
+  pending.requests[1].resolve(quotaResponse(oldResetAt + 60 * 60 * 1_000, 40))
+  await flushEffects()
+  assert.equal(pending.requests.length, 2, "settlement cannot consume an old-generation boundary")
+  assert.equal(adapter.freshness(), "ready")
+  assert.ok(clock.timeouts.some((timer) => timer.active && timer.delay === 60 * 60 * 1_000))
+})
+
+test("aborts and clears the Z.AI request timeout immediately on dispose", async (t) => {
+  const clock = installFakeClock(now)
+  const pending = deferredRequests()
+  const adapter = createTestAdapter(t, { clock, fetch: pending.fetch })
+  await flushEffects()
+
+  const requestTimeout = clock.timeouts.find((timer) => timer.active && timer.delay === 20_000)
+  assert.ok(requestTimeout)
+  const stateAtDispose = observableState(adapter)
+  adapter.dispose()
+
+  assert.equal(pending.requests[0].signal.aborted, true)
+  assert.equal(requestTimeout.active, false)
+  pending.requests[0].resolve(quotaResponse(now + 3_600_000, 5))
+  await flushEffects()
   assert.deepEqual(observableState(adapter), stateAtDispose)
 })
 

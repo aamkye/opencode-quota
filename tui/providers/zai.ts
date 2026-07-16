@@ -3,7 +3,7 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { Message, Part, Provider, TextPart } from "@opencode-ai/sdk/v2"
 import { createEffect, createRoot, createSignal, onCleanup } from "solid-js"
 
-import type { PanelItem, PanelModel } from "../presentation/types.js"
+import type { PanelItem, PanelModel, PanelStatus, PanelTextSegment } from "../presentation/types.js"
 import type { HomeQuotaSummary, ProviderFreshness, QuotaProviderAdapter, QuotaProviderOptions } from "./types.js"
 
 const DEFAULT_REFRESH_INTERVAL_MS = 10_000
@@ -197,14 +197,17 @@ export function findZaiKeyFromProviders(providers: readonly Provider[]): string 
   return providers.find((provider) => provider.id === ZAI_PROVIDER_ID)?.key ?? null
 }
 
-export async function fetchZaiQuota(apiKey: string): Promise<ZaiQuotaData | null> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+export async function fetchZaiQuota(apiKey: string, signal?: AbortSignal): Promise<ZaiQuotaData | null> {
+  const ownedController = signal ? null : new AbortController()
+  const requestSignal = signal ?? ownedController!.signal
+  const timeout = ownedController
+    ? setTimeout(() => ownedController.abort(), FETCH_TIMEOUT_MS)
+    : null
   try {
     const response = await fetch(ZAI_QUOTA_URL, {
       method: "GET",
       headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
-      signal: controller.signal,
+      signal: requestSignal,
     })
     if (!response.ok) return null
     const payload = await response.json() as QuotaApiResponse
@@ -254,10 +257,10 @@ export async function fetchZaiQuota(apiKey: string): Promise<ZaiQuotaData | null
         : null,
     }
   } catch (error) {
-    console.error("[quota-zai] fetchQuota error:", error)
+    if (!requestSignal.aborted) console.error("[quota-zai] fetchQuota error:", error)
     return null
   } finally {
-    clearTimeout(timeout)
+    if (timeout) clearTimeout(timeout)
   }
 }
 
@@ -270,7 +273,12 @@ export function zaiHomeQuotaSummary(data: ZaiQuotaData): HomeQuotaSummary {
   }
 }
 
-function header(title: string, detail?: string, status?: "error" | "warning" | "success" | "text" | "textMuted"): PanelItem {
+function header(
+  title: string,
+  detail?: string,
+  status?: PanelStatus,
+  detailSegments?: readonly PanelTextSegment[],
+): PanelItem {
   return {
     id: "zai:header",
     order: 10,
@@ -278,6 +286,7 @@ function header(title: string, detail?: string, status?: "error" | "warning" | "
     title,
     ...(detail ? { detail } : {}),
     ...(status ? { status } : {}),
+    ...(detailSegments?.length ? { detailSegments } : {}),
   }
 }
 
@@ -316,8 +325,16 @@ export function mapZaiPanelState(state: ZaiPanelState): PanelModel {
     items.push(header("Z.AI (est)", "Usage unavailable", "textMuted"))
     items.push({ id: "zai:5h-reset", order: 20, kind: "timer", label: "Estimated reset", state: "countdown", epoch })
   } else if (data) {
-    items.push(header(`Z.AI: ${data.level}`, peakSummary.text, peakSummary.status))
-    if (state.phase === "stale") items.push({ id: "zai:stale", order: 15, kind: "text", text: "~stale", status: "warning" })
+    const staleSegments: readonly PanelTextSegment[] | undefined = state.phase === "stale"
+      ? [
+          { text: peakSummary.text, status: peakSummary.status },
+          { text: " / ", status: "textMuted" },
+          { text: "stale", status: "warning" },
+        ]
+      : undefined
+    items.push(staleSegments
+      ? header(`Z.AI: ${data.level}`, undefined, undefined, staleSegments)
+      : header(`Z.AI: ${data.level}`, peakSummary.text, peakSummary.status))
     items.push(...quotaItems("5H", "5h", 20, data.tokenRemainingPct, data.tokenNextResetEpoch, now, data.tokenAbsolute))
     const weekly = data.weeklyLimit
     items.push(...quotaItems("7D", "7d", 50, weekly?.remainingPct ?? 100, weekly?.nextResetEpoch ?? 0, now, weekly?.absolute ?? null))
@@ -387,8 +404,12 @@ function freshnessFor(phase: ZaiPanelPhase): ProviderFreshness {
 export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptions = {}): QuotaProviderAdapter {
   const refreshIntervalMs = providerRefreshInterval(options)
   return createRoot((dispose) => {
-  const [apiKey, setApiKey] = createSignal<string | null>(findZaiKeyFromFiles())
-  const [quotaData, setQuotaData] = createSignal<ZaiQuotaData | null>(null)
+  type PublishedQuota = { data: ZaiQuotaData; generation: number }
+  type GenerationBoundary = { epoch: number; generation: number }
+
+  const [apiKey, setApiKey] = createSignal<string | null>(null)
+  const [quotaState, setQuotaState] = createSignal<PublishedQuota | null>(null)
+  const quotaData = () => quotaState()?.data ?? null
   const [phase, setPhase] = createSignal<ZaiPanelPhase>("loading")
   const [lastSuccessAt, setLastSuccessAt] = createSignal(0)
   const [retryAfterEpoch, setRetryAfterEpoch] = createSignal<number | null>(null)
@@ -396,26 +417,62 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
   const [cycleMs, setCycleMs] = createSignal(FALLBACK_CYCLE_MS)
   const [sessionID, setSessionID] = createSignal<string | null>(null)
   const [now, setNow] = createSignal(Date.now())
-  const [refreshedBoundary, setRefreshedBoundary] = createSignal(0)
+  const [refreshedBoundary, setRefreshedBoundary] = createSignal<GenerationBoundary | null>(null)
   let refreshInFlight: Promise<void> | null = null
   let refreshStartedAt = 0
-  let pendingBoundary = 0
+  let pendingBoundary: GenerationBoundary | null = null
+  let credentialGeneration = 0
+  let observedCredential: string | null | undefined
   let disposed = false
+  let boundarySchedule: {
+    timer: ReturnType<typeof setTimeout>
+    generation: number
+  } | null = null
+  let activeRequest: {
+    generation: number
+    controller: AbortController
+    timeout: ReturnType<typeof setTimeout>
+    promise: Promise<void>
+  } | null = null
+
+  const clearBoundarySchedule = (): void => {
+    const schedule = boundarySchedule
+    boundarySchedule = null
+    if (schedule) clearTimeout(schedule.timer)
+    pendingBoundary = null
+    setRefreshedBoundary(null)
+  }
+
+  const cancelActiveRequest = (): void => {
+    const request = activeRequest
+    if (!request) return
+    activeRequest = null
+    request.controller.abort()
+    clearTimeout(request.timeout)
+    if (refreshInFlight === request.promise) {
+      refreshInFlight = null
+      refreshStartedAt = 0
+    }
+  }
 
   const refresh = (): Promise<void> => {
     if (disposed) return Promise.resolve()
     if (refreshInFlight) return refreshInFlight
+    const key = apiKey()
+    if (!key) {
+      setPhase("unavailable")
+      return Promise.resolve()
+    }
+
+    const generation = credentialGeneration
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
     const startedAt = Date.now()
     const request = (async () => {
-      const key = apiKey()
-      if (!key) {
-        setPhase("unavailable")
-        return
-      }
-      const data = await fetchZaiQuota(key)
-      if (disposed) return
+      const data = await fetchZaiQuota(key, controller.signal)
+      if (disposed || generation !== credentialGeneration) return
       if (data) {
-        setQuotaData(data)
+        setQuotaState({ data, generation })
         setPhase("ready")
         setLastSuccessAt(Date.now())
       } else if (quotaData()) {
@@ -426,14 +483,19 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
     })()
     refreshInFlight = request
     refreshStartedAt = startedAt
+    activeRequest = { generation, controller, timeout, promise: request }
     const settled = () => {
+      if (activeRequest?.promise === request) {
+        clearTimeout(activeRequest.timeout)
+        activeRequest = null
+      }
       if (refreshInFlight !== request) return
       refreshInFlight = null
       refreshStartedAt = 0
-      if (disposed || pendingBoundary <= 0) return
-      const epoch = pendingBoundary
-      pendingBoundary = 0
-      setRefreshedBoundary(epoch)
+      const queued = pendingBoundary
+      if (disposed || generation !== credentialGeneration || queued?.generation !== generation) return
+      pendingBoundary = null
+      setRefreshedBoundary(queued)
       void refresh()
     }
     void request.then(settled, settled)
@@ -441,12 +503,23 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
   }
 
   createEffect(() => {
-    const key = findZaiKeyFromProviders(api.state.provider)
-    if (key) setApiKey(key)
-  })
+    const next = findZaiKeyFromProviders(api.state.provider) ?? findZaiKeyFromFiles()
+    if (next === observedCredential) return
+    const replacingCredential = observedCredential !== undefined && observedCredential !== null
+    observedCredential = next
+    credentialGeneration += 1
+    clearBoundarySchedule()
+    cancelActiveRequest()
+    setRetryAfterEpoch(null)
+    setApiKey(next)
 
-  createEffect(() => {
-    apiKey()
+    if (!next) {
+      setQuotaState(null)
+      setLastSuccessAt(0)
+      setPhase("unavailable")
+      return
+    }
+    setPhase(replacingCredential && quotaData() ? "stale" : "loading")
     void refresh()
   })
 
@@ -507,7 +580,8 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
     const current = Date.now()
     setNow(current)
     if (lastSuccessAt() && current - lastSuccessAt() > STALE_MAX_MS && quotaData()) {
-      setQuotaData(null)
+      setQuotaState(null)
+      clearBoundarySchedule()
       setPhase("heuristic")
     }
   }, TICK_MS)
@@ -515,19 +589,39 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
   onCleanup(() => clearInterval(tick))
 
   createEffect(() => {
-    const epoch = quotaData()?.tokenNextResetEpoch ?? retryAfterEpoch() ?? 0
-    if (epoch <= 0 || epoch === refreshedBoundary() || epoch === pendingBoundary) return
+    const published = quotaState()
+    const generation = published?.generation ?? credentialGeneration
+    if (published && generation !== credentialGeneration) return
+    const epoch = published?.data.tokenNextResetEpoch ?? retryAfterEpoch() ?? 0
+    const refreshed = refreshedBoundary()
+    const pending = pendingBoundary
+    if (
+      epoch <= 0
+      || (refreshed?.generation === generation && refreshed.epoch === epoch)
+      || (pending?.generation === generation && pending.epoch === epoch)
+    ) return
+
     const timer = setTimeout(() => {
-      if (disposed) return
-      if (refreshInFlight && refreshStartedAt < epoch) {
-        pendingBoundary = epoch
+      const current = quotaState()
+      const sourceIsCurrent = published
+        ? current?.generation === generation
+        : current === null
+      if (disposed || generation !== credentialGeneration || !sourceIsCurrent) return
+      if (refreshInFlight && activeRequest?.generation === generation && refreshStartedAt < epoch) {
+        pendingBoundary = { epoch, generation }
         return
       }
-      setRefreshedBoundary(epoch)
+      setRefreshedBoundary({ epoch, generation })
       void refresh()
     }, Math.max(0, epoch - Date.now()))
+    const schedule = { timer, generation }
+    boundarySchedule = schedule
     unref(timer)
-    onCleanup(() => clearTimeout(timer))
+    onCleanup(() => {
+      if (boundarySchedule !== schedule) return
+      boundarySchedule = null
+      clearTimeout(timer)
+    })
   })
 
   return {
@@ -543,7 +637,9 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
     dispose(): void {
       if (disposed) return
       disposed = true
-      pendingBoundary = 0
+      credentialGeneration += 1
+      clearBoundarySchedule()
+      cancelActiveRequest()
       dispose()
     },
   }

@@ -9,6 +9,7 @@ globalThis.React = {
 
 const { mountPanel } = await import("../.tmp-test/presentation-mounted.mjs")
 const { mapOpenAiPanelState } = await import("../.tmp-test/provider-openai.mjs")
+const { mapZaiPanelState } = await import("../.tmp-test/provider-zai.mjs")
 
 const fullTitle = "Very long usage overview with enough detail to exceed the normalization fallback width of eighty cells"
 
@@ -368,6 +369,39 @@ test("mounts stale OpenAI state as warning text in the provider header", () => {
     assert.equal(title?.props.flexBasis, 0)
     assert.equal(title?.props.flexGrow, 1)
     assert.equal(stale?.props.fg, "#ffaa00")
+    assert.equal(text.some((element) => element.props.children === "~stale"), false)
+  } finally {
+    dispose()
+  }
+})
+
+test("mounts stale Z.AI state as colored Peak, separator, and stale header segments", () => {
+  const staleModel = mapZaiPanelState({
+    phase: "stale",
+    now: Date.UTC(2026, 6, 13, 6, 0, 0),
+    data: {
+      level: "Max",
+      tokenUsedPct: 25,
+      tokenRemainingPct: 75,
+      tokenNextResetEpoch: Date.UTC(2026, 6, 13, 7, 0, 0),
+      tokenAbsolute: null,
+      weeklyLimit: null,
+      timeLimit: null,
+    },
+  })
+  const { elements, dispose } = mountPanel(staleModel)
+  const text = elements.filter((element) => element.type === "text")
+
+  try {
+    const title = text.find((element) => element.props.children === "Z.AI: Max")
+    const segments = text.filter((element) => ["Peak (3x)", " / ", "stale"].includes(element.props.children))
+    assert.equal(title?.props.flexBasis, 0)
+    assert.equal(title?.props.flexGrow, 1)
+    assert.deepEqual(segments.map((element) => [element.props.children, element.props.fg]), [
+      ["Peak (3x)", "#ff0000"],
+      [" / ", "#888888"],
+      ["stale", "#ffaa00"],
+    ])
     assert.equal(text.some((element) => element.props.children === "~stale"), false)
   } finally {
     dispose()
