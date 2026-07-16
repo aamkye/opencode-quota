@@ -3578,7 +3578,7 @@ git commit -m "fix(tui): secure Z.AI credential lifecycle"
 - Distinguishes: automated mounted coverage keeps the synthetic three-column table, while live validation uses Z.AI's actual two-column `Model`/`Usage` table emitted from `TIME_LIMIT.usageDetails`.
 - Excludes: the unrelated OpenCode GO response-size final-review finding and all source changes outside this approved expansion.
 
-- [ ] **Step 1: Run quota documentation assertions and verify RED**
+- [x] **Step 1: Run quota documentation assertions and verify RED**
 
 Run:
 
@@ -3588,7 +3588,7 @@ node --input-type=module -e 'import assert from "node:assert/strict"; import { r
 
 Expected: FAIL with `AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /\*\*5H primary window\*\*/` because `README.md` still describes fixed `5H` primary and `7D` secondary windows instead of API-reported duration labels.
 
-- [ ] **Step 2: Replace fixed OpenAI duration and standalone stale-row wording**
+- [x] **Step 2: Replace fixed OpenAI duration and standalone stale-row wording**
 
 Replace the first two bullets under `### OpenAI (ChatGPT Plus/Pro)` with:
 
@@ -3612,7 +3612,7 @@ Replace the shared stale-handling bullet with:
   fetch failures and marks `stale` in the right-aligned provider header.
 ```
 
-- [ ] **Step 3: Rerun quota documentation assertions to verify GREEN**
+- [x] **Step 3: Rerun quota documentation assertions to verify GREEN**
 
 Run:
 
@@ -3622,14 +3622,14 @@ node --input-type=module -e 'import assert from "node:assert/strict"; import { r
 
 Expected: exits `0` and prints `README quota wording verified`.
 
-- [ ] **Step 4: Commit the quota documentation slice**
+- [x] **Step 4: Commit the quota documentation slice**
 
 ```bash
 git add README.md
 git commit -m "docs: update quota window and stale wording"
 ```
 
-- [ ] **Step 5: Run the affected focused test set from a fresh presentation compile**
+- [x] **Step 5: Run the affected focused test set from a fresh presentation compile**
 
 Run:
 
@@ -3639,7 +3639,7 @@ node tests/compile-presentation.mjs && node --test tests/presentation-types.test
 
 Expected: every affected test PASS with `fail 0`, including the compatible segment type, readable pure header text, independently colored mounted segments, exact OpenAI/Z.AI stale models with no standalone stale row, compact-table flex structure, shuffled multi-group order, replacement/removal, silent expected aborts, non-abort diagnostics, disposal timeout cleanup, old-boundary suppression across replacement, new-generation scheduling, and one same-generation queued follow-up.
 
-- [ ] **Step 6: Run static and full automated verification**
+- [x] **Step 6: Run static and full automated verification**
 
 Run these commands separately so a failure identifies its gate:
 
@@ -3650,7 +3650,7 @@ npm test
 
 Expected: `tsc --noEmit` exits `0`; both compile scripts and every `tests/*.test.mjs` test PASS with `fail 0`.
 
-- [ ] **Step 7: Build and prove three-artifact activation/deployment parity**
+- [x] **Step 7: Build and prove three-artifact activation/deployment parity**
 
 Run:
 
@@ -3684,7 +3684,7 @@ Fully restart OpenCode from `/Users/aam/Projects/priv/opencode-quota` and repeat
 [ ] OpenAI windows display labels matching their API-reported durations, including a weekly-only primary response as one 7D row and no invented 5H row.
 ```
 
-- [ ] **Step 9: Inspect final review readiness without expanding scope**
+- [x] **Step 9: Inspect final review readiness without expanding scope**
 
 Run:
 
