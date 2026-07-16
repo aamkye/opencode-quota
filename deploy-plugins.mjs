@@ -11,11 +11,23 @@ const obsoleteFiles = [
   `${obsoleteNamespace}.js`,
   `${obsoleteNamespace}.ts`,
   "opencode-tools-tokens.ts",
+  "plugins/opencode-tools-tokens.js",
   "plugins/opencode-tools-tokens.ts",
   `plugins/${obsoleteNamespace}-tokens.js`,
   `plugins/${obsoleteNamespace}-tokens.ts`,
   "plugins/tokens.js",
   "plugins/tokens.ts",
+]
+
+const managedTokenCommandIds = [
+  "tokens_today",
+  "tokens_daily",
+  "tokens_weekly",
+  "tokens_monthly",
+  "tokens_all",
+  "tokens_session",
+  "tokens_session_all",
+  "tokens_between",
 ]
 
 const managedConfigPaths = [
@@ -87,6 +99,22 @@ async function readTuiConfig(path) {
   }
 }
 
+async function readOpenCodeConfig(path) {
+  try {
+    return JSON.parse(await readFile(path, "utf8"))
+  } catch (error) {
+    if (error?.code === "ENOENT") return { $schema: "https://opencode.ai/config.json" }
+    throw error
+  }
+}
+
+function cleanManagedTokenCommands(config) {
+  if (!config.command || typeof config.command !== "object" || Array.isArray(config.command)) return
+
+  for (const id of managedTokenCommandIds) delete config.command[id]
+  if (Object.keys(config.command).length === 0) delete config.command
+}
+
 function cleanManagedEntries(config, configRoot) {
   const unrelated = []
   let options
@@ -124,7 +152,6 @@ export async function deployPlugins(targetRoot, { logLevel = "info", projectConf
   await Promise.all([
     copyFile(resolve(projectRoot, "dist/opencode-tools-shared.js"), join(targetRoot, "opencode-tools-shared.js")),
     copyFile(resolve(projectRoot, "dist/opencode-tools-quota.js"), join(targetRoot, "opencode-tools-quota.js")),
-    copyFile(resolve(projectRoot, "dist/plugins/opencode-tools-tokens.js"), join(targetRoot, "plugins/opencode-tools-tokens.js")),
   ])
 
   await Promise.all(obsoleteFiles.map((file) => rm(join(targetRoot, file), { force: true })))
@@ -155,6 +182,11 @@ export async function deployPlugins(targetRoot, { logLevel = "info", projectConf
     : "./opencode-tools-quota.js"
   config.plugin = [...selected.unrelated, quotaEntry]
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const openCodeConfigPath = join(targetRoot, "opencode.json")
+  const openCodeConfig = await readOpenCodeConfig(openCodeConfigPath)
+  cleanManagedTokenCommands(openCodeConfig)
+  await writeFile(openCodeConfigPath, `${JSON.stringify(openCodeConfig, null, 2)}\n`)
 }
 
 async function main(mode) {
