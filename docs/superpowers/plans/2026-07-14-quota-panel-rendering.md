@@ -1989,7 +1989,7 @@ git commit -m "fix(tui): preserve provider group boundaries"
 - Produces: normalized ordered segment copies; mounted right-edge segments colored by their own status; pure header text formed from `detailSegments.map(({ text }) => text).join("")` when segments exist, otherwise the existing detail string.
 - Preserves: every ordinary single-string provider detail, its item-level status color, provider-title flex growth, and all existing `PanelItem` callers.
 
-- [ ] **Step 1: Add failing semantic, pure-render, and mounted segment tests**
+- [x] **Step 1: Add failing semantic, pure-render, and mounted segment tests**
 
 Add an ordinary detail and a segmented detail item to `tests/presentation-types.fixture.ts`:
 
@@ -2121,7 +2121,7 @@ test("mounts ordinary and segmented provider-header details at the right edge", 
 })
 ```
 
-- [ ] **Step 2: Run segmented header tests and verify RED**
+- [x] **Step 2: Run segmented header tests and verify RED**
 
 Run:
 
@@ -2131,7 +2131,7 @@ node tests/compile-presentation.mjs && node --test tests/presentation-types.test
 
 Expected: FAIL first in `typechecks a semantic panel model fixture` because TypeScript reports that `detailSegments` does not exist on the header `PanelItem`; pure normalization drops the segments, and mounted rendering emits none of the independently colored segment text.
 
-- [ ] **Step 3: Add the compatible semantic segment type and normalize it**
+- [x] **Step 3: Add the compatible semantic segment type and normalize it**
 
 Add the type after `PanelStatus` in `tui/presentation/types.ts` and extend only the header variant:
 
@@ -2176,7 +2176,7 @@ Keep all remaining `PanelItem` variants unchanged. Add `PanelTextSegment` to the
       }
 ```
 
-- [ ] **Step 4: Preserve readable deterministic header text**
+- [x] **Step 4: Preserve readable deterministic header text**
 
 Replace only the header case in `renderItemLayout()`:
 
@@ -2195,7 +2195,7 @@ Replace only the header case in `renderItemLayout()`:
 
 This deliberately keeps pure rendering as one deterministic readable string; per-segment colors are a mounted-only concern.
 
-- [ ] **Step 5: Mount ordered independently colored segments with string fallback**
+- [x] **Step 5: Mount ordered independently colored segments with string fallback**
 
 Replace only the header case in `MountedItem()`:
 
@@ -2222,7 +2222,7 @@ Replace only the header case in `MountedItem()`:
 
 Do not synthesize separators or statuses in the renderer; providers supply exact ordered text segments. If both fields are present, non-empty `detailSegments` is mounted/pure display input and `detail` remains compatible stored data.
 
-- [ ] **Step 6: Run segmented header tests and typechecking to verify GREEN**
+- [x] **Step 6: Run segmented header tests and typechecking to verify GREEN**
 
 Run:
 
@@ -2232,7 +2232,7 @@ node tests/compile-presentation.mjs && node --test tests/presentation-types.test
 
 Expected: all focused tests PASS; ordinary `detail` remains one item-status-colored right-edge string, ordered segments retain their own colors, pure output is readable, and TypeScript exits `0`.
 
-- [ ] **Step 7: Commit the compatible segmented-header slice**
+- [x] **Step 7: Commit the compatible segmented-header slice**
 
 ```bash
 git add tui/presentation/types.ts tui/presentation/renderer.tsx tests/presentation-types.fixture.ts tests/presentation-render-model.test.mjs tests/presentation-mounted.test.mjs
