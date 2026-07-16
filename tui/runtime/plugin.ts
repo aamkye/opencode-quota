@@ -5,14 +5,15 @@ import type { PluginManifestEntry } from "./manifest.js"
 type FeatureCleanup = TuiDispose
 
 export type ServiceKey = PropertyKey
-export type ServiceFactory<T> = () => T
+export type ServiceValue<T> = T extends object | FeatureCleanup ? T & { dispose?: FeatureCleanup } : T
+export type ServiceFactory<T> = () => ServiceValue<T>
 export type ServiceLease<T> = {
-  value: T
+  value: ServiceValue<T>
   release(): void | Promise<void>
 }
 
 type ServiceRecord<T> = {
-  value: T
+  value: ServiceValue<T>
   references: number
   dispose?: FeatureCleanup
 }

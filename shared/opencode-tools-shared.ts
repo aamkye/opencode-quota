@@ -45,6 +45,6 @@ export type {
   TokenReportData,
 } from "../lib/tokens/token-report-data";
 export { acquireService, defineTuiPlugin } from "../tui/runtime/plugin.js";
-export type { FeatureActivation, ServiceFactory, ServiceKey, ServiceLease, TuiFeatureContext } from "../tui/runtime/plugin.js";
+export type { FeatureActivation, ServiceFactory, ServiceKey, ServiceLease, ServiceValue, TuiFeatureContext } from "../tui/runtime/plugin.js";
 export { pluginDescriptor, pluginManifest } from "../tui/runtime/manifest.js";
 export type { PluginKey, PluginManifestEntry } from "../tui/runtime/manifest.js";

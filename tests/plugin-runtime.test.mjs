@@ -1,7 +1,38 @@
+import { spawnSync } from "node:child_process"
 import assert from "node:assert/strict"
+import { dirname, resolve } from "node:path"
 import test from "node:test"
+import { fileURLToPath } from "node:url"
 
 import { acquireService, defineTuiPlugin } from "../.tmp-test/plugin-runtime.mjs"
+
+const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+
+function runPluginRuntimeContractCheck() {
+  return spawnSync(
+    process.execPath,
+    [
+      resolve(rootDir, "node_modules/typescript/bin/tsc"),
+      "--noEmit",
+      "--ignoreConfig",
+      "--pretty",
+      "false",
+      "--strict",
+      "--target",
+      "ES2022",
+      "--module",
+      "ESNext",
+      "--moduleResolution",
+      "bundler",
+      "--types",
+      "node",
+      "--skipLibCheck",
+      "opencode-plugin-tui.d.ts",
+      "tests/plugin-runtime-contract.fixture.ts",
+    ],
+    { cwd: rootDir, encoding: "utf8" },
+  )
+}
 
 const descriptor = {
   id: "aamkye/opencode-tools-test-runtime",
@@ -220,6 +251,11 @@ test("defineTuiPlugin preserves undefined thrown by immediate cleanup and unregi
   assert.deepEqual(events, ["first undefined", "later error"])
 })
 
+test("shared ServiceFactory contract exposes disposal for object services", () => {
+  const result = runPluginRuntimeContractCheck()
+  assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join("\n"))
+})
+
 test("acquireService shares leases per api and disposes on final release", async () => {
   const apiA = createLifecycle().api
   const apiB = createLifecycle().api
@@ -335,4 +371,36 @@ test("defineTuiPlugin activation context releases acquired service leases on cle
 
   await lifecycle.dispose()
   assert.equal(disposals, 1)
+})
+
+test("defineTuiPlugin activation context replaces reentrant services during cleanup", async () => {
+  const lifecycle = createLifecycle()
+  const key = Symbol("context-reentrant-service")
+  let creations = 0
+  let disposals = 0
+  let firstValue
+  let replacementValue
+
+  const module = defineTuiPlugin(descriptor, async (context) => {
+    const factory = () => {
+      const id = ++creations
+      return {
+        id,
+        dispose() {
+          disposals += 1
+          if (id === 1) replacementValue = context.acquireService(key, factory).value
+        },
+      }
+    }
+
+    firstValue = context.acquireService(key, factory).value
+  })
+
+  await module.tui(lifecycle.api, undefined, undefined)
+  await lifecycle.dispose()
+
+  assert.equal(creations, 2)
+  assert.equal(disposals, 2)
+  assert.notEqual(replacementValue, firstValue)
+  assert.equal(replacementValue.id, 2)
 })
