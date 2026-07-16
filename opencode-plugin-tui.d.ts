@@ -5,7 +5,47 @@ declare module "@opencode-ai/plugin/tui" {
   type MessageUpdatedEvent = Extract<Event, { type: "message.updated" }> & { id: string }
   type TuiEvent = Exclude<Event, { type: "message.updated" }> | MessageUpdatedEvent
 
+  export interface TuiCommand {
+    name: string
+    title: string
+    namespace: "palette"
+    slashName: string
+    run(): void
+  }
+
+  export interface TuiBinding {
+    key: string
+    cmd: string | (() => void)
+    desc: string
+  }
+
+  export interface TuiRoute {
+    name: string
+    render(): JSX.Element
+  }
+
+  export interface TuiPromptProps {
+    title: string
+    placeholder?: string
+    onSubmit(value: string): void
+  }
+
   export interface TuiPluginApi {
+    keymap: {
+      registerLayer(input: { commands?: TuiCommand[]; bindings?: TuiBinding[] }): void
+    }
+    route: {
+      current: { name: string; params?: Record<string, unknown> }
+      register(routes: TuiRoute[]): void
+      navigate(name: string, params?: Record<string, unknown>): void
+    }
+    ui: {
+      dialog: {
+        replace(render: () => JSX.Element, onClose?: () => void): void
+        clear(): void
+      }
+      DialogPrompt: (props: TuiPromptProps) => JSX.Element
+    }
     slots: {
       register(input: {
         order?: number
