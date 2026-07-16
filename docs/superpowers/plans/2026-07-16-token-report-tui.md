@@ -147,27 +147,27 @@ Expected: PASS; generated output contains one shared artifact and one host-runti
 - Consumes: the combined `dist/opencode-tools-quota.js` artifact.
 - Produces: local and global deployments that remove stale token server artifacts and all managed `tokens_*` `opencode.json` entries.
 
-- [ ] **Step 1: Write failing deployment cleanup tests**
+- [x] **Step 1: Write failing deployment cleanup tests**
 
 Seed fixture `opencode.json` with unrelated commands and all eight managed `tokens_*` commands. After deployment, assert unrelated commands remain, `tokens_*` commands are absent, `plugins/opencode-tools-tokens.js` is absent, and the deployment snapshot is idempotent.
 
-- [ ] **Step 2: Run the focused deployment test to verify RED**
+- [x] **Step 2: Run the focused deployment test to verify RED**
 
 Run: `node --test tests/plugin-deploy.test.mjs`
 
 Expected: FAIL because deployment still writes the model-backed command configuration and token server artifact.
 
-- [ ] **Step 3: Implement managed command and artifact removal**
+- [x] **Step 3: Implement managed command and artifact removal**
 
 Remove token-artifact copying and token command registration from `deploy-plugins.mjs`. Add the legacy token artifact to managed cleanup. When writing `opencode.json`, delete only the eight managed `tokens_*` keys, preserve all other fields and commands, and remove an empty `command` object only when deployment created no unrelated command entries.
 
-- [ ] **Step 4: Run focused and full verification**
+- [x] **Step 4: Run focused and full verification**
 
 Run: `node --test tests/plugin-deploy.test.mjs && npm test && npm run typecheck && npm run build && npm run deploy:local && opencode debug config`
 
 Expected: all tests, typecheck, and build pass; deployed config has no `tokens_*` server commands; restarting the OpenCode TUI exposes the native `/tokens*` slash commands and opens reports without model activity.
 
-- [ ] **Step 5: Update task evidence**
+- [x] **Step 5: Update task evidence**
 
 Mark Tasks 2.1 through 2.3 complete only after the commands above pass. Record the no-model route behavior and the intentional CLI limitation in the verification report.
 

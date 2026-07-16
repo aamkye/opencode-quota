@@ -8,4 +8,4 @@
 
 - [x] 2.1 Add failing TUI command and route tests for no-model report generation, range input, and return navigation.
 - [x] 2.2 Implement native token TUI commands, report route, and native range prompt.
-- [ ] 2.3 Remove server token command deployment and verify local/global cleanup with the full project suite.
+- [x] 2.3 Remove server token command deployment and verify local/global cleanup with the full project suite.
