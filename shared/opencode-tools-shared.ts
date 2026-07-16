@@ -35,6 +35,23 @@ export type {
   QuotaProviderDemand,
   QuotaProviderHub,
 } from "../tui/services/quota-provider-hub.js";
+export {
+  composeQuotaPanel,
+  createQuotaSelection,
+  normalizeQuotaOptions,
+  quotaProviderDemand,
+  selectedQuotaProviderID,
+  selectedSessionQuotaProviderID,
+} from "../tui/features/quota.js";
+export type {
+  NormalizedQuotaOptions,
+  PercentageMode,
+  ProgressColorOptions,
+  QuotaCompositionOptions,
+  QuotaPluginOptions,
+  QuotaSelection,
+  SortDirection,
+} from "../tui/features/quota.js";
 
 export {
   getCommandTitle,

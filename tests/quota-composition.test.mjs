@@ -20,7 +20,8 @@ process.env.HOME = isolatedProviderHome
 process.env.XDG_CONFIG_HOME = isolatedProviderHome
 process.env.XDG_DATA_HOME = isolatedProviderHome
 
-const { default: quotaPlugin, composeQuotaPanel, normalizeQuotaOptions, selectedQuotaProviderID, selectedSessionQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
+const { default: quotaPlugin } = await import("../.tmp-test/plugin-adapters-quota-fixture.mjs")
+const { composeQuotaPanel, normalizeQuotaOptions, selectedQuotaProviderID, selectedSessionQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
 const { createQuotaSelectionHost, mountQuotaSelection } = await import("../.tmp-test/quota-selection.mjs")
 const { normalizePanelModel, renderPanelLayout } = await import("../.tmp-test/presentation-renderer.mjs")
 const { createReactiveOpenAiAdapter, createReactiveZaiAdapter } = await import("../.tmp-test/provider-lifecycle.mjs")

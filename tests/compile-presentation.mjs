@@ -18,7 +18,7 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
   ["tui/providers/opencode-go.ts", ".tmp-test/provider-opencode-go.mjs", ["browser"]],
   ["tui/services/quota-provider-hub.ts", ".tmp-test/provider-hub.mjs", ["browser"]],
   ["tests/provider-lifecycle.fixture.ts", ".tmp-test/provider-lifecycle.mjs", ["browser"]],
-  ["tui/quota.tsx", ".tmp-test/quota-composition.mjs", ["browser"]],
+  ["tui/features/quota.ts", ".tmp-test/quota-composition.mjs", ["browser"]],
   ["tests/quota-selection.fixture.ts", ".tmp-test/quota-selection.mjs", ["browser"]],
   ["tui/home.tsx", ".tmp-test/home-composition.mjs", ["browser"]],
   ["tui/token-report.tsx", ".tmp-test/token-tui.mjs", ["browser"], undefined, ["solid-js"]],
