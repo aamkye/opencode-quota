@@ -42,8 +42,9 @@ status, compact homepage summaries, and `/tokens_*` reports for **Z.AI (GLM)**,
 
 ### OpenAI (ChatGPT Plus/Pro)
 
-- **5H primary window** — remaining %, reset countdown.
-- **7D weekly window** — same bar + countdown.
+- **API-reported quota windows** — primary and optional secondary windows use
+  compact labels derived from their API-reported duration, such as `5H`, `7D`,
+  or `1M`, and show remaining percentage plus reset countdown.
 - **Plan type** — Plus / Pro / Pro Lite / Team.
 - **Limited indicator** — shows when rate limit is reached.
 
@@ -70,8 +71,8 @@ status, compact homepage summaries, and `/tokens_*` reports for **Z.AI (GLM)**,
 - **Smart polling (Z.AI and OpenAI)** — checks the quota API every 10s by
   default, backing off to 5min when the primary window is exhausted.
 - **Expandable** — click the header to show weekly / tool / absolute details.
-- **Stale handling** — keeps showing the last known data (marked `~stale`)
-  through transient fetch failures.
+- **Stale handling** — keeps showing the last known data through transient
+  fetch failures and marks `stale` in the right-aligned provider header.
 
 ## Local-only usage
 
@@ -230,7 +231,8 @@ shown above. Legacy files and aliases are intentionally not provided.
    `ChatGPT-Account-Id` header.
 3. Polls `https://chatgpt.com/backend-api/wham/usage` every 10s (5min
    when the primary window is exhausted).
-4. Renders plan type + primary (5H) / secondary (7D) / code review windows.
+4. Renders the plan type and available primary/secondary quota windows with
+   compact labels derived from each API-reported duration.
 
 ### OpenCode Go
 
