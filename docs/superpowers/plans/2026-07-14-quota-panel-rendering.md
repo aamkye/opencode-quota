@@ -2257,7 +2257,7 @@ git commit -m "fix(tui): support segmented header details"
 - Produces for Task 14: `.tmp-test/provider-lifecycle.mjs`, browser-conditioned from one test-only TypeScript entry that imports `createSignal`, `createOpenAiProvider`, and `createZaiProvider`; each exported constructor returns its adapter and a same-runtime credential setter.
 - Preserves: one in-flight request per credential generation, polling/backoff, stale expiry, reset-boundary queueing, direct `fetchOpenAiQuota({ access })` callers, and the public `QuotaProviderAdapter` signature.
 
-- [ ] **Step 1: Add the shared browser-conditioned provider lifecycle fixture**
+- [x] **Step 1: Add the shared browser-conditioned provider lifecycle fixture**
 
 Create `tests/provider-lifecycle.fixture.ts` so each reactive signal and the provider constructor that observes it are bundled into the same browser-conditioned Solid runtime:
 
@@ -2394,7 +2394,7 @@ function deferredRequests() {
 }
 ```
 
-- [ ] **Step 2: Add failing OpenAI stale-header, replacement-boundary, abort-log, removal, and disposal tests**
+- [x] **Step 2: Add failing OpenAI stale-header, replacement-boundary, abort-log, removal, and disposal tests**
 
 Replace the stale model assertion in `tests/provider-openai.test.mjs` with:
 
@@ -2610,7 +2610,7 @@ test("aborts and clears the OpenAI request timeout immediately on dispose", asyn
 
 Retain the existing `queues one OpenAI reset-boundary refresh behind an older request` test unchanged. Its same-generation ordering remains required: after the boundary callback, `requests` stays `2`; after `resolvePending(...)` and `flushEffects()`, `requests` becomes exactly `3`.
 
-- [ ] **Step 3: Run the OpenAI provider test and verify RED**
+- [x] **Step 3: Run the OpenAI provider test and verify RED**
 
 Run:
 
@@ -2620,7 +2620,7 @@ node tests/compile-presentation.mjs && node --test tests/provider-openai.test.mj
 
 Expected: compilation creates `.tmp-test/provider-lifecycle.mjs` successfully, proving the fixture uses the real browser-conditioned bundle. Tests then FAIL because stale mapping/abort/disposal behavior is absent and `oldBoundary.active` remains `true` after replacement; invoking that old callback while the replacement is pending can populate the unowned numeric `pendingBoundary` and produce an extra request after settlement.
 
-- [ ] **Step 4: Allow adapter-owned signals without changing direct fetch callers**
+- [x] **Step 4: Allow adapter-owned signals without changing direct fetch callers**
 
 Replace `fetchOpenAiQuota()` in `tui/providers/openai.ts` with:
 
@@ -2675,7 +2675,7 @@ export async function fetchOpenAiQuota(auth: OpenAiAuthEntry, signal?: AbortSign
 }
 ```
 
-- [ ] **Step 5: Add OpenAI stale-header mapping, generation ownership, and credential transitions**
+- [x] **Step 5: Add OpenAI stale-header mapping, generation ownership, and credential transitions**
 
 Add `PanelTextSegment` to the type import from `tui/presentation/types.ts`. Replace the OpenAI `header()` helper and ready/stale mapping branch so stale state uses Task 12's exact optional field and never creates a standalone row:
 
@@ -2886,7 +2886,7 @@ The callback captures the published generation, and credential transition increm
       },
 ```
 
-- [ ] **Step 6: Run OpenAI lifecycle and boundary tests to verify GREEN**
+- [x] **Step 6: Run OpenAI lifecycle and boundary tests to verify GREEN**
 
 Run:
 
@@ -2896,7 +2896,7 @@ node tests/compile-presentation.mjs && node --test tests/provider-openai.test.mj
 
 Expected: all focused tests PASS. The fixture-driven setter is observed by the bundled OpenAI constructor; replacement clears the old boundary and starts exactly one request even when that request spans the old reset epoch; its success schedules a new-generation boundary; the existing same-generation test still queues exactly one follow-up; stale headers, silent aborts, retained diagnostics, removal, disposal, and timeout cleanup pass; TypeScript exits `0`.
 
-- [ ] **Step 7: Commit the OpenAI lifecycle slice**
+- [x] **Step 7: Commit the OpenAI lifecycle slice**
 
 ```bash
 git add tui/providers/openai.ts tests/provider-openai.test.mjs tests/presentation-mounted.test.mjs tests/provider-lifecycle.fixture.ts tests/compile-presentation.mjs
