@@ -139,3 +139,30 @@ Verification runs focused tests, `npm run typecheck`, `npm test`, `npm run build
 - Ten-second polling increases API traffic. Users can raise the interval; existing timeout and lifecycle controls remain in place.
 - Session model metadata may be unavailable before the first user message. Provider-state fallback keeps the panel stable until metadata appears.
 - Credential replacement can race old responses. Abort ownership plus generation checks prevent cross-account publication while preserving stale display semantics.
+
+## Implementation Divergence
+
+Final review and restarted-host validation exposed three cross-layer assumptions that
+were not represented in the original design. The validated implementation keeps the
+specified behavior while changing these internal boundaries:
+
+- **Submitted-model selection uses the public user event payload.** OpenCode can
+  deliver `message.updated` before `api.state.session.messages()` exposes the new
+  message. The selection root therefore records only the active event's session and
+  provider IDs and resolves them through the existing adapter/fallback mapping. An
+  actual session change clears that event selection. Initial selection still scans
+  synchronized messages, and unsent prompt-model selection remains unavailable
+  because the public TUI API does not expose it.
+- **Collapsed quota uses a semantic provider summary.** OpenAI and Z.AI deliberately
+  hide stale data from the legacy home-slot accessor while retaining it in the quota
+  panel. Their optional `quotaSummary` accessor supplies the aggregate with current
+  or retained percentages independently of home-slot visibility, preserving stale
+  collapsed summaries and OpenCode GO's existing fallback path.
+- **Exhausted polling is credential-generation owned.** Retained quota from a
+  replaced credential remains visible as stale, but it can select the five-minute
+  exhausted backoff only when it belongs to the current credential generation. A
+  failed first request for replacement credentials retries at the configured/default
+  interval instead of inheriting the old account's exhausted state.
+- **The aggregate secondary-provider header is subordinate metadata.** The stable
+  `other-providers` group marker and title use `textMuted`; ordinary group headers
+  retain their existing foreground behavior.
