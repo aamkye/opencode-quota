@@ -29,9 +29,9 @@ function createLifecycle({ aborted = false, registerThrows = false } = {}) {
           callbacks.push(fn)
           let active = true
           return () => {
+            unregisterCount += 1
             if (!active) return
             active = false
-            unregisterCount += 1
             const index = callbacks.indexOf(fn)
             if (index >= 0) callbacks.splice(index, 1)
           }
@@ -48,6 +48,15 @@ function createLifecycle({ aborted = false, registerThrows = false } = {}) {
       controller.abort()
       for (const callback of [...callbacks]) await callback()
     },
+  }
+}
+
+async function rejectionOf(operation) {
+  try {
+    await operation()
+    return { rejected: false }
+  } catch (error) {
+    return { rejected: true, error }
   }
 }
 
@@ -149,4 +158,64 @@ test("defineTuiPlugin unregisters and cleans immediately when the host lifecycle
   assert.equal(lifecycle.count(), 0)
   assert.equal(lifecycle.unregisterCount(), 1)
   assert.deepEqual(events, ["returned", "registered"])
+})
+
+test("defineTuiPlugin preserves undefined thrown by activation over cleanup failures", async () => {
+  const lifecycle = createLifecycle()
+  let cleanupCount = 0
+  const module = defineTuiPlugin(descriptor, async (context) => {
+    context.onCleanup(() => {
+      cleanupCount += 1
+      throw new Error("cleanup failed")
+    })
+    throw undefined
+  })
+
+  assert.deepEqual(
+    await rejectionOf(() => module.tui(lifecycle.api, undefined, undefined)),
+    { rejected: true, error: undefined },
+  )
+  assert.equal(cleanupCount, 1)
+})
+
+test("defineTuiPlugin preserves undefined thrown by host registration over cleanup failures", async () => {
+  const lifecycle = createLifecycle()
+  lifecycle.api.lifecycle.onDispose = () => {
+    throw undefined
+  }
+  let cleanupCount = 0
+  const module = defineTuiPlugin(descriptor, async (context) => {
+    context.onCleanup(() => {
+      cleanupCount += 1
+      throw new Error("cleanup failed")
+    })
+  })
+
+  assert.deepEqual(
+    await rejectionOf(() => module.tui(lifecycle.api, undefined, undefined)),
+    { rejected: true, error: undefined },
+  )
+  assert.equal(cleanupCount, 1)
+})
+
+test("defineTuiPlugin preserves undefined thrown by immediate cleanup and unregisters once", async () => {
+  const lifecycle = createLifecycle({ aborted: true })
+  const events = []
+  const module = defineTuiPlugin(descriptor, async (context) => {
+    context.onCleanup(() => {
+      events.push("later error")
+      throw new Error("later cleanup failed")
+    })
+    context.onCleanup(() => {
+      events.push("first undefined")
+      throw undefined
+    })
+  })
+
+  assert.deepEqual(
+    await rejectionOf(() => module.tui(lifecycle.api, undefined, undefined)),
+    { rejected: true, error: undefined },
+  )
+  assert.equal(lifecycle.unregisterCount(), 1)
+  assert.deepEqual(events, ["first undefined", "later error"])
 })

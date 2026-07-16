@@ -31,20 +31,24 @@ export function defineTuiPlugin(
       }
 
       let cleanupPromise: Promise<void> | undefined
-      const cleanup = async (activationError?: unknown) => {
+      const cleanup = async (activationFailure?: { error: unknown }) => {
         cleanupPromise ??= (async () => {
           let cleanupError: unknown
+          let hasCleanupError = false
           while (cleanups.length > 0) {
             const dispose = cleanups.pop()
             if (!dispose) continue
             try {
               await dispose()
             } catch (error) {
-              if (activationError === undefined && cleanupError === undefined) cleanupError = error
+              if (!activationFailure && !hasCleanupError) {
+                cleanupError = error
+                hasCleanupError = true
+              }
             }
           }
-          if (activationError !== undefined) throw activationError
-          if (cleanupError !== undefined) throw cleanupError
+          if (activationFailure) throw activationFailure.error
+          if (hasCleanupError) throw cleanupError
         })()
 
         return await cleanupPromise
@@ -56,17 +60,18 @@ export function defineTuiPlugin(
         const returnedCleanup = await activate(context, api, options, meta)
         if (returnedCleanup) cleanups.push(returnedCleanup)
         unregister = api.lifecycle.onDispose(() => cleanup())
-        if (api.lifecycle.signal.aborted) {
-          unregister()
-          await cleanup()
-        }
       } catch (error) {
         try {
           unregister?.()
         } catch {
           // Preserve the original activation or registration failure.
         }
-        await cleanup(error)
+        return await cleanup({ error })
+      }
+
+      if (api.lifecycle.signal.aborted) {
+        unregister?.()
+        await cleanup()
       }
     },
   }
