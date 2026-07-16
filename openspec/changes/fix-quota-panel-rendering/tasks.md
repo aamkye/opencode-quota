@@ -13,7 +13,7 @@
 - [x] 2.4 Pass the normalized polling interval into provider adapters and reactively resolve, refresh, and prioritize the current session model's provider.
 - [x] 2.5 Render reset timers and standalone tool quantities with muted text while preserving explicit semantic status overrides.
 - [x] 2.6 Render short group-divider marks with the muted theme color.
-- [ ] 2.7 Render mounted compact tables with parent-responsive clipped non-wrapping flex cells and compose semantically ordered provider items within independent group-local boundaries.
+- [x] 2.7 Render mounted compact tables with parent-responsive clipped non-wrapping flex cells and compose semantically ordered provider items within independent group-local boundaries.
 - [ ] 2.8 Add compatible segmented provider-header details; present stale OpenAI as warning `stale` and stale Z.AI as colored Peak/Off-Peak, muted ` / `, and warning `stale` with no standalone stale rows; and make credential replacement/removal/disposal plus reset-boundary ownership generation-safe with one replacement request, silent expected aborts, and immediate request/boundary timeout cleanup.
 
 ## 3. Verify and Deploy

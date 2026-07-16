@@ -1848,7 +1848,7 @@ git commit -m "fix(tui): make quota tables responsive"
 - Produces: `providerItems(provider: QuotaProviderAdapter, options: NormalizedCompositionOptions, orderOffset: number): PanelItem[]` that processes `sortByOrderThenId(provider.panel().groups)` one group at a time and assigns one contiguous provider-local aggregate order range.
 - Preserves: known-duration shortest-first ordering inside a group, unknown-duration source order after known durations, progress status/color behavior, selected-provider group boundaries, and secondary-provider divider IDs/orders.
 
-- [ ] **Step 1: Add a failing physically shuffled multi-group composition test**
+- [x] **Step 1: Add a failing physically shuffled multi-group composition test**
 
 Append this test after the existing provider grouping tests in `tests/quota-composition.test.mjs`:
 
@@ -1909,7 +1909,7 @@ Update the existing `orders configured secondary metrics by direction and keeps 
   ])
 ```
 
-- [ ] **Step 2: Run the composition test and verify RED**
+- [x] **Step 2: Run the composition test and verify RED**
 
 Run:
 
@@ -1919,7 +1919,7 @@ node tests/compile-presentation.mjs && node --test tests/quota-composition.test.
 
 Expected: FAIL in both updated grouping assertions. The current `providerItemGroups()` trusts physical item order, while `providerItems()` flattens all sorted provider groups before partitioning, so the later group's preamble/details can attach to the earlier group's progress window and `5H` moves ahead of `7D` across group boundaries.
 
-- [ ] **Step 3: Sort before partitioning and compose each provider group locally**
+- [x] **Step 3: Sort before partitioning and compose each provider group locally**
 
 Replace `providerItemGroups()` and `providerItems()` in `tui/quota.tsx` with:
 
@@ -1956,7 +1956,7 @@ function providerItems(provider: QuotaProviderAdapter, options: NormalizedCompos
 
 Keep `orderedProviderItems()` unchanged: it still sorts known durations only among the progress-led groups produced from one panel group, retains unknown source order, applies display mode/status after grouping, and assigns contiguous orders from the supplied offset.
 
-- [ ] **Step 4: Run composition/provider tests and typechecking to verify GREEN**
+- [x] **Step 4: Run composition/provider tests and typechecking to verify GREEN**
 
 Run:
 
@@ -1966,7 +1966,7 @@ node tests/compile-presentation.mjs && node --test tests/quota-composition.test.
 
 Expected: all focused tests PASS. Physically shuffled items follow semantic order, each provider group retains its own preamble/details, known and unknown ordering still works within one group, secondary provider dividers remain correctly placed, and TypeScript exits `0`.
 
-- [ ] **Step 5: Commit the group-local composition slice**
+- [x] **Step 5: Commit the group-local composition slice**
 
 ```bash
 git add tui/quota.tsx tests/quota-composition.test.mjs
