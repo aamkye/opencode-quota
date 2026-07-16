@@ -4,8 +4,65 @@ import type { PluginManifestEntry } from "./manifest.js"
 
 type FeatureCleanup = TuiDispose
 
+export type ServiceKey = PropertyKey
+export type ServiceFactory<T> = () => T
+export type ServiceLease<T> = {
+  value: T
+  release(): void | Promise<void>
+}
+
+type ServiceRecord<T> = {
+  value: T
+  references: number
+  dispose?: FeatureCleanup
+}
+
+const apiServices = new WeakMap<TuiPluginApi, Map<ServiceKey, ServiceRecord<unknown>>>()
+
+function serviceDisposeOf(value: unknown): FeatureCleanup | undefined {
+  if ((!value || typeof value !== "object") && typeof value !== "function") return undefined
+  const dispose = (value as { dispose?: unknown }).dispose
+  return typeof dispose === "function" ? dispose.bind(value) : undefined
+}
+
+export function acquireService<T>(
+  api: TuiPluginApi,
+  key: ServiceKey,
+  factory: ServiceFactory<T>,
+): ServiceLease<T> {
+  let services = apiServices.get(api)
+  let record = services?.get(key) as ServiceRecord<T> | undefined
+
+  if (!record) {
+    const value = factory()
+    record = { value, references: 0, dispose: serviceDisposeOf(value) }
+    services ??= new Map()
+    services.set(key, record)
+    apiServices.set(api, services)
+  }
+
+  record.references += 1
+  let released = false
+
+  return {
+    value: record.value,
+    async release() {
+      if (released) return
+      released = true
+      const activeServices = apiServices.get(api)
+      if (!activeServices || activeServices.get(key) !== record) return
+      record.references -= 1
+      if (record.references > 0) return
+      activeServices.delete(key)
+      if (activeServices.size === 0) apiServices.delete(api)
+      await record.dispose?.()
+    },
+  }
+}
+
 export type TuiFeatureContext = {
   onCleanup(cleanup: FeatureCleanup): FeatureCleanup
+  acquireService<T>(key: ServiceKey, factory: ServiceFactory<T>): ServiceLease<T>
 }
 
 export type FeatureActivation = (
@@ -27,6 +84,11 @@ export function defineTuiPlugin(
         onCleanup(cleanup) {
           cleanups.push(cleanup)
           return cleanup
+        },
+        acquireService(key, factory) {
+          const lease = acquireService(api, key, factory)
+          cleanups.push(lease.release)
+          return lease
         },
       }
 

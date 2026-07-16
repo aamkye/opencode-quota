@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { defineTuiPlugin } from "../.tmp-test/plugin-runtime.mjs"
+import { acquireService, defineTuiPlugin } from "../.tmp-test/plugin-runtime.mjs"
 
 const descriptor = {
   id: "aamkye/opencode-tools-test-runtime",
@@ -218,4 +218,121 @@ test("defineTuiPlugin preserves undefined thrown by immediate cleanup and unregi
   )
   assert.equal(lifecycle.unregisterCount(), 1)
   assert.deepEqual(events, ["first undefined", "later error"])
+})
+
+test("acquireService shares leases per api and disposes on final release", async () => {
+  const apiA = createLifecycle().api
+  const apiB = createLifecycle().api
+  const key = Symbol("shared-service")
+  let creations = 0
+  let disposals = 0
+
+  const factory = () => ({
+    id: ++creations,
+    dispose() {
+      disposals += 1
+    },
+  })
+
+  const first = acquireService(apiA, key, factory)
+  const second = acquireService(apiA, key, factory)
+  const otherApi = acquireService(apiB, key, factory)
+
+  assert.equal(first.value, second.value)
+  assert.notEqual(first.value, otherApi.value)
+  assert.equal(creations, 2)
+
+  await first.release()
+  await first.release()
+  assert.equal(disposals, 0)
+
+  await second.release()
+  assert.equal(disposals, 1)
+
+  await second.release()
+  assert.equal(disposals, 1)
+
+  await otherApi.release()
+  assert.equal(disposals, 2)
+})
+
+test("acquireService retries failed factory calls and replaces services during reentrant disposal", async () => {
+  const api = createLifecycle().api
+  const retryKey = Symbol("retry-service")
+  const reentrantKey = Symbol("reentrant-service")
+  let retryAttempts = 0
+
+  assert.throws(() => acquireService(api, retryKey, () => {
+    retryAttempts += 1
+    throw new Error(`factory failed ${retryAttempts}`)
+  }), /factory failed 1/)
+
+  const retried = acquireService(api, retryKey, () => ({
+    id: ++retryAttempts,
+    dispose() {},
+  }))
+  assert.equal(retryAttempts, 2)
+  assert.equal(retried.value.id, 2)
+  await retried.release()
+
+  let creations = 0
+  let disposals = 0
+  let reentrantLease
+  const factory = () => {
+    const id = ++creations
+    return {
+      id,
+      dispose() {
+        disposals += 1
+        if (id === 1) reentrantLease = acquireService(api, reentrantKey, factory)
+      },
+    }
+  }
+
+  const original = acquireService(api, reentrantKey, factory)
+  await original.release()
+
+  assert.equal(disposals, 1)
+  assert.equal(creations, 2)
+  assert.ok(reentrantLease)
+  assert.notEqual(reentrantLease.value, original.value)
+  assert.equal(reentrantLease.value.id, 2)
+
+  await reentrantLease.release()
+  assert.equal(disposals, 2)
+})
+
+test("defineTuiPlugin activation context releases acquired service leases on cleanup", async () => {
+  const lifecycle = createLifecycle()
+  const key = Symbol("context-service")
+  let creations = 0
+  let disposals = 0
+  let firstLeaseValue
+  let secondLeaseValue
+
+  const module = defineTuiPlugin(descriptor, async (context) => {
+    const first = context.acquireService(key, () => ({
+      id: ++creations,
+      dispose() {
+        disposals += 1
+      },
+    }))
+    const second = context.acquireService(key, () => ({
+      id: ++creations,
+      dispose() {
+        disposals += 1
+      },
+    }))
+    firstLeaseValue = first.value
+    secondLeaseValue = second.value
+  })
+
+  await module.tui(lifecycle.api, undefined, undefined)
+
+  assert.equal(creations, 1)
+  assert.equal(firstLeaseValue, secondLeaseValue)
+  assert.equal(disposals, 0)
+
+  await lifecycle.dispose()
+  assert.equal(disposals, 1)
 })
