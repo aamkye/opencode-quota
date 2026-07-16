@@ -3754,7 +3754,7 @@ Apply the smallest test-only change using the suite's existing clock pattern. Do
 
 Run the affected Z.AI test file, `npm run typecheck`, and `npm test`. Expected: every command exits `0` with no wall-clock-dependent status mismatch.
 
-- [x] **Step 4: Commit and complete thorough task review**
+- [x] **Step 4: Commit the deterministic clock fix and complete thorough task review**
 
 Commit only the deterministic test correction and obtain one thorough task review before checkoff.
 
