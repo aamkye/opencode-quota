@@ -19,12 +19,12 @@
     "isolatedModules": true
   },
   "include": [
-    "opencode-tools-tokens.ts",
     "opencode-plugin-tui.d.ts",
     "lib/session-title.ts",
     "session-title.ts",
     "tui/quota.tsx",
     "tui/home.tsx",
+    "tui/token-report.tsx",
     "tui/presentation/renderer.tsx",
     "tui/providers/zai.ts",
     "tui/providers/openai.ts",

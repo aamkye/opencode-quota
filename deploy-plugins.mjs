@@ -174,6 +174,15 @@ export async function deployPlugins(targetRoot, { logLevel = "info", projectConf
     } catch (error) {
       if (error?.code !== "ENOENT") throw error
     }
+
+    const projectOpenCodeConfigPath = join(projectConfigRoot, "opencode.json")
+    try {
+      const projectOpenCodeConfig = JSON.parse(await readFile(projectOpenCodeConfigPath, "utf8"))
+      cleanManagedTokenCommands(projectOpenCodeConfig)
+      await writeFile(projectOpenCodeConfigPath, `${JSON.stringify(projectOpenCodeConfig, null, 2)}\n`)
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error
+    }
   }
 
   const configured = selected.priority < Infinity ? selected : fallback

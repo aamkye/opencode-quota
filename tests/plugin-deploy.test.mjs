@@ -203,6 +203,17 @@ test("local deployment merges root and selected .opencode configs without duplic
       "./tui/home.tsx",
     ],
   }, null, 2))
+  await writeFile(join(root, "opencode.json"), JSON.stringify({
+    $schema: "https://opencode.ai/config.json",
+    formatter: { unrelated: { enabled: true } },
+    command: {
+      unrelated: { description: "Preserve this command", template: "echo unrelated" },
+      ...Object.fromEntries(tokenCommands.map((id) => [id, {
+        description: `Managed ${id}`,
+        template: "Generate the requested token usage report.",
+      }])),
+    },
+  }, null, 2))
   await writeFile(join(configRoot, "tui.json"), JSON.stringify({
     $schema: "https://opencode.ai/tui.json",
     theme: "selected-theme",
@@ -219,6 +230,7 @@ test("local deployment merges root and selected .opencode configs without duplic
 
   const rootConfig = JSON.parse(await readFile(join(root, "tui.json"), "utf8"))
   const selectedConfig = JSON.parse(await readFile(join(configRoot, "tui.json"), "utf8"))
+  const rootOpenCodeConfig = JSON.parse(await readFile(join(root, "opencode.json"), "utf8"))
   assert.equal(rootConfig.theme, "root-theme")
   assert.deepEqual(rootConfig.plugin, ["./root-unrelated.js"])
   assert.equal(selectedConfig.theme, "selected-theme")
@@ -235,6 +247,12 @@ test("local deployment merges root and selected .opencode configs without duplic
       },
     },
   })
+  assert.equal(rootOpenCodeConfig.$schema, "https://opencode.ai/config.json")
+  assert.deepEqual(rootOpenCodeConfig.formatter, { unrelated: { enabled: true } })
+  assert.deepEqual(rootOpenCodeConfig.command, {
+    unrelated: { description: "Preserve this command", template: "echo unrelated" },
+  })
+  assert.ok(tokenCommands.every((id) => !(id in rootOpenCodeConfig.command)))
 
   const activeManagedEntries = [
     ...rootConfig.plugin.map((entry) => ({ entry, root })),
