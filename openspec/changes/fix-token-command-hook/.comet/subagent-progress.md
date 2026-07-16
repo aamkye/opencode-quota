@@ -1,17 +1,14 @@
 # Subagent Progress
 
-- Plan task: `Implement TUI-Native Token Reports`
-- OpenSpec task: `2.1 Add failing TUI command and route tests for no-model report generation, range input, and return navigation.`
+- Plan task: `Compose Token Reports Into the Combined TUI Artifact`
+- OpenSpec task: `2.2 Implement native token TUI commands, report route, and native range prompt.`
 - Stage: done
-- Base commit: `ec15a054a9a042f446cffca6f54131bfbf59f60c`
-- Implementation commit: `35da2d0f27bbbc85bc80782e6bfe51908b8944e8`
-- Fix commit: `b215631`
-- Exception fix commit: `1dbca0a`
-- Changed files: `tui/token-report.tsx`, `opencode-plugin-tui.d.ts`, `tests/token-tui.test.mjs`, `tests/compile-presentation.mjs`
-- RED: `node tests/compile-presentation.mjs && node --test tests/token-tui.test.mjs` failed because `tui/token-report.tsx` did not exist.
-- GREEN: the same command passed 5 tests; `npm test` passed 221 tests.
+- Base commit: `92d917bc1a7ff63645e0407bab2cd1aae99fd6e6`
+- Implementation commit: `08f08a3`, `3ee1405`
+- RED: focused artifact test failed before removing the standalone entry.
+- GREEN: focused artifact tests passed 12/12; full suite's three deployment failures are the known dependency on the next task.
 - Review mode: standard
 - TDD mode: tdd
-- Risk signals: cross-module coordination, external input, public API, diff over 200 lines
-- Review feedback: all findings resolved; final user-authorized re-review passed with no findings.
-- Review-fix rounds: 2 of 2 (user-authorized exception)
+- Risk signals: cross-module artifact and external plugin interface change
+- Review feedback: standard risk review passed with no findings.
+- Review-fix rounds: 0 of 1

@@ -106,17 +106,17 @@ Expected: PASS with command registration, route rendering, range input, cancella
 - Produces: a single `dist/opencode-tools-quota.js` TUI module that owns quota, home, and token-report registration.
 - Removes: `dist/plugins/opencode-tools-tokens.js` and its server-plugin default function.
 
-- [ ] **Step 1: Write failing artifact expectations**
+- [x] **Step 1: Write failing artifact expectations**
 
 Update `tests/plugin-build.test.mjs` so `expectedArtifacts` contains only the shared and combined TUI files. Require the quota build metafile to include `tui/token-report.tsx`, require the combined artifact to expose only a TUI module, and assert no token server artifact is emitted.
 
-- [ ] **Step 2: Run the focused artifact test to verify RED**
+- [x] **Step 2: Run the focused artifact test to verify RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/plugin-build.test.mjs`
 
 Expected: FAIL because the build still emits and imports the standalone server token plugin.
 
-- [ ] **Step 3: Replace the standalone entry with combined registration**
+- [x] **Step 3: Replace the standalone entry with combined registration**
 
 In `build-plugins.mjs`, import `registerTokenReportTui` in the quota stdin entry and call it after quota and home setup:
 
@@ -130,7 +130,7 @@ await registerTokenReportTui(api)
 
 Remove the `tokens` esbuild target and return only `{ shared, quota }`. Delete `opencode-tools-tokens.ts`. Update source-boundary assertions so token computation remains in the shared facade and the TUI route remains presentation/registration-only.
 
-- [ ] **Step 4: Run the focused artifact test to verify GREEN**
+- [x] **Step 4: Run the focused artifact test to verify GREEN**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/plugin-build.test.mjs tests/shared-boundary.test.mjs`
 
