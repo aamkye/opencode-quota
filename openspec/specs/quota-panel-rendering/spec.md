@@ -59,18 +59,22 @@ The quota panel SHALL color progress bars and percentages by remaining quota usi
 - **THEN** progress bars and percentages render without a semantic color status
 
 ### Requirement: Accurate provider presentation
-The quota panel SHALL preserve provider window groups, derive OpenAI window labels from API durations, and right-align Z.AI Peak/Off-Peak status.
+The quota panel SHALL preserve provider window groups, derive OpenAI window labels from API durations, right-align Z.AI Peak/Off-Peak status, and allow the Z.AI tool section to be hidden by configuration.
 
 #### Scenario: OpenAI exposes only a weekly primary window
 - **WHEN** OpenAI returns one primary window with a seven-day duration and no secondary window
 - **THEN** the panel renders one `7D` window
 - **AND** it does not render a `5H` window
 
-#### Scenario: Z.AI status and tool details
-- **WHEN** Z.AI quota includes Peak/Off-Peak state and tool usage details
+#### Scenario: Z.AI status and visible tool details
+- **WHEN** Z.AI quota includes Peak/Off-Peak state and tool usage details and `quota.zai.hideTools` is not true
 - **THEN** the Peak/Off-Peak status is colored and aligned at the right edge of the Z.AI header
 - **AND** tool usage details remain below the quota windows
 - **AND** tool used and total quantities use the muted text color
+
+#### Scenario: Z.AI tool details are hidden
+- **WHEN** Z.AI quota includes tool usage details and `quota.zai.hideTools` is true
+- **THEN** no tool progress, reset, quantity, spacer, or model-table item is rendered
 
 #### Scenario: Provider groups and items arrive out of physical order
 - **WHEN** a provider model contains multiple groups or items whose array order differs from semantic `order`
@@ -88,7 +92,7 @@ The quota panel SHALL preserve provider window groups, derive OpenAI window labe
 - **AND** no standalone stale row is rendered
 
 ### Requirement: Configurable provider refresh
-The quota panel SHALL poll provider APIs at a configurable interval and SHALL default that interval to 10 seconds.
+The quota panel SHALL poll provider APIs at a configurable interval from `quota.refreshIntervalSeconds` and SHALL default that interval to 10 seconds.
 
 #### Scenario: Default polling
 - **WHEN** no refresh interval is configured
@@ -96,7 +100,7 @@ The quota panel SHALL poll provider APIs at a configurable interval and SHALL de
 - **AND** countdown text continues updating once per second
 
 #### Scenario: Custom polling
-- **WHEN** a positive `refreshIntervalSeconds` value is configured
+- **WHEN** a positive `quota.refreshIntervalSeconds` value is configured
 - **THEN** non-exhausted provider polling uses that interval
 
 #### Scenario: Exhausted primary quota
@@ -132,14 +136,41 @@ The OpenAI and Z.AI quota adapters SHALL prevent replaced-credential requests fr
 - **AND** late fulfillment or rejection cannot mutate provider state
 
 ### Requirement: Active provider prioritization
-The quota panel SHALL use the current sidebar session's latest selected model to prioritize and refresh its quota provider.
+The quota panel SHALL use the current sidebar session's latest selected model to prioritize and refresh its configured supported quota provider, and SHALL honor configured inactive-provider visibility.
 
 #### Scenario: Active model changes provider
-- **WHEN** the latest user message selects a model from a different supported provider
+- **WHEN** the latest user message selects a model from a different configured supported provider
 - **THEN** the panel refreshes that provider immediately
 - **AND** moves its quota section above `Other providers`
 - **AND** keeps the provider header unchanged without adding the model name
 
+#### Scenario: Configured inactive providers are hidden
+- **WHEN** the effective `hideInactive` setting for a configured non-selected provider is true
+- **THEN** the panel SHALL omit that provider from `Other providers`
+
 #### Scenario: Session has no selected model
 - **WHEN** the current session has no usable user-message model selection
 - **THEN** the panel falls back to configured/provider state for provider priority
+
+### Requirement: Unconfigured provider suppression
+The quota panel SHALL exclude Z.AI and OpenAI adapters with no usable credential and an OpenCode Go adapter with no valid workspace configuration from selected and inactive provider rendering.
+
+#### Scenario: A known provider is unconfigured
+- **WHEN** a quota provider lacks its required local credential or configuration
+- **THEN** the quota panel SHALL not render that provider or a configuration placeholder
+
+#### Scenario: A configured provider cannot retrieve quota
+- **WHEN** a provider has usable local credential or configuration but cannot retrieve quota
+- **THEN** the quota panel SHALL retain its existing unavailable or stale behavior
+
+### Requirement: Unsupported active provider status
+The quota panel SHALL render an explicitly selected session provider without a quota adapter as unsupported. The expanded status and fully collapsed summary SHALL identify the provider and render `unsupported` as a right-aligned error-status segment.
+
+#### Scenario: Session selects an unsupported provider
+- **WHEN** the latest user-message model uses a provider without a quota adapter
+- **THEN** the expanded quota panel SHALL render that provider with a right-aligned red `unsupported` status
+- **AND** the fully collapsed quota panel SHALL render the provider and the same right-aligned red `unsupported` status
+
+#### Scenario: No session model is selected
+- **WHEN** the current session has no usable user-message model selection
+- **THEN** provider fallback SHALL continue to prefer a configured supported quota provider

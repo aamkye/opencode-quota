@@ -14,7 +14,7 @@ The quota plugin SHALL accept an optional OpenCode Go console workspace ID and a
 #### Scenario: Missing configuration
 - **WHEN** either OpenCode Go option is absent or invalid
 - **THEN** no console request is sent
-- **AND** a selected OpenCode Go provider displays `Configuration required` without quota values
+- **AND** the quota aggregate SHALL exclude the OpenCode Go provider from selected and inactive provider rendering
 
 #### Scenario: Secret-safe diagnostics
 - **WHEN** configuration, transport, parsing, or authentication fails
