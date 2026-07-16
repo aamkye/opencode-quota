@@ -1,12 +1,5 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { createRoot } from "solid-js"
-
-globalThis.React = {
-  createElement(type, props, ...children) {
-    return { type, props: { ...props, children: children.length === 1 ? children[0] : children } }
-  },
-}
 
 const { registerTokenReportTui, tokenReportCommands } = await import("../.tmp-test/token-tui.mjs")
 const { registerTokenReportTui: registerControlledTokenReportTui } = await import("../.tmp-test/token-tui-controlled.mjs")
@@ -26,7 +19,6 @@ function createTuiApi({ route = { name: "home" } } = {}) {
   const api = {
     commands: [],
     dialogs: [],
-    navigations: [],
     prompts: [],
     routes: [],
     sessionPrompts: [],
@@ -55,9 +47,6 @@ function createTuiApi({ route = { name: "home" } } = {}) {
     },
     route: {
       current: route,
-      navigate(name, params) {
-        api.navigations.push(params ? { name, params } : { name })
-      },
       register(routes) {
         api.routes.push(...routes)
       },
@@ -84,35 +73,8 @@ function createTuiApi({ route = { name: "home" } } = {}) {
     commandBySlash(slashName) {
       return api.commands.find((command) => command.slashName === slashName)
     },
-    routeByName(name) {
-      return api.routes.find((route) => route.name === name)
-    },
   }
   return api
-}
-
-function mountTokenReportRoute(api) {
-  let dispose
-  let screen
-  createRoot((cleanup) => {
-    dispose = cleanup
-    const element = api.routeByName("aamkye.token-report").render()
-    screen = element.type(element.props)
-  })
-  return { dispose, screen }
-}
-
-function routeText(screen) {
-  const text = screen.props.children
-  return text.type(text.props).props.children
-}
-
-async function waitForRouteText(screen, expected) {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    if (routeText(screen) === expected) return
-    await new Promise((resolve) => setImmediate(resolve))
-  }
-  assert.equal(routeText(screen), expected)
 }
 
 test("token commands register native slash handlers without a model client", () => {
@@ -122,19 +84,28 @@ test("token commands register native slash handlers without a model client", () 
 
   assert.deepEqual(tokenReportCommands(api).map((command) => command.slashName), TOKEN_COMMANDS)
   assert.deepEqual(api.commands.map((command) => command.slashName), TOKEN_COMMANDS)
+  assert.deepEqual(api.routes, [])
 })
 
 test("token commands persist a no-reply report in the active session", async () => {
+  globalThis.__tokenTuiCompute = async () => ({
+    kind: "invalid_arguments",
+    command: "tokens_between",
+    error: "controlled report",
+  })
   const api = createTuiApi({ route: { name: "session", params: { sessionID: "s1" } } })
 
-  registerControlledTokenReportTui(api)
-  await api.commandBySlash("tokens_today").run()
+  try {
+    registerControlledTokenReportTui(api)
+    await api.commandBySlash("tokens_today").run()
 
-  assert.deepEqual(api.sessionPrompts, [{
-    path: { id: "s1" },
-    body: { noReply: true, parts: [{ type: "text", text: "# Tokens used (Today)" }] },
-  }])
-  assert.equal(api.navigations.length, 0)
+    assert.deepEqual(api.sessionPrompts, [{
+      path: { id: "s1" },
+      body: { noReply: true, parts: [{ type: "text", text: "Invalid arguments for /tokens_between\n\ncontrolled report\n\nExpected: /tokens_between YYYY-MM-DD YYYY-MM-DD\nExample: /tokens_between 2026-01-01 2026-01-15" }] },
+    }])
+  } finally {
+    delete globalThis.__tokenTuiCompute
+  }
 })
 
 test("token command without a session shows a toast without a client call", async () => {
@@ -145,23 +116,30 @@ test("token command without a session shows a toast without a client call", asyn
 
   assert.equal(api.sessionPrompts.length, 0)
   assert.equal(api.toasts.length, 1)
-  assert.equal(api.navigations.length, 0)
 })
 
 test("tokens_between Enter submits the native prompt", async () => {
+  globalThis.__tokenTuiCompute = async () => ({
+    kind: "invalid_arguments",
+    command: "tokens_between",
+    error: "controlled report",
+  })
   const api = createTuiApi({ route: { name: "session", params: { sessionID: "s1" } } })
 
-  registerControlledTokenReportTui(api)
-  api.commandBySlash("tokens_between").run()
-  api.dialogs[0].render()
-  api.route.current = { name: "home" }
-  await api.prompts[0].onSubmit("2026-01-01 2026-01-15")
+  try {
+    registerControlledTokenReportTui(api)
+    api.commandBySlash("tokens_between").run()
+    api.dialogs[0].render()
+    api.route.current = { name: "home" }
+    await api.prompts[0].onSubmit("2026-01-01 2026-01-15")
 
-  assert.equal(api.sessionPrompts.length, 1)
-  assert.equal(api.sessionPrompts[0].path.id, "s1")
-  assert.equal(api.sessionPrompts[0].body.noReply, true)
-  assert.equal(api.dialogs.at(-1).kind, "clear")
-  assert.equal(api.navigations.length, 0)
+    assert.equal(api.sessionPrompts.length, 1)
+    assert.equal(api.sessionPrompts[0].path.id, "s1")
+    assert.equal(api.sessionPrompts[0].body.noReply, true)
+    assert.equal(api.dialogs.at(-1).kind, "clear")
+  } finally {
+    delete globalThis.__tokenTuiCompute
+  }
 })
 
 test("tokens_between Escape closes its dialog mode without a client call", () => {
@@ -180,88 +158,24 @@ test("tokens_between Escape closes its dialog mode without a client call", () =>
   assert.equal(api.dialogs.at(-1).kind, "clear")
   assert.deepEqual(api.mode.pops, [rangeMode])
   assert.equal(api.sessionPrompts.length, 0)
-  assert.equal(api.navigations.length, 0)
 })
 
-test("token report route renders a full-width clipped loading screen without a model client", () => {
-  const api = createTuiApi({
-    route: { name: "aamkye.token-report", params: { command: "tokens_between", arguments: "not a date" } },
-  })
-
-  registerTokenReportTui(api)
-
-  const { dispose, screen } = mountTokenReportRoute(api)
-  assert.equal(screen.type, "box")
-  assert.equal(screen.props.width, "100%")
-  assert.equal(screen.props.overflow, "hidden")
-  assert.equal(routeText(screen), "Loading token report...")
-  assert.equal(api.prompts.length, 0)
-  dispose()
-})
-
-test("token report activates a scoped Escape mode and cleans it up with the route", () => {
-  const sessionApi = createTuiApi({
-    route: { name: "aamkye.token-report", params: { command: "tokens_today", sessionID: "s1" } },
-  })
-  registerTokenReportTui(sessionApi)
-  const escapeLayer = sessionApi.layers.find((layer) => layer.bindings?.[0]?.key === "escape")
-  assert.equal(escapeLayer.mode, "aamkye.token-report")
-
-  const { dispose } = mountTokenReportRoute(sessionApi)
-  assert.deepEqual(sessionApi.mode.pushes, ["aamkye.token-report"])
-  escapeLayer.bindings[0].cmd()
-  assert.deepEqual(sessionApi.navigations, [{ name: "session", params: { sessionID: "s1" } }])
-  dispose()
-  assert.deepEqual(sessionApi.mode.pops, ["aamkye.token-report"])
-
-  const homeApi = createTuiApi({
-    route: { name: "aamkye.token-report", params: { command: "tokens_today" } },
-  })
-  registerTokenReportTui(homeApi)
-  const homeEscapeLayer = homeApi.layers.find((layer) => layer.bindings?.[0]?.key === "escape")
-  const homeRoute = mountTokenReportRoute(homeApi)
-  homeEscapeLayer.bindings[0].cmd()
-  assert.deepEqual(homeApi.navigations, [{ name: "home" }])
-  homeRoute.dispose()
-})
-
-test("token report route renders settled successful computations", async () => {
-  globalThis.__tokenTuiCompute = async () => ({
-    kind: "invalid_arguments",
-    command: "tokens_between",
-    error: "controlled success",
-  })
-  const api = createTuiApi({
-    route: { name: "aamkye.token-report", params: { command: "tokens_between" } },
-  })
-
-  registerControlledTokenReportTui(api)
-  const { dispose, screen } = mountTokenReportRoute(api)
-  try {
-    await waitForRouteText(
-      screen,
-      "Invalid arguments for /tokens_between\n\ncontrolled success\n\nExpected: /tokens_between YYYY-MM-DD YYYY-MM-DD\nExample: /tokens_between 2026-01-01 2026-01-15",
-    )
-  } finally {
-    dispose()
-    delete globalThis.__tokenTuiCompute
-  }
-})
-
-test("token report route renders computation errors", async () => {
+test("token command persists a computation error in the active session", async () => {
   globalThis.__tokenTuiCompute = async () => {
     throw new Error("controlled computation failure")
   }
   const api = createTuiApi({
-    route: { name: "aamkye.token-report", params: { command: "tokens_today" } },
+    route: { name: "session", params: { sessionID: "s1" } },
   })
 
   registerControlledTokenReportTui(api)
-  const { dispose, screen } = mountTokenReportRoute(api)
   try {
-    await waitForRouteText(screen, "Token report failed: controlled computation failure")
+    await api.commandBySlash("tokens_today").run()
+    assert.deepEqual(api.sessionPrompts, [{
+      path: { id: "s1" },
+      body: { noReply: true, parts: [{ type: "text", text: "Token report failed: controlled computation failure" }] },
+    }])
   } finally {
-    dispose()
     delete globalThis.__tokenTuiCompute
   }
 })

@@ -10,7 +10,7 @@ declare module "@opencode-ai/plugin/tui" {
     title: string
     namespace: "palette"
     slashName: string
-    run(): void
+    run(): Promise<void>
   }
 
   export interface TuiBinding {
@@ -27,7 +27,7 @@ declare module "@opencode-ai/plugin/tui" {
   export interface TuiPromptProps {
     title: string
     placeholder?: string
-    onSubmit(value: string): void
+    onSubmit(value: string): void | Promise<void>
   }
 
   export interface TuiPluginApi {
@@ -43,11 +43,22 @@ declare module "@opencode-ai/plugin/tui" {
       navigate(name: string, params?: Record<string, unknown>): void
     }
     ui: {
+      toast: {
+        show(input: { title: string }): void
+      }
       dialog: {
         replace(render: () => JSX.Element, onClose?: () => void): void
         clear(): void
       }
       DialogPrompt: (props: TuiPromptProps) => JSX.Element
+    }
+    client: {
+      session: {
+        prompt(input: {
+          path: { id: string }
+          body: { noReply: true; parts: Array<{ type: "text"; text: string }> }
+        }): Promise<unknown>
+      }
     }
     slots: {
       register(input: {

@@ -1,5 +1,4 @@
-import type { TuiCommand, TuiPluginApi, TuiPluginModule, TuiRoute } from "@opencode-ai/plugin/tui"
-import { createSignal, onCleanup } from "solid-js"
+import type { TuiCommand, TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui"
 
 import {
   computeTokenReport,
@@ -8,14 +7,7 @@ import {
   type TokenReportCommandId,
 } from "../shared/opencode-tools-shared.js"
 
-export type TokenReportRouteParams = {
-  command: TokenReportCommandId
-  arguments?: string
-  sessionID?: string
-}
-
-const ROUTE_NAME = "aamkye.token-report"
-const REPORT_MODE = "aamkye.token-report"
+const RANGE_MODE = "aamkye.token-report-range"
 
 function sourceSessionID(api: TuiPluginApi): string | undefined {
   const route = api.route.current
@@ -23,88 +15,86 @@ function sourceSessionID(api: TuiPluginApi): string | undefined {
   return typeof sessionID === "string" ? sessionID : undefined
 }
 
-function navigateToReport(api: TuiPluginApi, command: TokenReportCommandId, argumentsValue?: string, sessionID = sourceSessionID(api)): void {
-  const params: TokenReportRouteParams = { command }
-  if (argumentsValue) params.arguments = argumentsValue
-  if (sessionID) params.sessionID = sessionID
-  api.route.navigate(ROUTE_NAME, params)
+async function persistReport(
+  api: TuiPluginApi,
+  sessionID: string,
+  command: TokenReportCommandId,
+  argumentsValue?: string,
+): Promise<void> {
+  let text: string
+  try {
+    text = renderTokenReport(await computeTokenReport({
+      command,
+      arguments: argumentsValue,
+      sessionID,
+    }))
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    text = `Token report failed: ${message}`
+  }
+  await api.client.session.prompt({
+    path: { id: sessionID },
+    body: { noReply: true, parts: [{ type: "text", text }] },
+  })
 }
 
-function TokenReportText(props: { text: () => string }) {
-  return <text>{props.text()}</text>
-}
-
-export function tokenReportCommands(api: TuiPluginApi): TuiCommand[] {
+export function tokenReportCommands(
+  api: TuiPluginApi,
+  setRangeDialogClose: (close: () => void) => void = () => {},
+): TuiCommand[] {
   return TOKEN_REPORT_COMMANDS.map((spec) => ({
     name: `aamkye.${spec.id}`,
     title: spec.kind === "between" ? "Tokens used (Date Range)" : spec.title,
     namespace: "palette",
     slashName: spec.id,
-    run() {
+    async run() {
+      const sessionID = sourceSessionID(api)
+      if (!sessionID) {
+        api.ui.toast.show({ title: "Open a session to view token usage" })
+        return
+      }
       if (spec.id !== "tokens_between") {
-        navigateToReport(api, spec.id)
+        await persistReport(api, sessionID, spec.id)
         return
       }
 
-      const sessionID = sourceSessionID(api)
+      const popMode = api.mode.push(RANGE_MODE)
+      let closed = false
+      const close = () => {
+        if (closed) return
+        closed = true
+        popMode()
+        api.ui.dialog.clear()
+      }
+      setRangeDialogClose(close)
       api.ui.dialog.replace(
         () => api.ui.DialogPrompt({
           title: "Token report date range",
           placeholder: "YYYY-MM-DD YYYY-MM-DD",
-          onSubmit(value) {
-            api.ui.dialog.clear()
-            navigateToReport(api, spec.id, value, sessionID)
+          async onSubmit(value) {
+            close()
+            await persistReport(api, sessionID, spec.id, value)
           },
         }),
-        () => api.ui.dialog.clear(),
+        close,
       )
     },
   }))
 }
 
-function TokenReportRoute(props: { api: TuiPluginApi }) {
-  const popMode = props.api.mode.push(REPORT_MODE)
-  onCleanup(popMode)
-  const [text, setText] = createSignal("Loading token report...")
-  const params = props.api.route.current.params as TokenReportRouteParams | undefined
-
-  void computeTokenReport({
-    command: params?.command ?? "tokens_today",
-    arguments: params?.arguments,
-    sessionID: params?.sessionID,
-  }).then((data) => setText(renderTokenReport(data))).catch((error) => {
-    const message = error instanceof Error ? error.message : String(error)
-    setText(`Token report failed: ${message}`)
-  })
-
-  return (
-    <box width="100%" flexDirection="column" overflow="hidden">
-      <TokenReportText text={text} />
-    </box>
-  )
-}
-
-function tokenReportRoute(api: TuiPluginApi): TuiRoute {
-  return {
-    name: ROUTE_NAME,
-    render: () => <TokenReportRoute api={api} />,
-  }
-}
-
 export function registerTokenReportTui(api: TuiPluginApi): void {
-  api.keymap.registerLayer({ commands: tokenReportCommands(api) })
+  let closeRangeDialog: (() => void) | undefined
   api.keymap.registerLayer({
-    mode: REPORT_MODE,
+    commands: tokenReportCommands(api, (close) => { closeRangeDialog = close }),
+  })
+  api.keymap.registerLayer({
+    mode: RANGE_MODE,
     bindings: [{
       key: "escape",
-      cmd: () => {
-        const sessionID = api.route.current.params?.sessionID
-        api.route.navigate(typeof sessionID === "string" ? "session" : "home", typeof sessionID === "string" ? { sessionID } : undefined)
-      },
-      desc: "Close token report",
+      cmd: () => closeRangeDialog?.(),
+      desc: "Cancel token report date range",
     }],
   })
-  api.route.register([tokenReportRoute(api)])
 }
 
 const plugin: TuiPluginModule & { id: string } = {

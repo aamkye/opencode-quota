@@ -53,7 +53,8 @@ test("loadable TUI entries use the shared facade for computation", () => {
   ])
   assertRelativeImports("tui/home.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/token-report.tsx", ["../shared/opencode-tools-shared.js"])
-  assert.doesNotMatch(tokenReport, /session\.prompt|\bhistory\b|\bmodel\b/)
+  assert.match(tokenReport, /client\.session\.prompt/)
+  assert.doesNotMatch(tokenReport, /\bhistory\b|\bmodel\b/)
 })
 
 test("shared facade exports computation without plugin registration or JSX", () => {

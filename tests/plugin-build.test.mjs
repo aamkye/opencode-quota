@@ -253,7 +253,7 @@ test("combined TUI artifact activates hermetically and shares provider reactivit
     assert.ok(fetchCalls.every((call) => call.url === "https://chatgpt.com/backend-api/wham/usage"))
     assert.ok(fetchCalls.every((call) => call.authorization === "Bearer artifact-test-token"))
     assert.equal(keymapRegistrations.length, 2)
-    assert.deepEqual(routes.map((route) => route.name), ["aamkye.token-report"])
+    assert.deepEqual(routes, [])
     assert.deepEqual(
       registrations.map((registration) => Object.keys(registration.slots)),
       [["sidebar_content"], ["home_bottom"]],
