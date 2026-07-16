@@ -103,7 +103,7 @@ Expected: FAIL because the current implementation navigates to `aamkye.token-rep
 - Consumes: `computeTokenReport`, `renderTokenReport`, `TOKEN_REPORT_COMMANDS`, and active session IDs.
 - Produces: command handlers that return `Promise<void>` and persist reports with `api.client.session.prompt`.
 
-- [ ] **Step 1: Add the narrow host declarations used by the command handlers**
+- [x] **Step 1: Add the narrow host declarations used by the command handlers**
 
 ```ts
 client: {
@@ -114,10 +114,10 @@ client: {
     }): Promise<unknown>
   }
 }
-ui: { toast: { show(input: { title: string }): void }; /* existing dialog API */ }
+ui: { toast(input: { title: string }): void; /* existing dialog API */ }
 ```
 
-- [ ] **Step 2: Replace route navigation with one local persistence helper**
+- [x] **Step 2: Replace route navigation with one local persistence helper**
 
 ```ts
 async function persistReport(api: TuiPluginApi, sessionID: string, command: TokenReportCommandId, argumentsValue?: string) {
@@ -129,9 +129,9 @@ async function persistReport(api: TuiPluginApi, sessionID: string, command: Toke
 }
 ```
 
-Commands without `sourceSessionID(api)` must call `api.ui.toast.show({ title: "Open a session to view token usage" })` and return. Caught compute errors must be rendered with `renderTokenReport`-compatible text and persisted through the same no-reply call.
+Commands without `sourceSessionID(api)` must call `api.ui.toast({ title: "Open a session to view token usage" })` and return. Caught compute errors must be rendered with `renderTokenReport`-compatible text and persisted through the same no-reply call.
 
-- [ ] **Step 3: Give the range prompt a dedicated mode and remove route code**
+- [x] **Step 3: Give the range prompt a dedicated mode and remove route code**
 
 ```ts
 const RANGE_MODE = "aamkye.token-report-range"
@@ -144,13 +144,13 @@ api.ui.dialog.replace(
 
 Register an Escape binding for `RANGE_MODE` that invokes the active dialog close callback. Keep Enter owned by `DialogPrompt`'s `onSubmit`; its handler clears the dialog, pops the mode, and awaits `persistReport`. Remove `TokenReportRoute`, `TokenReportRouteParams`, `ROUTE_NAME`, `REPORT_MODE`, the report route registration, and all route-navigation assertions.
 
-- [ ] **Step 4: Run focused tests to verify GREEN**
+- [x] **Step 4: Run focused tests to verify GREEN**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/token-tui.test.mjs`
 
 Expected: PASS with durable no-reply message writes, no-session toast, Enter range submission, Escape cancellation, and no report route registration.
 
-- [ ] **Step 5: Run regression checks and commit**
+- [x] **Step 5: Run regression checks and commit**
 
 Run: `npm test && npm run typecheck && npm run build`
 
