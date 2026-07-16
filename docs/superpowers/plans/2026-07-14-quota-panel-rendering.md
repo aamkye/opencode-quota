@@ -3732,6 +3732,32 @@ Expected: every command exits `0`; the new host-shaped event regression passes t
 
 Commit only the Task 16 source/test slice, then run one thorough task review against its exact commit range. Critical/Important findings must be fixed within the Task 16 review budget before checkoff.
 
+### Task 17: Stabilize The Z.AI Replacement Lifecycle Clock
+
+**Files:**
+- Modify: `tests/provider-zai.test.mjs`
+
+**Interfaces:**
+- Consumes: the test's existing fixed `now`, fake-clock helper, and credential-replacement lifecycle scenario.
+- Produces: deterministic Peak/Off-Peak expectations independent of the verification wall clock.
+- Preserves: all production Z.AI behavior and Task 14 replacement/removal/disposal assertions.
+
+- [ ] **Step 1: Preserve the observed wall-clock failure as RED**
+
+Use the existing isolated failing command/evidence from Task 16 final verification. Confirm the scenario expects the fixed-time Peak label but currently reads actual Off-Peak time.
+
+- [ ] **Step 2: Install the existing fixed clock for the affected test only**
+
+Apply the smallest test-only change using the suite's existing clock pattern. Do not change provider code, timezone rules, Peak/Off-Peak arithmetic, or unrelated lifecycle assertions.
+
+- [ ] **Step 3: Verify focused GREEN and the full suite**
+
+Run the affected Z.AI test file, `npm run typecheck`, and `npm test`. Expected: every command exits `0` with no wall-clock-dependent status mismatch.
+
+- [ ] **Step 4: Commit and complete thorough task review**
+
+Commit only the deterministic test correction and obtain one thorough task review before checkoff.
+
 ## Self-Review Checklist
 
 - [x] Every canonical spec requirement maps to a task: responsive flex rows and framing (Task 1), progress colors and thresholds (Task 2), provider grouping and Z.AI status (Task 3), OpenAI duration labels (Task 4), configurable polling (Task 5), active-session selection (Task 6), muted subordinate metadata (Task 7), full verification/deployment/manual checks (Task 8), and muted short group dividers (Task 9).

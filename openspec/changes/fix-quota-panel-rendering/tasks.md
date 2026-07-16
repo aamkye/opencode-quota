@@ -16,6 +16,7 @@
 - [x] 2.7 Render mounted compact tables with parent-responsive clipped non-wrapping flex cells and compose semantically ordered provider items within independent group-local boundaries.
 - [x] 2.8 Add compatible segmented provider-header details; present stale OpenAI as warning `stale` and stale Z.AI as colored Peak/Off-Peak, muted ` / `, and warning `stale` with no standalone stale rows; and make credential replacement/removal/disposal plus reset-boundary ownership generation-safe with one replacement request, silent expected aborts, and immediate request/boundary timeout cleanup.
 - [ ] 2.9 React to synchronized same-session user-message model changes through the supported TUI event bus even when the host message accessor itself is not reactive, while preserving one refresh per adapter change and lifecycle cleanup.
+- [ ] 2.10 Make the Z.AI credential-replacement lifecycle regression use its declared fixed clock so Peak/Off-Peak assertions are deterministic across wall-clock verification times.
 
 ## 3. Verify and Deploy
 
