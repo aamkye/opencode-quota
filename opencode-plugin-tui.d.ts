@@ -32,7 +32,10 @@ declare module "@opencode-ai/plugin/tui" {
 
   export interface TuiPluginApi {
     keymap: {
-      registerLayer(input: { commands?: TuiCommand[]; bindings?: TuiBinding[] }): void
+      registerLayer(input: { mode?: string; commands?: TuiCommand[]; bindings?: TuiBinding[] }): void
+    }
+    mode: {
+      push(mode: string): () => void
     }
     route: {
       current: { name: string; params?: Record<string, unknown> }

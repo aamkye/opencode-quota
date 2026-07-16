@@ -1,5 +1,5 @@
 import type { TuiCommand, TuiPluginApi, TuiPluginModule, TuiRoute } from "@opencode-ai/plugin/tui"
-import { createSignal } from "solid-js"
+import { createSignal, onCleanup } from "solid-js"
 
 import {
   computeTokenReport,
@@ -15,6 +15,7 @@ export type TokenReportRouteParams = {
 }
 
 const ROUTE_NAME = "aamkye.token-report"
+const REPORT_MODE = "aamkye.token-report"
 
 function sourceSessionID(api: TuiPluginApi): string | undefined {
   const route = api.route.current
@@ -28,6 +29,10 @@ function navigateToReport(api: TuiPluginApi, command: TokenReportCommandId, argu
   if (argumentsValue) params.arguments = argumentsValue
   if (sessionID) params.sessionID = sessionID
   api.route.navigate(ROUTE_NAME, params)
+}
+
+function TokenReportText(props: { text: () => string }) {
+  return <text>{props.text()}</text>
 }
 
 export function tokenReportCommands(api: TuiPluginApi): TuiCommand[] {
@@ -58,6 +63,8 @@ export function tokenReportCommands(api: TuiPluginApi): TuiCommand[] {
 }
 
 function TokenReportRoute(props: { api: TuiPluginApi }) {
+  const popMode = props.api.mode.push(REPORT_MODE)
+  onCleanup(popMode)
   const [text, setText] = createSignal("Loading token report...")
   const params = props.api.route.current.params as TokenReportRouteParams | undefined
 
@@ -72,7 +79,7 @@ function TokenReportRoute(props: { api: TuiPluginApi }) {
 
   return (
     <box width="100%" flexDirection="column" overflow="hidden">
-      <text>{text()}</text>
+      <TokenReportText text={text} />
     </box>
   )
 }
@@ -87,10 +94,10 @@ function tokenReportRoute(api: TuiPluginApi): TuiRoute {
 export function registerTokenReportTui(api: TuiPluginApi): void {
   api.keymap.registerLayer({ commands: tokenReportCommands(api) })
   api.keymap.registerLayer({
+    mode: REPORT_MODE,
     bindings: [{
       key: "escape",
       cmd: () => {
-        if (api.route.current.name !== ROUTE_NAME) return
         const sessionID = api.route.current.params?.sessionID
         api.route.navigate(typeof sessionID === "string" ? "session" : "home", typeof sessionID === "string" ? { sessionID } : undefined)
       },
