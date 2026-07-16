@@ -11,7 +11,7 @@ const descriptor = {
   source: "tui/test-runtime.ts",
 }
 
-function createLifecycle({ aborted = false } = {}) {
+function createLifecycle({ aborted = false, registerThrows = false } = {}) {
   const controller = new AbortController()
   const callbacks = []
   let unregisterCount = 0
@@ -23,6 +23,9 @@ function createLifecycle({ aborted = false } = {}) {
       lifecycle: {
         signal: controller.signal,
         onDispose(fn) {
+          if (registerThrows) {
+            throw new Error("registration failed")
+          }
           callbacks.push(fn)
           let active = true
           return () => {
@@ -83,6 +86,33 @@ test("defineTuiPlugin rolls back registered cleanups and rethrows the activation
   await assert.rejects(module.tui(lifecycle.api, undefined, undefined), /activation failed/)
   assert.deepEqual(events, ["cleanup"])
   assert.equal(lifecycle.count(), 0)
+})
+
+test("defineTuiPlugin drains async cleanups when host registration fails", async () => {
+  const lifecycle = createLifecycle({ registerThrows: true })
+  const events = []
+  const module = defineTuiPlugin(descriptor, async (context) => {
+    context.onCleanup(async () => {
+      events.push("registered:start")
+      await Promise.resolve()
+      events.push("registered:end")
+    })
+    return async () => {
+      events.push("returned:start")
+      await Promise.resolve()
+      events.push("returned:end")
+    }
+  })
+
+  await assert.rejects(module.tui(lifecycle.api, undefined, undefined), /registration failed/)
+  assert.equal(lifecycle.count(), 0)
+  assert.equal(lifecycle.unregisterCount(), 0)
+  assert.deepEqual(events, [
+    "returned:start",
+    "returned:end",
+    "registered:start",
+    "registered:end",
+  ])
 })
 
 test("defineTuiPlugin drains every cleanup and throws the first cleanup failure", async () => {
