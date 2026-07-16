@@ -10,7 +10,7 @@ declare module "@opencode-ai/plugin/tui" {
     title: string
     namespace: "palette"
     slashName: string
-    run(): Promise<void>
+    run(): void | Promise<void>
   }
 
   export interface TuiBinding {
@@ -43,9 +43,7 @@ declare module "@opencode-ai/plugin/tui" {
       navigate(name: string, params?: Record<string, unknown>): void
     }
     ui: {
-      toast: {
-        show(input: { title: string }): void
-      }
+      toast(input: { title: string }): void
       dialog: {
         replace(render: () => JSX.Element, onClose?: () => void): void
         clear(): void

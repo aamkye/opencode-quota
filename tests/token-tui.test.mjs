@@ -15,7 +15,7 @@ const TOKEN_COMMANDS = [
   "tokens_between",
 ]
 
-function createTuiApi({ route = { name: "home" } } = {}) {
+function createTuiApi({ route = { name: "home" }, prompt } = {}) {
   const api = {
     commands: [],
     dialogs: [],
@@ -27,6 +27,7 @@ function createTuiApi({ route = { name: "home" } } = {}) {
       session: {
         async prompt(input) {
           api.sessionPrompts.push(input)
+          await prompt?.(input)
         },
       },
     },
@@ -38,11 +39,16 @@ function createTuiApi({ route = { name: "home" } } = {}) {
     },
     layers: [],
     mode: {
+      active: [],
       pushes: [],
       pops: [],
       push(mode) {
         api.mode.pushes.push(mode)
-        return () => api.mode.pops.push(mode)
+        api.mode.active.push(mode)
+        return () => {
+          api.mode.pops.push(mode)
+          api.mode.active.splice(api.mode.active.lastIndexOf(mode), 1)
+        }
       },
     },
     route: {
@@ -52,10 +58,8 @@ function createTuiApi({ route = { name: "home" } } = {}) {
       },
     },
     ui: {
-      toast: {
-        show(input) {
-          api.toasts.push(input)
-        },
+      toast(input) {
+        api.toasts.push(input)
       },
       DialogPrompt(props) {
         api.prompts.push(props)
@@ -72,6 +76,15 @@ function createTuiApi({ route = { name: "home" } } = {}) {
     },
     commandBySlash(slashName) {
       return api.commands.find((command) => command.slashName === slashName)
+    },
+    dispatchKey(key) {
+      for (const mode of api.mode.active.toReversed()) {
+        const binding = api.layers
+          .find((layer) => layer.mode === mode)
+          ?.bindings
+          ?.find((candidate) => candidate.key === key)
+        if (binding?.cmd instanceof Function) return binding.cmd()
+      }
     },
   }
   return api
@@ -115,7 +128,7 @@ test("token command without a session shows a toast without a client call", asyn
   await api.commandBySlash("tokens_today").run()
 
   assert.equal(api.sessionPrompts.length, 0)
-  assert.equal(api.toasts.length, 1)
+  assert.deepEqual(api.toasts, [{ title: "Open a session to view token usage" }])
 })
 
 test("tokens_between Enter submits the native prompt", async () => {
@@ -137,26 +150,26 @@ test("tokens_between Enter submits the native prompt", async () => {
     assert.equal(api.sessionPrompts[0].path.id, "s1")
     assert.equal(api.sessionPrompts[0].body.noReply, true)
     assert.equal(api.dialogs.at(-1).kind, "clear")
+    assert.deepEqual(api.mode.pops, [api.mode.pushes[0]])
   } finally {
     delete globalThis.__tokenTuiCompute
   }
 })
 
-test("tokens_between Escape closes its dialog mode without a client call", () => {
+test("tokens_between Escape dispatches through the active range mode while its dialog is open", () => {
   const api = createTuiApi({ route: { name: "session", params: { sessionID: "s1" } } })
 
   registerControlledTokenReportTui(api)
   api.commandBySlash("tokens_between").run()
   assert.equal(api.mode.pushes.length, 1)
   const rangeMode = api.mode.pushes[0]
-  const rangeEscapeLayer = api.layers.find((layer) => (
-    layer.mode === rangeMode && layer.bindings?.some((binding) => binding.key === "escape")
-  ))
-  assert.ok(rangeEscapeLayer)
-  rangeEscapeLayer.bindings.find((binding) => binding.key === "escape").cmd()
+  api.dialogs[0].render()
+  assert.deepEqual(api.mode.active, [rangeMode])
+  api.dispatchKey("escape")
 
   assert.equal(api.dialogs.at(-1).kind, "clear")
   assert.deepEqual(api.mode.pops, [rangeMode])
+  assert.deepEqual(api.mode.active, [])
   assert.equal(api.sessionPrompts.length, 0)
 })
 
@@ -175,6 +188,28 @@ test("token command persists a computation error in the active session", async (
       path: { id: "s1" },
       body: { noReply: true, parts: [{ type: "text", text: "Token report failed: controlled computation failure" }] },
     }])
+  } finally {
+    delete globalThis.__tokenTuiCompute
+  }
+})
+
+test("token command shows a toast when its no-reply write is rejected", async () => {
+  globalThis.__tokenTuiCompute = async () => ({
+    kind: "invalid_arguments",
+    command: "tokens_between",
+    error: "controlled report",
+  })
+  const api = createTuiApi({
+    route: { name: "session", params: { sessionID: "s1" } },
+    prompt: async () => { throw new Error("controlled write failure") },
+  })
+
+  try {
+    registerControlledTokenReportTui(api)
+    await api.commandBySlash("tokens_today").run()
+
+    assert.equal(api.sessionPrompts.length, 1)
+    assert.deepEqual(api.toasts, [{ title: "Unable to save token report" }])
   } finally {
     delete globalThis.__tokenTuiCompute
   }

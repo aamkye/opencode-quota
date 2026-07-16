@@ -32,10 +32,14 @@ async function persistReport(
     const message = error instanceof Error ? error.message : String(error)
     text = `Token report failed: ${message}`
   }
-  await api.client.session.prompt({
-    path: { id: sessionID },
-    body: { noReply: true, parts: [{ type: "text", text }] },
-  })
+  try {
+    await api.client.session.prompt({
+      path: { id: sessionID },
+      body: { noReply: true, parts: [{ type: "text", text }] },
+    })
+  } catch {
+    api.ui.toast({ title: "Unable to save token report" })
+  }
 }
 
 export function tokenReportCommands(
@@ -50,7 +54,7 @@ export function tokenReportCommands(
     async run() {
       const sessionID = sourceSessionID(api)
       if (!sessionID) {
-        api.ui.toast.show({ title: "Open a session to view token usage" })
+        api.ui.toast({ title: "Open a session to view token usage" })
         return
       }
       if (spec.id !== "tokens_between") {
