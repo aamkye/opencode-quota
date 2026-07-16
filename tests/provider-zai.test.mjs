@@ -281,6 +281,17 @@ test("maps ready Z.AI quota into semantic windows, values, and peak status", () 
   assert.equal(item(model, "zai:time-used").value, 15)
   assert.equal(item(model, "zai:time-total").value, 50)
   assert.equal(item(model, "zai:time-models").kind, "table")
+  for (const id of ["zai:time", "zai:time-reset", "zai:time-spacer", "zai:time-used", "zai:time-total", "zai:time-models"]) {
+    assert.notEqual(item(model, id), undefined)
+  }
+})
+
+test("hides every Z.AI tool time-limit item when requested", () => {
+  const model = mapZaiPanelState({ phase: "ready", data: quota(), hideTools: true, now })
+
+  for (const id of ["zai:time", "zai:time-reset", "zai:time-spacer", "zai:time-used", "zai:time-total", "zai:time-models"]) {
+    assert.equal(item(model, id), undefined)
+  }
 })
 
 test("inserts one blank display row between the tool reset and usage values", () => {
@@ -309,6 +320,22 @@ test("inserts one blank display row between the tool reset and usage values", ()
 test("maps loading and unavailable Z.AI states without hiding the provider", () => {
   assert.equal(item(mapZaiPanelState({ phase: "loading", now }), "zai:header").detail, "Loading Z.AI...")
   assert.equal(item(mapZaiPanelState({ phase: "unavailable", now }), "zai:header").detail, "No Z.AI account linked")
+})
+
+test("reports reactive Z.AI configuration from credentials", async (t) => {
+  const zai = createReactiveZaiAdapter(null)
+  t.after(async () => {
+    zai.adapter.dispose()
+    await flushEffects()
+  })
+
+  assert.equal(zai.adapter.configured(), false)
+  zai.setCredential("zai-key")
+  await flushEffects()
+  assert.equal(zai.adapter.configured(), true)
+  zai.setCredential(null)
+  await flushEffects()
+  assert.equal(zai.adapter.configured(), false)
 })
 
 test("retains Z.AI quota with Peak and stale header segments", () => {

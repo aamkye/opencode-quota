@@ -420,6 +420,23 @@ const config = normalizeOpenCodeGoConfig(sentinel)
 const signal = new AbortController().signal
 const response = (status, body = "", headers = {}) => new Response(status === 204 ? null : body, { status, headers })
 
+test("OpenCode Go reports whether normalized configuration is present", async () => {
+  const missing = createOpenCodeGoProvider({}, { config: null })
+  const configured = createOpenCodeGoProvider({}, {
+    config: normalizeOpenCodeGoConfig(sentinel),
+    fetch: async () => response(503),
+  })
+
+  try {
+    assert.equal(missing.configured(), false)
+    assert.equal(configured.configured(), true)
+  } finally {
+    missing.dispose()
+    configured.dispose()
+    await flushMicrotasks()
+  }
+})
+
 async function transportWith(result) {
   const calls = []
   const value = await fetchOpenCodeGoQuota(config, signal, {

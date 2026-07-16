@@ -109,6 +109,7 @@ export type ZaiPanelState = {
   retryAfterEpoch?: number | null
   baselineSgt?: string
   cycleMs?: number
+  hideTools?: boolean
 }
 
 type AccountEntry = {
@@ -339,7 +340,7 @@ export function mapZaiPanelState(state: ZaiPanelState): PanelModel {
     const weekly = data.weeklyLimit
     items.push(...quotaItems("7D", "7d", 50, weekly?.remainingPct ?? 100, weekly?.nextResetEpoch ?? 0, now, weekly?.absolute ?? null))
     if (!weekly) items.push({ id: "zai:7d-legacy", order: 65, kind: "text", text: "Unlimited (Legacy)", status: "textMuted" })
-    if (data.timeLimit) {
+    if (data.timeLimit && !state.hideTools) {
       const time = data.timeLimit
       items.push(
         { id: "zai:time", order: 80, kind: "progress", label: "T", value: time.remainingPct, total: 100 },
@@ -629,9 +630,10 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
   return {
     id: "zai",
     order: PROVIDER_ORDER,
-    panel: () => mapZaiPanelState({ phase: phase(), data: quotaData(), retryAfterEpoch: retryAfterEpoch(), baselineSgt: baselineSgt(), cycleMs: cycleMs(), now: now() }),
+    panel: () => mapZaiPanelState({ phase: phase(), data: quotaData(), retryAfterEpoch: retryAfterEpoch(), baselineSgt: baselineSgt(), cycleMs: cycleMs(), hideTools: options.hideTools, now: now() }),
     home: () => phase() === "ready" && quotaData() ? zaiHomeQuotaSummary(quotaData()!) : null,
     quotaSummary: () => quotaData() ? zaiHomeQuotaSummary(quotaData()!) : null,
+    configured: () => Boolean(apiKey()),
     freshness: () => freshnessFor(phase()),
     refresh,
     setSessionID(id: string): void {

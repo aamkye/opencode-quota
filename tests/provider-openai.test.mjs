@@ -356,6 +356,22 @@ test("exposes a framework-only OpenAI adapter without layout or slot registratio
   assert.equal(typeof createOpenAiProvider, "function")
 })
 
+test("reports reactive OpenAI configuration from credentials", async (t) => {
+  const openai = createReactiveOpenAiAdapter(null)
+  t.after(async () => {
+    openai.adapter.dispose()
+    await flushEffects()
+  })
+
+  assert.equal(openai.adapter.configured(), false)
+  openai.setCredential("openai-key")
+  await flushEffects()
+  assert.equal(openai.adapter.configured(), true)
+  openai.setCredential(null)
+  await flushEffects()
+  assert.equal(openai.adapter.configured(), false)
+})
+
 test("uses the default and custom provider polling intervals while keeping the one-second clock", async (t) => {
   const defaultClock = installFakeClock(now)
   createTestAdapter(t, { clock: defaultClock, fetch: async () => quotaResponse() })

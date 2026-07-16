@@ -32,6 +32,7 @@ export type ProviderFreshness = "loading" | "ready" | "stale" | "unavailable"
 
 export type QuotaProviderOptions = {
   refreshIntervalMs?: number
+  hideTools?: boolean
 }
 
 export interface QuotaProviderAdapter {
@@ -40,6 +41,7 @@ export interface QuotaProviderAdapter {
   panel: Accessor<PanelModel>
   home: Accessor<HomeQuotaSummary | null>
   quotaSummary?: Accessor<HomeQuotaSummary | null>
+  configured: Accessor<boolean>
   freshness: Accessor<ProviderFreshness>
   refresh(): Promise<void>
   setSessionID(sessionID: string): void

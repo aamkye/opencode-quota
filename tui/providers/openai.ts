@@ -480,6 +480,7 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
       // The legacy home slot removes unavailable and stale OpenAI data rather than showing cached usage.
       home: () => phase() === "ready" && quotaData() ? openAiHomeQuotaSummary(quotaData()!) : null,
       quotaSummary: () => quotaData() ? openAiHomeQuotaSummary(quotaData()!) : null,
+      configured: () => Boolean(auth()?.access),
       freshness: () => freshnessFor(phase()),
       refresh,
       setSessionID(sessionID: string): void {

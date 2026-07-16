@@ -683,6 +683,7 @@ export function createOpenCodeGoProvider(
       home: () => (phase() === "ready" || phase() === "stale") && data()
         ? openCodeGoHomeQuotaSummary(data()!)
         : null,
+      configured: () => options.config !== null,
       freshness: (): ProviderFreshness => {
         const current = phase()
         return current === "configuration-required" ? "unavailable" : current
