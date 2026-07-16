@@ -29,6 +29,15 @@ function createTuiApi({ route = { name: "home" } } = {}) {
     navigations: [],
     prompts: [],
     routes: [],
+    sessionPrompts: [],
+    toasts: [],
+    client: {
+      session: {
+        async prompt(input) {
+          api.sessionPrompts.push(input)
+        },
+      },
+    },
     keymap: {
       registerLayer(layer) {
         api.commands.push(...(layer.commands ?? []))
@@ -54,6 +63,11 @@ function createTuiApi({ route = { name: "home" } } = {}) {
       },
     },
     ui: {
+      toast: {
+        show(input) {
+          api.toasts.push(input)
+        },
+      },
       DialogPrompt(props) {
         api.prompts.push(props)
         return null
@@ -108,37 +122,65 @@ test("token commands register native slash handlers without a model client", () 
 
   assert.deepEqual(tokenReportCommands(api).map((command) => command.slashName), TOKEN_COMMANDS)
   assert.deepEqual(api.commands.map((command) => command.slashName), TOKEN_COMMANDS)
-  api.commandBySlash("tokens_today").run()
-  assert.deepEqual(api.navigations, [{ name: "aamkye.token-report", params: { command: "tokens_today", sessionID: "s1" } }])
-  assert.equal(api.prompts.length, 0)
 })
 
-test("tokens_between submits a native range prompt and keeps its source session", () => {
+test("token commands persist a no-reply report in the active session", async () => {
   const api = createTuiApi({ route: { name: "session", params: { sessionID: "s1" } } })
 
-  registerTokenReportTui(api)
+  registerControlledTokenReportTui(api)
+  await api.commandBySlash("tokens_today").run()
+
+  assert.deepEqual(api.sessionPrompts, [{
+    path: { id: "s1" },
+    body: { noReply: true, parts: [{ type: "text", text: "# Tokens used (Today)" }] },
+  }])
+  assert.equal(api.navigations.length, 0)
+})
+
+test("token command without a session shows a toast without a client call", async () => {
+  const api = createTuiApi()
+
+  registerControlledTokenReportTui(api)
+  await api.commandBySlash("tokens_today").run()
+
+  assert.equal(api.sessionPrompts.length, 0)
+  assert.equal(api.toasts.length, 1)
+  assert.equal(api.navigations.length, 0)
+})
+
+test("tokens_between Enter submits the native prompt", async () => {
+  const api = createTuiApi({ route: { name: "session", params: { sessionID: "s1" } } })
+
+  registerControlledTokenReportTui(api)
   api.commandBySlash("tokens_between").run()
   api.dialogs[0].render()
   api.route.current = { name: "home" }
-  api.prompts[0].onSubmit("2026-01-01 2026-01-15")
+  await api.prompts[0].onSubmit("2026-01-01 2026-01-15")
 
-  assert.deepEqual(api.navigations, [{
-    name: "aamkye.token-report",
-    params: { command: "tokens_between", arguments: "2026-01-01 2026-01-15", sessionID: "s1" },
-  }])
-  assert.equal(api.prompts.length, 1)
+  assert.equal(api.sessionPrompts.length, 1)
+  assert.equal(api.sessionPrompts[0].path.id, "s1")
+  assert.equal(api.sessionPrompts[0].body.noReply, true)
   assert.equal(api.dialogs.at(-1).kind, "clear")
+  assert.equal(api.navigations.length, 0)
 })
 
-test("tokens_between cancellation closes the native dialog without navigating", () => {
+test("tokens_between Escape closes its dialog mode without a client call", () => {
   const api = createTuiApi({ route: { name: "session", params: { sessionID: "s1" } } })
 
-  registerTokenReportTui(api)
+  registerControlledTokenReportTui(api)
   api.commandBySlash("tokens_between").run()
-  api.dialogs[0].onClose()
+  assert.equal(api.mode.pushes.length, 1)
+  const rangeMode = api.mode.pushes[0]
+  const rangeEscapeLayer = api.layers.find((layer) => (
+    layer.mode === rangeMode && layer.bindings?.some((binding) => binding.key === "escape")
+  ))
+  assert.ok(rangeEscapeLayer)
+  rangeEscapeLayer.bindings.find((binding) => binding.key === "escape").cmd()
 
-  assert.deepEqual(api.navigations, [])
   assert.equal(api.dialogs.at(-1).kind, "clear")
+  assert.deepEqual(api.mode.pops, [rangeMode])
+  assert.equal(api.sessionPrompts.length, 0)
+  assert.equal(api.navigations.length, 0)
 })
 
 test("token report route renders a full-width clipped loading screen without a model client", () => {
