@@ -188,7 +188,7 @@ git commit -m "feat: add standalone plugin manifest"
 - Produces: `defineTuiPlugin(descriptor, activate)`, `TuiFeatureContext`, and `FeatureActivation`.
 - Cleanup is async-capable, idempotent, LIFO, exhaustive, and preserves an activation error over cleanup errors.
 
-- [ ] **Step 1: Add lifecycle test compilation and failing tests**
+- [x] **Step 1: Add lifecycle test compilation and failing tests**
 
 Add `tui/runtime/plugin.ts -> .tmp-test/plugin-runtime.mjs` to `tests/compile-presentation.mjs`. In `tests/plugin-runtime.test.mjs`, use a fake lifecycle whose `onDispose` returns an unregister function, then test: descriptor ID/module shape; registered plus returned cleanup order `returned, second, first`; repeated host disposal runs nothing twice; activation throw rolls back and rethrows `activation failed`; cleanup failure does not replace that error; pre-aborted lifecycle unregisters and cleans immediately.
 
@@ -209,13 +209,13 @@ await lifecycle.dispose()
 assert.deepEqual(events, ["returned", "second", "first"])
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/plugin-runtime.test.mjs`
 
 Expected: FAIL because `defineTuiPlugin` is not exported.
 
-- [ ] **Step 3: Implement the activation scope**
+- [x] **Step 3: Implement the activation scope**
 
 Implement one `cleanup()` promise per activation. Push `context.onCleanup` callbacks as they are acquired, push the returned cleanup after activation resolves, register exactly one host lifecycle callback, and check `api.lifecycle.signal.aborted` immediately after registration. On any activation/registration error, unregister if available, drain the stack, and throw the original error. When cleanup has no activation error, retain the first cleanup error while attempting every callback, then throw it after the stack drains.
 
@@ -228,13 +228,13 @@ export { pluginDescriptor, pluginManifest } from "../tui/runtime/manifest.js"
 export type { PluginKey, PluginManifestEntry } from "../tui/runtime/manifest.js"
 ```
 
-- [ ] **Step 4: Run GREEN and regression tests**
+- [x] **Step 4: Run GREEN and regression tests**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/plugin-runtime.test.mjs tests/shared-boundary.test.mjs`
 
 Expected: PASS; shared facade still has no default export or plugin registration.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tui/runtime/plugin.ts shared/opencode-tools-shared.ts tests/plugin-runtime.test.mjs tests/compile-presentation.mjs

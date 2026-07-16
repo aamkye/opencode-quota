@@ -1,8 +1,8 @@
 ## 1. Foundation Contracts
 
 - [x] 1.1 Add a data-only manifest for quota, home, token-report, and MCP with normalized IDs, source entries, artifacts, slot orders, and option ownership.
-- [ ] 1.2 Add failing tests for standalone module creation, lifecycle cleanup, partial activation rollback, and already-aborted activation.
-- [ ] 1.3 Implement and export the shared `defineTuiPlugin` runtime contract.
+- [x] 1.2 Add failing tests for standalone module creation, lifecycle cleanup, partial activation rollback, and already-aborted activation.
+- [x] 1.3 Implement and export the shared `defineTuiPlugin` runtime contract.
 - [ ] 1.4 Add failing tests for API-scoped service acquisition, ref counts, idempotent release, and final disposal.
 - [ ] 1.5 Implement the shared service lease registry and provider hub used by quota and home.
 
