@@ -3696,6 +3696,42 @@ git log --oneline --decorate 67c36679448d9b45890006ae2bf728241756c09b..HEAD
 
 Expected: `git diff --check` prints nothing and exits `0`; status contains no unexpected source/test/generated changes from verification; the log contains separate atomic commits for Tasks 10-15. Review only the quota-panel rendering scope and explicitly leave the unrelated OpenCode GO response-size finding out of this change.
 
+### Task 16: React To Synchronized Same-Session Model Changes
+
+**Files:**
+- Modify: `tui/quota.tsx`, `opencode-plugin-tui.d.ts`
+- Modify: `tests/quota-composition.test.mjs`, `tests/quota-selection.fixture.ts`
+
+**Interfaces:**
+- Consumes: public `api.event`, synchronized `api.state.session.messages(sessionID)`, lifecycle disposal, and existing provider alias mapping.
+- Produces: event-driven recomputation after a submitted same-session user message even when the host message accessor does not itself establish a reactive dependency.
+- Preserves: latest-user-message selection, configured-provider fallback, exactly one refresh per adapter change, no model-name display, and no work after disposal.
+- Excludes: unsupported observation of the host-private unsent prompt model, private host imports, polling, and unrelated provider changes.
+
+- [ ] **Step 1: Add a host-shaped event-driven selection regression and verify RED**
+
+Use a non-reactive mutable message accessor plus a public TUI event fixture. Change the active session's latest user-message provider from Z.AI to an OpenAI alias, emit the corresponding synchronized message event, and assert immediate OpenAI selection/reordering plus exactly one refresh. Also assert unrelated-session events do nothing and lifecycle disposal unregisters the listener.
+
+- [ ] **Step 2: Implement the minimal supported event invalidation path**
+
+Subscribe through `api.event` only to the event needed to invalidate selection after synchronized message updates. Filter to the active session, trigger recomputation without storing model names, unregister through lifecycle disposal, and preserve the existing fallback and refresh de-duplication behavior.
+
+- [ ] **Step 3: Verify focused GREEN, typechecking, and the full suite**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test tests/quota-composition.test.mjs
+npm run typecheck
+npm test
+```
+
+Expected: every command exits `0`; the new host-shaped event regression passes together with existing same-session, alias, fallback, refresh, and disposal coverage.
+
+- [ ] **Step 4: Commit and complete thorough task review**
+
+Commit only the Task 16 source/test slice, then run one thorough task review against its exact commit range. Critical/Important findings must be fixed within the Task 16 review budget before checkoff.
+
 ## Self-Review Checklist
 
 - [x] Every canonical spec requirement maps to a task: responsive flex rows and framing (Task 1), progress colors and thresholds (Task 2), provider grouping and Z.AI status (Task 3), OpenAI duration labels (Task 4), configurable polling (Task 5), active-session selection (Task 6), muted subordinate metadata (Task 7), full verification/deployment/manual checks (Task 8), and muted short group dividers (Task 9).
