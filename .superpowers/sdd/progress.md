@@ -37,3 +37,4 @@ fix-token-command-hook Task 3: complete (commits 61fb0d9..50fed73, standard risk
 fix-token-command-hook chat Task 1: complete (commit 813cd11, expected RED coverage recorded)
 add-opencode-tools-mcp Task 1: complete (commit 1b34bec plus checkoff commit 28797ea, thorough review clean)
 add-opencode-tools-mcp Task 2: complete (commits c2cc265..8a44bf9, user accepted focused review-fix history, final thorough review clean)
+add-opencode-tools-mcp Task 3: complete (commits 977bf03..be43af0, review clean after one API-contract fix; engine-floor cross-task gate deferred to Task 16)

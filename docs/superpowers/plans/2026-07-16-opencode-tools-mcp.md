@@ -252,7 +252,7 @@ git commit -m "feat: add standalone TUI activation runtime"
 - Produces: `acquireService<T>(api, key, factory): ServiceLease<T>` and `ServiceLease<T> { value; release() }`.
 - `TuiFeatureContext.acquireService` automatically adds the lease release to its activation scope.
 
-- [ ] **Step 1: Add failing lease cases**
+- [x] **Step 1: Add failing lease cases**
 
 Add tests using two API objects and one symbol key. Assert one factory call for two same-API leases, separate instances for another API, no disposal after the first release, one disposal after final release, idempotent repeated release, failed factories are retried, and reentrant acquisition during disposal creates a new value because the old record was removed first.
 
@@ -269,13 +269,13 @@ second.release()
 assert.equal(disposals, 1)
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="service|lease|factory|reentrant" tests/plugin-runtime.test.mjs`
 
 Expected: FAIL because `acquireService` is not exported.
 
-- [ ] **Step 3: Implement the WeakMap registry**
+- [x] **Step 3: Implement the WeakMap registry**
 
 Use `WeakMap<TuiPluginApi, Map<ServiceKey, ServiceRecord<unknown>>>`. Call the factory before inserting a new record. Increment `references` for every lease. Make each lease's `release` closure idempotent; on the final release, delete the record and empty API map before invoking `dispose`. Have `defineTuiPlugin` wrap direct acquisition as:
 
@@ -287,13 +287,13 @@ acquireService<T>(key: ServiceKey, factory: ServiceFactory<T>): ServiceLease<T> 
 }
 ```
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/plugin-runtime.test.mjs`
 
 Expected: PASS for activation and lease cases.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tui/runtime/plugin.ts shared/opencode-tools-shared.ts tests/plugin-runtime.test.mjs
