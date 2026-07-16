@@ -240,6 +240,67 @@ test("renders a semantic divider inside one panel group", () => {
   }
 })
 
+test("mounts ordinary and segmented provider-header details at the right edge", () => {
+  const headerModel = {
+    id: "quota",
+    order: 10,
+    title: "Quota",
+    groups: [{
+      id: "providers",
+      order: 10,
+      items: [
+        { id: "ordinary", order: 10, kind: "header", title: "Ordinary", detail: "Limited", status: "error" },
+        { id: "openai", order: 20, kind: "header", title: "OpenAI: Pro", detailSegments: [{ text: "stale", status: "warning" }] },
+        {
+          id: "zai-peak",
+          order: 30,
+          kind: "header",
+          title: "Z.AI: Max",
+          detailSegments: [
+            { text: "Peak (3x)", status: "error" },
+            { text: " / ", status: "textMuted" },
+            { text: "stale", status: "warning" },
+          ],
+        },
+        {
+          id: "zai-off-peak",
+          order: 40,
+          kind: "header",
+          title: "Z.AI: Pro",
+          detailSegments: [
+            { text: "Off-Peak (1x)", status: "success" },
+            { text: " / ", status: "textMuted" },
+            { text: "stale", status: "warning" },
+          ],
+        },
+      ],
+    }],
+  }
+  const { elements, dispose } = mountPanel(headerModel)
+  const details = elements
+    .filter((element) => element.type === "text")
+    .filter((element) => ["Limited", "stale", "Peak (3x)", " / ", "Off-Peak (1x)"].includes(element.props.children))
+
+  try {
+    assert.deepEqual(details.map((element) => [element.props.children, element.props.fg]), [
+      ["Limited", "#ff0000"],
+      ["stale", "#ffaa00"],
+      ["Peak (3x)", "#ff0000"],
+      [" / ", "#888888"],
+      ["stale", "#ffaa00"],
+      ["Off-Peak (1x)", "#00ff00"],
+      [" / ", "#888888"],
+      ["stale", "#ffaa00"],
+    ])
+    const titles = elements.filter((element) =>
+      element.type === "text"
+      && ["Ordinary", "OpenAI: Pro", "Z.AI: Max", "Z.AI: Pro"].includes(element.props.children))
+    assert.ok(titles.every((element) => element.props.flexBasis === 0 && element.props.flexGrow === 1))
+  } finally {
+    dispose()
+  }
+})
+
 test("mounts compact tables as clipped non-wrapping parent-width flex rows", () => {
   const { elements, dispose } = mountPanel(model)
 

@@ -2,7 +2,7 @@ import { For, Show, createSignal, onCleanup, type Accessor } from "solid-js"
 
 import { alignText, formatBytes, formatCount, formatCurrency, formatDuration, formatPercent, formatTimer, truncateText } from "./format.js"
 import { allocateCompactTable, allocateHeader, allocateProgressRow, type CompactTableAllocation, type HeaderAllocation, type ProgressRowAllocation } from "./layout.js"
-import { sortByOrderThenId, type DisplayValue, type PanelAlignment, type PanelGroup, type PanelItem, type PanelModel, type PanelStatus } from "./types.js"
+import { sortByOrderThenId, type DisplayValue, type PanelAlignment, type PanelGroup, type PanelItem, type PanelModel, type PanelStatus, type PanelTextSegment } from "./types.js"
 
 type NormalizedHeader = {
   id: string
@@ -27,7 +27,14 @@ type NormalizedGroupHeader = {
 
 type NormalizedItem =
   | { id: string; kind: "divider" }
-  | { id: string; kind: "header"; title: string; detail?: string; status?: PanelStatus }
+  | {
+      id: string
+      kind: "header"
+      title: string
+      detail?: string
+      detailSegments?: PanelTextSegment[]
+      status?: PanelStatus
+    }
   | { id: string; kind: "text"; text: string; align: PanelAlignment; status?: PanelStatus }
   | { id: string; kind: "progress"; label: string; percent: string; allocation: ProgressRowAllocation; status?: PanelStatus }
   | { id: string; kind: "timer"; text: string; detail?: string; status?: PanelStatus }
@@ -120,7 +127,14 @@ function normalizeItem(item: PanelItem, availableCells: number, now: number): No
     case "divider":
       return { id: item.id, kind: item.kind }
     case "header":
-      return { id: item.id, kind: item.kind, title: item.title, detail: item.detail, status: item.status }
+      return {
+        id: item.id,
+        kind: item.kind,
+        title: item.title,
+        detail: item.detail,
+        detailSegments: item.detailSegments?.map((segment) => ({ ...segment })),
+        status: item.status,
+      }
     case "text":
       return {
         id: item.id,
@@ -228,8 +242,16 @@ function renderItemLayout(item: NormalizedItem): RenderedItem {
   switch (item.kind) {
     case "divider":
       return { kind: item.kind }
-    case "header":
-      return { kind: item.kind, text: item.detail ? `${item.title}: ${item.detail}` : item.title, status: item.status }
+    case "header": {
+      const detail = item.detailSegments?.length
+        ? item.detailSegments.map((segment) => segment.text).join("")
+        : item.detail
+      return {
+        kind: item.kind,
+        text: detail ? `${item.title}: ${detail}` : item.title,
+        status: item.status,
+      }
+    }
     case "text":
       return { kind: item.kind, text: item.text, status: item.status }
     case "progress": {
@@ -343,15 +365,26 @@ function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> 
   switch (props.item.kind) {
     case "divider":
       return <GroupDivider theme={props.theme} />
-    case "header":
+    case "header": {
+      const item = props.item
       return (
         <box flexDirection="row" width="100%">
-          <text flexBasis={0} flexGrow={1}>{props.item.title}</text>
-          <Show when={props.item.detail}>
-            <text fg={color(props.item.status)}>{props.item.detail}</text>
+          <text flexBasis={0} flexGrow={1}>{item.title}</text>
+          <Show when={!item.detailSegments?.length ? item.detail : undefined}>
+            {(detail) => <text fg={color(item.status)}>{detail()}</text>}
+          </Show>
+          <Show when={item.detailSegments?.length ? item.detailSegments : undefined}>
+            {(segments) => (
+              <box flexDirection="row">
+                <For each={segments()}>
+                  {(segment) => <text fg={color(segment.status)}>{segment.text}</text>}
+                </For>
+              </box>
+            )}
           </Show>
         </box>
       )
+    }
     case "text":
       return <text fg={color(props.item.status)}>{props.item.text}</text>
     case "quantity":

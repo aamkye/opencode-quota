@@ -11,7 +11,18 @@ export const model: PanelModel = {
       order: 10,
       header: { title: "Usage", collapsible: true },
       items: [
-        { id: "account", order: 10, kind: "header", title: "Primary account", status: "success" },
+        { id: "account", order: 10, kind: "header", title: "Primary account", detail: "Ready", status: "success" },
+        {
+          id: "stale-account",
+          order: 11,
+          kind: "header",
+          title: "Z.AI: Max",
+          detailSegments: [
+            { text: "Off-Peak (1x)", status: "success" },
+            { text: " / ", status: "textMuted" },
+            { text: "stale", status: "warning" },
+          ],
+        },
         { id: "notice", order: 20, kind: "text", text: "Limits refresh automatically.", maxWidth: 40 },
         { id: "progress", order: 30, kind: "progress", label: "Weekly", value: 45, total: 100, status: "warning" },
         { id: "timer", order: 40, kind: "timer", label: "Resets", state: "countdown", epoch: 1_752_300_000_000, detail: "in 2h" },

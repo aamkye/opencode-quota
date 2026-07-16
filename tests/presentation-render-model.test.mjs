@@ -199,3 +199,47 @@ test("keeps panel and group collapse state independent", () => {
   assert.equal(renderPanelLayout(model, { collapsed: panelAndGroupCollapsed }).groups.length, 0)
   assert.equal(renderPanelLayout(model, { collapsed: toggleCollapsed(panelAndGroupCollapsed, "panel:usage") }).groups[0].collapsed, true)
 })
+
+test("normalizes ordered header detail segments and keeps pure text readable", () => {
+  const model = {
+    id: "quota",
+    order: 10,
+    title: "Quota",
+    groups: [{
+      id: "providers",
+      order: 10,
+      items: [
+        { id: "ordinary", order: 10, kind: "header", title: "Ordinary", detail: "Limited", status: "error" },
+        {
+          id: "openai",
+          order: 20,
+          kind: "header",
+          title: "OpenAI: Pro",
+          detailSegments: [{ text: "stale", status: "warning" }],
+        },
+        {
+          id: "zai",
+          order: 30,
+          kind: "header",
+          title: "Z.AI: Max",
+          detailSegments: [
+            { text: "Off-Peak (1x)", status: "success" },
+            { text: " / ", status: "textMuted" },
+            { text: "stale", status: "warning" },
+          ],
+        },
+      ],
+    }],
+  }
+
+  const normalized = normalizePanelModel(model)
+  assert.deepEqual(normalized.groups[0].items[2].detailSegments, [
+    { text: "Off-Peak (1x)", status: "success" },
+    { text: " / ", status: "textMuted" },
+    { text: "stale", status: "warning" },
+  ])
+  assert.deepEqual(
+    renderPanelLayout(model).groups[0].items.map((entry) => entry.text),
+    ["Ordinary: Limited", "OpenAI: Pro: stale", "Z.AI: Max: Off-Peak (1x) / stale"],
+  )
+})

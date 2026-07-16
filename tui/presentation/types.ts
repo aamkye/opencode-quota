@@ -6,6 +6,11 @@ export type QuantityUnit = "count" | "bytes" | "duration" | "currency"
 
 export type PanelStatus = "error" | "warning" | "success" | "text" | "textMuted"
 
+export type PanelTextSegment = {
+  text: string
+  status?: PanelStatus
+}
+
 export type PanelAlignment = "start" | "center" | "end"
 
 export type DisplayValue =
@@ -37,6 +42,7 @@ export type PanelItem =
       kind: "header"
       title: string
       detail?: string
+      detailSegments?: readonly PanelTextSegment[]
     })
   | (PanelItemBase & {
       kind: "text"
