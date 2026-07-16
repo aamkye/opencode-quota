@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs"
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import { createEffect, createRoot, createSignal, onCleanup } from "solid-js"
 
-import type { PanelItem, PanelModel } from "../presentation/types.js"
+import type { PanelItem, PanelModel, PanelTextSegment } from "../presentation/types.js"
 import type { HomeQuotaSummary, ProviderFreshness, QuotaProviderAdapter, QuotaProviderOptions } from "./types.js"
 
 const DEFAULT_REFRESH_INTERVAL_MS = 10_000
@@ -146,7 +146,7 @@ function decodeJwtAccountId(token: string): string | null {
   }
 }
 
-export async function fetchOpenAiQuota(auth: OpenAiAuthEntry): Promise<OpenAiQuotaData | null> {
+export async function fetchOpenAiQuota(auth: OpenAiAuthEntry, signal?: AbortSignal): Promise<OpenAiQuotaData | null> {
   const accessToken = auth.access
   if (!accessToken) return null
   if (auth.expires && auth.expires < Date.now()) {
@@ -154,8 +154,11 @@ export async function fetchOpenAiQuota(auth: OpenAiAuthEntry): Promise<OpenAiQuo
     return null
   }
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  const ownedController = signal ? null : new AbortController()
+  const requestSignal = signal ?? ownedController!.signal
+  const timeout = ownedController
+    ? setTimeout(() => ownedController.abort(), FETCH_TIMEOUT_MS)
+    : null
   try {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${accessToken}`,
@@ -164,7 +167,7 @@ export async function fetchOpenAiQuota(auth: OpenAiAuthEntry): Promise<OpenAiQuo
     const accountId = auth.accountId || decodeJwtAccountId(accessToken)
     if (accountId) headers["ChatGPT-Account-Id"] = accountId
 
-    const response = await fetch(OPENAI_USAGE_URL, { headers, signal: controller.signal })
+    const response = await fetch(OPENAI_USAGE_URL, { headers, signal: requestSignal })
     if (!response.ok) {
       console.error(`[quota-openai] API returned ${response.status}`)
       return null
@@ -185,10 +188,10 @@ export async function fetchOpenAiQuota(auth: OpenAiAuthEntry): Promise<OpenAiQuo
       creditsUnlimited: Boolean(data.credits?.unlimited),
     }
   } catch (error) {
-    console.error("[quota-openai] fetchQuota error:", error)
+    if (!requestSignal.aborted) console.error("[quota-openai] fetchQuota error:", error)
     return null
   } finally {
-    clearTimeout(timeout)
+    if (timeout) clearTimeout(timeout)
   }
 }
 
@@ -207,8 +210,15 @@ function timerState(remainingPct: number, epoch: number, now: number): "unavaila
   return epoch > now ? "countdown" : "expired"
 }
 
-function header(title: string, detail?: string): PanelItem {
-  return { id: "openai:header", order: 10, kind: "header", title, ...(detail ? { detail } : {}) }
+function header(title: string, detail?: string, detailSegments?: readonly PanelTextSegment[]): PanelItem {
+  return {
+    id: "openai:header",
+    order: 10,
+    kind: "header",
+    title,
+    ...(detail ? { detail } : {}),
+    ...(detailSegments?.length ? { detailSegments } : {}),
+  }
 }
 
 export function formatWindowDuration(seconds: number | undefined): string {
@@ -252,9 +262,12 @@ export function mapOpenAiPanelState(state: OpenAiPanelState): PanelModel {
   if (state.phase === "loading") items.push(header("OpenAI", "Loading OpenAI..."))
   else if (!data) items.push(header("OpenAI", state.authenticated ? "Usage unavailable" : "No ChatGPT account linked"))
   else {
-    items.push(header(`OpenAI: ${data.planType}`))
+    items.push(header(
+      `OpenAI: ${data.planType}`,
+      undefined,
+      state.phase === "stale" ? [{ text: "stale", status: "warning" }] : undefined,
+    ))
     if (data.limitReached) items.push({ id: "openai:limited", order: 15, kind: "text", text: "Limited", status: "error" })
-    if (state.phase === "stale") items.push({ id: "openai:stale", order: 16, kind: "text", text: "~stale", status: "warning" })
     items.push(...quotaItems("primary", 20, data.primary, now))
     if (data.secondary) items.push(...quotaItems("secondary", 50, data.secondary, now))
   }
@@ -284,31 +297,71 @@ function freshnessFor(phase: OpenAiPanelPhase): ProviderFreshness {
 export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOptions = {}): QuotaProviderAdapter {
   const refreshIntervalMs = providerRefreshInterval(options)
   return createRoot((dispose) => {
-    const [auth, setAuth] = createSignal<OpenAiAuthEntry | null>(findOpenAiAuthFromFiles())
-    const [quotaData, setQuotaData] = createSignal<OpenAiQuotaData | null>(null)
+    type PublishedQuota = { data: OpenAiQuotaData; generation: number }
+    type GenerationBoundary = { epoch: number; generation: number }
+
+    const [auth, setAuth] = createSignal<OpenAiAuthEntry | null>(null)
+    const [quotaState, setQuotaState] = createSignal<PublishedQuota | null>(null)
+    const quotaData = () => quotaState()?.data ?? null
     const [phase, setPhase] = createSignal<OpenAiPanelPhase>("loading")
     const [lastSuccessAt, setLastSuccessAt] = createSignal(0)
     const [now, setNow] = createSignal(Date.now())
-    const [refreshedBoundary, setRefreshedBoundary] = createSignal(0)
+    const [refreshedBoundary, setRefreshedBoundary] = createSignal<GenerationBoundary | null>(null)
     let refreshInFlight: Promise<void> | null = null
     let refreshStartedAt = 0
-    let pendingBoundary = 0
+    let pendingBoundary: GenerationBoundary | null = null
+    let credentialGeneration = 0
+    let observedCredential: string | null | undefined
     let disposed = false
+    let boundarySchedule: {
+      timer: ReturnType<typeof setTimeout>
+      generation: number
+    } | null = null
+    let activeRequest: {
+      generation: number
+      controller: AbortController
+      timeout: ReturnType<typeof setTimeout>
+      promise: Promise<void>
+    } | null = null
+
+    const clearBoundarySchedule = (): void => {
+      const schedule = boundarySchedule
+      boundarySchedule = null
+      if (schedule) clearTimeout(schedule.timer)
+      pendingBoundary = null
+      setRefreshedBoundary(null)
+    }
+
+    const cancelActiveRequest = (): void => {
+      const request = activeRequest
+      if (!request) return
+      activeRequest = null
+      request.controller.abort()
+      clearTimeout(request.timeout)
+      if (refreshInFlight === request.promise) {
+        refreshInFlight = null
+        refreshStartedAt = 0
+      }
+    }
 
     const refresh = (): Promise<void> => {
       if (disposed) return Promise.resolve()
       if (refreshInFlight) return refreshInFlight
+      const currentAuth = auth()
+      if (!currentAuth?.access) {
+        setPhase("unavailable")
+        return Promise.resolve()
+      }
+
+      const generation = credentialGeneration
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
       const startedAt = Date.now()
       const request = (async () => {
-        const currentAuth = auth()
-        if (!currentAuth?.access) {
-          setPhase("unavailable")
-          return
-        }
-        const data = await fetchOpenAiQuota(currentAuth)
-        if (disposed) return
+        const data = await fetchOpenAiQuota(currentAuth, controller.signal)
+        if (disposed || generation !== credentialGeneration) return
         if (data) {
-          setQuotaData(data)
+          setQuotaState({ data, generation })
           setPhase("ready")
           setLastSuccessAt(Date.now())
         } else if (quotaData()) {
@@ -319,14 +372,19 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
       })()
       refreshInFlight = request
       refreshStartedAt = startedAt
+      activeRequest = { generation, controller, timeout, promise: request }
       const settled = () => {
+        if (activeRequest?.promise === request) {
+          clearTimeout(activeRequest.timeout)
+          activeRequest = null
+        }
         if (refreshInFlight !== request) return
         refreshInFlight = null
         refreshStartedAt = 0
-        if (disposed || pendingBoundary <= 0) return
-        const epoch = pendingBoundary
-        pendingBoundary = 0
-        setRefreshedBoundary(epoch)
+        const queued = pendingBoundary
+        if (disposed || generation !== credentialGeneration || queued?.generation !== generation) return
+        pendingBoundary = null
+        setRefreshedBoundary(queued)
         void refresh()
       }
       void request.then(settled, settled)
@@ -334,12 +392,25 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
     }
 
     createEffect(() => {
-      const providerAuth = findOpenAiAuthFromProviders(api.state.provider)
-      if (providerAuth) setAuth(providerAuth)
-    })
+      const next = findOpenAiAuthFromProviders(api.state.provider) ?? findOpenAiAuthFromFiles()
+      const credential = next?.access
+        ? `${next.access}\u0000${next.accountId ?? ""}`
+        : null
+      if (credential === observedCredential) return
+      const replacingCredential = observedCredential !== undefined && observedCredential !== null
+      observedCredential = credential
+      credentialGeneration += 1
+      clearBoundarySchedule()
+      cancelActiveRequest()
+      setAuth(next)
 
-    createEffect(() => {
-      auth()
+      if (!credential) {
+        setQuotaState(null)
+        setLastSuccessAt(0)
+        setPhase("unavailable")
+        return
+      }
+      setPhase(replacingCredential && quotaData() ? "stale" : "loading")
       void refresh()
     })
 
@@ -356,7 +427,8 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
       const current = Date.now()
       setNow(current)
       if (lastSuccessAt() && current - lastSuccessAt() > STALE_MAX_MS && quotaData()) {
-        setQuotaData(null)
+        setQuotaState(null)
+        clearBoundarySchedule()
         setPhase("unavailable")
       }
     }, TICK_MS)
@@ -364,21 +436,39 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
     onCleanup(() => clearInterval(tick))
 
     createEffect(() => {
-      const data = quotaData()
-      if (!data) return
-      const epoch = resetEpochMs(data.primary, now())
-      if (epoch <= 0 || epoch === refreshedBoundary() || epoch === pendingBoundary) return
+      const published = quotaState()
+      if (!published || published.generation !== credentialGeneration) return
+      const generation = published.generation
+      const epoch = resetEpochMs(published.data.primary, now())
+      const refreshed = refreshedBoundary()
+      const pending = pendingBoundary
+      if (
+        epoch <= 0
+        || (refreshed?.generation === generation && refreshed.epoch === epoch)
+        || (pending?.generation === generation && pending.epoch === epoch)
+      ) return
+
       const timer = setTimeout(() => {
-        if (disposed) return
-        if (refreshInFlight && refreshStartedAt < epoch) {
-          pendingBoundary = epoch
+        if (
+          disposed
+          || generation !== credentialGeneration
+          || quotaState()?.generation !== generation
+        ) return
+        if (refreshInFlight && activeRequest?.generation === generation && refreshStartedAt < epoch) {
+          pendingBoundary = { epoch, generation }
           return
         }
-        setRefreshedBoundary(epoch)
+        setRefreshedBoundary({ epoch, generation })
         void refresh()
       }, Math.max(0, epoch - Date.now()))
+      const schedule = { timer, generation }
+      boundarySchedule = schedule
       unref(timer)
-      onCleanup(() => clearTimeout(timer))
+      onCleanup(() => {
+        if (boundarySchedule !== schedule) return
+        boundarySchedule = null
+        clearTimeout(timer)
+      })
     })
 
     return {
@@ -395,7 +485,9 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
       dispose(): void {
         if (disposed) return
         disposed = true
-        pendingBoundary = 0
+        credentialGeneration += 1
+        clearBoundarySchedule()
+        cancelActiveRequest()
         dispose()
       },
     }

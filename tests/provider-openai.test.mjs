@@ -15,6 +15,7 @@ process.env.XDG_CONFIG_HOME = isolatedProviderHome
 process.env.XDG_DATA_HOME = isolatedProviderHome
 
 const { createOpenAiProvider, fetchOpenAiQuota, mapOpenAiPanelState } = await import("../.tmp-test/provider-openai.mjs")
+const { createReactiveOpenAiAdapter } = await import("../.tmp-test/provider-lifecycle.mjs")
 
 after(async () => {
   await flushEffects()
@@ -97,6 +98,49 @@ function createTestAdapter(t, { api = adapterApi(), fetch: testFetch, clock, pro
     }
   })
   return adapter
+}
+
+function createReactiveTestAdapter(t, {
+  initialKey = "test-token",
+  fetch: testFetch,
+  clock,
+  providerOptions,
+} = {}) {
+  const originalFetch = globalThis.fetch
+  if (testFetch) globalThis.fetch = testFetch
+  const reactive = createReactiveOpenAiAdapter(initialKey, providerOptions)
+  t.after(async () => {
+    try {
+      reactive.adapter.dispose()
+      await flushEffects()
+    } finally {
+      globalThis.fetch = originalFetch
+      clock?.restore()
+    }
+  })
+  return reactive
+}
+
+function deferredRequests() {
+  const requests = []
+  return {
+    requests,
+    fetch: async (_url, options) => {
+      let resolve
+      let reject
+      const promise = new Promise((resolvePromise, rejectPromise) => {
+        resolve = resolvePromise
+        reject = rejectPromise
+      })
+      requests.push({
+        authorization: options.headers.Authorization,
+        signal: options.signal,
+        resolve,
+        reject,
+      })
+      return promise
+    },
+  }
 }
 
 function installFakeClock(start) {
@@ -252,10 +296,17 @@ test("maps loading, missing authentication, and unavailable OpenAI states", () =
   assert.equal(item(mapOpenAiPanelState({ phase: "unavailable", now, authenticated: true }), "openai:header").detail, "Usage unavailable")
 })
 
-test("retains last-known quota and exposes semantic stale and limit status", () => {
+test("retains OpenAI quota with one warning stale header segment", () => {
   const model = mapOpenAiPanelState({ phase: "stale", data: quota({ limitReached: true }), now })
 
   assert.equal(item(model, "openai:18000s-primary").value, 75)
+  assert.deepEqual(item(model, "openai:header"), {
+    id: "openai:header",
+    order: 10,
+    kind: "header",
+    title: "OpenAI: Plus",
+    detailSegments: [{ text: "stale", status: "warning" }],
+  })
   assert.deepEqual(item(model, "openai:limited"), {
     id: "openai:limited",
     order: 15,
@@ -263,13 +314,7 @@ test("retains last-known quota and exposes semantic stale and limit status", () 
     text: "Limited",
     status: "error",
   })
-  assert.deepEqual(item(model, "openai:stale"), {
-    id: "openai:stale",
-    order: 16,
-    kind: "text",
-    text: "~stale",
-    status: "warning",
-  })
+  assert.equal(item(model, "openai:stale"), undefined)
 })
 
 test("maps full, exhausted, expired, and reset-pending OpenAI windows to timer states", () => {
@@ -500,4 +545,148 @@ test("uses the JWT account claim in OpenAI usage requests", async (t) => {
   assert.equal(request.url, "https://chatgpt.com/backend-api/wham/usage")
   assert.equal(request.options.headers.Authorization, `Bearer ${token}`)
   assert.equal(request.options.headers["ChatGPT-Account-Id"], "account-from-jwt")
+})
+
+test("suppresses expected OpenAI abort logs but diagnoses non-abort failures", async (t) => {
+  const originalFetch = globalThis.fetch
+  const originalError = console.error
+  const errors = []
+  console.error = (...args) => errors.push(args)
+  t.after(() => {
+    globalThis.fetch = originalFetch
+    console.error = originalError
+  })
+
+  globalThis.fetch = async (_url, options) => new Promise((_resolve, reject) => {
+    options.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true })
+  })
+  const controller = new AbortController()
+  const aborted = fetchOpenAiQuota({ access: "token" }, controller.signal)
+  controller.abort()
+  assert.equal(await aborted, null)
+  assert.equal(errors.length, 0)
+
+  globalThis.fetch = async () => {
+    throw new Error("transport failed")
+  }
+  assert.equal(await fetchOpenAiQuota({ access: "token" }, new AbortController().signal), null)
+  assert.equal(errors.length, 1)
+  assert.equal(errors[0][0], "[quota-openai] fetchQuota error:")
+})
+
+test("replaces OpenAI credentials without publishing the old generation", async (t) => {
+  const pending = deferredRequests()
+  const { adapter, setCredential } = createReactiveTestAdapter(t, {
+    initialKey: "token-a",
+    fetch: pending.fetch,
+  })
+  await flushEffects()
+
+  pending.requests[0].resolve(quotaResponse(window({ used_percent: 25 })))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "ready")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 75)
+
+  void adapter.refresh()
+  await flushEffects()
+  assert.equal(pending.requests.length, 2)
+  setCredential("token-b")
+  await flushEffects()
+
+  assert.equal(pending.requests[1].signal.aborted, true)
+  assert.equal(pending.requests.length, 3, "one replacement request starts")
+  assert.equal(pending.requests[2].authorization, "Bearer token-b")
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 75)
+  assert.deepEqual(item(adapter.panel(), "openai:header").detailSegments, [
+    { text: "stale", status: "warning" },
+  ])
+  assert.equal(item(adapter.panel(), "openai:stale"), undefined)
+
+  pending.requests[1].resolve(quotaResponse(window({ used_percent: 99 })))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 75)
+
+  pending.requests[2].resolve(quotaResponse(window({ used_percent: 40 })))
+  await flushEffects()
+  assert.equal(adapter.freshness(), "ready")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 60)
+
+  void adapter.refresh()
+  await flushEffects()
+  setCredential("token-c")
+  await flushEffects()
+  assert.equal(pending.requests[3].signal.aborted, true)
+  assert.equal(pending.requests.length, 5, "one failed replacement request starts")
+  pending.requests[4].resolve({ ok: false, status: 503 })
+  await flushEffects()
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 60)
+  assert.deepEqual(item(adapter.panel(), "openai:header").detailSegments, [
+    { text: "stale", status: "warning" },
+  ])
+  assert.equal(item(adapter.panel(), "openai:stale"), undefined)
+
+  pending.requests[3].resolve(quotaResponse(window({ used_percent: 10 })))
+  await flushEffects()
+  assert.equal(item(adapter.panel(), "openai:18000s-primary").value, 60)
+
+  setCredential(null)
+  await flushEffects()
+  assert.equal(adapter.freshness(), "unavailable")
+  assert.equal(item(adapter.panel(), "openai:18000s-primary"), undefined)
+  assert.equal(item(adapter.panel(), "openai:header").detail, "No ChatGPT account linked")
+})
+
+test("does not carry an OpenAI reset boundary into a replacement generation", async (t) => {
+  const clock = installFakeClock(now)
+  const oldResetAt = now + 15 * 60 * 1_000
+  const pending = deferredRequests()
+  const { adapter, setCredential } = createReactiveTestAdapter(t, {
+    initialKey: "token-a",
+    fetch: pending.fetch,
+    clock,
+  })
+  await flushEffects()
+
+  pending.requests[0].resolve(quotaResponse(window({ reset_at: oldResetAt / 1_000 })))
+  await flushEffects()
+  const oldBoundary = clock.timeouts.find((timer) =>
+    timer.active && timer.delay === oldResetAt - now)
+  assert.ok(oldBoundary)
+
+  setCredential("token-b")
+  await flushEffects()
+  assert.equal(oldBoundary.active, false, "replacement synchronously clears the old boundary")
+  assert.equal(pending.requests.length, 2, "exactly one replacement request starts")
+
+  clock.advance(oldResetAt - now)
+  oldBoundary.callback()
+  await flushEffects()
+  assert.equal(pending.requests.length, 2, "the old callback cannot queue a replacement follow-up")
+
+  pending.requests[1].resolve(quotaResponse(window({ reset_at: (oldResetAt + 60 * 60 * 1_000) / 1_000 })))
+  await flushEffects()
+  assert.equal(pending.requests.length, 2, "settlement cannot consume an old-generation boundary")
+  assert.equal(adapter.freshness(), "ready")
+  assert.ok(clock.timeouts.some((timer) => timer.active && timer.delay === 60 * 60 * 1_000))
+})
+
+test("aborts and clears the OpenAI request timeout immediately on dispose", async (t) => {
+  const clock = installFakeClock(now)
+  const pending = deferredRequests()
+  const adapter = createTestAdapter(t, { clock, fetch: pending.fetch })
+  await flushEffects()
+
+  const requestTimeout = clock.timeouts.find((timer) => timer.active && timer.delay === 20_000)
+  assert.ok(requestTimeout)
+  const stateAtDispose = observableState(adapter)
+  adapter.dispose()
+
+  assert.equal(pending.requests[0].signal.aborted, true)
+  assert.equal(requestTimeout.active, false)
+  pending.requests[0].resolve(quotaResponse(window({ used_percent: 5 })))
+  await flushEffects()
+  assert.deepEqual(observableState(adapter), stateAtDispose)
 })

@@ -8,6 +8,7 @@ globalThis.React = {
 }
 
 const { mountPanel } = await import("../.tmp-test/presentation-mounted.mjs")
+const { mapOpenAiPanelState } = await import("../.tmp-test/provider-openai.mjs")
 
 const fullTitle = "Very long usage overview with enough detail to exceed the normalization fallback width of eighty cells"
 
@@ -339,6 +340,35 @@ test("mounts compact tables as clipped non-wrapping parent-width flex rows", () 
       ["flex-start", "center", "flex-end"],
     )
     assert.equal(tableRows[1].props.children[2].props.children.props.fg, "#00ff00")
+  } finally {
+    dispose()
+  }
+})
+
+test("mounts stale OpenAI state as warning text in the provider header", () => {
+  const staleModel = mapOpenAiPanelState({
+    phase: "stale",
+    now: Date.UTC(2026, 6, 13, 6, 0, 0),
+    data: {
+      planType: "Pro Lite",
+      primary: { used_percent: 54, limit_window_seconds: 604_800, reset_after_seconds: 3_600 },
+      secondary: null,
+      codeReview: null,
+      limitReached: false,
+      creditsBalance: null,
+      creditsUnlimited: false,
+    },
+  })
+  const { elements, dispose } = mountPanel(staleModel)
+  const text = elements.filter((element) => element.type === "text")
+
+  try {
+    const title = text.find((element) => element.props.children === "OpenAI: Pro Lite")
+    const stale = text.find((element) => element.props.children === "stale")
+    assert.equal(title?.props.flexBasis, 0)
+    assert.equal(title?.props.flexGrow, 1)
+    assert.equal(stale?.props.fg, "#ffaa00")
+    assert.equal(text.some((element) => element.props.children === "~stale"), false)
   } finally {
     dispose()
   }
