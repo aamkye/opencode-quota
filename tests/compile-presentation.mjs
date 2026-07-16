@@ -2,7 +2,7 @@ import { build } from "esbuild"
 import { mkdirSync, rmSync } from "node:fs"
 import { resolve } from "node:path"
 
-for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-composition", "token-tui", "token-tui-controlled", "plugin-runtime"]) {
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-composition", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-runtime"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
 }
 mkdirSync(".tmp-test", { recursive: true })
@@ -28,6 +28,9 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
       build.onResolve({ filter: /opencode-tools-shared\.js$/ }, () => ({ path: resolve("tests/token-tui-dependencies.fixture.ts") }))
     },
   }], ["solid-js"]],
+  ["tui/quota.tsx", ".tmp-test/plugin-adapters-quota-fixture.mjs", ["browser"]],
+  ["tui/home.tsx", ".tmp-test/plugin-adapters-home-fixture.mjs", ["browser"]],
+  ["tui/token-report.tsx", ".tmp-test/plugin-adapters-token-fixture.mjs", ["browser"], undefined, ["solid-js"]],
   ["tui/runtime/plugin.ts", ".tmp-test/plugin-runtime.mjs"],
 ]) {
   await build({
