@@ -3708,15 +3708,15 @@ Expected: `git diff --check` prints nothing and exits `0`; status contains no un
 - Preserves: latest-user-message selection, configured-provider fallback, exactly one refresh per adapter change, no model-name display, and no work after disposal.
 - Excludes: unsupported observation of the host-private unsent prompt model, private host imports, polling, and unrelated provider changes.
 
-- [ ] **Step 1: Add a host-shaped event-driven selection regression and verify RED**
+- [x] **Step 1: Add a host-shaped event-driven selection regression and verify RED**
 
 Use a non-reactive mutable message accessor plus a public TUI event fixture. Change the active session's latest user-message provider from Z.AI to an OpenAI alias, emit the corresponding synchronized message event, and assert immediate OpenAI selection/reordering plus exactly one refresh. Also assert unrelated-session events do nothing and lifecycle disposal unregisters the listener.
 
-- [ ] **Step 2: Implement the minimal supported event invalidation path**
+- [x] **Step 2: Implement the minimal supported event invalidation path**
 
 Subscribe through `api.event` only to the event needed to invalidate selection after synchronized message updates. Filter to the active session, trigger recomputation without storing model names, unregister through lifecycle disposal, and preserve the existing fallback and refresh de-duplication behavior.
 
-- [ ] **Step 3: Verify focused GREEN, typechecking, and the full suite**
+- [x] **Step 3: Verify focused GREEN, typechecking, and the full suite**
 
 Run:
 
@@ -3728,7 +3728,7 @@ npm test
 
 Expected: every command exits `0`; the new host-shaped event regression passes together with existing same-session, alias, fallback, refresh, and disposal coverage.
 
-- [ ] **Step 4: Commit and complete thorough task review**
+- [x] **Step 4: Commit and complete thorough task review**
 
 Commit only the Task 16 source/test slice, then run one thorough task review against its exact commit range. Critical/Important findings must be fixed within the Task 16 review budget before checkoff.
 
