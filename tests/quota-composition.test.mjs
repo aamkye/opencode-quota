@@ -300,6 +300,7 @@ async function aggregatePanel(t, options, observations = { intervals: [], reques
       session: { messages: () => [] },
       part: () => [],
     },
+    event: { on: () => () => {} },
     kv: { get: () => undefined, set: () => {} },
     lifecycle: {
       signal: new AbortController().signal,
@@ -675,6 +676,8 @@ test("maps native credential provider IDs to their aggregate adapters", () => {
 
   assert.equal(selectedQuotaProviderID([{ id: "zai-coding-plan" }], [zai, openai]), "zai")
   assert.equal(selectedQuotaProviderID([{ id: "codex" }], [zai, openai]), "openai")
+  assert.equal(selectedQuotaProviderID([{ id: "chatgpt" }], [zai, openai]), "openai")
+  assert.equal(selectedQuotaProviderID([{ id: "opencode" }], [zai, openai]), "openai")
 })
 
 test("OpenCode Go integration resolves both runtime aliases", () => {
@@ -700,6 +703,73 @@ test("resolves the newest supported user model and falls back without usable met
   assert.equal(selectedSessionQuotaProviderID([
     { id: "m4", role: "user", model: { providerID: "unsupported", modelID: "other" } },
   ], providers, "zai"), "zai")
+})
+
+test("reacts to synchronized same-session model changes through the public event bus", async () => {
+  const refreshes = []
+  const zai = provider({
+    id: "zai",
+    title: "Z.AI",
+    order: 110,
+    primaryPct: 60,
+    onRefresh: async () => refreshes.push("zai"),
+  })
+  const openai = provider({
+    id: "openai",
+    title: "OpenAI",
+    order: 120,
+    primaryPct: 70,
+    onRefresh: async () => refreshes.push("openai"),
+  })
+  const providers = [zai, openai]
+  const host = createQuotaSelectionHost({
+    provider: [{ id: "zai-coding-plan" }],
+    messages: {
+      "session-1": [{ id: "z1", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } }],
+      "session-2": [{ id: "o1", role: "user", model: { providerID: "openai", modelID: "gpt-5" } }],
+    },
+  })
+  const selection = mountQuotaSelection(host.api, providers)
+
+  selection.renderSidebar("session-1")
+  await flushEffects()
+  assert.equal(selection.selectedProviderID(), "zai")
+  assert.deepEqual(refreshes, ["zai"])
+
+  const readsBeforeUnrelatedEvent = host.messageReadCount()
+  host.emitMessageUpdated("session-2")
+  await flushEffects()
+  assert.equal(host.messageReadCount(), readsBeforeUnrelatedEvent)
+  assert.deepEqual(refreshes, ["zai"])
+
+  host.setMessages("session-1", [
+    { id: "o2", role: "user", model: { providerID: "chatgpt", modelID: "gpt-5.6-sol" } },
+  ])
+  assert.equal(selection.selectedProviderID(), "zai")
+  host.emitMessageUpdated("session-1")
+
+  assert.equal(selection.selectedProviderID(), "openai")
+  const model = composeQuotaPanel(selection.selectedProviderID(), providers)
+  assert.equal(model.groups[0].id, "openai:quota")
+  assert.equal(JSON.stringify(model).includes("gpt-5.6-sol"), false)
+  await flushEffects()
+  assert.deepEqual(refreshes, ["zai", "openai"])
+
+  host.emitMessageUpdated("session-1")
+  await flushEffects()
+  assert.deepEqual(refreshes, ["zai", "openai"])
+  assert.equal(host.eventListenerCount(), 1)
+
+  await host.dispose()
+  assert.equal(host.eventListenerCount(), 0)
+  const readsAfterDisposal = host.messageReadCount()
+  host.setMessages("session-1", [
+    { id: "z2", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } },
+  ])
+  host.emitMessageUpdated("session-1")
+  await flushEffects()
+  assert.equal(host.messageReadCount(), readsAfterDisposal)
+  assert.deepEqual(refreshes, ["zai", "openai"])
 })
 
 test("OpenCode Go integration reacts to active-session selection and preserves available providers", async () => {
@@ -734,11 +804,13 @@ test("OpenCode Go integration reacts to active-session selection and preserves a
     host.setMessages("session-1", [
       { id: "g2", role: "user", model: { providerID: "opencode-go", modelID: "go-fast" } },
     ])
+    host.emitMessageUpdated("session-1")
     await flushEffects()
     assert.equal(openCodeGo.refreshCalls, 1)
     host.setMessages("session-1", [
       { id: "o1", role: "user", model: { providerID: "openai", modelID: "gpt-5" } },
     ])
+    host.emitMessageUpdated("session-1")
     await flushEffects()
 
     assert.deepEqual(refreshes, ["openai"])

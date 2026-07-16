@@ -219,6 +219,7 @@ test("combined TUI artifact activates hermetically and shares provider reactivit
       session: { messages() { return [] } },
       part() { return [] },
     },
+    event: { on() { return () => {} } },
     kv: { get() {}, set() {} },
   }
 

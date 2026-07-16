@@ -1,6 +1,6 @@
 declare module "@opencode-ai/plugin/tui" {
   import type { JSX } from "@opentui/solid"
-  import type { Provider } from "@opencode-ai/sdk/v2"
+  import type { Event, Provider } from "@opencode-ai/sdk/v2"
 
   export interface TuiPluginApi {
     slots: {
@@ -24,6 +24,12 @@ declare module "@opencode-ai/plugin/tui" {
         messages(sessionID: string): readonly import("@opencode-ai/sdk/v2").Message[]
       }
       part(messageID: string): readonly import("@opencode-ai/sdk/v2").Part[]
+    }
+    event: {
+      on<Type extends Event["type"]>(
+        type: Type,
+        handler: (event: Extract<Event, { type: Type }>) => void,
+      ): () => void
     }
     kv: {
       get<T>(key: string): T | undefined

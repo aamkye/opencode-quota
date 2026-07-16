@@ -21,14 +21,19 @@ export function createQuotaSelectionHost(input: {
   messages: Record<string, readonly HostMessage[]>
   disposeRegistrationError?: Error
 }) {
+  const messagesBySession = Object.fromEntries(Object.entries(input.messages).map(([id, items]) => [id, [...items]]))
   const [state, setState] = createStore({
     provider: [...input.provider],
-    messages: Object.fromEntries(Object.entries(input.messages).map(([id, messages]) => [id, [...messages]])),
     unreadableMessages: false,
   })
   const controller = new AbortController()
+  const messageUpdatedListeners = new Set<(event: {
+    type: "message.updated"
+    properties: { sessionID: string; info: HostMessage & { sessionID: string } }
+  }) => void>()
   let cleanup: (() => void | Promise<void>)[] = []
   let disposed = false
+  let messageReads = 0
   let providerReads = 0
 
   const api = {
@@ -39,11 +44,24 @@ export function createQuotaSelectionHost(input: {
       },
       session: {
         messages(sessionID: string) {
+          messageReads += 1
           if (state.unreadableMessages) throw new Error("messages unavailable")
-          return state.messages[sessionID] ?? []
+          return messagesBySession[sessionID] ?? []
         },
       },
       part: () => [],
+    },
+    event: {
+      on(type: string, handler: (event: {
+        type: "message.updated"
+        properties: { sessionID: string; info: HostMessage & { sessionID: string } }
+      }) => void) {
+        if (type !== "message.updated") return () => undefined
+        messageUpdatedListeners.add(handler)
+        return () => {
+          messageUpdatedListeners.delete(handler)
+        }
+      },
     },
     lifecycle: {
       signal: controller.signal,
@@ -63,16 +81,24 @@ export function createQuotaSelectionHost(input: {
 
   return {
     api,
+    eventListenerCount: () => messageUpdatedListeners.size,
     lifecycleCount: () => cleanup.length,
+    messageReadCount: () => messageReads,
     providerReadCount: () => providerReads,
     setMessages(sessionID: string, messages: readonly HostMessage[]) {
-      setState("messages", sessionID, [...messages])
+      messagesBySession[sessionID] = [...messages]
     },
     setProvider(provider: readonly HostProvider[]) {
       setState("provider", [...provider])
     },
     setUnreadableMessages(unreadable: boolean) {
       setState("unreadableMessages", unreadable)
+    },
+    emitMessageUpdated(sessionID: string) {
+      const info = messagesBySession[sessionID]?.at(-1) ?? { id: `event-${sessionID}`, role: "user" }
+      for (const handler of messageUpdatedListeners) {
+        handler({ type: "message.updated", properties: { sessionID, info: { ...info, sessionID } } })
+      }
     },
     async dispose() {
       if (disposed) return

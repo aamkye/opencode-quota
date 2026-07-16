@@ -1,5 +1,5 @@
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule, TuiPluginOptions } from "@opencode-ai/plugin/tui"
-import { createEffect, createMemo, createRoot, createSignal, type Accessor } from "solid-js"
+import { createEffect, createMemo, createRoot, createSignal, onCleanup, type Accessor } from "solid-js"
 
 import { PanelRenderer, type PanelTheme } from "./presentation/renderer.js"
 import type { PanelItem, PanelModel, PanelStatus } from "./presentation/types.js"
@@ -337,7 +337,13 @@ export function createQuotaSelection(
   const selection = createRoot((rootDispose) => {
     dispose = rootDispose
     const [sessionID, setSessionID] = createSignal("")
+    const [messageRevision, setMessageRevision] = createSignal(0)
+    onCleanup(api.event.on("message.updated", (event) => {
+      if (event.properties.sessionID !== sessionID() || event.properties.info.role !== "user") return
+      setMessageRevision((revision) => revision + 1)
+    }))
     const selectedProviderID = createMemo(() => {
+      messageRevision()
       const fallbackID = selectedQuotaProviderID(api.state.provider, providers)
       const id = sessionID()
       if (!id) return fallbackID
