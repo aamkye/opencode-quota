@@ -3660,7 +3660,7 @@ npm run build && node --test tests/plugin-build.test.mjs tests/plugin-deploy.tes
 
 Expected: all commands exit `0`; build tests activate the combined TUI against host-owned Solid and lifecycle cleanup; deployment tests prove idempotence, option preservation, and byte parity between `dist` and the exact three deployed files; local deployment prints `Deployed opencode-tools plugins to /Users/aam/Projects/priv/opencode-quota/.opencode`.
 
-- [ ] **Step 8: Perform affected live validation after a full OpenCode restart**
+- [x] **Step 8: Perform affected live validation after a full OpenCode restart**
 
 Fully restart OpenCode from `/Users/aam/Projects/priv/opencode-quota` and repeat every check below against the Task 10-14 deployment. Do not cite the earlier Task 8 run as evidence:
 

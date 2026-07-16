@@ -21,6 +21,6 @@
 ## 3. Verify and Deploy
 
 - [x] 3.1 Rerun focused segmented-header, responsive-table, group-ordering, credential lifecycle, and generation-owned reset-boundary tests plus typechecking, the full automated suite, and the three-artifact production build.
-- [ ] 3.2 Redeploy locally and manually validate normal/collapsed and normal/constrained-width behavior, including the real two-column Z.AI Model/Usage table at 37 cells and exact segmented stale provider headers with no standalone stale rows, in OpenCode.
-- [ ] 3.3 Manually revalidate default/custom refresh, active-session provider switching, OpenAI/Z.AI credential replacement/removal, silent expected aborts with retained non-abort diagnostics, and pending-request disposal behavior.
+- [x] 3.2 Redeploy locally and manually validate normal/collapsed and normal/constrained-width behavior, including the real two-column Z.AI Model/Usage table at 37 cells and exact segmented stale provider headers with no standalone stale rows, in OpenCode.
+- [x] 3.3 Manually revalidate default/custom refresh, active-session provider switching, OpenAI/Z.AI credential replacement/removal, silent expected aborts with retained non-abort diagnostics, and pending-request disposal behavior.
 - [x] 3.4 Rebuild, redeploy, and manually validate muted short group dividers.
