@@ -1,14 +1,14 @@
 # Subagent Progress
 
-- Plan task: `Remove Model-Backed Deployment Paths`
-- OpenSpec task: `2.3 Remove server token command deployment and verify local/global cleanup with the full project suite.`
-- Stage: final-review
-- Base commit: `0818ebfc9865ef10859b06eccff85aea2cf7ad83`
-- Implementation commit: `61fb0d9`
-- RED: focused deployment test failed because deployment copied the removed token artifact.
-- GREEN: focused deployment tests passed 5/5; full verification passed 224/224 tests, typecheck, build, local deploy, and config inspection.
+- Plan task: `Add Failing Message and Dialog Tests`
+- OpenSpec task: `3.1 Add regression coverage for no-reply report persistence, no-session toasts, and range Enter/Escape controls.`
+- Stage: done
+- Base commit: `bf9fe5eb87c46b56be52baad528cf4459355ce31`
+- Implementation commit: `813cd11`
+- RED: focused token TUI tests have four expected failures for missing delivery, toast, and range-mode behavior.
+- GREEN: deferred to implementation task.
 - Review mode: standard
 - TDD mode: tdd
-- Risk signals: external configuration and deployment contract
-- Review feedback: final re-review cleared Critical/Important findings. Accepted minor: caught computation errors use the generic `Token report failed` label rather than a command-specific title; existing report text still renders the error and changing it is deferred to avoid scope expansion.
+- Risk signals: test-only task, no standard-review trigger reported
+- Review feedback: targeted RED evidence accepted
 - Review-fix rounds: 1 of 1

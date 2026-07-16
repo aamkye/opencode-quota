@@ -34,3 +34,4 @@ refine-quota-provider-visibility Task 3: complete (commit 00e0d3c, standard risk
 fix-token-command-hook Task 1: complete (commits 35da2d0..1dbca0a plus checkoff pending, standard risk review clean after user-authorized exception fix)
 fix-token-command-hook Task 2: complete (commits 08f08a3..3ee1405, standard risk review clean)
 fix-token-command-hook Task 3: complete (commits 61fb0d9..50fed73, standard risk review clean)
+fix-token-command-hook chat Task 1: complete (commit 813cd11, expected RED coverage recorded)

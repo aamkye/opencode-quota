@@ -35,7 +35,7 @@ base-ref: bd5380d
 - Consumes: `registerTokenReportTui(api)` and the controlled report dependencies fixture.
 - Produces: a fake TUI API with `client.session.prompt`, `ui.toast`, dialog-mode tracking, and native prompt callbacks for Task 2.
 
-- [ ] **Step 1: Extend the fake TUI API with observable client and toast calls**
+- [x] **Step 1: Extend the fake TUI API with observable client and toast calls**
 
 ```js
 client: {
@@ -49,7 +49,7 @@ ui: {
 }
 ```
 
-- [ ] **Step 2: Add failing command behavior tests**
+- [x] **Step 2: Add failing command behavior tests**
 
 ```js
 test("token commands persist a no-reply report in the active session", async () => {
@@ -72,7 +72,7 @@ test("token command without a session shows a toast without a client call", asyn
 })
 ```
 
-- [ ] **Step 3: Add failing range control tests**
+- [x] **Step 3: Add failing range control tests**
 
 ```js
 test("tokens_between Enter submits the native prompt", async () => {
@@ -86,7 +86,7 @@ test("tokens_between Escape closes its dialog mode without a client call", () =>
 })
 ```
 
-- [ ] **Step 4: Run focused tests to verify RED**
+- [x] **Step 4: Run focused tests to verify RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/token-tui.test.mjs`
 
