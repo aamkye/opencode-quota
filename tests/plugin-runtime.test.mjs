@@ -4,7 +4,7 @@ import test from "node:test"
 import { defineTuiPlugin } from "../.tmp-test/plugin-runtime.mjs"
 
 const descriptor = {
-  id: "aamkye/opencode-tools/test-runtime",
+  id: "aamkye/opencode-tools-test-runtime",
   key: "quota",
   options: "none",
   outfile: "dist/test-runtime.js",
@@ -63,6 +63,7 @@ test("defineTuiPlugin exposes the descriptor id and disposes cleanups in LIFO or
   await module.tui(lifecycle.api, undefined, undefined)
 
   assert.equal(module.id, descriptor.id)
+  assert.match(descriptor.id, /^aamkye\/opencode-tools-[^/]+$/)
   assert.equal(typeof module.tui, "function")
   assert.equal(lifecycle.count(), 1)
 
