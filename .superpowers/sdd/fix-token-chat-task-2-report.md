@@ -90,3 +90,37 @@ npm run build: build-plugins passed
 - The existing unrelated modification to
   `openspec/changes/fix-token-command-hook/.comet/subagent-progress.md` was
   left untouched and excluded from the commit.
+
+## Follow-up Review Evidence
+
+- Updated the host declaration and command implementation to use documented
+  `api.ui.toast({ title })` directly, and widened `TuiCommand.run` to
+  `void | Promise<void>`.
+- The range-dialog fake now dispatches key bindings only from active modes.
+  Escape is exercised after the dialog is rendered, and Enter asserts that it
+  pops the range mode before persisting.
+- A rejected `client.session.prompt` write now shows `Unable to save token
+  report`. The rejected write is not retried and does not schedule a model.
+
+### Follow-up RED
+
+```sh
+node tests/compile-presentation.mjs && node --test tests/token-tui.test.mjs
+```
+
+Result before the follow-up implementation: 5 passed and 2 failed. The
+no-session test failed because `api.ui.toast.show` was called instead of the
+documented direct toast function. The rejected-write test failed because the
+client error escaped without user feedback.
+
+### Follow-up GREEN
+
+```sh
+node tests/compile-presentation.mjs && node --test tests/token-tui.test.mjs
+npm test
+npm run typecheck
+```
+
+Results: focused suite 7 passed, 0 failed; full suite 224 passed, 0 failed;
+and `tsc --noEmit` passed. The npm commands emitted an `allow-scripts`
+deprecation warning but exited successfully.
