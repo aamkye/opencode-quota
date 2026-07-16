@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { existsSync } from "node:fs"
 import { copyFile, mkdtemp, readFile, rm } from "node:fs/promises"
 import { builtinModules, registerHooks } from "node:module"
 import { tmpdir } from "node:os"
@@ -17,7 +18,6 @@ const hostRuntimeUrls = {
 const expectedArtifacts = [
   "dist/opencode-tools-shared.js",
   "dist/opencode-tools-quota.js",
-  "dist/plugins/opencode-tools-tokens.js",
 ]
 
 registerHooks({
@@ -76,7 +76,7 @@ test("build:plugins emits the exact minified ESM artifact layout", async () => {
   const pkg = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"))
   assert.equal(pkg.scripts["build:plugins"], "node build-plugins.mjs")
 
-  assert.deepEqual(Object.keys(buildResults).sort(), ["quota", "shared", "tokens"])
+  assert.deepEqual(Object.keys(buildResults).sort(), ["quota", "shared"])
   for (const file of expectedArtifacts) {
     const output = contents[file]
     assert.ok(output.length > 0, `${file} is empty`)
@@ -86,10 +86,10 @@ test("build:plugins emits the exact minified ESM artifact layout", async () => {
   }
 })
 
-test("loadable entries keep explicit relative imports to the shared artifact", () => {
+test("combined TUI entry keeps an explicit relative import to the shared artifact", () => {
   assert.match(contents["dist/opencode-tools-quota.js"], /from["']\.\/opencode-tools-shared\.js["']/)
-  assert.match(contents["dist/plugins/opencode-tools-tokens.js"], /from["']\.\.\/opencode-tools-shared\.js["']/)
   assert.doesNotMatch(contents["dist/opencode-tools-shared.js"], /opencode-tools-(?:quota|tokens)/)
+  assert.equal(existsSync(resolve(root, "dist/plugins/opencode-tools-tokens.js")), false)
 })
 
 test("shared reactivity and the combined TUI use OpenCode's host-owned Solid runtime", () => {
@@ -109,7 +109,6 @@ test("shared owns computation while loadable entries contain presentation and re
   const inputNames = (result) => Object.keys(result.metafile.inputs).map((file) => `/${file.replaceAll("\\", "/")}`)
   const sharedInputs = inputNames(buildResults.shared)
   const quotaInputs = inputNames(buildResults.quota)
-  const tokenInputs = inputNames(buildResults.tokens)
 
   assert.ok(sharedInputs.some((file) => file.endsWith("/tui/providers/zai.ts")))
   assert.ok(sharedInputs.some((file) => file.endsWith("/tui/providers/openai.ts")))
@@ -117,19 +116,18 @@ test("shared owns computation while loadable entries contain presentation and re
 
   assert.ok(quotaInputs.some((file) => file.endsWith("/tui/quota.tsx")))
   assert.ok(quotaInputs.some((file) => file.endsWith("/tui/home.tsx")))
-  assert.ok(tokenInputs.some((file) => file.endsWith("/lib/tokens/token-report-presenter.ts")))
+  assert.ok(quotaInputs.some((file) => file.endsWith("/tui/token-report.tsx")))
 
-  for (const file of [...quotaInputs, ...tokenInputs]) {
+  for (const file of quotaInputs) {
     assert.doesNotMatch(file, /\/tui\/providers\/(?:zai|openai)\.ts$/)
     assert.doesNotMatch(file, /\/lib\/tokens\/(?:token-report-data|opencode-storage|quota-stats)\.ts$/)
   }
 })
 
 test("artifacts expose OpenCode Go only through shared computation", async () => {
-  assert.deepEqual(Object.keys(buildResults).sort(), ["quota", "shared", "tokens"])
+  assert.deepEqual(Object.keys(buildResults).sort(), ["quota", "shared"])
   assert.equal(Object.keys(buildResults.shared.metafile.inputs).some((path) => path.endsWith("/tui/providers/opencode-go.ts") || path === "tui/providers/opencode-go.ts"), true)
   assert.equal(Object.keys(buildResults.quota.metafile.inputs).some((path) => path.endsWith("tui/providers/opencode-go.ts")), false)
-  assert.equal(Object.keys(buildResults.tokens.metafile.inputs).some((path) => path.endsWith("tui/providers/opencode-go.ts")), false)
   const sharedModule = await import(`${pathToFileURL(resolve(root, "dist/opencode-tools-shared.js")).href}?opencode-go`)
   assert.equal(typeof sharedModule.createOpenCodeGoProvider, "function")
 })
@@ -156,18 +154,17 @@ test("all host and built-in dependencies remain external", () => {
   }
 })
 
-test("artifacts expose one combined TUI plugin, one regular plugin function, and no shared default", async () => {
+test("artifacts expose one combined TUI plugin and no shared default", async () => {
   const nonce = `?test=${Date.now()}`
   const shared = await import(`${pathToFileURL(resolve(root, expectedArtifacts[0])).href}${nonce}`)
   const quota = await import(`${pathToFileURL(resolve(root, expectedArtifacts[1])).href}${nonce}`)
-  const tokens = await import(`${pathToFileURL(resolve(root, expectedArtifacts[2])).href}${nonce}`)
 
   assert.equal("default" in shared, false)
   assert.equal(typeof shared.createZaiProvider, "function")
   assert.equal(typeof shared.computeTokenReport, "function")
   assert.equal(typeof quota.default, "object")
   assert.equal(typeof quota.default.tui, "function")
-  assert.equal(typeof tokens.default, "function")
+  assert.equal("server" in quota.default, false)
 })
 
 test("combined TUI artifact activates hermetically and shares provider reactivity", async () => {
@@ -189,6 +186,8 @@ test("combined TUI artifact activates hermetically and shares provider reactivit
   process.env.XDG_DATA_HOME = isolatedRoot
 
   const registrations = []
+  const keymapRegistrations = []
+  const routes = []
   const originalFetch = globalThis.fetch
   const fetchCalls = []
   globalThis.fetch = async (url, options) => {
@@ -212,6 +211,11 @@ test("combined TUI artifact activates hermetically and shares provider reactivit
   const lifecycle = createHostLifecycle()
   const api = {
     slots: { register(input) { registrations.push(input) } },
+    keymap: { registerLayer(input) { keymapRegistrations.push(input) } },
+    route: {
+      current: { name: "home" },
+      register(input) { routes.push(...input) },
+    },
     lifecycle: lifecycle.api,
     theme: { current: {} },
     state: {
@@ -248,6 +252,8 @@ test("combined TUI artifact activates hermetically and shares provider reactivit
     assert.ok(fetchCalls.length >= 3)
     assert.ok(fetchCalls.every((call) => call.url === "https://chatgpt.com/backend-api/wham/usage"))
     assert.ok(fetchCalls.every((call) => call.authorization === "Bearer artifact-test-token"))
+    assert.equal(keymapRegistrations.length, 2)
+    assert.deepEqual(routes.map((route) => route.name), ["aamkye.token-report"])
     assert.deepEqual(
       registrations.map((registration) => Object.keys(registration.slots)),
       [["sidebar_content"], ["home_bottom"]],

@@ -38,25 +38,22 @@ test("relative import allowlists cover static, side-effect, dynamic, and CommonJ
   ])
 })
 
-test("loadable quota and token entries use the shared facade for computation", () => {
+test("loadable TUI entries use the shared facade for computation", () => {
   const quota = source("tui/quota.tsx")
   const home = source("tui/home.tsx")
-  const tokens = source("opencode-tools-tokens.ts")
+  const tokenReport = source("tui/token-report.tsx")
 
   assert.match(quota, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(home, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
-  assert.match(tokens, /from ["']\.\/shared\/opencode-tools-shared(?:\.js)?["']/)
+  assert.match(tokenReport, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assertRelativeImports("tui/quota.tsx", [
     "../shared/opencode-tools-shared.js",
     "./presentation/renderer.js",
     "./presentation/types.js",
   ])
   assertRelativeImports("tui/home.tsx", ["../shared/opencode-tools-shared.js"])
-  assertRelativeImports("opencode-tools-tokens.ts", [
-    "./shared/opencode-tools-shared",
-    "./lib/tokens/token-report-presenter",
-  ])
   assertRelativeImports("tui/token-report.tsx", ["../shared/opencode-tools-shared.js"])
+  assert.doesNotMatch(tokenReport, /session\.prompt|\bhistory\b|\bmodel\b/)
 })
 
 test("shared facade exports computation without plugin registration or JSX", () => {

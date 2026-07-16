@@ -1,4 +1,4 @@
-import { mkdir, readFile } from "node:fs/promises"
+import { mkdir, readFile, rm } from "node:fs/promises"
 import { builtinModules } from "node:module"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
@@ -82,7 +82,8 @@ function hostRuntimeImports() {
 }
 
 export async function buildPlugins({ logLevel = "info" } = {}) {
-  await mkdir(resolve(distRoot, "plugins"), { recursive: true })
+  await mkdir(distRoot, { recursive: true })
+  await rm(resolve(distRoot, "plugins/opencode-tools-tokens.js"), { force: true })
 
   const shared = await build({
     ...common,
@@ -98,11 +99,13 @@ export async function buildPlugins({ logLevel = "info" } = {}) {
       contents: [
         'import quota from "./tui/quota.tsx"',
         'import home from "./tui/home.tsx"',
+        'import { registerTokenReportTui } from "./tui/token-report.tsx"',
         "const plugin = {",
         '  id: "aamkye/opencode-tools",',
         "  async tui(api, options) {",
         "    await quota.tui(api, options)",
         "    await home.tui(api, options)",
+        "    await registerTokenReportTui(api)",
         "  },",
         "}",
         "export default plugin",
@@ -116,23 +119,7 @@ export async function buildPlugins({ logLevel = "info" } = {}) {
     plugins: [solidTransformPlugin(), hostRuntimeImports(), sharedImport("./opencode-tools-shared.js")],
   })
 
-  const tokens = await build({
-    ...common,
-    stdin: {
-      contents: [
-        'import plugin from "./opencode-tools-tokens.ts"',
-        "export default plugin.server",
-      ].join("\n"),
-      loader: "js",
-      resolveDir: projectRoot,
-      sourcefile: "opencode-tools-tokens-entry.js",
-    },
-    logLevel,
-    outfile: resolve(distRoot, "plugins/opencode-tools-tokens.js"),
-    plugins: [solidTransformPlugin(), sharedImport("../opencode-tools-shared.js")],
-  })
-
-  return { shared, quota, tokens }
+  return { shared, quota }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
