@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { resolve } from "node:path"
 import test, { after } from "node:test"
+import { build } from "esbuild"
 
 const originalProviderEnvironment = {
   HOME: process.env.HOME,
@@ -16,6 +17,48 @@ process.env.XDG_DATA_HOME = isolatedProviderHome
 
 const { createZaiProvider, fetchZaiQuota, mapZaiPanelState } = await import("../.tmp-test/provider-zai.mjs")
 const { createReactiveZaiAdapter } = await import("../.tmp-test/provider-lifecycle.mjs")
+const retryFixtureBuild = await build({
+  bundle: true,
+  format: "esm",
+  platform: "node",
+  target: "es2022",
+  conditions: ["browser"],
+  external: ["bun:sqlite", "better-sqlite3", "node:sqlite"],
+  write: false,
+  stdin: {
+    loader: "ts",
+    resolveDir: resolve(import.meta.dirname, ".."),
+    sourcefile: "provider-zai-retry-lifecycle.fixture.ts",
+    contents: `
+      import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
+      import { createSignal } from "solid-js"
+      import { createZaiProvider } from "./tui/providers/zai.js"
+
+      export function createReactiveZaiRetryAdapter(initialKey: string, retryText: string) {
+        const [providers, setProviders] = createSignal([{ id: "zai-coding-plan", key: initialKey }])
+        const api = {
+          state: {
+            get provider() {
+              return providers()
+            },
+            session: { messages: () => [{ id: "retry-message" }] },
+            part: () => [{ type: "text", text: retryText }],
+          },
+          kv: { get: () => undefined, set: () => undefined },
+        } as unknown as TuiPluginApi
+
+        return {
+          adapter: createZaiProvider(api),
+          setCredential(key: string) {
+            setProviders([{ id: "zai-coding-plan", key }])
+          },
+        }
+      }
+    `,
+  },
+})
+const retryFixtureUrl = `data:text/javascript;base64,${Buffer.from(retryFixtureBuild.outputFiles[0].contents).toString("base64")}`
+const { createReactiveZaiRetryAdapter } = await import(retryFixtureUrl)
 
 after(async () => {
   await flushEffects()
@@ -318,6 +361,23 @@ test("marks reset-boundary windows expired and maps off-peak to the success them
   assert.deepEqual(model.collapsedSummary, { kind: "text", text: "Off-Peak (1x)", status: "success" })
 })
 
+test("composes stale Off-Peak and stale header segments exactly", () => {
+  const offPeak = Date.UTC(2026, 6, 13, 0, 0, 0)
+  const model = mapZaiPanelState({ phase: "stale", data: quota(), now: offPeak })
+
+  assert.deepEqual(item(model, "zai:header"), {
+    id: "zai:header",
+    order: 10,
+    kind: "header",
+    title: "Z.AI: Pro",
+    detailSegments: [
+      { text: "Off-Peak (1x)", status: "success" },
+      { text: " / ", status: "textMuted" },
+      { text: "stale", status: "warning" },
+    ],
+  })
+})
+
 test("exposes a framework-only provider adapter and semantic home summary", () => {
   const source = readFileSync("tui/providers/zai.ts", "utf8")
   const shared = existsSync("shared/opencode-tools-shared.ts") ? readFileSync("shared/opencode-tools-shared.ts", "utf8") : ""
@@ -472,6 +532,31 @@ test("suppresses expected Z.AI abort logs but diagnoses non-abort failures", asy
   assert.equal(errors[0][0], "[quota-zai] fetchQuota error:")
 })
 
+test("owns and clears a 20-second timeout when fetchZaiQuota receives no signal", async (t) => {
+  const clock = installFakeClock(now)
+  const originalFetch = globalThis.fetch
+  let requestSignal
+  globalThis.fetch = async (_url, options) => new Promise((_resolve, reject) => {
+    requestSignal = options.signal
+    options.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true })
+  })
+  t.after(() => {
+    globalThis.fetch = originalFetch
+    clock.restore()
+  })
+
+  const request = fetchZaiQuota("key")
+  const timeout = clock.timeouts.find((timer) => timer.active && timer.delay === 20_000)
+  assert.ok(timeout)
+  assert.equal(requestSignal.aborted, false)
+
+  clock.advance(20_000)
+  timeout.callback()
+  assert.equal(await request, null)
+  assert.equal(requestSignal.aborted, true)
+  assert.equal(timeout.active, false)
+})
+
 test("replaces Z.AI credentials without publishing the old generation", async (t) => {
   const pending = deferredRequests()
   const { adapter, setCredential } = createReactiveTestAdapter(t, {
@@ -573,6 +658,47 @@ test("does not carry a Z.AI reset boundary into a replacement generation", async
   assert.equal(pending.requests.length, 2, "settlement cannot consume an old-generation boundary")
   assert.equal(adapter.freshness(), "ready")
   assert.ok(clock.timeouts.some((timer) => timer.active && timer.delay === 60 * 60 * 1_000))
+})
+
+test("does not carry a retry-only Z.AI boundary into replacement credentials", async (t) => {
+  const clock = installFakeClock(now)
+  const retryAfterMs = 15 * 60 * 1_000
+  const pending = deferredRequests()
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = pending.fetch
+  const { adapter, setCredential } = createReactiveZaiRetryAdapter("key-a", "Rate limited; reset after 15m")
+  t.after(async () => {
+    try {
+      adapter.dispose()
+      await flushEffects()
+    } finally {
+      globalThis.fetch = originalFetch
+      clock.restore()
+    }
+  })
+  await flushEffects()
+
+  adapter.setSessionID("session-1")
+  pending.requests[0].resolve({ ok: false })
+  await flushEffects()
+  assert.equal(item(adapter.panel(), "zai:header").detail, "Rate limited")
+  const oldBoundary = clock.timeouts.find((timer) => timer.active && timer.delay === retryAfterMs)
+  assert.ok(oldBoundary)
+
+  setCredential("key-b")
+  await flushEffects()
+  assert.equal(oldBoundary.active, false, "replacement synchronously clears the retry boundary")
+  assert.equal(pending.requests.length, 2, "exactly one replacement request starts")
+  assert.equal(pending.requests[1].authorization, "Bearer key-b")
+
+  clock.advance(retryAfterMs)
+  oldBoundary.callback()
+  await flushEffects()
+  assert.equal(pending.requests.length, 2, "the old retry callback cannot start replacement work")
+
+  pending.requests[1].resolve({ ok: false })
+  await flushEffects()
+  assert.equal(pending.requests.length, 2, "replacement settlement cannot consume an old retry boundary")
 })
 
 test("aborts and clears the Z.AI request timeout immediately on dispose", async (t) => {
