@@ -145,10 +145,11 @@ semantic bar and percentage colors.
 
 #### Breaking configuration migration
 
-The root-level `refreshIntervalSeconds`, `progressColors`, and
-`otherProviders` paths are ignored. Move them to
-`quota.refreshIntervalSeconds`, `quota.progressColors`, and
-`quota.otherProviders` respectively.
+The root-level `refreshIntervalSeconds` and `progressColors` paths are ignored.
+Move them to `quota.refreshIntervalSeconds` and `quota.progressColors`
+respectively. The legacy root-level `otherProviders` object is also ignored:
+move `otherProviders.percentageMode` to `quota.percentageMode` and
+`otherProviders.sortDirection` to `quota.otherProviders.sortDirection`.
 
 ### Build and deploy
 
