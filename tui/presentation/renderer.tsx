@@ -14,6 +14,7 @@ type NormalizedHeader = {
   summary?: {
     id: string
     text: string
+    segments?: PanelTextSegment[]
     status?: PanelStatus
   }
   allocation: HeaderAllocation
@@ -213,7 +214,14 @@ export function normalizePanelModel(model: PanelModel, options: RendererNormaliz
   const availableCells = options.availableCells ?? 80
   const summary = model.collapsedSummary ? formatDisplayValue(model.collapsedSummary) : undefined
   const summaryCell = summary
-    ? { id: `${model.id}:summary`, text: summary, status: model.collapsedSummary?.status }
+    ? {
+        id: `${model.id}:summary`,
+        text: summary,
+        ...(model.collapsedSummary?.kind === "text" && model.collapsedSummary.segments?.length
+          ? { segments: model.collapsedSummary.segments.map((segment) => ({ ...segment })) }
+          : {}),
+        status: model.collapsedSummary?.status,
+      }
     : undefined
 
   return {
@@ -236,6 +244,18 @@ export function normalizePanelModel(model: PanelModel, options: RendererNormaliz
 function renderCell(text: string, width: number, align: PanelAlignment, status?: PanelStatus): RenderedCell {
   const cell = { text: alignText(truncateText(text, width), width, align), width, align }
   return status ? { ...cell, status } : cell
+}
+
+function renderSegmentCells(segments: readonly PanelTextSegment[], width: number): RenderedCell[] {
+  const cells: RenderedCell[] = []
+  let remaining = width
+  for (let index = segments.length - 1; index >= 0 && remaining > 0; index -= 1) {
+    const segment = segments[index]!
+    const text = segment.text.slice(-remaining)
+    cells.unshift(renderCell(text, text.length, "start", segment.status))
+    remaining -= text.length
+  }
+  return cells
 }
 
 function renderItemLayout(item: NormalizedItem): RenderedItem {
@@ -326,7 +346,11 @@ export function renderPanelLayout(model: PanelModel, options: RendererLayoutOpti
         renderCell(panelCollapsed ? "▶ " : "▼ ", allocation.marker, "start"),
         renderCell(title, allocation.label, "start"),
         ...(allocation.beforeSummaryGap > 0 ? [renderCell("", allocation.beforeSummaryGap, "start")] : []),
-        ...(summary && allocation.summary > 0 ? [renderCell(summary.text, allocation.summary, "end", summary.status)] : []),
+        ...(summary && allocation.summary > 0
+          ? summary.segments?.length
+            ? renderSegmentCells(summary.segments, allocation.summary)
+            : [renderCell(summary.text, allocation.summary, "end", summary.status)]
+          : []),
       ],
     },
     groups: panelCollapsed
@@ -463,8 +487,8 @@ function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> 
   }
 }
 
-export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Accessor<PanelTheme> }) {
-  const [collapsed, setCollapsed] = createSignal(new Set<string>())
+export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Accessor<PanelTheme>; initiallyCollapsed?: boolean }) {
+  const [collapsed, setCollapsed] = createSignal(new Set(props.initiallyCollapsed ? [`panel:${props.model().id}`] : []))
   const [now, setNow] = createSignal(Date.now())
   const interval = setInterval(() => setNow(Date.now()), 1_000)
   onCleanup(() => clearInterval(interval))
@@ -482,7 +506,15 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Acces
         <text width={2}>{panelCollapsed() ? "▶ " : "▼ "}</text>
         <text flexBasis={0} flexGrow={1}>{props.model().title}</text>
         <Show when={panelCollapsed() ? normalized().header.summary : undefined}>
-          {(summary) => <text fg={summary().status ? props.theme()[summary().status!] : undefined}>{summary().text}</text>}
+          {(summary) => summary().segments?.length
+            ? (
+                <box flexDirection="row">
+                  <For each={summary().segments}>
+                    {(segment) => <text fg={segment.status ? props.theme()[segment.status] : undefined}>{segment.text}</text>}
+                  </For>
+                </box>
+              )
+            : <text fg={summary().status ? props.theme()[summary().status!] : undefined}>{summary().text}</text>}
         </Show>
       </box>
       <Divider />

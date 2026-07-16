@@ -226,7 +226,8 @@ function providerName(provider: QuotaProviderAdapter): string {
 }
 
 function summary(provider: QuotaProviderAdapter | undefined, options: NormalizedCompositionOptions) {
-  const home = provider?.home()
+  if (!provider) return undefined
+  const home = provider.home()
   if (!home) return undefined
 
   const primary = metric(home.primaryPct, options)
@@ -234,9 +235,21 @@ function summary(provider: QuotaProviderAdapter | undefined, options: Normalized
     ? `/${Math.round(metric(home.secondaryPct, options))}%`
     : ""
   const status = percentStatus(home.primaryPct, options)
+  const percentages = `${Math.round(primary)}%${secondary}`
+  if (provider.freshness() === "stale") {
+    return {
+      kind: "text" as const,
+      text: `stale ${percentages}`,
+      segments: [
+        { text: "stale", status: "warning" as const },
+        { text: " ", status: "textMuted" as const },
+        { text: percentages, ...(status ? { status } : {}) },
+      ],
+    }
+  }
   return {
     kind: "text" as const,
-    text: `${Math.round(primary)}%${secondary}`,
+    text: percentages,
     ...(status ? { status } : {}),
   }
 }

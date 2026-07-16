@@ -159,6 +159,39 @@ test("wires mounted panel and group mouse collapse while the divider follows the
   }
 })
 
+test("mounts collapsed stale and quota summary segments with independent colors", () => {
+  const collapsedModel = {
+    id: "quota",
+    order: 10,
+    title: "Quota",
+    collapsedSummary: {
+      kind: "text",
+      text: "stale 46%/80%",
+      segments: [
+        { text: "stale", status: "warning" },
+        { text: " ", status: "textMuted" },
+        { text: "46%/80%", status: "success" },
+      ],
+    },
+    groups: [],
+  }
+  const mounted = mountPanel(collapsedModel, { initiallyCollapsed: true })
+
+  try {
+    const summary = mounted.elements
+      .filter((element) => element.type === "text")
+      .filter((element) => ["stale", " ", "46%/80%"].includes(element.props.children))
+
+    assert.deepEqual(summary.map((element) => [element.props.children, element.props.fg]), [
+      ["stale", "#ffaa00"],
+      [" ", "#888888"],
+      ["46%/80%", "#00ff00"],
+    ])
+  } finally {
+    mounted.dispose()
+  }
+})
+
 test("renders middle group dividers as short dashes with flexible spacing", () => {
   const multiGroupModel = {
     id: "quota",

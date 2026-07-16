@@ -29,7 +29,10 @@ function expand(value: unknown): unknown[] {
   return expand(value.type(value.props))
 }
 
-export function mountPanel(model: Parameters<typeof PanelRenderer>[0]["model"] extends () => infer Model ? Model : never) {
+export function mountPanel(
+  model: Parameters<typeof PanelRenderer>[0]["model"] extends () => infer Model ? Model : never,
+  options: { initiallyCollapsed?: boolean } = {},
+) {
   let tree: unknown
   let dispose: () => void = () => undefined
   createRoot((cleanup) => {
@@ -37,6 +40,7 @@ export function mountPanel(model: Parameters<typeof PanelRenderer>[0]["model"] e
     tree = PanelRenderer({
       model: () => model,
       theme: () => ({ error: "#ff0000", warning: "#ffaa00", success: "#00ff00", text: "#ffffff", textMuted: "#888888" }),
+      initiallyCollapsed: options.initiallyCollapsed,
     })
   })
 

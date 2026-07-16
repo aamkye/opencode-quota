@@ -180,6 +180,39 @@ test("uses custom thresholds and omits semantic status when colors are disabled"
   assert.equal("status" in disabled.collapsedSummary, false)
 })
 
+test("keeps stale freshness separate from collapsed quota colors", () => {
+  const selected = provider({
+    id: "openai",
+    title: "OpenAI",
+    order: 120,
+    freshness: "stale",
+    primaryPct: 46,
+    secondaryPct: 80,
+  })
+
+  const model = composeQuotaPanel("openai", [selected])
+  assert.deepEqual(model.collapsedSummary, {
+    kind: "text",
+    text: "stale 46%/80%",
+    segments: [
+      { text: "stale", status: "warning" },
+      { text: " ", status: "textMuted" },
+      { text: "46%/80%", status: "success" },
+    ],
+  })
+
+  const collapsed = renderPanelLayout(model, { availableCells: 37, collapsed: new Set(["panel:quota"]) })
+  assert.equal(collapsed.header.cells.reduce((width, cell) => width + cell.width, 0), 37)
+  assert.deepEqual(collapsed.header.cells.filter((cell) => cell.status).map((cell) => [cell.text, cell.status]), [
+    ["stale", "warning"],
+    [" ", "textMuted"],
+    ["46%/80%", "success"],
+  ])
+
+  const constrained = renderPanelLayout(model, { availableCells: 10, collapsed: new Set(["panel:quota"]) })
+  assert.equal(constrained.header.cells.reduce((width, cell) => width + cell.width, 0), 10)
+})
+
 async function aggregatePanel(t, options, observations = { intervals: [], requests: [] }) {
   const registrations = []
   const cleanup = []

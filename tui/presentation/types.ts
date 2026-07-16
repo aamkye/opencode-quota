@@ -17,6 +17,7 @@ export type DisplayValue =
   | {
       kind: "text"
       text: string
+      segments?: readonly PanelTextSegment[]
       status?: PanelStatus
       maxWidth?: number
     }
