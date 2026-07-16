@@ -339,7 +339,7 @@ export function createQuotaSelection(
     const [sessionID, setSessionID] = createSignal("")
     const [messageRevision, setMessageRevision] = createSignal(0)
     onCleanup(api.event.on("message.updated", (event) => {
-      if (event.properties.sessionID !== sessionID() || event.properties.info.role !== "user") return
+      if (event.properties.info.sessionID !== sessionID() || event.properties.info.role !== "user") return
       setMessageRevision((revision) => revision + 1)
     }))
     const selectedProviderID = createMemo(() => {

@@ -884,38 +884,60 @@ test("uses reactive fallback for unreadable messages and stops refreshing after 
 })
 
 test("disposes the selection root when lifecycle registration fails during activation", async () => {
+  const refreshes = []
   const host = createQuotaSelectionHost({
     provider: [{ id: "zai-coding-plan" }],
     messages: {},
     disposeRegistrationError: new Error("lifecycle registration failed"),
   })
-  const zai = provider({ id: "zai", title: "Z.AI", order: 110 })
+  const zai = provider({
+    id: "zai",
+    title: "Z.AI",
+    order: 110,
+    onRefresh: async () => refreshes.push("zai"),
+  })
 
   assert.throws(
     () => mountQuotaSelection(host.api, [zai]),
     /lifecycle registration failed/,
   )
-  const readsAfterFailure = host.providerReadCount()
+  assert.equal(host.eventListenerCount(), 0)
+  const providerReadsAfterFailure = host.providerReadCount()
+  const messageReadsAfterFailure = host.messageReadCount()
+  host.emitMessageUpdated("session-1")
   host.setProvider([{ id: "openai" }])
   await flushEffects()
 
-  assert.equal(host.providerReadCount(), readsAfterFailure)
+  assert.equal(host.providerReadCount(), providerReadsAfterFailure)
+  assert.equal(host.messageReadCount(), messageReadsAfterFailure)
+  assert.deepEqual(refreshes, [])
 })
 
 test("does not retain a selection root when activation reaches an already disposed lifecycle", async () => {
+  const refreshes = []
   const host = createQuotaSelectionHost({
     provider: [{ id: "zai-coding-plan" }],
     messages: {},
   })
-  const zai = provider({ id: "zai", title: "Z.AI", order: 110 })
+  const zai = provider({
+    id: "zai",
+    title: "Z.AI",
+    order: 110,
+    onRefresh: async () => refreshes.push("zai"),
+  })
   await host.dispose()
 
   mountQuotaSelection(host.api, [zai])
-  const readsAfterActivation = host.providerReadCount()
+  assert.equal(host.eventListenerCount(), 0)
+  const providerReadsAfterActivation = host.providerReadCount()
+  const messageReadsAfterActivation = host.messageReadCount()
+  host.emitMessageUpdated("session-1")
   host.setProvider([{ id: "openai" }])
   await flushEffects()
 
-  assert.equal(host.providerReadCount(), readsAfterActivation)
+  assert.equal(host.providerReadCount(), providerReadsAfterActivation)
+  assert.equal(host.messageReadCount(), messageReadsAfterActivation)
+  assert.deepEqual(refreshes, [])
 })
 
 test("falls back to remaining descending options when native values are invalid", async (t) => {

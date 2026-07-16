@@ -1,6 +1,11 @@
 declare module "@opencode-ai/plugin/tui" {
   import type { JSX } from "@opentui/solid"
-  import type { Event, Provider } from "@opencode-ai/sdk/v2"
+  import type { Event, Message, Provider } from "@opencode-ai/sdk/v2"
+
+  type TuiEvent = Exclude<Event, { type: "message.updated" }> | {
+    type: "message.updated"
+    properties: { info: Message }
+  }
 
   export interface TuiPluginApi {
     slots: {
@@ -26,9 +31,9 @@ declare module "@opencode-ai/plugin/tui" {
       part(messageID: string): readonly import("@opencode-ai/sdk/v2").Part[]
     }
     event: {
-      on<Type extends Event["type"]>(
+      on<Type extends TuiEvent["type"]>(
         type: Type,
-        handler: (event: Extract<Event, { type: Type }>) => void,
+        handler: (event: Extract<TuiEvent, { type: Type }>) => void,
       ): () => void
     }
     kv: {

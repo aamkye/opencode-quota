@@ -29,7 +29,7 @@ export function createQuotaSelectionHost(input: {
   const controller = new AbortController()
   const messageUpdatedListeners = new Set<(event: {
     type: "message.updated"
-    properties: { sessionID: string; info: HostMessage & { sessionID: string } }
+    properties: { info: HostMessage & { sessionID: string } }
   }) => void>()
   let cleanup: (() => void | Promise<void>)[] = []
   let disposed = false
@@ -54,7 +54,7 @@ export function createQuotaSelectionHost(input: {
     event: {
       on(type: string, handler: (event: {
         type: "message.updated"
-        properties: { sessionID: string; info: HostMessage & { sessionID: string } }
+        properties: { info: HostMessage & { sessionID: string } }
       }) => void) {
         if (type !== "message.updated") return () => undefined
         messageUpdatedListeners.add(handler)
@@ -97,7 +97,7 @@ export function createQuotaSelectionHost(input: {
     emitMessageUpdated(sessionID: string) {
       const info = messagesBySession[sessionID]?.at(-1) ?? { id: `event-${sessionID}`, role: "user" }
       for (const handler of messageUpdatedListeners) {
-        handler({ type: "message.updated", properties: { sessionID, info: { ...info, sessionID } } })
+        handler({ type: "message.updated", properties: { info: { ...info, sessionID } } })
       }
     },
     async dispose() {
