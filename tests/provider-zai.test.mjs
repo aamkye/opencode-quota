@@ -558,10 +558,12 @@ test("owns and clears a 20-second timeout when fetchZaiQuota receives no signal"
 })
 
 test("replaces Z.AI credentials without publishing the old generation", async (t) => {
+  const clock = installFakeClock(now)
   const pending = deferredRequests()
   const { adapter, setCredential } = createReactiveTestAdapter(t, {
     initialKey: "key-a",
     fetch: pending.fetch,
+    clock,
   })
   await flushEffects()
 
