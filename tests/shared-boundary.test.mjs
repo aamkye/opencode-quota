@@ -56,6 +56,7 @@ test("loadable quota and token entries use the shared facade for computation", (
     "./shared/opencode-tools-shared",
     "./lib/tokens/token-report-presenter",
   ])
+  assertRelativeImports("tui/token-report.tsx", ["../shared/opencode-tools-shared.js"])
 })
 
 test("shared facade exports computation without plugin registration or JSX", () => {
@@ -67,6 +68,7 @@ test("shared facade exports computation without plugin registration or JSX", () 
   assert.match(shared, /createOpenCodeGoProvider/)
   assert.match(shared, /OpenCodeGoHomeQuotaSummary/)
   assert.match(shared, /computeTokenReport/)
+  assert.match(shared, /renderTokenReport/)
   assert.doesNotMatch(shared, /@opentui\/|slots\.register|export\s+default|<[a-z][^>]*>/i)
   assert.doesNotMatch(source("tui/quota.tsx"), /from ["']\.\/providers\/opencode-go/)
   assert.doesNotMatch(source("tui/home.tsx"), /opencode-go/)

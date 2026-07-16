@@ -3,10 +3,10 @@ import { createSignal, onCleanup } from "solid-js"
 
 import {
   computeTokenReport,
+  renderTokenReport,
   TOKEN_REPORT_COMMANDS,
   type TokenReportCommandId,
 } from "../shared/opencode-tools-shared.js"
-import { renderTokenReport } from "../lib/tokens/token-report-presenter.js"
 
 export type TokenReportRouteParams = {
   command: TokenReportCommandId
@@ -23,8 +23,7 @@ function sourceSessionID(api: TuiPluginApi): string | undefined {
   return typeof sessionID === "string" ? sessionID : undefined
 }
 
-function navigateToReport(api: TuiPluginApi, command: TokenReportCommandId, argumentsValue?: string): void {
-  const sessionID = sourceSessionID(api)
+function navigateToReport(api: TuiPluginApi, command: TokenReportCommandId, argumentsValue?: string, sessionID = sourceSessionID(api)): void {
   const params: TokenReportRouteParams = { command }
   if (argumentsValue) params.arguments = argumentsValue
   if (sessionID) params.sessionID = sessionID
@@ -47,13 +46,14 @@ export function tokenReportCommands(api: TuiPluginApi): TuiCommand[] {
         return
       }
 
+      const sessionID = sourceSessionID(api)
       api.ui.dialog.replace(
         () => api.ui.DialogPrompt({
           title: "Token report date range",
           placeholder: "YYYY-MM-DD YYYY-MM-DD",
           onSubmit(value) {
             api.ui.dialog.clear()
-            navigateToReport(api, spec.id, value)
+            navigateToReport(api, spec.id, value, sessionID)
           },
         }),
         () => api.ui.dialog.clear(),

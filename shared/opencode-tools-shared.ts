@@ -38,6 +38,7 @@ export type {
   TokenReportCommandSpec,
 } from "../lib/tokens/token-commands";
 export { computeTokenReport } from "../lib/tokens/token-report-data";
+export { renderTokenReport } from "../lib/tokens/token-report-presenter";
 export type {
   ComputeTokenReportDependencies,
   ComputeTokenReportParams,

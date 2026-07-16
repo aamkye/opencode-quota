@@ -119,6 +119,7 @@ test("tokens_between submits a native range prompt and keeps its source session"
   registerTokenReportTui(api)
   api.commandBySlash("tokens_between").run()
   api.dialogs[0].render()
+  api.route.current = { name: "home" }
   api.prompts[0].onSubmit("2026-01-01 2026-01-15")
 
   assert.deepEqual(api.navigations, [{
