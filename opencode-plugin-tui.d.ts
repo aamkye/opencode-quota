@@ -27,7 +27,7 @@ declare module "@opencode-ai/plugin/tui" {
   export interface TuiPromptProps {
     title: string
     placeholder?: string
-    onSubmit(value: string): void | Promise<void>
+    onConfirm(value: string): void
   }
 
   export interface TuiPluginApi {
@@ -43,7 +43,7 @@ declare module "@opencode-ai/plugin/tui" {
       navigate(name: string, params?: Record<string, unknown>): void
     }
     ui: {
-      toast(input: { title: string }): void
+      toast(input: { message: string; title?: string }): void
       dialog: {
         replace(render: () => JSX.Element, onClose?: () => void): void
         clear(): void

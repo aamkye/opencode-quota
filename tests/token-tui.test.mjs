@@ -128,10 +128,10 @@ test("token command without a session shows a toast without a client call", asyn
   await api.commandBySlash("tokens_today").run()
 
   assert.equal(api.sessionPrompts.length, 0)
-  assert.deepEqual(api.toasts, [{ title: "Open a session to view token usage" }])
+  assert.deepEqual(api.toasts, [{ message: "Open a session to view token usage" }])
 })
 
-test("tokens_between Enter submits the native prompt", async () => {
+test("tokens_between Enter confirms the native prompt", async () => {
   globalThis.__tokenTuiCompute = async () => ({
     kind: "invalid_arguments",
     command: "tokens_between",
@@ -144,7 +144,9 @@ test("tokens_between Enter submits the native prompt", async () => {
     api.commandBySlash("tokens_between").run()
     api.dialogs[0].render()
     api.route.current = { name: "home" }
-    await api.prompts[0].onSubmit("2026-01-01 2026-01-15")
+    const result = api.prompts[0].onConfirm("2026-01-01 2026-01-15")
+    assert.equal(result, undefined)
+    await new Promise((resolve) => setImmediate(resolve))
 
     assert.equal(api.sessionPrompts.length, 1)
     assert.equal(api.sessionPrompts[0].path.id, "s1")
@@ -209,7 +211,7 @@ test("token command shows a toast when its no-reply write is rejected", async ()
     await api.commandBySlash("tokens_today").run()
 
     assert.equal(api.sessionPrompts.length, 1)
-    assert.deepEqual(api.toasts, [{ title: "Unable to save token report" }])
+    assert.deepEqual(api.toasts, [{ message: "Unable to save token report" }])
   } finally {
     delete globalThis.__tokenTuiCompute
   }

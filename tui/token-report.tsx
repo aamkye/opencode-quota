@@ -38,7 +38,7 @@ async function persistReport(
       body: { noReply: true, parts: [{ type: "text", text }] },
     })
   } catch {
-    api.ui.toast({ title: "Unable to save token report" })
+    api.ui.toast({ message: "Unable to save token report" })
   }
 }
 
@@ -54,7 +54,7 @@ export function tokenReportCommands(
     async run() {
       const sessionID = sourceSessionID(api)
       if (!sessionID) {
-        api.ui.toast({ title: "Open a session to view token usage" })
+        api.ui.toast({ message: "Open a session to view token usage" })
         return
       }
       if (spec.id !== "tokens_between") {
@@ -75,9 +75,9 @@ export function tokenReportCommands(
         () => api.ui.DialogPrompt({
           title: "Token report date range",
           placeholder: "YYYY-MM-DD YYYY-MM-DD",
-          async onSubmit(value) {
+          onConfirm(value) {
             close()
-            await persistReport(api, sessionID, spec.id, value)
+            void persistReport(api, sessionID, spec.id, value)
           },
         }),
         close,
