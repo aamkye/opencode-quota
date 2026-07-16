@@ -44,6 +44,7 @@ function provider({
   title,
   order,
   freshness = "ready",
+  configured = true,
   primaryPct,
   secondaryPct,
   windows = ["5H", "7D"],
@@ -70,6 +71,7 @@ function provider({
       groups: groups ?? [{ id: `${id}:quota`, order: 10, items }],
     }),
     home: () => typeof primaryPct === "number" ? { provider: title, plan: "Plan", primaryPct, secondaryPct } : null,
+    configured: typeof configured === "function" ? configured : () => configured,
     freshness: typeof freshness === "function" ? freshness : () => freshness,
     refresh: onRefresh,
     setSessionID: () => {},
@@ -102,6 +104,15 @@ function openCodeGoProvider({ freshness = () => "ready" } = {}) {
 
 function headers(group) {
   return group.items.filter((item) => item.kind === "header").map((item) => item.title)
+}
+
+function otherProviderIDs(model) {
+  const otherProviders = model.groups.find((group) => group.id === "other-providers")
+  return otherProviders ? headers(otherProviders).map((title) => title.toLowerCase().replaceAll(".", "")) : []
+}
+
+function supported(providerID) {
+  return { kind: "supported", providerID }
 }
 
 function item(model, id) {
@@ -185,7 +196,7 @@ test("OpenCode Go options normalize through native quota options", () => {
 
 test("colors progress by remaining quota even when displaying used quota", () => {
   const selected = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 8, secondaryPct: 25 })
-  const model = composeQuotaPanel("zai", [selected], {
+  const model = composeQuotaPanel(supported("zai"), [selected], {
     percentageMode: "used",
     progressColors: { errorBelow: 10, warningBelow: 30 },
   })
@@ -199,10 +210,10 @@ test("colors progress by remaining quota even when displaying used quota", () =>
 
 test("uses custom thresholds and omits semantic status when colors are disabled", () => {
   const selected = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 40 })
-  const warning = composeQuotaPanel("zai", [selected], {
+  const warning = composeQuotaPanel(supported("zai"), [selected], {
     progressColors: { errorBelow: 20, warningBelow: 50 },
   })
-  const disabled = composeQuotaPanel("zai", [selected], {
+  const disabled = composeQuotaPanel(supported("zai"), [selected], {
     progressColors: { enabled: false },
   })
 
@@ -222,7 +233,7 @@ test("keeps stale freshness separate from collapsed quota colors", () => {
     secondaryPct: 80,
   })
 
-  const model = composeQuotaPanel("openai", [selected])
+  const model = composeQuotaPanel(supported("openai"), [selected])
   assert.deepEqual(model.collapsedSummary, {
     kind: "text",
     text: "stale 46%/80%",
@@ -292,8 +303,8 @@ test("composes stale collapsed summaries from real OpenAI and Z.AI adapters", as
   })
   await flushEffects()
 
-  assert.equal(composeQuotaPanel("openai", [openai.adapter]).collapsedSummary.text, "75%/60%")
-  assert.equal(composeQuotaPanel("zai", [zai.adapter]).collapsedSummary.text, "75%/60%")
+  assert.equal(composeQuotaPanel(supported("openai"), [openai.adapter]).collapsedSummary.text, "75%/60%")
+  assert.equal(composeQuotaPanel(supported("zai"), [zai.adapter]).collapsedSummary.text, "75%/60%")
 
   available = false
   await Promise.all([openai.adapter.refresh(), zai.adapter.refresh()])
@@ -301,7 +312,7 @@ test("composes stale collapsed summaries from real OpenAI and Z.AI adapters", as
   assert.equal(zai.adapter.home(), null)
 
   for (const adapter of [openai.adapter, zai.adapter]) {
-    assert.deepEqual(composeQuotaPanel(adapter.id, [adapter]).collapsedSummary, {
+    assert.deepEqual(composeQuotaPanel(supported(adapter.id), [adapter]).collapsedSummary, {
       kind: "text",
       text: "stale 75%/60%",
       segments: [
@@ -310,7 +321,7 @@ test("composes stale collapsed summaries from real OpenAI and Z.AI adapters", as
         { text: "75%/60%", status: "success" },
       ],
     })
-    assert.deepEqual(composeQuotaPanel(adapter.id, [adapter], { percentageMode: "used" }).collapsedSummary, {
+    assert.deepEqual(composeQuotaPanel(supported(adapter.id), [adapter], { percentageMode: "used" }).collapsedSummary, {
       kind: "text",
       text: "stale 25%/40%",
       segments: [
@@ -466,7 +477,7 @@ test("keeps the selected supported provider first while loading or unavailable",
 
   for (const freshness of ["loading", "unavailable"]) {
     const zai = provider({ id: "zai", title: "Z.AI", order: 110, freshness })
-    const model = composeQuotaPanel("zai", [openai, zai])
+    const model = composeQuotaPanel(supported("zai"), [openai, zai])
 
     assert.equal(model.title, "Quota")
     assert.equal(model.groups[0].id, "zai:quota")
@@ -482,19 +493,19 @@ test("uses remaining percentages and descending secondary order by default", () 
   const beta = provider({ id: "beta", title: "Beta", order: 140, primaryPct: 80 })
   const unavailable = provider({ id: "offline", title: "Offline", order: 100, freshness: "unavailable", primaryPct: 99 })
 
-  const model = composeQuotaPanel("zai", [alpha, unavailable, beta, zai])
+  const model = composeQuotaPanel(supported("zai"), [alpha, unavailable, beta, zai])
   const others = model.groups.find((group) => group.id === "other-providers")
 
   assert.equal(model.collapsedSummary.text, "60%/40%")
-  assert.deepEqual(headers(others), ["Beta", "Alpha"])
-  assert.ok(!headers(others).includes("Offline"))
+  assert.deepEqual(headers(others), ["Offline", "Beta", "Alpha"])
+  assert.ok(headers(others).includes("Offline"))
 })
 
 test("separates adjacent providers inside the shared Other providers group", () => {
   const openai = provider({ id: "openai", title: "OpenAI", order: 120, primaryPct: 90 })
   const openCodeGo = openCodeGoProvider()
   const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50 })
-  const model = composeQuotaPanel("openai", [zai, openai, openCodeGo])
+  const model = composeQuotaPanel(supported("openai"), [zai, openai, openCodeGo])
   const others = model.groups.find((group) => group.id === "other-providers")
 
   assert.deepEqual(others.items.filter((entry) => entry.kind === "divider"), [
@@ -518,7 +529,7 @@ test("falls back to descending selected metrics when sort direction is invalid",
   const beta = provider({ id: "beta", title: "Beta", order: 140, primaryPct: 80 })
   const gamma = provider({ id: "gamma", title: "Gamma", order: 150, primaryPct: 40 })
 
-  const model = composeQuotaPanel("zai", [alpha, beta, gamma, zai], {
+  const model = composeQuotaPanel(supported("zai"), [alpha, beta, gamma, zai], {
     percentageMode: "used",
     sortDirection: "sideways",
   })
@@ -532,7 +543,7 @@ test("uses selected used percentages and ascending secondary order when configur
   const alpha = provider({ id: "alpha", title: "Alpha", order: 130, primaryPct: 20 })
   const beta = provider({ id: "beta", title: "Beta", order: 140, primaryPct: 80 })
 
-  const model = composeQuotaPanel("openai", [alpha, beta, openai], {
+  const model = composeQuotaPanel(supported("openai"), [alpha, beta, openai], {
     percentageMode: "used",
     sortDirection: "asc",
   })
@@ -542,6 +553,35 @@ test("uses selected used percentages and ascending secondary order when configur
   assert.equal(model.collapsedSummary.text, "30%/80%")
   assert.deepEqual(headers(others), ["Beta", "Alpha"])
   assert.equal(others.items.find((item) => item.id === "beta:5H").value, 20)
+})
+
+test("composes only configured providers and applies inactive visibility overrides", () => {
+  const unconfiguredReady = provider({ id: "ignored", title: "Ignored", order: 100, primaryPct: 99, configured: false })
+  const configuredUnavailable = provider({ id: "offline", title: "Offline", order: 110, primaryPct: 75, freshness: "unavailable" })
+  const configuredStale = provider({ id: "stale", title: "Stale", order: 120, primaryPct: 50, freshness: "stale" })
+  const openai = provider({ id: "openai", title: "OpenAI", order: 130, primaryPct: 40 })
+  const zai = provider({ id: "zai", title: "Z.AI", order: 140, primaryPct: 60 })
+
+  assert.deepEqual(otherProviderIDs(composeQuotaPanel({ kind: "none" }, [unconfiguredReady, configuredUnavailable])), ["offline"])
+  assert.deepEqual(otherProviderIDs(composeQuotaPanel({ kind: "none" }, [unconfiguredReady, configuredUnavailable, configuredStale, openai, zai])), ["offline", "zai", "stale", "openai"])
+
+  const globalHideOptions = { hideInactive: true }
+  assert.equal(otherProviderIDs(composeQuotaPanel({ kind: "none" }, [openai, zai], globalHideOptions)).length, 0)
+  assert.deepEqual(otherProviderIDs(composeQuotaPanel({ kind: "none" }, [openai, zai], {
+    ...globalHideOptions,
+    zai: { hideInactive: false },
+  })), ["zai"])
+  assert.deepEqual(otherProviderIDs(composeQuotaPanel({ kind: "none" }, [openai], {
+    hideInactive: false,
+    openai: { hideInactive: true },
+  })), [])
+
+  const selected = composeQuotaPanel({ kind: "supported", providerID: "openai" }, [openai], {
+    hideInactive: true,
+    openai: { hideInactive: true },
+  })
+  assert.equal(selected.groups.length, 1)
+  assert.equal(selected.groups[0].id, "openai:quota")
 })
 
 function openCodeGoRegressionProvider(freshness = "ready") {
@@ -570,6 +610,7 @@ function openCodeGoRegressionProvider(freshness = "ready") {
     order: 130,
     panel: () => panel,
     home: () => ({ provider: "OpenCode GO", plan: "Subscription", primaryPct: 87.5, secondaryPct: 66 }),
+    configured: () => true,
     freshness: () => freshness,
     refresh: async () => {},
     setSessionID: () => {},
@@ -581,17 +622,17 @@ test("three providers preserve OpenCode Go aggregate semantics", () => {
   const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 75, secondaryPct: 60 })
   const openai = provider({ id: "openai", title: "OpenAI", order: 120, primaryPct: 70, secondaryPct: 55 })
   const openCodeGo = openCodeGoRegressionProvider()
-  const remaining = composeQuotaPanel("opencode-go", [zai, openai, openCodeGo], {
+  const remaining = composeQuotaPanel(supported("opencode-go"), [zai, openai, openCodeGo], {
     percentageMode: "remaining",
     sortDirection: "desc",
     progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
   })
-  const used = composeQuotaPanel("opencode-go", [zai, openai, openCodeGo], {
+  const used = composeQuotaPanel(supported("opencode-go"), [zai, openai, openCodeGo], {
     percentageMode: "used",
     sortDirection: "asc",
     progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
   })
-  const usedDescending = composeQuotaPanel("opencode-go", [zai, openai, openCodeGo], {
+  const usedDescending = composeQuotaPanel(supported("opencode-go"), [zai, openai, openCodeGo], {
     percentageMode: "used",
     sortDirection: "desc",
     progressColors: { enabled: true, errorBelow: 10, warningBelow: 30 },
@@ -611,7 +652,7 @@ test("three providers preserve OpenCode Go aggregate semantics", () => {
   assert.deepEqual(headers(usedDescending.groups.find((group) => group.id === "other-providers")), ["OpenAI", "Z.AI"])
 
   for (const freshness of ["ready", "stale"]) {
-    const selectedOpenAi = composeQuotaPanel("openai", [zai, openai, openCodeGoRegressionProvider(freshness)])
+    const selectedOpenAi = composeQuotaPanel(supported("openai"), [zai, openai, openCodeGoRegressionProvider(freshness)])
     assert.equal(selectedOpenAi.groups[0].id, "openai:quota")
     assert.deepEqual(headers(selectedOpenAi.groups.find((group) => group.id === "other-providers")), ["OpenCode GO:", "Z.AI"])
   }
@@ -671,7 +712,7 @@ test("orders configured secondary metrics by direction and keeps each header wit
   const beta = provider({ id: "beta", title: "Beta", order: 140, primaryPct: 40 })
   const gamma = provider({ id: "gamma", title: "Gamma", order: 150, primaryPct: 70 })
 
-  const model = composeQuotaPanel("zai", [beta, gamma, alpha, zai], {
+  const model = composeQuotaPanel(supported("zai"), [beta, gamma, alpha, zai], {
     percentageMode: "used",
     sortDirection: "asc",
   })
@@ -715,7 +756,7 @@ test("sorts semantic items and partitions each provider group independently", ()
     ],
   })
 
-  const model = composeQuotaPanel("zai", [selected, shuffled])
+  const model = composeQuotaPanel(supported("zai"), [selected, shuffled])
   const others = model.groups.find((group) => group.id === "other-providers")
 
   assert.deepEqual(others.items.map((entry) => entry.id), [
@@ -731,7 +772,7 @@ test("sorts semantic items and partitions each provider group independently", ()
 
 test("orders every quota window shortest-first", () => {
   const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50, windows: ["1M", "5H", "7D"] })
-  const model = composeQuotaPanel("zai", [zai])
+  const model = composeQuotaPanel(supported("zai"), [zai])
   const labels = model.groups[0].items.filter((item) => item.kind === "progress").map((item) => item.label)
 
   assert.deepEqual(labels, ["5H", "7D", "1M"])
@@ -761,7 +802,7 @@ test("keeps window details attached and leaves unknown tool quota last", () => {
     }],
   })
 
-  const items = composeQuotaPanel("zai", [zai]).groups[0].items
+  const items = composeQuotaPanel(supported("zai"), [zai]).groups[0].items
   assert.deepEqual(items.map((entry) => entry.id), [
     "zai:header",
     "zai:5h", "zai:5h-reset", "zai:5h-used",
@@ -772,7 +813,7 @@ test("keeps window details attached and leaves unknown tool quota last", () => {
 
 test("keeps unknown quota window labels in source order after known durations", () => {
   const zai = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50, windows: ["Zeta", "5H", "Alpha"] })
-  const model = composeQuotaPanel("zai", [zai])
+  const model = composeQuotaPanel(supported("zai"), [zai])
   const labels = model.groups[0].items.filter((item) => item.kind === "progress").map((item) => item.label)
 
   assert.deepEqual(labels, ["5H", "Zeta", "Alpha"])
@@ -782,19 +823,19 @@ test("maps native credential provider IDs to their aggregate adapters", () => {
   const zai = provider({ id: "zai", title: "Z.AI", order: 110 })
   const openai = provider({ id: "openai", title: "OpenAI", order: 120 })
 
-  assert.equal(selectedQuotaProviderID([{ id: "zai-coding-plan" }], [zai, openai]), "zai")
-  assert.equal(selectedQuotaProviderID([{ id: "codex" }], [zai, openai]), "openai")
-  assert.equal(selectedQuotaProviderID([{ id: "chatgpt" }], [zai, openai]), "openai")
-  assert.equal(selectedQuotaProviderID([{ id: "opencode" }], [zai, openai]), "openai")
+  assert.deepEqual(selectedQuotaProviderID([{ id: "zai-coding-plan" }], [zai, openai]), supported("zai"))
+  assert.deepEqual(selectedQuotaProviderID([{ id: "codex" }], [zai, openai]), supported("openai"))
+  assert.deepEqual(selectedQuotaProviderID([{ id: "chatgpt" }], [zai, openai]), supported("openai"))
+  assert.deepEqual(selectedQuotaProviderID([{ id: "opencode" }], [zai, openai]), supported("openai"))
 })
 
 test("OpenCode Go integration resolves both runtime aliases", () => {
   const providers = [provider({ id: "opencode-go", title: "OpenCode GO", order: 130, primaryPct: 87.5, secondaryPct: 66 })]
-  assert.equal(selectedQuotaProviderID([{ id: "opencode-go" }], providers), "opencode-go")
-  assert.equal(selectedQuotaProviderID([{ id: "opencode-go-subscription" }], providers), "opencode-go")
-  assert.equal(selectedSessionQuotaProviderID([
+  assert.deepEqual(selectedQuotaProviderID([{ id: "opencode-go" }], providers), supported("opencode-go"))
+  assert.deepEqual(selectedQuotaProviderID([{ id: "opencode-go-subscription" }], providers), supported("opencode-go"))
+  assert.deepEqual(selectedSessionQuotaProviderID([
     { role: "user", model: { providerID: "opencode-go-subscription" } },
-  ], providers), "opencode-go")
+  ], providers, { kind: "none" }), supported("opencode-go"))
 })
 
 test("resolves the newest supported user model and falls back without usable metadata", () => {
@@ -802,15 +843,67 @@ test("resolves the newest supported user model and falls back without usable met
   const openai = provider({ id: "openai", title: "OpenAI", order: 120 })
   const providers = [zai, openai]
 
-  assert.equal(selectedSessionQuotaProviderID([
+  assert.deepEqual(selectedSessionQuotaProviderID([
     { id: "m1", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } },
     { id: "m2", role: "assistant" },
     { id: "m3", role: "user", model: { providerID: "codex", modelID: "gpt-5" } },
-  ], providers, "zai"), "openai")
-  assert.equal(selectedSessionQuotaProviderID([], providers, "zai"), "zai")
-  assert.equal(selectedSessionQuotaProviderID([
+  ], providers, supported("zai")), supported("openai"))
+  assert.deepEqual(selectedSessionQuotaProviderID([], providers, supported("zai")), supported("zai"))
+  assert.deepEqual(selectedSessionQuotaProviderID([
     { id: "m4", role: "user", model: { providerID: "unsupported", modelID: "other" } },
-  ], providers, "zai"), "zai")
+  ], providers, supported("zai")), { kind: "unsupported", providerID: "unsupported" })
+})
+
+test("distinguishes configured support, unconfigured known adapters, and unsupported session models", () => {
+  const zai = provider({ id: "zai", title: "Z.AI", order: 110, configured: false })
+  const openai = provider({ id: "openai", title: "OpenAI", order: 120 })
+  const providers = [zai, openai]
+
+  assert.deepEqual(selectedQuotaProviderID([{ id: "zai-coding-plan" }, { id: "openai" }], providers), {
+    kind: "supported",
+    providerID: "openai",
+  })
+  assert.deepEqual(selectedSessionQuotaProviderID([
+    { id: "z1", role: "user", model: { providerID: "zai-coding-plan" } },
+  ], providers, { kind: "supported", providerID: "openai" }), { kind: "none" })
+  assert.deepEqual(selectedSessionQuotaProviderID([
+    { id: "a1", role: "user", model: { providerID: "anthropic" } },
+  ], providers, { kind: "supported", providerID: "openai" }), {
+    kind: "unsupported",
+    providerID: "anthropic",
+  })
+})
+
+test("renders the latest unsupported session provider without refreshing an adapter", async (t) => {
+  const refreshes = []
+  const zai = provider({ id: "zai", title: "Z.AI", order: 110, onRefresh: async () => refreshes.push("zai") })
+  const host = createQuotaSelectionHost({
+    provider: [{ id: "zai-coding-plan" }],
+    messages: {
+      "session-1": [{ id: "a1", role: "user", model: { providerID: "anthropic", modelID: "claude" } }],
+    },
+  })
+  const selection = mountQuotaSelection(host.api, [zai])
+  t.after(() => host.dispose())
+
+  selection.renderSidebar("session-1")
+  await flushEffects()
+  assert.deepEqual(selection.selectedProviderID(), { kind: "unsupported", providerID: "anthropic" })
+  assert.deepEqual(refreshes, [])
+
+  const panel = composeQuotaPanel(selection.selectedProviderID(), [zai])
+  assert.deepEqual(panel.groups[0].items[0], {
+    id: "unsupported:header",
+    order: 10,
+    kind: "header",
+    title: "anthropic",
+    detailSegments: [{ text: "unsupported", status: "error" }],
+  })
+  assert.deepEqual(panel.collapsedSummary, {
+    kind: "text",
+    text: "anthropic unsupported",
+    segments: [{ text: "anthropic" }, { text: " " }, { text: "unsupported", status: "error" }],
+  })
 })
 
 test("uses the active user event before synchronized messages catch up", async (t) => {
@@ -842,7 +935,7 @@ test("uses the active user event before synchronized messages catch up", async (
 
   selection.renderSidebar("session-1")
   await flushEffects()
-  assert.equal(selection.selectedProviderID(), "zai")
+  assert.deepEqual(selection.selectedProviderID(), supported("zai"))
   assert.deepEqual(refreshes, ["zai"])
 
   const readsBeforeEvent = host.messageReadCount()
@@ -852,7 +945,7 @@ test("uses the active user event before synchronized messages catch up", async (
     model: { providerID: "chatgpt", modelID: "gpt-5.6-sol" },
   })
 
-  assert.equal(selection.selectedProviderID(), "openai")
+  assert.deepEqual(selection.selectedProviderID(), supported("openai"))
   assert.equal(host.messageReadCount(), readsBeforeEvent)
   const model = composeQuotaPanel(selection.selectedProviderID(), providers)
   assert.equal(model.groups[0].id, "openai:quota")
@@ -866,7 +959,7 @@ test("uses the active user event before synchronized messages catch up", async (
     model: { providerID: "opencode", modelID: "gpt-5" },
   })
   await flushEffects()
-  assert.equal(selection.selectedProviderID(), "openai")
+  assert.deepEqual(selection.selectedProviderID(), supported("openai"))
   assert.deepEqual(refreshes, ["zai", "openai"])
 
   host.emitMessageUpdated("session-1", {
@@ -875,21 +968,21 @@ test("uses the active user event before synchronized messages catch up", async (
     model: { providerID: "unsupported", modelID: "other" },
   })
   await flushEffects()
-  assert.equal(selection.selectedProviderID(), "zai")
-  assert.deepEqual(refreshes, ["zai", "openai", "zai"])
+  assert.deepEqual(selection.selectedProviderID(), { kind: "unsupported", providerID: "unsupported" })
+  assert.deepEqual(refreshes, ["zai", "openai"])
 
   host.emitMessageUpdated("session-1", {
     id: "o3",
     role: "user",
     model: { providerID: "openai", modelID: "gpt-5" },
   })
-  assert.equal(selection.selectedProviderID(), "openai")
+  assert.deepEqual(selection.selectedProviderID(), supported("openai"))
   selection.renderSidebar("session-2")
-  assert.equal(selection.selectedProviderID(), "zai")
+  assert.deepEqual(selection.selectedProviderID(), supported("zai"))
   selection.renderSidebar("session-1")
-  assert.equal(selection.selectedProviderID(), "zai")
+  assert.deepEqual(selection.selectedProviderID(), supported("zai"))
   await flushEffects()
-  assert.deepEqual(refreshes, ["zai", "openai", "zai", "openai", "zai"])
+  assert.deepEqual(refreshes, ["zai", "openai", "zai"])
 })
 
 test("reacts to synchronized same-session model changes through the public event bus", async () => {
@@ -920,7 +1013,7 @@ test("reacts to synchronized same-session model changes through the public event
 
   selection.renderSidebar("session-1")
   await flushEffects()
-  assert.equal(selection.selectedProviderID(), "zai")
+  assert.deepEqual(selection.selectedProviderID(), supported("zai"))
   assert.deepEqual(refreshes, ["zai"])
 
   const readsBeforeUnrelatedEvent = host.messageReadCount()
@@ -946,16 +1039,16 @@ test("reacts to synchronized same-session model changes through the public event
     },
   })
   assert.equal(host.messageReadCount(), readsBeforeAssistantEvent)
-  assert.equal(selection.selectedProviderID(), "zai")
+  assert.deepEqual(selection.selectedProviderID(), supported("zai"))
   assert.deepEqual(refreshes, ["zai"])
 
   host.setMessages("session-1", [
     { id: "o2", role: "user", model: { providerID: "chatgpt", modelID: "gpt-5.6-sol" } },
   ])
-  assert.equal(selection.selectedProviderID(), "zai")
+  assert.deepEqual(selection.selectedProviderID(), supported("zai"))
   host.emitMessageUpdated("session-1")
 
-  assert.equal(selection.selectedProviderID(), "openai")
+  assert.deepEqual(selection.selectedProviderID(), supported("openai"))
   const model = composeQuotaPanel(selection.selectedProviderID(), providers)
   assert.equal(model.groups[0].id, "openai:quota")
   assert.equal(JSON.stringify(model).includes("gpt-5.6-sol"), false)
@@ -1032,7 +1125,7 @@ test("OpenCode Go integration reacts to active-session selection and preserves a
 
     openCodeGoFreshness = "unavailable"
     model = composeQuotaPanel(selection.selectedProviderID(), providers)
-    assert.equal(headers(model.groups[1]).includes("OpenCode GO"), false)
+    assert.equal(headers(model.groups[1]).includes("OpenCode GO"), true)
     assert.equal(JSON.stringify(model).includes("gpt-5"), false)
   } finally {
     await host.dispose()
@@ -1070,11 +1163,11 @@ test("uses reactive fallback for unreadable messages and stops refreshing after 
   await flushEffects()
   host.setUnreadableMessages(true)
   await flushEffects()
-  assert.equal(selection.selectedProviderID(), "zai")
+  assert.deepEqual(selection.selectedProviderID(), supported("zai"))
   host.setProvider([{ id: "openai" }])
   await flushEffects()
 
-  assert.equal(selection.selectedProviderID(), "openai")
+  assert.deepEqual(selection.selectedProviderID(), supported("openai"))
   assert.deepEqual(refreshes, ["openai", "zai", "openai"])
   assert.equal(host.lifecycleCount(), 2)
 

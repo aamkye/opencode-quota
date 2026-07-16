@@ -8,6 +8,7 @@ globalThis.React = {
 }
 
 const { mountPanel } = await import("../.tmp-test/presentation-mounted.mjs")
+const { renderPanelLayout } = await import("../.tmp-test/presentation-renderer.mjs")
 const { mapOpenAiPanelState } = await import("../.tmp-test/provider-openai.mjs")
 const { mapZaiPanelState } = await import("../.tmp-test/provider-zai.mjs")
 
@@ -373,6 +374,59 @@ test("mounts ordinary and segmented provider-header details at the right edge", 
     assert.ok(titles.every((element) => element.props.flexBasis === 0 && element.props.flexGrow === 1))
   } finally {
     dispose()
+  }
+})
+
+test("mounts unsupported provider details in expanded and collapsed 37-cell quota panels", () => {
+  const unsupportedModel = {
+    id: "quota",
+    order: 10,
+    title: "Quota",
+    collapsedSummary: {
+      kind: "text",
+      text: "anthropic unsupported",
+      segments: [{ text: "anthropic" }, { text: " " }, { text: "unsupported", status: "error" }],
+    },
+    groups: [{
+      id: "unsupported",
+      order: 10,
+      items: [{
+        id: "unsupported:header",
+        order: 10,
+        kind: "header",
+        title: "anthropic",
+        detailSegments: [{ text: "unsupported", status: "error" }],
+      }],
+    }],
+  }
+  const expanded = mountPanel(unsupportedModel)
+  const collapsed = mountPanel(unsupportedModel, { initiallyCollapsed: true })
+  const expandedLayout = renderPanelLayout(unsupportedModel, { availableCells: 37 })
+  const collapsedLayout = renderPanelLayout(unsupportedModel, {
+    availableCells: 37,
+    collapsed: new Set(["panel:quota"]),
+  })
+
+  try {
+    const expandedTitle = expanded.elements.find((element) => element.type === "text" && element.props.children === "anthropic")
+    const expandedDetail = expanded.elements.find((element) => element.type === "text" && element.props.children === "unsupported")
+    const collapsedProvider = collapsed.elements.find((element) => element.type === "text" && element.props.children === "anthropic")
+    const collapsedDetail = collapsed.elements.find((element) => element.type === "text" && element.props.children === "unsupported")
+
+    assert.equal(expandedTitle?.props.flexBasis, 0)
+    assert.equal(expandedTitle?.props.flexGrow, 1)
+    assert.equal(expandedDetail?.props.fg, "#ff0000")
+    assert.equal(expandedTitle?.props.fg, undefined)
+    assert.equal(collapsedProvider?.props.fg, undefined)
+    assert.equal(collapsedDetail?.props.fg, "#ff0000")
+    assert.equal(expandedLayout.header.cells.reduce((width, cell) => width + cell.width, 0), 37)
+    assert.equal(collapsedLayout.header.cells.reduce((width, cell) => width + cell.width, 0), 37)
+    assert.deepEqual(collapsedLayout.header.cells.filter((cell) => cell.status).map((cell) => [cell.text, cell.status]), [
+      ["unsupported", "error"],
+    ])
+  } finally {
+    expanded.dispose()
+    collapsed.dispose()
   }
 })
 
