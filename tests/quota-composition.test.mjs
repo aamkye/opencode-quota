@@ -742,6 +742,26 @@ test("reacts to synchronized same-session model changes through the public event
   assert.equal(host.messageReadCount(), readsBeforeUnrelatedEvent)
   assert.deepEqual(refreshes, ["zai"])
 
+  let assistantEvent
+  const stopCapturingEvent = host.api.event.on("message.updated", (event) => {
+    assistantEvent = event
+  })
+  const readsBeforeAssistantEvent = host.messageReadCount()
+  host.emitMessageUpdated("session-1", { id: "a1", role: "assistant" })
+  await flushEffects()
+  stopCapturingEvent()
+  assert.deepEqual(assistantEvent, {
+    id: "message.updated:a1",
+    type: "message.updated",
+    properties: {
+      sessionID: "session-1",
+      info: { id: "a1", role: "assistant", sessionID: "session-1" },
+    },
+  })
+  assert.equal(host.messageReadCount(), readsBeforeAssistantEvent)
+  assert.equal(selection.selectedProviderID(), "zai")
+  assert.deepEqual(refreshes, ["zai"])
+
   host.setMessages("session-1", [
     { id: "o2", role: "user", model: { providerID: "chatgpt", modelID: "gpt-5.6-sol" } },
   ])

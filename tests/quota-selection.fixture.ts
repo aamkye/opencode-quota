@@ -1,4 +1,5 @@
 import { createStore } from "solid-js/store"
+import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 
 import { createQuotaSelection } from "../tui/quota.js"
 
@@ -16,6 +17,19 @@ type HostProvider = {
   key?: string
 }
 
+type HostMessageUpdatedEvent = {
+  id: string
+  type: "message.updated"
+  properties: {
+    sessionID: string
+    info: HostMessage & { sessionID: string }
+  }
+}
+
+export function typecheckMessageUpdatedEventContract(api: TuiPluginApi) {
+  return api.event.on("message.updated", (event: HostMessageUpdatedEvent) => void event)
+}
+
 export function createQuotaSelectionHost(input: {
   provider: readonly HostProvider[]
   messages: Record<string, readonly HostMessage[]>
@@ -27,10 +41,7 @@ export function createQuotaSelectionHost(input: {
     unreadableMessages: false,
   })
   const controller = new AbortController()
-  const messageUpdatedListeners = new Set<(event: {
-    type: "message.updated"
-    properties: { info: HostMessage & { sessionID: string } }
-  }) => void>()
+  const messageUpdatedListeners = new Set<(event: HostMessageUpdatedEvent) => void>()
   let cleanup: (() => void | Promise<void>)[] = []
   let disposed = false
   let messageReads = 0
@@ -52,10 +63,7 @@ export function createQuotaSelectionHost(input: {
       part: () => [],
     },
     event: {
-      on(type: string, handler: (event: {
-        type: "message.updated"
-        properties: { info: HostMessage & { sessionID: string } }
-      }) => void) {
+      on(type: string, handler: (event: HostMessageUpdatedEvent) => void) {
         if (type !== "message.updated") return () => undefined
         messageUpdatedListeners.add(handler)
         return () => {
@@ -94,10 +102,14 @@ export function createQuotaSelectionHost(input: {
     setUnreadableMessages(unreadable: boolean) {
       setState("unreadableMessages", unreadable)
     },
-    emitMessageUpdated(sessionID: string) {
-      const info = messagesBySession[sessionID]?.at(-1) ?? { id: `event-${sessionID}`, role: "user" }
+    emitMessageUpdated(sessionID: string, message?: HostMessage) {
+      const info = message ?? messagesBySession[sessionID]?.at(-1) ?? { id: `event-${sessionID}`, role: "user" }
       for (const handler of messageUpdatedListeners) {
-        handler({ type: "message.updated", properties: { info: { ...info, sessionID } } })
+        handler({
+          id: `message.updated:${info.id}`,
+          type: "message.updated",
+          properties: { sessionID, info: { ...info, sessionID } },
+        })
       }
     },
     async dispose() {
