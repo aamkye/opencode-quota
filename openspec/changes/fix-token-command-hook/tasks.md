@@ -9,3 +9,9 @@
 - [x] 2.1 Add failing TUI command and route tests for no-model report generation, range input, and return navigation.
 - [x] 2.2 Implement native token TUI commands, report route, and native range prompt.
 - [x] 2.3 Remove server token command deployment and verify local/global cleanup with the full project suite.
+
+## 3. Persist Token Reports in Chat
+
+- [ ] 3.1 Add regression coverage for no-reply report persistence, no-session toasts, and range Enter/Escape controls.
+- [ ] 3.2 Replace the standalone report route with no-reply chat-message delivery and a dialog-scoped range prompt.
+- [ ] 3.3 Run focused tests, the full suite, typecheck, and plugin build.
