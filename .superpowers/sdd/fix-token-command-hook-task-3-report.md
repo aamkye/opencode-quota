@@ -40,3 +40,29 @@ The test suite also verifies native token slash handlers and token-report routes
 
 - The eight reserved `tokens_*` names are intentionally removed even if a user configured them manually, because they are managed legacy entries under this migration.
 - Automated verification does not perform an interactive OpenCode TUI restart; manual UI validation remains the final environment-level check.
+
+## Review Follow-Up: Global Deployment Coverage
+
+### RED/GREEN Evidence
+
+1. RED intent: expanded the global XDG deployment fixture with a stale `plugins/opencode-tools-tokens.js` artifact, all eight managed `tokens_*` commands, and unrelated `opencode.json` configuration and commands.
+2. Focused result: `node --test tests/plugin-deploy.test.mjs` passed 5/5 on the first run. This did not establish a production defect because the existing cleanup implementation already removes the global artifact and managed commands while preserving unrelated configuration.
+3. GREEN: the expanded global test snapshots the complete deployed fixture, including `tui.json`, `opencode.json`, deployed artifacts, and an unrelated plugin, then proves the second deployment is byte-for-byte identical.
+
+### Changed Files
+
+- `tests/plugin-deploy.test.mjs`: seed and assert global stale-artifact cleanup, managed-command cleanup, unrelated configuration preservation, and whole-fixture idempotency.
+- `.superpowers/sdd/fix-token-command-hook-task-3-report.md`: record this review follow-up.
+
+### Tests
+
+- `node --test tests/plugin-deploy.test.mjs`: passed, 5/5 tests.
+- `npm test`: passed, 224/224 tests.
+
+### Commit
+
+- `test(deploy): cover global token cleanup`
+
+### Concerns
+
+- No production change was made because the expanded test passed immediately against the existing cleanup behavior.

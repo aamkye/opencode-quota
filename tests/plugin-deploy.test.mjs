@@ -248,13 +248,13 @@ test("local deployment merges root and selected .opencode configs without duplic
   assert.equal(activeManagedEntries.length, 1)
 })
 
-test("global config resolution honors XDG_CONFIG_HOME and deploys the same layout", async () => {
+test("global deployment removes token artifacts and commands while preserving unrelated config", async () => {
   const xdgRoot = await mkdtemp(join(tmpdir(), "opencode-tools-xdg-"))
   temporaryRoots.push(xdgRoot)
   const root = resolveGlobalConfigRoot({ XDG_CONFIG_HOME: xdgRoot }, "/unused-home")
   assert.equal(root, join(xdgRoot, "opencode"))
 
-  await mkdir(root, { recursive: true })
+  await mkdir(join(root, "plugins"), { recursive: true })
   await writeFile(join(root, "tui.json"), JSON.stringify({
     plugin: [
       "file:///tmp/other.js",
@@ -267,13 +267,30 @@ test("global config resolution honors XDG_CONFIG_HOME and deploys the same layou
       "./tokens.ts",
     ],
   }))
-  await deployPlugins(root, { logLevel: "silent" })
-  const first = await readFile(join(root, "tui.json"), "utf8")
-  await deployPlugins(root, { logLevel: "silent" })
-  const second = await readFile(join(root, "tui.json"), "utf8")
+  await writeFile(join(root, "plugins", "opencode-tools-tokens.js"), "obsolete")
+  await writeFile(join(root, "plugins", "unrelated.js"), "preserve")
+  await writeFile(join(root, "opencode.json"), JSON.stringify({
+    $schema: "https://opencode.ai/config.json",
+    provider: { unrelated: { enabled: true } },
+    formatter: { unrelated: { enabled: true } },
+    command: {
+      unrelated: { description: "Preserve this command", template: "echo unrelated" },
+      ...Object.fromEntries(tokenCommands.map((id) => [id, {
+        description: `Managed ${id}`,
+        template: "Generate the requested token usage report.",
+      }])),
+    },
+  }, null, 2))
 
-  assert.equal(second, first)
-  const config = JSON.parse(second)
+  await deployPlugins(root, { logLevel: "silent" })
+  const first = await snapshot(root)
+  await deployPlugins(root, { logLevel: "silent" })
+  const second = await snapshot(root)
+
+  assert.deepEqual(second, first)
+  assert.equal(first["plugins/unrelated.js"], "preserve")
+
+  const config = JSON.parse(first["tui.json"])
   assert.deepEqual(config.plugin, [
     "file:///tmp/other.js",
     ["file:///tmp/unrelated/tui/quota.tsx", { preserve: "quota" }],
@@ -292,8 +309,15 @@ test("global config resolution honors XDG_CONFIG_HOME and deploys the same layou
     },
   })
   assert.equal(basename(root), "opencode")
-  const commands = JSON.parse(await readFile(join(root, "opencode.json"), "utf8"))
-  assert.equal("command" in commands, false)
+  const commands = JSON.parse(first["opencode.json"])
+  assert.equal(commands.$schema, "https://opencode.ai/config.json")
+  assert.deepEqual(commands.provider, { unrelated: { enabled: true } })
+  assert.deepEqual(commands.formatter, { unrelated: { enabled: true } })
+  assert.deepEqual(commands.command, {
+    unrelated: { description: "Preserve this command", template: "echo unrelated" },
+  })
+  assert.ok(tokenCommands.every((id) => !(id in commands.command)))
+  await assert.rejects(readFile(join(root, "plugins", "opencode-tools-tokens.js"), "utf8"), { code: "ENOENT" })
 })
 
 test("package scripts expose local and global deployment without npm plugin specs", async () => {
