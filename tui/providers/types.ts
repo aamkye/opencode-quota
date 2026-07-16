@@ -39,6 +39,7 @@ export interface QuotaProviderAdapter {
   order: number
   panel: Accessor<PanelModel>
   home: Accessor<HomeQuotaSummary | null>
+  quotaSummary?: Accessor<HomeQuotaSummary | null>
   freshness: Accessor<ProviderFreshness>
   refresh(): Promise<void>
   setSessionID(sessionID: string): void

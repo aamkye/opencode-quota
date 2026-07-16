@@ -416,7 +416,9 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
 
     createEffect(() => {
       if (!auth()?.access) return
-      const exhausted = quotaData() ? openAiRemainingPct(quotaData()!.primary) <= 0 : false
+      const published = quotaState()
+      const exhausted = published?.generation === credentialGeneration
+        && openAiRemainingPct(published.data.primary) <= 0
       const timer = setInterval(() => void refresh(), exhausted ? EXHAUSTED_POLL_MS : refreshIntervalMs)
       unref(timer)
       onCleanup(() => clearInterval(timer))
@@ -477,6 +479,7 @@ export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOp
       panel: () => mapOpenAiPanelState({ phase: phase(), data: quotaData(), authenticated: Boolean(auth()?.access), now: now() }),
       // The legacy home slot removes unavailable and stale OpenAI data rather than showing cached usage.
       home: () => phase() === "ready" && quotaData() ? openAiHomeQuotaSummary(quotaData()!) : null,
+      quotaSummary: () => quotaData() ? openAiHomeQuotaSummary(quotaData()!) : null,
       freshness: () => freshnessFor(phase()),
       refresh,
       setSessionID(sessionID: string): void {

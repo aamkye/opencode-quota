@@ -628,6 +628,37 @@ test("replaces Z.AI credentials without publishing the old generation", async (t
   assert.equal(item(adapter.panel(), "zai:header").detail, "No Z.AI account linked")
 })
 
+test("retries a failed replacement credential at the default interval instead of retained exhausted backoff", async (t) => {
+  const clock = installFakeClock(now)
+  const pending = deferredRequests()
+  const { adapter, setCredential } = createReactiveTestAdapter(t, {
+    initialKey: "key-a",
+    fetch: pending.fetch,
+    clock,
+  })
+  await flushEffects()
+
+  pending.requests[0].resolve(quotaResponse(now + 3_600_000, 100))
+  await flushEffects()
+  assert.ok(clock.intervals.some((timer) => timer.active && timer.delay === 300_000), "the exhausted current generation uses backoff")
+
+  setCredential("key-b")
+  await flushEffects()
+  pending.requests[1].resolve({ ok: false })
+  await flushEffects()
+
+  assert.equal(adapter.freshness(), "stale")
+  assert.equal(item(adapter.panel(), "zai:5h").value, 0)
+  assert.equal(clock.intervals.some((timer) => timer.active && timer.delay === 300_000), false)
+  const replacementPoll = clock.intervals.find((timer) => timer.active && timer.delay === 10_000)
+  assert.ok(replacementPoll, "the replacement generation uses the default polling interval")
+
+  replacementPoll.callback()
+  await flushEffects()
+  assert.equal(pending.requests.length, 3)
+  assert.equal(pending.requests[2].authorization, "Bearer key-b")
+})
+
 test("does not carry a Z.AI reset boundary into a replacement generation", async (t) => {
   const clock = installFakeClock(now)
   const oldResetAt = now + 15 * 60 * 1_000

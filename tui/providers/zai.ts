@@ -525,7 +525,9 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
 
   createEffect(() => {
     const key = apiKey()
-    const exhausted = quotaData()?.tokenRemainingPct === 0
+    const published = quotaState()
+    const exhausted = published?.generation === credentialGeneration
+      && published.data.tokenRemainingPct === 0
     if (!key) return
     const timer = setInterval(() => void refresh(), exhausted ? EXHAUSTED_POLL_MS : refreshIntervalMs)
     unref(timer)
@@ -629,6 +631,7 @@ export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptio
     order: PROVIDER_ORDER,
     panel: () => mapZaiPanelState({ phase: phase(), data: quotaData(), retryAfterEpoch: retryAfterEpoch(), baselineSgt: baselineSgt(), cycleMs: cycleMs(), now: now() }),
     home: () => phase() === "ready" && quotaData() ? zaiHomeQuotaSummary(quotaData()!) : null,
+    quotaSummary: () => quotaData() ? zaiHomeQuotaSummary(quotaData()!) : null,
     freshness: () => freshnessFor(phase()),
     refresh,
     setSessionID(id: string): void {

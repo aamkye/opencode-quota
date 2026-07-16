@@ -23,6 +23,7 @@ process.env.XDG_DATA_HOME = isolatedProviderHome
 const { default: quotaPlugin, composeQuotaPanel, normalizeQuotaOptions, selectedQuotaProviderID, selectedSessionQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
 const { createQuotaSelectionHost, mountQuotaSelection } = await import("../.tmp-test/quota-selection.mjs")
 const { normalizePanelModel, renderPanelLayout } = await import("../.tmp-test/presentation-renderer.mjs")
+const { createReactiveOpenAiAdapter, createReactiveZaiAdapter } = await import("../.tmp-test/provider-lifecycle.mjs")
 
 after(async () => {
   await flushEffects()
@@ -211,6 +212,83 @@ test("keeps stale freshness separate from collapsed quota colors", () => {
 
   const constrained = renderPanelLayout(model, { availableCells: 10, collapsed: new Set(["panel:quota"]) })
   assert.equal(constrained.header.cells.reduce((width, cell) => width + cell.width, 0), 10)
+})
+
+test("composes stale collapsed summaries from real OpenAI and Z.AI adapters", async (t) => {
+  const originalFetch = globalThis.fetch
+  const originalError = console.error
+  let available = true
+  globalThis.fetch = async (url) => {
+    if (!available) return { ok: false, status: 503 }
+    if (url === "https://chatgpt.com/backend-api/wham/usage") {
+      return {
+        ok: true,
+        json: async () => ({
+          plan_type: "plus",
+          rate_limit: {
+            primary_window: { used_percent: 25, limit_window_seconds: 18_000, reset_after_seconds: 3_600 },
+            secondary_window: { used_percent: 40, limit_window_seconds: 604_800, reset_after_seconds: 86_400 },
+          },
+        }),
+      }
+    }
+    if (url === "https://api.z.ai/api/monitor/usage/quota/limit") {
+      return {
+        ok: true,
+        json: async () => ({
+          code: 200,
+          data: {
+            level: "pro",
+            limits: [
+              { type: "TOKENS_LIMIT", unit: 3, percentage: 25, nextResetTime: Date.now() + 3_600_000 },
+              { type: "TOKENS_LIMIT", unit: 6, percentage: 40, nextResetTime: Date.now() + 86_400_000 },
+            ],
+          },
+        }),
+      }
+    }
+    throw new Error(`Unexpected quota URL: ${url}`)
+  }
+  console.error = () => {}
+  const openai = createReactiveOpenAiAdapter("test-openai-token")
+  const zai = createReactiveZaiAdapter("test-zai-key")
+  t.after(async () => {
+    openai.adapter.dispose()
+    zai.adapter.dispose()
+    await flushEffects()
+    globalThis.fetch = originalFetch
+    console.error = originalError
+  })
+  await flushEffects()
+
+  assert.equal(composeQuotaPanel("openai", [openai.adapter]).collapsedSummary.text, "75%/60%")
+  assert.equal(composeQuotaPanel("zai", [zai.adapter]).collapsedSummary.text, "75%/60%")
+
+  available = false
+  await Promise.all([openai.adapter.refresh(), zai.adapter.refresh()])
+  assert.equal(openai.adapter.home(), null)
+  assert.equal(zai.adapter.home(), null)
+
+  for (const adapter of [openai.adapter, zai.adapter]) {
+    assert.deepEqual(composeQuotaPanel(adapter.id, [adapter]).collapsedSummary, {
+      kind: "text",
+      text: "stale 75%/60%",
+      segments: [
+        { text: "stale", status: "warning" },
+        { text: " ", status: "textMuted" },
+        { text: "75%/60%", status: "success" },
+      ],
+    })
+    assert.deepEqual(composeQuotaPanel(adapter.id, [adapter], { percentageMode: "used" }).collapsedSummary, {
+      kind: "text",
+      text: "stale 25%/40%",
+      segments: [
+        { text: "stale", status: "warning" },
+        { text: " ", status: "textMuted" },
+        { text: "25%/40%", status: "success" },
+      ],
+    })
+  }
 })
 
 async function aggregatePanel(t, options, observations = { intervals: [], requests: [] }) {

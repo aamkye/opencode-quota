@@ -528,8 +528,8 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Acces
                 <Show when={group.header}>
                   {(header) => (
                     <box flexDirection="row" width="100%" onMouseDown={header().collapsible ? () => toggle(`group:${group.id}`) : undefined}>
-                      <text>{header().collapsible ? (groupCollapsed() ? "▶ " : "▼ ") : ""}</text>
-                      <text>{header().title}</text>
+                      <text fg={group.id === "other-providers" ? props.theme().textMuted : undefined}>{header().collapsible ? (groupCollapsed() ? "▶ " : "▼ ") : ""}</text>
+                      <text fg={group.id === "other-providers" ? props.theme().textMuted : undefined}>{header().title}</text>
                     </box>
                   )}
                 </Show>

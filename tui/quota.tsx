@@ -211,8 +211,8 @@ function providerItems(provider: QuotaProviderAdapter, options: NormalizedCompos
 }
 
 function providerPrimaryPct(provider: QuotaProviderAdapter): number | null {
-  const home = provider.home()
-  if (home) return home.primaryPct
+  const quota = provider.quotaSummary?.() ?? provider.home()
+  if (quota) return quota.primaryPct
 
   for (const group of provider.panel().groups) {
     const primary = group.items.find((item) => item.kind === "progress")
@@ -227,14 +227,14 @@ function providerName(provider: QuotaProviderAdapter): string {
 
 function summary(provider: QuotaProviderAdapter | undefined, options: NormalizedCompositionOptions) {
   if (!provider) return undefined
-  const home = provider.home()
-  if (!home) return undefined
+  const quota = provider.quotaSummary?.() ?? provider.home()
+  if (!quota) return undefined
 
-  const primary = metric(home.primaryPct, options)
-  const secondary = typeof home.secondaryPct === "number"
-    ? `/${Math.round(metric(home.secondaryPct, options))}%`
+  const primary = metric(quota.primaryPct, options)
+  const secondary = typeof quota.secondaryPct === "number"
+    ? `/${Math.round(metric(quota.secondaryPct, options))}%`
     : ""
-  const status = percentStatus(home.primaryPct, options)
+  const status = percentStatus(quota.primaryPct, options)
   const percentages = `${Math.round(primary)}%${secondary}`
   if (provider.freshness() === "stale") {
     return {

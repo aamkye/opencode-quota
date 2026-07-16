@@ -275,6 +275,46 @@ test("renders a semantic divider inside one panel group", () => {
   }
 })
 
+test("mutes only the Other providers group marker and title", () => {
+  const groupHeaderModel = {
+    id: "quota",
+    order: 10,
+    title: "Quota",
+    groups: [
+      {
+        id: "primary-group",
+        order: 10,
+        header: { title: "Primary group", collapsible: true },
+        items: [],
+      },
+      {
+        id: "other-providers",
+        order: 20,
+        header: { title: "Other providers", collapsible: true },
+        items: [],
+      },
+    ],
+  }
+  const { elements, dispose } = mountPanel(groupHeaderModel)
+
+  try {
+    const headerRows = elements.filter((element) =>
+      element.type === "box"
+      && typeof element.props.onMouseDown === "function"
+      && Array.isArray(element.props.children)
+      && element.props.children.length === 2)
+    const primaryHeader = headerRows.find((row) => row.props.children[1]?.props?.children === "Primary group")
+    const otherHeader = headerRows.find((row) => row.props.children[1]?.props?.children === "Other providers")
+
+    assert.equal(primaryHeader?.props.children[0]?.props?.fg, undefined)
+    assert.equal(primaryHeader?.props.children[1]?.props?.fg, undefined)
+    assert.equal(otherHeader?.props.children[0]?.props?.fg, "#888888")
+    assert.equal(otherHeader?.props.children[1]?.props?.fg, "#888888")
+  } finally {
+    dispose()
+  }
+})
+
 test("mounts ordinary and segmented provider-header details at the right edge", () => {
   const headerModel = {
     id: "quota",
