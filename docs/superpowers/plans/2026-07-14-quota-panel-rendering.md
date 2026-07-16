@@ -3742,19 +3742,19 @@ Commit only the Task 16 source/test slice, then run one thorough task review aga
 - Produces: deterministic Peak/Off-Peak expectations independent of the verification wall clock.
 - Preserves: all production Z.AI behavior and Task 14 replacement/removal/disposal assertions.
 
-- [ ] **Step 1: Preserve the observed wall-clock failure as RED**
+- [x] **Step 1: Preserve the observed wall-clock failure as RED**
 
 Use the existing isolated failing command/evidence from Task 16 final verification. Confirm the scenario expects the fixed-time Peak label but currently reads actual Off-Peak time.
 
-- [ ] **Step 2: Install the existing fixed clock for the affected test only**
+- [x] **Step 2: Install the existing fixed clock for the affected test only**
 
 Apply the smallest test-only change using the suite's existing clock pattern. Do not change provider code, timezone rules, Peak/Off-Peak arithmetic, or unrelated lifecycle assertions.
 
-- [ ] **Step 3: Verify focused GREEN and the full suite**
+- [x] **Step 3: Verify focused GREEN and the full suite**
 
 Run the affected Z.AI test file, `npm run typecheck`, and `npm test`. Expected: every command exits `0` with no wall-clock-dependent status mismatch.
 
-- [ ] **Step 4: Commit and complete thorough task review**
+- [x] **Step 4: Commit and complete thorough task review**
 
 Commit only the deterministic test correction and obtain one thorough task review before checkoff.
 
