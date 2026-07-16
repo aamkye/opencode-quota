@@ -14,4 +14,4 @@
 
 - [x] 3.1 Add regression coverage for no-reply report persistence, no-session toasts, and range Enter/Escape controls.
 - [x] 3.2 Replace the standalone report route with no-reply chat-message delivery and a dialog-scoped range prompt.
-- [ ] 3.3 Run focused tests, the full suite, typecheck, and plugin build.
+- [x] 3.3 Run focused tests, the full suite, typecheck, and plugin build.
