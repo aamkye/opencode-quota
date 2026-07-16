@@ -2919,7 +2919,7 @@ git commit -m "fix(tui): secure OpenAI credential lifecycle"
 - Produces: stale Z.AI `detailSegments` in exact order: colored Peak/Off-Peak, `textMuted` ` / `, warning `stale`; no `zai:stale` item.
 - Preserves: Z.AI heuristic fallback when an initial authenticated fetch fails, retry/reset parsing, polling/backoff, stale expiry, reset-boundary queueing, and the public `QuotaProviderAdapter` signature.
 
-- [ ] **Step 1: Bind Z.AI tests to the shared lifecycle fixture**
+- [x] **Step 1: Bind Z.AI tests to the shared lifecycle fixture**
 
 Keep the existing direct provider bundle import for mapping/fetch tests, add `fetchZaiQuota` to it, and import the Task 13 fixture export separately:
 
@@ -2992,7 +2992,7 @@ function deferredRequests() {
 }
 ```
 
-- [ ] **Step 2: Add failing Z.AI stale-header, replacement-boundary, abort-log, removal, and disposal tests**
+- [x] **Step 2: Add failing Z.AI stale-header, replacement-boundary, abort-log, removal, and disposal tests**
 
 Replace the existing stale model test in `tests/provider-zai.test.mjs` with:
 
@@ -3215,7 +3215,7 @@ test("aborts and clears the Z.AI request timeout immediately on dispose", async 
 
 Retain the existing `queues one Z.AI reset-boundary refresh behind an older request` test unchanged. Its same-generation ordering remains required: after the boundary callback, `requests` stays `2`; after `resolvePending(...)` and `flushEffects()`, `requests` becomes exactly `3`.
 
-- [ ] **Step 3: Run the Z.AI provider test and verify RED**
+- [x] **Step 3: Run the Z.AI provider test and verify RED**
 
 Run:
 
@@ -3225,7 +3225,7 @@ node tests/compile-presentation.mjs && node --test tests/provider-zai.test.mjs t
 
 Expected: `.tmp-test/provider-lifecycle.mjs` imports successfully and the same-runtime Z.AI setter triggers provider effects. Tests then FAIL because stale mapping/abort/disposal behavior is absent and `oldBoundary.active` remains `true` after replacement; invoking that old callback while the replacement is pending can populate the unowned numeric `pendingBoundary` and produce an extra request after settlement.
 
-- [ ] **Step 4: Allow Z.AI adapter-owned signals while preserving helper callers**
+- [x] **Step 4: Allow Z.AI adapter-owned signals while preserving helper callers**
 
 Replace `fetchZaiQuota()` in `tui/providers/zai.ts` with this signature/opening and retain the existing response parsing body between the `try` and `catch`:
 
@@ -3298,7 +3298,7 @@ export async function fetchZaiQuota(apiKey: string, signal?: AbortSignal): Promi
 }
 ```
 
-- [ ] **Step 5: Add Z.AI stale-header mapping, generation ownership, and credential transitions**
+- [x] **Step 5: Add Z.AI stale-header mapping, generation ownership, and credential transitions**
 
 Add `PanelStatus` and `PanelTextSegment` to the type import from `tui/presentation/types.ts`. Replace the Z.AI `header()` helper and ready/stale branch with the exact compatible mapping below:
 
@@ -3547,7 +3547,7 @@ Clearing `retryAfterEpoch` during every credential transition prevents a fallbac
     },
 ```
 
-- [ ] **Step 6: Run Z.AI lifecycle and fallback tests to verify GREEN**
+- [x] **Step 6: Run Z.AI lifecycle and fallback tests to verify GREEN**
 
 Run:
 
@@ -3557,7 +3557,7 @@ node tests/compile-presentation.mjs && node --test tests/provider-zai.test.mjs t
 
 Expected: all focused tests PASS. The fixture-driven setter is observed by the bundled Z.AI constructor; replacement clears old quota/retry boundaries and starts exactly one request while spanning the old reset epoch; success schedules a new-generation boundary; the same-generation test still queues exactly one follow-up; segmented stale state, silent aborts, retained diagnostics, removal/disposal, heuristic fallback, and session fallback pass; TypeScript exits `0`.
 
-- [ ] **Step 7: Commit the Z.AI lifecycle slice**
+- [x] **Step 7: Commit the Z.AI lifecycle slice**
 
 ```bash
 git add tui/providers/zai.ts tests/provider-zai.test.mjs tests/presentation-mounted.test.mjs
