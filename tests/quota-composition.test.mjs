@@ -783,6 +783,85 @@ test("resolves the newest supported user model and falls back without usable met
   ], providers, "zai"), "zai")
 })
 
+test("uses the active user event before synchronized messages catch up", async (t) => {
+  const refreshes = []
+  const zai = provider({
+    id: "zai",
+    title: "Z.AI",
+    order: 110,
+    primaryPct: 60,
+    onRefresh: async () => refreshes.push("zai"),
+  })
+  const openai = provider({
+    id: "openai",
+    title: "OpenAI",
+    order: 120,
+    primaryPct: 70,
+    onRefresh: async () => refreshes.push("openai"),
+  })
+  const providers = [zai, openai]
+  const host = createQuotaSelectionHost({
+    provider: [{ id: "zai-coding-plan" }],
+    messages: {
+      "session-1": [{ id: "z1", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } }],
+      "session-2": [{ id: "z2", role: "user", model: { providerID: "zai-coding-plan", modelID: "glm-4.7" } }],
+    },
+  })
+  const selection = mountQuotaSelection(host.api, providers)
+  t.after(() => host.dispose())
+
+  selection.renderSidebar("session-1")
+  await flushEffects()
+  assert.equal(selection.selectedProviderID(), "zai")
+  assert.deepEqual(refreshes, ["zai"])
+
+  const readsBeforeEvent = host.messageReadCount()
+  host.emitMessageUpdated("session-1", {
+    id: "o1",
+    role: "user",
+    model: { providerID: "chatgpt", modelID: "gpt-5.6-sol" },
+  })
+
+  assert.equal(selection.selectedProviderID(), "openai")
+  assert.equal(host.messageReadCount(), readsBeforeEvent)
+  const model = composeQuotaPanel(selection.selectedProviderID(), providers)
+  assert.equal(model.groups[0].id, "openai:quota")
+  assert.equal(JSON.stringify(model).includes("gpt-5.6-sol"), false)
+  await flushEffects()
+  assert.deepEqual(refreshes, ["zai", "openai"])
+
+  host.emitMessageUpdated("session-1", {
+    id: "o2",
+    role: "user",
+    model: { providerID: "opencode", modelID: "gpt-5" },
+  })
+  await flushEffects()
+  assert.equal(selection.selectedProviderID(), "openai")
+  assert.deepEqual(refreshes, ["zai", "openai"])
+
+  host.emitMessageUpdated("session-1", {
+    id: "u1",
+    role: "user",
+    model: { providerID: "unsupported", modelID: "other" },
+  })
+  await flushEffects()
+  assert.equal(selection.selectedProviderID(), "zai")
+  assert.deepEqual(refreshes, ["zai", "openai", "zai"])
+
+  host.emitMessageUpdated("session-1", {
+    id: "o3",
+    role: "user",
+    model: { providerID: "openai", modelID: "gpt-5" },
+  })
+  assert.equal(selection.selectedProviderID(), "openai")
+  selection.renderSidebar("session-2")
+  assert.equal(selection.selectedProviderID(), "zai")
+  selection.renderSidebar("session-1")
+  assert.equal(selection.selectedProviderID(), "zai")
+  await flushEffects()
+  assert.deepEqual(refreshes, ["zai", "openai", "zai", "openai", "zai"])
+})
+
 test("reacts to synchronized same-session model changes through the public event bus", async () => {
   const refreshes = []
   const zai = provider({

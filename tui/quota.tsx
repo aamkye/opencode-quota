@@ -336,17 +336,28 @@ export function createQuotaSelection(
   let dispose: () => void = () => undefined
   const selection = createRoot((rootDispose) => {
     dispose = rootDispose
-    const [sessionID, setSessionID] = createSignal("")
-    const [messageRevision, setMessageRevision] = createSignal(0)
+    const [sessionID, setActiveSessionID] = createSignal("")
+    const [eventSelection, setEventSelection] = createSignal<{
+      sessionID: string
+      providerID: string | undefined
+    }>()
     onCleanup(api.event.on("message.updated", (event) => {
       if (event.properties.info.sessionID !== sessionID() || event.properties.info.role !== "user") return
-      setMessageRevision((revision) => revision + 1)
+      setEventSelection({
+        sessionID: event.properties.info.sessionID,
+        providerID: event.properties.info.model?.providerID,
+      })
     }))
     const selectedProviderID = createMemo(() => {
-      messageRevision()
       const fallbackID = selectedQuotaProviderID(api.state.provider, providers)
       const id = sessionID()
       if (!id) return fallbackID
+      const submitted = eventSelection()
+      if (submitted?.sessionID === id) {
+        return selectedSessionQuotaProviderID([
+          { role: "user", model: { providerID: submitted.providerID } },
+        ], providers, fallbackID)
+      }
       try {
         return selectedSessionQuotaProviderID(api.state.session.messages(id), providers, fallbackID)
       } catch {
@@ -363,7 +374,14 @@ export function createQuotaSelection(
       void providers.find((provider) => provider.id === adapterID)?.refresh()
     })
 
-    return { selectedProviderID, setSessionID }
+    return {
+      selectedProviderID,
+      setSessionID(nextSessionID: string) {
+        if (nextSessionID === sessionID()) return
+        setActiveSessionID(nextSessionID)
+        setEventSelection(undefined)
+      },
+    }
   })
 
   try {
