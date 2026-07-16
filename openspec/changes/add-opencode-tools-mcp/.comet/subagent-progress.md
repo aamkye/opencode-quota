@@ -3,15 +3,15 @@
 - Change: add-opencode-tools-mcp
 - Review mode: thorough
 - TDD mode: tdd
-- Current plan task: Add API-Scoped Service Leases (OpenSpec 1.4)
-- Mapped OpenSpec task: 1.4 Add failing tests for API-scoped service acquisition, ref counts, idempotent release, and final disposal.
+- Current plan task: Build the Reconciled Provider Hub (OpenSpec 1.5)
+- Mapped OpenSpec task: 1.5 Implement the shared service lease registry and provider hub used by quota and home.
 - Stage: done
 - Review-fix round: 1 of 2
-- Implementation commit: 977bf037359ac666c1f178ebdc657e9795b0d9c3; fix be43af0
-- Changed files: tui/runtime/plugin.ts, tests/plugin-runtime.test.mjs, tests/plugin-runtime-contract.fixture.ts, shared/opencode-tools-shared.ts
-- RED evidence: focused lease test command failed with expected missing `acquireService` export
-- GREEN evidence: initial command passed 11/11; review-fix focused command passed 5/5 and regression passed 13/13
-- Review status: Task 3 implementation and task-scoped quality approved after review-fix round 1; plan and OpenSpec task-checkoff verification passed; unchanged OpenCode engine floor deferred to explicit Task 16
-- Risk signals: cross-module, shared mutable state/reentrant disposal, public API, cumulative task diff exceeds 200 lines; no remaining concerns after fix
-- Unresolved feedback: none; OpenCode `>=1.18.1` is a tracked cross-task constraint assigned to Task 16, not a Task 3 scope gap
-- Recovery action: continue immediately to Plan Task 4
+- Implementation commit: ba6eeff436a95f3a4fd5ed1a2006f8ff108757fb plus fix bbd56616a09e1f5c4db5ae2ee7463f5edbd46d3a
+- Changed files: `tui/services/quota-provider-hub.ts`, `tests/provider-hub.test.mjs`, `tests/compile-presentation.mjs`, `shared/opencode-tools-shared.ts`
+- RED evidence: `node tests/compile-presentation.mjs && node --test tests/provider-hub.test.mjs` failed non-zero because esbuild could not resolve `tui/services/quota-provider-hub.ts`
+- GREEN evidence: initial exact brief suite passed 91/91; fix focused suite passed 5/5 and exact brief regression suite passed 93/93, exit 0
+- Review status: fix-round-1 re-review APPROVED; spec PASS, quality APPROVED, TDD PASS; no findings; Task 4 and OpenSpec 1.5 targeted checkoffs PASS
+- Risk signals: cross-module/subsystem; shared mutable state; public shared API; 437-line task diff exceeds 200 lines
+- Unresolved feedback: none; deferred cross-task gates mapped by reviewer to Tasks 2.2-2.5, 3.1-4.5, and 5.1-5.4
+- Recovery action: commit focused coordinator progress, then immediately dispatch fresh Plan Task 5 implementer

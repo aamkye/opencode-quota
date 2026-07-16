@@ -4,7 +4,7 @@
 - [x] 1.2 Add failing tests for standalone module creation, lifecycle cleanup, partial activation rollback, and already-aborted activation.
 - [x] 1.3 Implement and export the shared `defineTuiPlugin` runtime contract.
 - [x] 1.4 Add failing tests for API-scoped service acquisition, ref counts, idempotent release, and final disposal.
-- [ ] 1.5 Implement the shared service lease registry and provider hub used by quota and home.
+- [x] 1.5 Implement the shared service lease registry and provider hub used by quota and home.
 
 ## 2. Current Plugin Migration
 

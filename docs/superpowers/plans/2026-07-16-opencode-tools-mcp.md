@@ -312,7 +312,7 @@ git commit -m "feat: add API-scoped service leases"
 - Produces: `QuotaProviderDemand`, `QuotaProviderHub`, `createQuotaProviderHub(api, factories?)`, and `acquireQuotaProviderHub(context, demand)`.
 - Hub exposes stable `providers(): readonly QuotaProviderAdapter[]`; demands are removed before the service lease releases.
 
-- [ ] **Step 1: Write reconciliation tests with injected factories**
+- [x] **Step 1: Write reconciliation tests with injected factories**
 
 Compile the service to `.tmp-test/provider-hub.mjs`. Factory spies must record `{ kind, options, disposeCount }`. Cover home-first then quota, quota-first then home, identical demand reuse, quota refresh/hideTools changes replacing only Z.AI/OpenAI, OpenCode Go add/remove, quota release while home remains, and final hub disposal.
 
@@ -331,23 +331,23 @@ assert.deepEqual(home.value.providers().map((provider) => provider.id), ["zai", 
 assert.equal(replaced.every((provider) => provider.disposeCount === 1), true)
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/provider-hub.test.mjs`
 
 Expected: FAIL because the provider-hub module does not exist.
 
-- [ ] **Step 3: Implement demand reconciliation**
+- [x] **Step 3: Implement demand reconciliation**
 
 Represent each consumer with a unique demand token. Home requires default Z.AI and OpenAI. While any quota demand exists, its normalized refresh interval, Z.AI `hideTools`, and optional OpenCode Go config win; otherwise use home defaults. Keep each adapter when its construction key is unchanged, dispose and replace only changed adapters, publish providers in Z.AI/OpenAI/OpenCode Go order, and dispose every remaining adapter once on hub shutdown. `acquireQuotaProviderHub` must acquire service key `quota-provider-hub`, add the demand, register demand removal after service acquisition so LIFO removes demand first, and return the shared lease value.
 
-- [ ] **Step 4: Run GREEN and provider regressions**
+- [x] **Step 4: Run GREEN and provider regressions**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/provider-hub.test.mjs tests/provider-zai.test.mjs tests/provider-openai.test.mjs tests/provider-opencode-go.test.mjs`
 
 Expected: PASS; provider internals retain their current lifecycle behavior.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tui/services/quota-provider-hub.ts shared/opencode-tools-shared.ts tests/provider-hub.test.mjs tests/compile-presentation.mjs
