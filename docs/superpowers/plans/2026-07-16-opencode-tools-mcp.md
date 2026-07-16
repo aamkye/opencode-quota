@@ -363,27 +363,27 @@ git commit -m "feat: share quota provider demand through a hub"
 **Interfaces:**
 - Tests current adapter surfaces before moving logic: quota registers only `sidebar_content`, home only `home_bottom`, token-report only two keymap layers.
 
-- [ ] **Step 1: Add adapter activation parity tests**
+- [x] **Step 1: Add adapter activation parity tests**
 
 Compile `tui/quota.tsx`, `tui/home.tsx`, and `tui/token-report.tsx` as separate fixture outputs. Use a complete fake API with lifecycle, slots, keymap, provider/session state, event, KV, route, UI, and client. Assert each module registers only its own surface and disposal removes provider/event resources. Retain the existing detailed assertions in `tests/quota-composition.test.mjs`, `tests/home-quota.test.mjs`, and `tests/token-tui.test.mjs`.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/plugin-adapters.test.mjs`
 
 Expected: FAIL until fixture outputs and expected isolated activation are wired; quota's direct ID expectation also exposes the old `aamkye/opencode-tools` identity.
 
-- [ ] **Step 3: Complete only the parity harness**
+- [x] **Step 3: Complete only the parity harness**
 
 Do not migrate feature code in this task. Make the harness observe present registrations and record the intentional old quota ID as a baseline assertion that Task 8 will replace. Ensure fake network calls are injected or disabled and every lifecycle is disposed in `finally`.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/plugin-adapters.test.mjs tests/quota-composition.test.mjs tests/home-quota.test.mjs tests/token-tui.test.mjs`
 
 Expected: PASS with pre-migration behavior captured.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/plugin-adapters.test.mjs tests/compile-presentation.mjs

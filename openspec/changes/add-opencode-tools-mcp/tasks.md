@@ -8,7 +8,7 @@
 
 ## 2. Current Plugin Migration
 
-- [ ] 2.1 Add parity tests that lock quota, home, and token-report behavior before migration.
+- [x] 2.1 Add parity tests that lock quota, home, and token-report behavior before migration.
 - [ ] 2.2 Move reusable quota composition, options, selection, and provider ownership behind shared exports.
 - [ ] 2.3 Move reusable home and token-report decisions behind shared exports and reduce all current TUI entries to thin adapters.
 - [ ] 2.4 Convert quota, home, and token-report to standalone modules with normalized manifest IDs.

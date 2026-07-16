@@ -39,3 +39,4 @@ add-opencode-tools-mcp Task 1: complete (commit 1b34bec plus checkoff commit 287
 add-opencode-tools-mcp Task 2: complete (commits c2cc265..8a44bf9, user accepted focused review-fix history, final thorough review clean)
 add-opencode-tools-mcp Task 3: complete (commits 977bf03..be43af0, review clean after one API-contract fix; engine-floor cross-task gate deferred to Task 16)
 add-opencode-tools-mcp Task 4: complete (commits ba6eeff..bbd5661, review clean after one transactional reconciliation fix round)
+add-opencode-tools-mcp Task 5: complete (commit b613875, thorough review clean)
