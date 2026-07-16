@@ -536,12 +536,55 @@ test("orders configured secondary metrics by direction and keeps each header wit
   const others = normalizePanelModel(model).groups.find((group) => group.id === "other-providers")
 
   assert.deepEqual(others.items.map((entry) => entry.id), [
-    "alpha:header", "alpha:5H", "alpha:5H:reset", "alpha:7D", "alpha:7D:reset",
+    "alpha:header", "alpha:7D", "alpha:7D:reset", "alpha:5H", "alpha:5H:reset",
     "other-providers:gamma:divider",
     "gamma:header", "gamma:5H", "gamma:5H:reset", "gamma:7D", "gamma:7D:reset",
     "other-providers:beta:divider",
     "beta:header", "beta:5H", "beta:5H:reset", "beta:7D", "beta:7D:reset",
   ])
+})
+
+test("sorts semantic items and partitions each provider group independently", () => {
+  const selected = provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50 })
+  const shuffled = provider({
+    id: "alpha",
+    title: "Alpha",
+    order: 130,
+    primaryPct: 70,
+    groups: [
+      {
+        id: "alpha:later",
+        order: 20,
+        items: [
+          { id: "alpha:5h-note", order: 30, kind: "text", text: "5H note" },
+          { id: "alpha:5h", order: 20, kind: "progress", label: "5H", value: 70, total: 100 },
+          { id: "alpha:later-preamble", order: 10, kind: "text", text: "Later group" },
+        ],
+      },
+      {
+        id: "alpha:earlier",
+        order: 10,
+        items: [
+          { id: "alpha:7d-reset", order: 30, kind: "timer", label: "7D reset", state: "idle" },
+          { id: "alpha:7d", order: 20, kind: "progress", label: "7D", value: 60, total: 100 },
+          { id: "alpha:header", order: 10, kind: "header", title: "Alpha" },
+        ],
+      },
+    ],
+  })
+
+  const model = composeQuotaPanel("zai", [selected, shuffled])
+  const others = model.groups.find((group) => group.id === "other-providers")
+
+  assert.deepEqual(others.items.map((entry) => entry.id), [
+    "alpha:header",
+    "alpha:7d",
+    "alpha:7d-reset",
+    "alpha:later-preamble",
+    "alpha:5h",
+    "alpha:5h-note",
+  ])
+  assert.deepEqual(others.items.map((entry) => entry.order), [0, 1, 2, 3, 4, 5])
 })
 
 test("orders every quota window shortest-first", () => {

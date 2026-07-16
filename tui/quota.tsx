@@ -162,7 +162,7 @@ type ProviderItemGroup = {
 }
 
 function providerItemGroups(items: readonly PanelItem[]): { preamble: PanelItem[]; groups: ProviderItemGroup[] } {
-  const ordered = [...items]
+  const ordered = sortByOrderThenId(items)
   const firstProgress = ordered.findIndex((item) => item.kind === "progress")
   if (firstProgress < 0) return { preamble: ordered, groups: [] }
 
@@ -203,11 +203,11 @@ function orderedProviderItems(items: readonly PanelItem[], options: NormalizedCo
 }
 
 function providerItems(provider: QuotaProviderAdapter, options: NormalizedCompositionOptions, orderOffset: number): PanelItem[] {
-  return orderedProviderItems(
-    sortByOrderThenId(provider.panel().groups).flatMap((group) => group.items),
-    options,
-    orderOffset,
-  )
+  const items: PanelItem[] = []
+  for (const group of sortByOrderThenId(provider.panel().groups)) {
+    items.push(...orderedProviderItems(group.items, options, orderOffset + items.length))
+  }
+  return items
 }
 
 function providerPrimaryPct(provider: QuotaProviderAdapter): number | null {
