@@ -8,9 +8,11 @@ import { createZaiProvider } from "../providers/zai.js"
 import type { ServiceLease, TuiFeatureContext } from "../runtime/plugin.js"
 
 const QUOTA_PROVIDER_HUB_SERVICE_KEY = "quota-provider-hub"
+const DEFAULT_PROVIDER_REFRESH_INTERVAL_MS = 10_000
+const DEFAULT_ZAI_HIDE_TOOLS = false
 
 export type QuotaProviderDemand = {
-  consumer: string
+  consumer: "home" | "quota"
   refreshIntervalMs?: number
   zai?: {
     hideTools?: boolean
@@ -50,6 +52,14 @@ function normalizeRefreshInterval(value: number | undefined): number | undefined
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined
 }
 
+function effectiveRefreshInterval(value: number | undefined): number {
+  return normalizeRefreshInterval(value) ?? DEFAULT_PROVIDER_REFRESH_INTERVAL_MS
+}
+
+function effectiveZaiHideTools(value: boolean | undefined): boolean {
+  return value ?? DEFAULT_ZAI_HIDE_TOOLS
+}
+
 function zaiOptions(demand: QuotaProviderDemand): QuotaProviderOptions {
   const options: QuotaProviderOptions = {}
   const refreshIntervalMs = normalizeRefreshInterval(demand.refreshIntervalMs)
@@ -75,6 +85,26 @@ function openCodeGoOptions(demand: QuotaProviderDemand): OpenCodeGoProviderOptio
   return options
 }
 
+function zaiKey(demand: QuotaProviderDemand): string {
+  return JSON.stringify([
+    effectiveRefreshInterval(demand.refreshIntervalMs),
+    effectiveZaiHideTools(demand.zai?.hideTools),
+  ])
+}
+
+function openAiKey(demand: QuotaProviderDemand): string {
+  return JSON.stringify([effectiveRefreshInterval(demand.refreshIntervalMs)])
+}
+
+function openCodeGoKey(options: OpenCodeGoProviderOptions): string {
+  const config = options.config!
+  return JSON.stringify([
+    effectiveRefreshInterval(options.refreshIntervalMs),
+    config.workspaceId,
+    config.workspaceToken,
+  ])
+}
+
 function providerSpecs(
   api: TuiPluginApi,
   factories: ProviderFactorySet,
@@ -86,26 +116,21 @@ function providerSpecs(
     const zai = zaiOptions(demand)
     const openai = openAiOptions(demand)
     const openCodeGo = openCodeGoOptions(demand)
-    const openCodeGoConfig = openCodeGo?.config ?? null
     return [
       {
         id: "zai",
-        key: JSON.stringify([zai.refreshIntervalMs ?? null, zai.hideTools ?? null]),
+        key: zaiKey(demand),
         create: () => factories.createZaiProvider(api, zai),
       },
       {
         id: "openai",
-        key: JSON.stringify([openai.refreshIntervalMs ?? null]),
+        key: openAiKey(demand),
         create: () => factories.createOpenAiProvider(api, openai),
       },
       ...(openCodeGo
         ? [{
             id: "opencode-go",
-            key: JSON.stringify([
-              openCodeGo.refreshIntervalMs ?? null,
-              openCodeGoConfig!.workspaceId,
-              openCodeGoConfig!.workspaceToken,
-            ]),
+            key: openCodeGoKey(openCodeGo),
             create: () => factories.createOpenCodeGoProvider(api, openCodeGo),
           } satisfies ProviderSpec]
         : []),
@@ -116,12 +141,12 @@ function providerSpecs(
   return [
     {
       id: "zai",
-      key: "home",
+      key: zaiKey({ consumer: "home" }),
       create: () => factories.createZaiProvider(api, {}),
     },
     {
       id: "openai",
-      key: "home",
+      key: openAiKey({ consumer: "home" }),
       create: () => factories.createOpenAiProvider(api, {}),
     },
   ]
@@ -141,23 +166,39 @@ export function createQuotaProviderHub(
     if (disposed) return
     const nextRecords = new Map<string, ProviderRecord>()
     const nextProviders: QuotaProviderAdapter[] = []
-    for (const spec of providerSpecs(api, factories, [...demands.values()])) {
-      const current = records.get(spec.id)
-      if (current && current.key === spec.key) {
-        nextRecords.set(spec.id, current)
-        nextProviders.push(current.adapter)
+    const createdAdapters: QuotaProviderAdapter[] = []
+    try {
+      for (const spec of providerSpecs(api, factories, [...demands.values()])) {
+        const current = records.get(spec.id)
+        if (current && current.key === spec.key) {
+          nextRecords.set(spec.id, current)
+          nextProviders.push(current.adapter)
+          continue
+        }
+        const adapter = spec.create()
+        createdAdapters.push(adapter)
+        nextRecords.set(spec.id, { key: spec.key, adapter })
+        nextProviders.push(adapter)
+      }
+    } catch (error) {
+      for (const adapter of createdAdapters) adapter.dispose()
+      throw error
+    }
+
+    const replacedAdapters: QuotaProviderAdapter[] = []
+    const removedAdapters: QuotaProviderAdapter[] = []
+    for (const [id, record] of records) {
+      const nextRecord = nextRecords.get(id)
+      if (!nextRecord) {
+        removedAdapters.push(record.adapter)
         continue
       }
-      if (current) current.adapter.dispose()
-      const adapter = spec.create()
-      nextRecords.set(spec.id, { key: spec.key, adapter })
-      nextProviders.push(adapter)
-    }
-    for (const [id, record] of records) {
-      if (!nextRecords.has(id)) record.adapter.dispose()
+      if (nextRecord.adapter !== record.adapter) replacedAdapters.push(record.adapter)
     }
     records = nextRecords
     currentProviders = nextProviders
+    for (const adapter of replacedAdapters) adapter.dispose()
+    for (const adapter of removedAdapters) adapter.dispose()
   }
 
   return {
@@ -169,7 +210,12 @@ export function createQuotaProviderHub(
       const token = nextDemandToken
       nextDemandToken += 1
       demands.set(token, demand)
-      reconcile()
+      try {
+        reconcile()
+      } catch (error) {
+        demands.delete(token)
+        throw error
+      }
       let removed = false
       return () => {
         if (removed || disposed) return

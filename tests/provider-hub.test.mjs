@@ -176,6 +176,79 @@ test("reconciles quota-first then home and disposes remaining adapters on hub sh
   assert.equal(created.every((provider) => provider.disposeCount === 1), true)
 })
 
+test("reuses home adapters when quota demand matches effective default options", () => {
+  const created = []
+  const hub = createQuotaProviderHub({}, createProviderFactories(created))
+
+  const releaseHome = hub.addDemand({ consumer: "home" })
+  const homeProviders = hub.providers()
+
+  const releaseQuota = hub.addDemand({
+    consumer: "quota",
+    refreshIntervalMs: 10_000,
+    zai: { hideTools: false },
+    openCodeGo: null,
+  })
+
+  assert.equal(created.length, 2)
+  assert.deepEqual(hub.providers(), homeProviders)
+  assert.equal(created[0].disposeCount, 0)
+  assert.equal(created[1].disposeCount, 0)
+
+  releaseQuota()
+  assert.deepEqual(hub.providers(), homeProviders)
+
+  releaseHome()
+  assert.equal(created[0].disposeCount, 1)
+  assert.equal(created[1].disposeCount, 1)
+})
+
+test("rolls back a failed replacement while another consumer remains active", () => {
+  const created = []
+  let failQuotaReplacement = true
+  const factories = {
+    ...createProviderFactories(created),
+    createZaiProvider(_api, options = {}) {
+      if (failQuotaReplacement && options.hideTools === true) {
+        throw new Error("quota replacement failed")
+      }
+      return createSpyProvider("zai", options, created)
+    },
+  }
+  const hub = createQuotaProviderHub({}, factories)
+
+  const releaseHome = hub.addDemand({ consumer: "home" })
+  const homeProviders = hub.providers()
+  const [homeZai, homeOpenAi] = homeProviders
+
+  assert.throws(() => hub.addDemand(quotaDemand()), /quota replacement failed/)
+  assert.deepEqual(hub.providers(), homeProviders)
+  assert.equal(homeZai.disposeCount, 0)
+  assert.equal(homeOpenAi.disposeCount, 0)
+
+  failQuotaReplacement = false
+  const releaseQuota = hub.addDemand(quotaDemand({
+    refreshIntervalMs: 30_000,
+    zai: { hideTools: false },
+    openCodeGo: null,
+  }))
+  assert.deepEqual(hub.providers().map((provider) => provider.id), ["zai", "openai"])
+  assert.notDeepEqual(hub.providers(), homeProviders)
+  assert.equal(homeZai.disposeCount, 1)
+  assert.equal(homeOpenAi.disposeCount, 1)
+
+  releaseQuota()
+  assert.deepEqual(hub.providers().map((provider) => provider.id), ["zai", "openai"])
+  assert.deepEqual(created.slice(-2).map((provider) => [provider.kind, provider.options]), [
+    ["zai", {}],
+    ["openai", {}],
+  ])
+
+  releaseHome()
+  assert.equal(created.at(-2).disposeCount, 1)
+  assert.equal(created.at(-1).disposeCount, 1)
+})
+
 test("acquireQuotaProviderHub removes demand before releasing the shared hub service", async () => {
   const events = []
   const hub = {
