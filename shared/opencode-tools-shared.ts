@@ -1,5 +1,9 @@
 export { createOpenAiProvider } from "../tui/providers/openai.js";
 export {
+  acquireQuotaProviderHub,
+  createQuotaProviderHub,
+} from "../tui/services/quota-provider-hub.js";
+export {
   createOpenCodeGoProvider,
   fetchOpenCodeGoQuota,
   mapOpenCodeGoPanelState,
@@ -27,6 +31,10 @@ export type {
   QuotaProviderAdapter,
   ZaiHomeQuotaSummary,
 } from "../tui/providers/types.js";
+export type {
+  QuotaProviderDemand,
+  QuotaProviderHub,
+} from "../tui/services/quota-provider-hub.js";
 
 export {
   getCommandTitle,
