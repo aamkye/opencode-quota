@@ -51,6 +51,9 @@ test("loadable TUI entries use the shared facade for computation", () => {
     "./presentation/renderer.js",
     "./presentation/types.js",
   ])
+  assert.doesNotMatch(quota, /\bSIDEBAR_ORDER\b/)
+  assert.doesNotMatch(quota, /Record<string,\s*unknown>/)
+  assert.doesNotMatch(quota, /\[["'][^"']+["']\s*\+/)
   assert.doesNotMatch(quota, /\bnormalizeQuotaOptions\b/)
   assert.doesNotMatch(quota, /\bcomposeQuotaPanel\b/)
   assertRelativeImports("tui/home.tsx", ["../shared/opencode-tools-shared.js"])
@@ -70,6 +73,8 @@ test("shared facade exports computation without plugin registration or JSX", () 
   assert.match(shared, /composeQuotaPanel/)
   assert.match(shared, /createQuotaSelection/)
   assert.match(shared, /normalizeQuotaOptions/)
+  assert.match(shared, /quotaSidebarSlotOrder/)
+  assert.match(shared, /quotaAdapterShared/)
   assert.match(shared, /quotaProviderDemand/)
   assert.match(shared, /selectedQuotaProviderID/)
   assert.match(shared, /selectedSessionQuotaProviderID/)

@@ -1,4 +1,17 @@
-export { createOpenAiProvider } from "../tui/providers/openai.js";
+import { createOpenAiProvider } from "../tui/providers/openai.js";
+import {
+  composeQuotaPanel,
+  createQuotaSelection,
+  normalizeQuotaOptions,
+  quotaProviderDemand,
+  selectedQuotaProviderID,
+  selectedSessionQuotaProviderID,
+} from "../tui/features/quota.js";
+import { createOpenCodeGoProvider } from "../tui/providers/opencode-go.js";
+import { pluginDescriptor } from "../tui/runtime/manifest.js";
+import { createZaiProvider } from "../tui/providers/zai.js";
+
+export { createOpenAiProvider };
 export {
   acquireQuotaProviderHub,
   createQuotaProviderHub,
@@ -22,7 +35,7 @@ export type {
   OpenCodeGoQuotaData,
   OpenCodeGoWindow,
 } from "../tui/providers/opencode-go.js";
-export { createZaiProvider } from "../tui/providers/zai.js";
+export { createZaiProvider };
 export type {
   HomeQuotaSummary,
   OpenAiHomeQuotaSummary,
@@ -42,7 +55,7 @@ export {
   quotaProviderDemand,
   selectedQuotaProviderID,
   selectedSessionQuotaProviderID,
-} from "../tui/features/quota.js";
+};
 export type {
   NormalizedQuotaOptions,
   PercentageMode,
@@ -52,6 +65,28 @@ export type {
   QuotaSelection,
   SortDirection,
 } from "../tui/features/quota.js";
+
+export type QuotaAdapterShared = {
+  normalizeOptions: typeof normalizeQuotaOptions;
+  composePanel: typeof composeQuotaPanel;
+  createSelection: typeof createQuotaSelection;
+  quotaProviderDemand: typeof quotaProviderDemand;
+  createZaiProvider: typeof createZaiProvider;
+  createOpenAiProvider: typeof createOpenAiProvider;
+  createOpenCodeGoProvider: typeof createOpenCodeGoProvider;
+};
+
+export const quotaSidebarSlotOrder = pluginDescriptor("quota").slotOrder;
+
+export const quotaAdapterShared: QuotaAdapterShared = {
+  normalizeOptions: normalizeQuotaOptions,
+  composePanel: composeQuotaPanel,
+  createSelection: createQuotaSelection,
+  quotaProviderDemand,
+  createZaiProvider,
+  createOpenAiProvider,
+  createOpenCodeGoProvider,
+};
 
 export {
   getCommandTitle,

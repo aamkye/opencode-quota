@@ -334,7 +334,7 @@ test("composes stale collapsed summaries from real OpenAI and Z.AI adapters", as
   }
 })
 
-async function aggregatePanel(t, options, observations = { intervals: [], requests: [] }) {
+async function activateQuotaPlugin(t, options, observations = { intervals: [], requests: [] }) {
   const registrations = []
   const cleanup = []
   const originalFetch = globalThis.fetch
@@ -439,9 +439,19 @@ async function aggregatePanel(t, options, observations = { intervals: [], reques
 
   await quotaPlugin.tui(api, options)
   await flushEffects()
+  return { registrations }
+}
+
+async function aggregatePanel(t, options, observations = { intervals: [], requests: [] }) {
+  const { registrations } = await activateQuotaPlugin(t, options, observations)
   const element = registrations[0].slots.sidebar_content({}, { session_id: "session-1" })
   await flushEffects()
   return element.props.model()
+}
+
+async function aggregateRegistration(t, options, observations = { intervals: [], requests: [] }) {
+  const { registrations } = await activateQuotaPlugin(t, options, observations)
+  return registrations[0]
 }
 
 test("OpenCode Go integration constructs quota-only polling with normalized options", async (t) => {
@@ -471,6 +481,14 @@ test("OpenCode Go integration constructs quota-only polling with normalized opti
     { provider: "zai", authorization: "Bearer test-zai-key" },
   ])
   assert.equal(observations.intervals.filter((timer) => timer.active && timer.delay === 2_500).length, 3)
+})
+
+test("quota plugin keeps the manifest-owned sidebar slot order", async (t) => {
+  const registration = await aggregateRegistration(t, {
+    quota: { refreshIntervalSeconds: 2.5, opencodego: sentinel },
+  })
+
+  assert.equal(registration.order, 110)
 })
 
 test("keeps the selected supported provider first while loading or unavailable", () => {
