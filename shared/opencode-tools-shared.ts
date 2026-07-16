@@ -67,6 +67,7 @@ export type {
 } from "../tui/features/quota.js";
 
 export type QuotaAdapterShared = {
+  sidebarSlotOrder: typeof quotaSidebarSlotOrder;
   normalizeOptions: typeof normalizeQuotaOptions;
   composePanel: typeof composeQuotaPanel;
   createSelection: typeof createQuotaSelection;
@@ -79,6 +80,7 @@ export type QuotaAdapterShared = {
 export const quotaSidebarSlotOrder = pluginDescriptor("quota").slotOrder;
 
 export const quotaAdapterShared: QuotaAdapterShared = {
+  sidebarSlotOrder: quotaSidebarSlotOrder,
   normalizeOptions: normalizeQuotaOptions,
   composePanel: composeQuotaPanel,
   createSelection: createQuotaSelection,

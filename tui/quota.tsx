@@ -8,7 +8,6 @@ import type {
 import {
   createQuotaSelection,
   quotaAdapterShared,
-  quotaSidebarSlotOrder,
 } from "../shared/opencode-tools-shared.js"
 
 type QuotaSelectionController = ReturnType<typeof createQuotaSelection>
@@ -27,7 +26,7 @@ const tui: TuiPlugin = async (api, rawOptions) => {
 
   api.slots.register({
     // The aggregate owns the sole sidebar slot at the legacy Z.AI registration order.
-    order: quotaSidebarSlotOrder,
+    order: quotaAdapterShared.sidebarSlotOrder,
     slots: {
       sidebar_content(_ctx, props) {
         const sessionID = props.session_id ?? ""

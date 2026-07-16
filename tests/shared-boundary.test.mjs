@@ -64,6 +64,7 @@ test("loadable TUI entries use the shared facade for computation", () => {
 
 test("shared facade exports computation without plugin registration or JSX", () => {
   const shared = source(sharedPath)
+  const quotaFeature = source("tui/features/quota.ts")
 
   assert.ok(shared, `missing ${sharedPath}`)
   assert.match(shared, /createZaiProvider/)
@@ -81,6 +82,8 @@ test("shared facade exports computation without plugin registration or JSX", () 
   assert.match(shared, /computeTokenReport/)
   assert.match(shared, /renderTokenReport/)
   assert.doesNotMatch(shared, /@opentui\/|slots\.register|export\s+default|<[a-z][^>]*>/i)
+  assert.doesNotMatch(quotaFeature, /quotaSidebarSlotOrder|pluginDescriptor\(["']quota["']\)\.slotOrder/)
+  assert.doesNotMatch(quotaFeature, /\border:\s*110\b/)
   assert.doesNotMatch(source("tui/quota.tsx"), /from ["']\.\/providers\/opencode-go/)
   assert.doesNotMatch(source("tui/home.tsx"), /opencode-go/)
 })

@@ -356,7 +356,8 @@ export function composeQuotaPanel(
 
   return {
     id: "quota",
-    order: 110,
+    // Sidebar placement is owned by the adapter's manifest slot registration.
+    order: 0,
     title: "Quota",
     collapsedSummary: selection.kind === "unsupported"
       ? {
