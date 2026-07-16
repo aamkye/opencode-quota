@@ -2,7 +2,7 @@ import { build } from "esbuild"
 import { mkdirSync, rmSync } from "node:fs"
 import { resolve } from "node:path"
 
-for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-lifecycle", "quota-composition", "quota-selection", "home-composition", "token-tui", "token-tui-controlled"]) {
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-lifecycle", "quota-composition", "quota-selection", "home-composition", "token-tui", "token-tui-controlled", "plugin-runtime"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
 }
 mkdirSync(".tmp-test", { recursive: true })
@@ -27,6 +27,7 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
       build.onResolve({ filter: /opencode-tools-shared\.js$/ }, () => ({ path: resolve("tests/token-tui-dependencies.fixture.ts") }))
     },
   }], ["solid-js"]],
+  ["tui/runtime/plugin.ts", ".tmp-test/plugin-runtime.mjs"],
 ]) {
   await build({
     bundle: true,

@@ -44,3 +44,7 @@ export type {
   ComputeTokenReportParams,
   TokenReportData,
 } from "../lib/tokens/token-report-data";
+export { defineTuiPlugin } from "../tui/runtime/plugin.js";
+export type { FeatureActivation, TuiFeatureContext } from "../tui/runtime/plugin.js";
+export { pluginDescriptor, pluginManifest } from "../tui/runtime/manifest.js";
+export type { PluginKey, PluginManifestEntry } from "../tui/runtime/manifest.js";
