@@ -1,0 +1,33 @@
+[
+  {
+    "key": "quota",
+    "id": "aamkye/opencode-tools-quota",
+    "source": "tui/quota.tsx",
+    "outfile": "opencode-tools-quota.js",
+    "slotOrder": 110,
+    "options": "quota"
+  },
+  {
+    "key": "home",
+    "id": "aamkye/opencode-tools-home",
+    "source": "tui/home.tsx",
+    "outfile": "opencode-tools-home.js",
+    "slotOrder": 110,
+    "options": "none"
+  },
+  {
+    "key": "token-report",
+    "id": "aamkye/opencode-tools-token-report",
+    "source": "tui/token-report.tsx",
+    "outfile": "opencode-tools-token-report.js",
+    "options": "none"
+  },
+  {
+    "key": "mcp",
+    "id": "aamkye/opencode-tools-mcp",
+    "source": "tui/mcp.tsx",
+    "outfile": "opencode-tools-mcp.js",
+    "slotOrder": 111,
+    "options": "none"
+  }
+]
