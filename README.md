@@ -6,9 +6,9 @@
 > - [farrukh2002/opencode-glm-reset](https://github.com/farrukh2002/opencode-glm-reset)
 
 OpenCode TUI plugins that show quota usage, reset countdowns, rate-limit
-status, compact homepage summaries, MCP server health, LSP status, and
-`/tokens_*` reports for **Z.AI (GLM)**, **OpenAI (ChatGPT Plus/Pro)**, and
-**OpenCode Go**.
+status, compact homepage summaries, MCP server health, LSP status, synchronized
+session TODOs, and `/tokens_*` reports for **Z.AI (GLM)**,
+**OpenAI (ChatGPT Plus/Pro)**, and **OpenCode Go**.
 
 ![opencode-tools homepage bottom](img/img0.jpg)
 
@@ -77,6 +77,18 @@ status, compact homepage summaries, MCP server health, LSP status, and
   and shows `LSPs will activate as files are read` when the expanded list is
   empty.
 
+### TODO
+
+- **Synchronized session scope** — shows the active session's TODO records in
+  source order without polling.
+- **Status markers** — uses `[✓]` for completed, `[•]` for in-progress, `[ ]`
+  for pending or unknown, and `[-]` for cancelled records.
+- **Aligned wrapped rows** — reserves four cells for each marker so continuation
+  lines align beneath the content column. An empty list shows
+  `No TODOs for this session`.
+- **Persistent collapse state** — remembers the user's header-click preference
+  and summarizes completed records over all session records.
+
 ### Shared
 
 - **Homepage summary** — each provider plugin also registers a compact homepage
@@ -100,7 +112,7 @@ status, compact homepage summaries, MCP server health, LSP status, and
 The plugins are built and loaded only from local files. This package is not
 published to npm, and OpenCode is never configured with an npm package spec.
 OpenCode 1.18.1 or newer is required for the standalone TUI plugin and
-synchronized MCP and LSP APIs.
+synchronized MCP, LSP, and TODO state APIs.
 
 ### Configuration
 
@@ -136,7 +148,8 @@ Native TUI options can be supplied with the local plugin entry:
     "./opencode-tools-home.js",
     "./opencode-tools-token-report.js",
     "./opencode-tools-mcp.js",
-    "./opencode-tools-lsp.js"
+    "./opencode-tools-lsp.js",
+    "./opencode-tools-todo.js"
   ],
   "plugin_enabled": {
     "internal:sidebar-mcp": false,
@@ -146,10 +159,10 @@ Native TUI options can be supplied with the local plugin entry:
 ```
 
 The entries must remain standalone. Only quota accepts the options object;
-home, token-report, MCP, and LSP use string entries. LSP accepts no options.
-Neither external panel deactivates its built-in counterpart. Users must disable
-`internal:sidebar-mcp` and `internal:sidebar-lsp` themselves, as shown by
-`plugin_enabled`, to avoid duplicate panels.
+home, token-report, MCP, LSP, and TODO use string entries. LSP and TODO accept no
+options. Neither external panel deactivates its built-in counterpart. Users
+must disable `internal:sidebar-mcp` and `internal:sidebar-lsp` themselves, as
+shown by `plugin_enabled`, to avoid duplicate panels.
 
 `quota.opencodego.workspaceId` identifies the OpenCode Go workspace.
 `quota.opencodego.workspaceToken` authenticates the console request;
@@ -272,9 +285,45 @@ bullet, failed servers use an error bullet, and unknown statuses remain present
 with a muted bullet. Only header clicks write the persisted collapse
 preference.
 
+### TODO sidebar layouts
+
+TODO records stay in synchronized source order. Status markers occupy four
+cells, so wrapped content continues beneath the content column without trailing
+whitespace. TODO continuation lines align under the content column, and only
+completed records contribute to the collapsed numerator.
+
+#### Expanded
+
+```text
+▼ TODO
+-------------------------------------
+[✓] Explore existing panel patterns
+[•] Implement synchronized TODO
+    state and wrapped rows
+[ ] Verify build and deployment
+[-] Superseded task
+-------------------------------------
+```
+
+#### Expanded, empty
+
+```text
+▼ TODO
+-------------------------------------
+No TODOs for this session
+-------------------------------------
+```
+
+#### Collapsed
+
+```text
+▶ TODO                            2/5
+-------------------------------------
+```
+
 ### Build and deploy
 
-Build the five standalone minified ESM plugins and their imported shared
+Build the six standalone minified ESM plugins and their imported shared
 artifact:
 
 ```bash
@@ -291,7 +340,7 @@ npm run deploy:global
 ```
 
 Each deploy command rebuilds first and automatically migrates managed
-configuration entries to the five standalone entries in manifest order. It
+configuration entries to the six standalone entries in manifest order. It
 preserves unrelated plugin entries and preserves existing quota options;
 quota options remain attached only to the quota entry. Local deployment also
 removes managed source entries from the project-root `tui.json`, because
@@ -327,7 +376,8 @@ dist/
 ├── opencode-tools-home.js
 ├── opencode-tools-token-report.js
 ├── opencode-tools-mcp.js
-└── opencode-tools-lsp.js
+├── opencode-tools-lsp.js
+└── opencode-tools-todo.js
 ```
 
 | File | Runtime ID | Responsibility |
@@ -338,6 +388,7 @@ dist/
 | `opencode-tools-token-report.js` | `aamkye/opencode-tools-token-report` | TUI `/tokens_*` commands and reports. |
 | `opencode-tools-mcp.js` | `aamkye/opencode-tools-mcp` | Reactive MCP sidebar health panel immediately after quota. |
 | `opencode-tools-lsp.js` | `aamkye/opencode-tools-lsp` | Reactive LSP sidebar status panel immediately after MCP. |
+| `opencode-tools-todo.js` | `aamkye/opencode-tools-todo` | Synchronized session TODO sidebar panel immediately after LSP. |
 
 `solid-js`, `@opentui/*`, `@opencode-ai/plugin`, host SDK modules, and
 Node/Bun built-ins remain external and are provided by the OpenCode host.
@@ -360,10 +411,11 @@ change that title.
 | `tui/token-report.tsx`      | Standalone TUI token-report command adapter                           |
 | `tui/mcp.tsx`               | Standalone reactive MCP sidebar adapter                               |
 | `tui/lsp.tsx`               | Standalone reactive LSP sidebar adapter                               |
+| `tui/todo.tsx`              | Standalone synchronized session TODO sidebar adapter                  |
 | `tui/providers/`            | Z.AI, OpenAI, and OpenCode Go provider adapters                       |
 | `lib/tokens/`               | Vendored token reporting library ([upstream](https://github.com/slkiser/opencode-quota), MIT) |
 | `plugin-manifest.json`      | Manifest order, runtime IDs, artifacts, slots, and option ownership   |
-| `build-plugins.mjs`         | Builds the shared artifact and five standalone local ESM plugins      |
+| `build-plugins.mjs`         | Builds the shared artifact and six standalone local ESM plugins       |
 | `deploy-plugins.mjs`        | Idempotently migrates local/global artifacts and `tui.json` entries   |
 
 ### Edit workflow
@@ -373,7 +425,7 @@ Edit the relevant source, redeploy, then fully restart OpenCode to reload.
 ```bash
 npm install       # install/refresh deps in node_modules
 npm run typecheck # tsc --noEmit (informational; runtime resolves via Bun)
-npm run build:plugins # rebuild all five standalone plugins plus shared code
+npm run build:plugins # rebuild all six standalone plugins plus shared code
 npm run deploy:local # rebuild and deploy into this repository
 npm test          # run tests
 ```

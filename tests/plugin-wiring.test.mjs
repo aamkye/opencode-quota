@@ -64,7 +64,7 @@ test("tracked project files contain no active legacy identifier", () => {
   }
 })
 
-test("documents standalone installation, migration, MCP and LSP layouts, and rollback", () => {
+test("documents standalone installation, migration, MCP, LSP, and TODO layouts, and rollback", () => {
   const readme = readFileSync("README.md", "utf8")
   const prose = readme.replace(/\s+/gu, " ")
   const configurationText = readme.match(/### Configuration\n\n[\s\S]*?```json\n([\s\S]*?)\n```/u)?.[1]
@@ -78,6 +78,7 @@ test("documents standalone installation, migration, MCP and LSP layouts, and rol
     "./opencode-tools-token-report.js",
     "./opencode-tools-mcp.js",
     "./opencode-tools-lsp.js",
+    "./opencode-tools-todo.js",
   ])
   assert.deepEqual(Object.keys(configuration.plugin[0][1]), ["quota"])
   assert.equal(configuration.plugin.slice(1).every((entry) => typeof entry === "string"), true)
@@ -92,6 +93,7 @@ test("documents standalone installation, migration, MCP and LSP layouts, and rol
     "aamkye/opencode-tools-token-report",
     "aamkye/opencode-tools-mcp",
     "aamkye/opencode-tools-lsp",
+    "aamkye/opencode-tools-todo",
   ]) assert.equal(readme.includes(`\`${id}\``), true, `missing runtime ID: ${id}`)
 
   for (const text of [
@@ -155,7 +157,7 @@ test("documents standalone installation, migration, MCP and LSP layouts, and rol
   assert.match(prose, /For the unhealthy `2\/3` summary, `2` uses the success color, `3` uses the error color, and the slash is muted\./u)
   assert.match(prose, /For the empty `0\/0` summary, both numbers and the slash are muted\./u)
 
-  const lspLayouts = readme.match(/### LSP sidebar layouts\n\n([\s\S]*?)(?=\n### Build and deploy)/u)?.[1]
+  const lspLayouts = readme.match(/### LSP sidebar layouts\n\n([\s\S]*?)(?=\n### TODO sidebar layouts)/u)?.[1]
   assert.ok(lspLayouts, "missing LSP sidebar layouts")
   const expectedLspLayouts = new Map([
     ["Expanded", [
@@ -189,7 +191,45 @@ test("documents standalone installation, migration, MCP and LSP layouts, and rol
     }
   }
 
+  const todoLayouts = readme.match(/### TODO sidebar layouts\n\n([\s\S]*?)(?=\n### Build and deploy)/u)?.[1]
+  assert.ok(todoLayouts, "missing TODO sidebar layouts")
+  const expectedTodoLayouts = new Map([
+    ["Expanded", [
+      "▼ TODO",
+      "-".repeat(37),
+      "[✓] Explore existing panel patterns",
+      "[•] Implement synchronized TODO",
+      "    state and wrapped rows",
+      "[ ] Verify build and deployment",
+      "[-] Superseded task",
+      "-".repeat(37),
+    ]],
+    ["Expanded, empty", [
+      "▼ TODO",
+      "-".repeat(37),
+      "No TODOs for this session",
+      "-".repeat(37),
+    ]],
+    ["Collapsed", [
+      `${"▶ TODO".padEnd(34)}2/5`,
+      "-".repeat(37),
+    ]],
+  ])
+
+  for (const [heading, expected] of expectedTodoLayouts) {
+    const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")
+    const layout = todoLayouts.match(new RegExp(`#### ${escapedHeading}\\n\\n\`\`\`text\\n([\\s\\S]*?)\\n\`\`\``, "u"))?.[1]
+    assert.ok(layout, `missing ${heading} TODO layout`)
+    const lines = layout.split("\n")
+    assert.deepEqual(lines, expected, `${heading} TODO layout changed`)
+    for (const line of lines) {
+      assert.ok([...line].length <= 37, `${heading} TODO layout exceeds 37 cells: ${line}`)
+      assert.equal(line.trimEnd(), line, `${heading} TODO layout has trailing whitespace`)
+    }
+  }
+
   assert.match(prose, /Long IDs truncate with an ellipsis so expanded lines fit within 37 cells and collapsed lines fit within 36 cells\./u)
+  assert.match(prose, /TODO continuation lines align under the content column, and only completed records contribute to the collapsed numerator\./u)
 })
 
 test("documents secret-safe OpenCode Go configuration", () => {
