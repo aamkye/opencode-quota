@@ -20,6 +20,8 @@ export type {
 } from "../tui/presentation/compact-panel.js";
 export { allocateStatusRow } from "../tui/presentation/layout.js";
 export type { StatusRowAllocation } from "../tui/presentation/layout.js";
+export { createMcpPanelModel } from "../tui/features/mcp.js";
+export type { McpPanelModel, McpStatusRow } from "../tui/features/mcp.js";
 export { createOpenAiProvider };
 export {
   acquireQuotaProviderHub,
