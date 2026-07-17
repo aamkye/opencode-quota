@@ -63,3 +63,4 @@ add-opencode-tools-lsp Task 7: complete (commit eb020b0, standard risk review cl
 add-opencode-tools-lsp Task 8: complete (commit 896ba2d, full suite 290/290; standard risk re-review approved after coordinator checkoff)
 add-opencode-tools-lsp final review: READY at 89745db (spec pass; accepted one Minor README viewport-label wording issue)
 add-todo-tui-plugin Task 1: complete (commit 2774b7b, standard non-risk task, expected RED contract verified)
+add-todo-tui-plugin Task 2: complete (commits a17ca3a..96ba2cc, standard risk review approved after one fix round)
