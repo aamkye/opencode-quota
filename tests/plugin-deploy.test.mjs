@@ -139,6 +139,18 @@ async function snapshot(root) {
   return Object.fromEntries(await Promise.all(files.map(async (file) => [file, await readFile(join(root, file), "utf8")])))
 }
 
+async function projectFallbackSnapshot(root, configRoot) {
+  return {
+    selected: Object.fromEntries(await Promise.all([
+      ...deployedFiles,
+      "tui.json",
+      "opencode.json",
+    ].map(async (file) => [file, await readFile(join(configRoot, file), "utf8")]))),
+    projectTui: await readFile(join(root, "tui.json"), "utf8"),
+    projectOpenCode: await readFile(join(root, "opencode.json"), "utf8"),
+  }
+}
+
 async function managedArtifactPaths(root, relative = "") {
   const entries = await readdir(join(root, relative), { withFileTypes: true })
   const paths = await Promise.all(entries.map(async (entry) => {
@@ -238,7 +250,7 @@ test("deployment removes an empty managed command object", async () => {
   assertSingleTrailingNewline(tuiBytes, "tui.json")
 })
 
-test("local deployment merges root and selected .opencode configs without duplicate managed plugins", async () => {
+test("local deployment preserves project fallback semantics across repeated migration", async () => {
   const root = await mkdtemp(join(tmpdir(), "opencode-tools-project-"))
   temporaryRoots.push(root)
   const configRoot = join(root, ".opencode")
@@ -248,11 +260,15 @@ test("local deployment merges root and selected .opencode configs without duplic
     $schema: "https://opencode.ai/tui.json",
     theme: "root-theme",
     plugin: [
-      "./root-unrelated.js",
+      "./root-unrelated-first.js",
       ["./tui/quota.tsx", rootOptions],
+      ["./root-unrelated-middle.js", { preserve: "middle" }],
       "./tui/home.tsx",
       "./tui/token-report.tsx",
       "./tui/mcp.tsx",
+      ["@aamkye/opencode-tools/tui", globalOptions],
+      "@scope/root-unrelated-last",
+      [`./${obsoleteNamespace}-zai.tsx`, localOptions],
       "./opencode-tools-home.js",
     ],
   }, null, 2))
@@ -271,28 +287,47 @@ test("local deployment merges root and selected .opencode configs without duplic
     $schema: "https://opencode.ai/tui.json",
     theme: "selected-theme",
     plugin: [
-      "./selected-unrelated.js",
+      "./selected-unrelated-first.js",
       "./opencode-tools-quota.js",
       "./opencode-tools-home.js",
+      ["./selected-unrelated-middle.js", { preserve: "middle" }],
       "./opencode-tools-token-report.js",
       "./opencode-tools-mcp.js",
       "./tui/home.tsx",
+      "@aamkye/opencode-tools/tui",
+      "file:///tmp/selected-unrelated-last.js",
     ],
   }, null, 2))
+  for (const file of obsoleteArtifacts) {
+    const path = join(configRoot, file)
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, `obsolete ${file}`)
+  }
 
   const initialSelectedConfig = JSON.parse(await readFile(join(configRoot, "tui.json"), "utf8"))
   assert.equal(JSON.stringify(initialSelectedConfig).includes("opencodego"), false)
 
   await deployPlugins(configRoot, { logLevel: "silent", projectConfigRoot: root })
 
-  const rootConfig = JSON.parse(await readFile(join(root, "tui.json"), "utf8"))
-  const selectedConfig = JSON.parse(await readFile(join(configRoot, "tui.json"), "utf8"))
-  const rootOpenCodeConfig = JSON.parse(await readFile(join(root, "opencode.json"), "utf8"))
+  const first = await projectFallbackSnapshot(root, configRoot)
+  await deployPlugins(configRoot, { logLevel: "silent", projectConfigRoot: root })
+  const second = await projectFallbackSnapshot(root, configRoot)
+
+  assert.deepEqual(second, first)
+  const rootConfig = JSON.parse(first.projectTui)
+  const selectedConfig = JSON.parse(first.selected["tui.json"])
+  const rootOpenCodeConfig = JSON.parse(first.projectOpenCode)
   assert.equal(rootConfig.theme, "root-theme")
-  assert.deepEqual(rootConfig.plugin, ["./root-unrelated.js"])
+  assert.deepEqual(rootConfig.plugin, [
+    "./root-unrelated-first.js",
+    ["./root-unrelated-middle.js", { preserve: "middle" }],
+    "@scope/root-unrelated-last",
+  ])
   assert.equal(selectedConfig.theme, "selected-theme")
   assert.deepEqual(selectedConfig.plugin, [
-    "./selected-unrelated.js",
+    "./selected-unrelated-first.js",
+    ["./selected-unrelated-middle.js", { preserve: "middle" }],
+    "file:///tmp/selected-unrelated-last.js",
     ...expectedManagedEntries(rootOptions),
   ])
   assert.deepEqual(selectedConfig.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
@@ -322,9 +357,15 @@ test("local deployment merges root and selected .opencode configs without duplic
     ))
   })
   assert.equal(activeManagedEntries.length, pluginManifest.length)
-  assertSingleTrailingNewline(await readFile(join(root, "tui.json"), "utf8"), "project tui.json")
-  assertSingleTrailingNewline(await readFile(join(configRoot, "tui.json"), "utf8"), "selected tui.json")
-  assertSingleTrailingNewline(await readFile(join(root, "opencode.json"), "utf8"), "project opencode.json")
+  assertSingleTrailingNewline(first.projectTui, "project tui.json")
+  assertSingleTrailingNewline(first.selected["tui.json"], "selected tui.json")
+  assertSingleTrailingNewline(first.projectOpenCode, "project opencode.json")
+  assertSingleTrailingNewline(first.selected["opencode.json"], "selected opencode.json")
+  await assertObsoleteArtifactsRemoved(configRoot)
+  assert.deepEqual(await managedArtifactPaths(configRoot), deployedFiles.toSorted())
+  for (const deployed of deployedFiles) {
+    assert.equal(first.selected[deployed], await readFile(resolve(projectRoot, "dist", deployed), "utf8"))
+  }
 })
 
 test("global deployment removes token artifacts and commands while preserving unrelated config", async () => {
