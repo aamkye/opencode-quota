@@ -69,3 +69,4 @@ add-todo-tui-plugin Task 4: complete (commit 78eeb09, standard public-API risk r
 add-todo-tui-plugin Task 5: complete (commit e916100, standard reactive adapter risk review approved)
 add-todo-tui-plugin Task 6: complete (commits 060e50d..e846d72, debug recovery and standard integration risk review approved)
 add-todo-tui-plugin Task 7: complete (commit 61e400a, standard documentation-interface risk review approved)
+add-todo-tui-plugin Task 8: complete (verification-only, focused 9/9 and integration 30/30, typecheck and scope review passed)
