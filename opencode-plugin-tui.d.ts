@@ -1,6 +1,6 @@
 declare module "@opencode-ai/plugin/tui" {
   import type { JSX } from "@opentui/solid"
-  import type { Event, Provider } from "@opencode-ai/sdk/v2"
+  import type { Event, Provider, Todo } from "@opencode-ai/sdk/v2"
 
   type MessageUpdatedEvent = Extract<Event, { type: "message.updated" }> & { id: string }
   type TuiEvent = Exclude<Event, { type: "message.updated" }> | MessageUpdatedEvent
@@ -103,6 +103,7 @@ declare module "@opencode-ai/plugin/tui" {
       lsp(): readonly TuiLspEntry[]
       provider: readonly Provider[]
       session: {
+        todo(sessionID: string): readonly Todo[]
         messages(sessionID: string): readonly import("@opencode-ai/sdk/v2").Message[]
       }
       part(messageID: string): readonly import("@opencode-ai/sdk/v2").Part[]
