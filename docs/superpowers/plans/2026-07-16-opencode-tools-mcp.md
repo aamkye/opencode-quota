@@ -705,7 +705,7 @@ git commit -m "feat: declare synchronized MCP TUI state"
 - Produces: `McpPanelModel`, `McpStatusRow`, and `createMcpPanelModel(entries)`.
 - Input type is `readonly { name: string; status: string; error?: unknown }[]`.
 
-- [ ] **Step 1: Write the complete status table tests**
+- [x] **Step 1: Write the complete status table tests**
 
 Use one ordered input containing all known statuses plus `future_status` and error strings. Assert exact labels/roles and unchanged name order:
 
@@ -722,23 +722,23 @@ assert.deepEqual(model.rows, [
 
 Also assert summaries exactly: fully connected `2/2` has success, muted, success segments; partial `2/3` has success, muted, error; empty `0/0` is three muted segments. Verify `connected`, `total`, and absence of every input error string in serialized output.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/mcp-model.test.mjs`
 
 Expected: FAIL because the MCP model module is missing.
 
-- [ ] **Step 3: Implement table-driven mapping**
+- [x] **Step 3: Implement table-driven mapping**
 
 Use a frozen status record for the five known values and one unknown fallback. Count only exact `connected`. Build `summary` as three `PanelTextSegment` values, with all-muted `0/0`, healthy success denominator, and unhealthy error denominator. Map in one pass without sorting and never copy `error` into output.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/mcp-model.test.mjs`
 
 Expected: PASS for known, unknown, ordered, healthy, unhealthy, and empty cases.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tui/features/mcp.ts shared/opencode-tools-shared.ts tests/mcp-model.test.mjs tests/compile-presentation.mjs
