@@ -22,6 +22,8 @@ export { allocateStatusRow } from "../tui/presentation/layout.js";
 export type { StatusRowAllocation } from "../tui/presentation/layout.js";
 export { createMcpPanelModel } from "../tui/features/mcp.js";
 export type { McpPanelModel, McpStatusRow } from "../tui/features/mcp.js";
+export { createLspPanelModel } from "../tui/features/lsp.js";
+export type { LspPanelModel, LspStatusRow } from "../tui/features/lsp.js";
 export { createOpenAiProvider };
 export {
   acquireQuotaProviderHub,

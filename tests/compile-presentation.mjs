@@ -2,7 +2,7 @@ import { build } from "esbuild"
 import { mkdirSync, rmSync } from "node:fs"
 import { resolve } from "node:path"
 
-for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "mcp-model", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "mcp-model", "lsp-model", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
 }
 mkdirSync(".tmp-test", { recursive: true })
@@ -25,6 +25,7 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
   ["tui/features/home.ts", ".tmp-test/home-feature.mjs", ["browser"]],
   ["tui/home.tsx", ".tmp-test/home-composition.mjs", ["browser"]],
   ["tui/features/mcp.ts", ".tmp-test/mcp-model.mjs", ["browser"]],
+  ["tui/features/lsp.ts", ".tmp-test/lsp-model.mjs", ["browser"]],
   ["tui/features/token-report.ts", ".tmp-test/token-report-feature.mjs", ["browser"]],
   ["tui/token-report.tsx", ".tmp-test/token-tui.mjs", ["browser"], undefined, ["solid-js"]],
   ["tui/token-report.tsx", ".tmp-test/token-tui-controlled.mjs", ["browser"], [{
