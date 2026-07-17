@@ -1,8 +1,10 @@
-import type { TuiCommand, TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui"
+import type { TuiCommand, TuiPluginApi } from "@opencode-ai/plugin/tui"
 
 import {
   activeSessionID,
+  defineTuiPlugin,
   persistTokenReport,
+  pluginDescriptor,
   TOKEN_REPORT_COMMANDS,
 } from "../shared/opencode-tools-shared.js"
 
@@ -52,7 +54,7 @@ export function tokenReportCommands(
   }))
 }
 
-export function registerTokenReportTui(api: TuiPluginApi): void {
+export function registerTokenReportTui(api: TuiPluginApi): () => void {
   let closeRangeDialog: (() => void) | undefined
   api.keymap.registerLayer({
     commands: tokenReportCommands(api, (close) => { closeRangeDialog = close }),
@@ -65,13 +67,11 @@ export function registerTokenReportTui(api: TuiPluginApi): void {
       desc: "Cancel token report date range",
     }],
   })
+  return () => closeRangeDialog?.()
 }
 
-const plugin: TuiPluginModule & { id: string } = {
-  id: "aamkye/opencode-tools-token-report",
-  async tui(api) {
-    registerTokenReportTui(api)
-  },
-}
+const plugin = defineTuiPlugin(pluginDescriptor("token-report"), (context, api) => {
+  context.onCleanup(registerTokenReportTui(api))
+})
 
 export default plugin

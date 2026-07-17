@@ -1,4 +1,3 @@
-import type { TuiPlugin, TuiPluginModule } from "@opencode-ai/plugin/tui"
 import { createMemo } from "solid-js"
 
 import { PanelRenderer, type PanelTheme } from "./presentation/renderer.js"
@@ -7,16 +6,18 @@ import type {
 } from "../shared/opencode-tools-shared.js"
 import {
   createQuotaSelection,
+  defineTuiPlugin,
+  pluginDescriptor,
   quotaAdapterShared,
 } from "../shared/opencode-tools-shared.js"
 
 type QuotaSelectionController = ReturnType<typeof createQuotaSelection>
 
-const tui: TuiPlugin = async (api, rawOptions) => {
+const plugin = defineTuiPlugin(pluginDescriptor("quota"), (context, api, rawOptions) => {
   const options = quotaAdapterShared.normalizeOptions(rawOptions)
   const demand = quotaAdapterShared.quotaProviderDemand(options)
   const providers: QuotaProviderAdapter[] = []
-  api.lifecycle.onDispose(() => providers.forEach((provider) => provider.dispose()))
+  context.onCleanup(() => providers.forEach((provider) => provider.dispose()))
   providers.push(quotaAdapterShared.createZaiProvider(api, demand.zai))
   providers.push(quotaAdapterShared.createOpenAiProvider(api, demand.openai))
   providers.push(quotaAdapterShared.createOpenCodeGoProvider(api, demand.openCodeGo))
@@ -36,12 +37,7 @@ const tui: TuiPlugin = async (api, rawOptions) => {
       },
     },
   })
-}
-
-const plugin: TuiPluginModule & { id: string } = {
-  id: "aamkye/opencode-tools",
-  tui,
-}
+})
 
 export { createQuotaSelection } from "../shared/opencode-tools-shared.js"
 export default plugin

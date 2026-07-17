@@ -144,11 +144,48 @@ async function activate(plugin, options, api) {
   await plugin.tui(api, options)
 }
 
+function slotNames(api) {
+  return api.slots.registrations.flatMap((registration) => Object.keys(registration.slots))
+}
+
+function keymapLayers(api) {
+  return api.keymap.registrations.map((layer) => layer.mode ?? "default")
+}
+
+test("current feature adapters expose normalized standalone plugin contracts", async () => {
+  const quotaApi = createApi()
+  const homeApi = createApi()
+  const tokenApi = createApi({ route: { name: "session", params: { sessionID: "session-1" } } })
+
+  try {
+    await activate(quotaPlugin, undefined, quotaApi.api)
+    await activate(homePlugin, undefined, homeApi.api)
+    await activate(tokenPlugin, undefined, tokenApi.api)
+
+    assert.deepEqual(
+      [quotaPlugin.id, homePlugin.id, tokenPlugin.id],
+      [
+        "aamkye/opencode-tools-quota",
+        "aamkye/opencode-tools-home",
+        "aamkye/opencode-tools-token-report",
+      ],
+    )
+    assert.deepEqual(slotNames(quotaApi.api), ["sidebar_content"])
+    assert.deepEqual(slotNames(homeApi.api), ["home_bottom"])
+    assert.equal(slotNames(tokenApi.api).length, 0)
+    assert.equal(keymapLayers(tokenApi.api).length, 2)
+  } finally {
+    await quotaApi.lifecycle.dispose()
+    await homeApi.lifecycle.dispose()
+    await tokenApi.lifecycle.dispose()
+  }
+})
+
 test("quota adapter registers only the sidebar surface and cleans up selection listeners", async () => {
   const { api, lifecycle } = createApi()
 
   try {
-    assert.equal(quotaPlugin.id, "aamkye/opencode-tools")
+    assert.equal(quotaPlugin.id, "aamkye/opencode-tools-quota")
     await activate(quotaPlugin, undefined, api)
 
     assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content"]])
@@ -193,7 +230,7 @@ test("token adapter registers only the two keymap layers", async () => {
 
     assert.deepEqual(api.slots.registrations, [])
     assert.equal(api.keymap.registrations.length, 2)
-    assert.deepEqual(api.keymap.registrations.map((layer) => layer.mode ?? "default"), ["default", "aamkye.token-report-range"])
+    assert.deepEqual(keymapLayers(api), ["default", "aamkye.token-report-range"])
     assert.deepEqual(tokenReportCommands(api).map((command) => command.slashName), [
       "tokens_today",
       "tokens_daily",
@@ -206,7 +243,7 @@ test("token adapter registers only the two keymap layers", async () => {
     ])
     assert.equal(api.route.registrations.length, 0)
     assert.equal(api.event.listeners.length, 0)
-    assert.equal(lifecycle.count(), 0)
+    assert.ok(lifecycle.count() > 0)
   } finally {
     await lifecycle.dispose()
   }
