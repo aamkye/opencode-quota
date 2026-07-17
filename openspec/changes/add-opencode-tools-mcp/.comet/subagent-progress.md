@@ -4,15 +4,15 @@
 - Review mode: thorough
 - TDD mode: tdd
 - Dispatch constraint: native Task subagents only; never invoke `opencode run` or another external agent CLI
-- Current plan task: Build Four Manifest-Driven Artifacts (OpenSpec 5.1)
-- Mapped OpenSpec task: 5.1 Replace the synthetic composed build entry with manifest-driven standalone builds and test all four artifacts and shared imports.
+- Current plan task: Publish Standalone Metadata and Raise the Engine Floor (OpenSpec 5.2)
+- Mapped OpenSpec task: 5.2 Update package exports, included files, TypeScript inputs, and the OpenCode engine floor to 1.18.1.
 - Stage: done
 - Review-fix round: 1 of 2
-- Implementation commit: 6252a54; fix d00905d
+- Implementation commit: 6ff186d; fix fb0734f
 - Changed files: five allowed Task 11 files
 - RED evidence: 3 expected missing-contract failures
 - GREEN evidence: focused tests passed 9/9; typecheck passed
-- Review status: thorough re-review approved with no findings after stale-artifact test fix
+- Review status: thorough re-review approved; one non-blocking stale pack-count evidence correction retained
 - RED evidence: missing MCP feature module resolution failure
 - GREEN evidence: MCP model tests passed 2/2; typecheck passed
 - Risk signals: shared presentation API

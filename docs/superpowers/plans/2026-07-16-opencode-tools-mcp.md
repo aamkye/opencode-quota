@@ -846,27 +846,27 @@ git commit -m "build: emit manifest-driven standalone plugins"
 - Package exports expose `./quota`, `./home`, `./token-report`, and `./mcp`; included files cover manifest, TUI, shared source, dist, and README.
 - `engines.opencode` is exactly `>=1.18.1`.
 
-- [ ] **Step 1: Add metadata assertions**
+- [x] **Step 1: Add metadata assertions**
 
 Assert each export points at its standalone source, all four source files and shared/runtime files are typechecked through `tui/**/*.ts`, `tui/**/*.tsx`, and `shared/**/*.ts`, `plugin-manifest.json` is packaged, and both package manifests report `>=1.18.1`.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node --test tests/plugin-wiring.test.mjs`
 
 Expected: FAIL on missing exports/manifest inclusion and the current `>=1.4.3` engine.
 
-- [ ] **Step 3: Update metadata deterministically**
+- [x] **Step 3: Update metadata deterministically**
 
 Replace the old `./tui` export with four explicit feature exports. Add `plugin-manifest.json` and `shared` to `files`. Replace the narrow TUI include list with the globs above while retaining session-title and declaration inputs. Run `npm install --package-lock-only` to synchronize lock metadata without changing dependency versions.
 
-- [ ] **Step 4: Run GREEN and strict typecheck**
+- [x] **Step 4: Run GREEN and strict typecheck**
 
 Run: `node --test tests/plugin-wiring.test.mjs && npm run typecheck`
 
 Expected: PASS and `tsc --noEmit` exits 0.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add package.json package-lock.json tsconfig.json tests/plugin-wiring.test.mjs
