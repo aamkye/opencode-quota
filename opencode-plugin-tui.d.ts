@@ -30,6 +30,21 @@ declare module "@opencode-ai/plugin/tui" {
     onConfirm(value: string): void
   }
 
+  export type TuiMcpKnownStatus =
+    | "connected"
+    | "disabled"
+    | "failed"
+    | "needs_auth"
+    | "needs_client_registration"
+
+  export type TuiMcpStatus = TuiMcpKnownStatus | (string & {})
+
+  export interface TuiMcpEntry {
+    name: string
+    status: TuiMcpStatus
+    error?: string
+  }
+
   export interface TuiPluginApi {
     keymap: {
       registerLayer(input: { mode?: string; commands?: TuiCommand[]; bindings?: TuiBinding[] }): void
@@ -74,6 +89,7 @@ declare module "@opencode-ai/plugin/tui" {
       }
     }
     state: {
+      mcp(): readonly TuiMcpEntry[]
       provider: readonly Provider[]
       session: {
         messages(sessionID: string): readonly import("@opencode-ai/sdk/v2").Message[]
