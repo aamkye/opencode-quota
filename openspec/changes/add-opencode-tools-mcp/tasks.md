@@ -38,4 +38,4 @@
 
 ## 6. Verification
 
-- [ ] 6.1 Run the complete test suite, strict typecheck, and production plugin build, then resolve any regressions.
+- [x] 6.1 Run the complete test suite, strict typecheck, and production plugin build, then resolve any regressions.

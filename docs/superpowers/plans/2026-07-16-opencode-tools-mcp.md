@@ -959,31 +959,31 @@ git commit -m "docs: describe standalone MCP plugin migration"
 
 ## Final Verification (OpenSpec 6.1)
 
-- [ ] **Step 1: Confirm canonical task coverage**
+- [x] **Step 1: Confirm canonical task coverage**
 
 Run: `node -e 'const fs=require("node:fs");const s=fs.readFileSync("docs/superpowers/plans/2026-07-16-opencode-tools-mcp.md","utf8");for(const id of ["1.1","1.2","1.3","1.4","1.5","2.1","2.2","2.3","2.4","2.5","3.1","3.2","3.3","4.1","4.2","4.3","4.4","4.5","5.1","5.2","5.3","5.4","5.5","6.1"])if(!new RegExp(`(?:OpenSpec [^\\n]*\\b${id.replace(".", "\\.")}\\b|\\|[^\\n]*\\b${id.replace(".", "\\.")}\\b[^\\n]*\\|)`).test(s))throw new Error(`missing ${id}`)'`
 
 Expected: exits 0; all 24 canonical task IDs are represented by the coverage table or task heading.
 
-- [ ] **Step 2: Run the complete test suite**
+- [x] **Step 2: Run the complete test suite**
 
 Run: `npm test`
 
 Expected: PASS; `node tests/compile-session-title.mjs`, `node tests/compile-presentation.mjs`, and every `tests/*.test.mjs` complete with zero failures.
 
-- [ ] **Step 3: Run strict TypeScript**
+- [x] **Step 3: Run strict TypeScript**
 
 Run: `npm run typecheck`
 
 Expected: PASS; `tsc --noEmit` exits 0 with no diagnostics.
 
-- [ ] **Step 4: Run the production plugin build**
+- [x] **Step 4: Run the production plugin build**
 
 Run: `npm run build:plugins`
 
 Expected: PASS and `dist/` contains non-empty `opencode-tools-shared.js`, `opencode-tools-quota.js`, `opencode-tools-home.js`, `opencode-tools-token-report.js`, and `opencode-tools-mcp.js`.
 
-- [ ] **Step 5: Inspect scope and commit health**
+- [x] **Step 5: Inspect scope and commit health**
 
 Run: `git status --short && git diff --check && git log --oneline ce0960229bdf299dd3ef678f3dbee9d538cbda50..HEAD`
 
