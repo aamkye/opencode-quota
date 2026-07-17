@@ -5,6 +5,217 @@ const { default: quotaPlugin } = await import("../.tmp-test/plugin-adapters-quot
 const { default: homePlugin } = await import("../.tmp-test/plugin-adapters-home-fixture.mjs")
 const { default: tokenPlugin, registerTokenReportTui, tokenReportCommands } = await import("../.tmp-test/plugin-adapters-token-fixture.mjs")
 
+const openCodeGoConfig = Object.freeze({
+  workspaceId: "wrk_TESTWORKSPACE",
+  workspaceToken: "TOKEN_TEST_ONLY_DO_NOT_USE",
+})
+
+const quotaHubOptions = Object.freeze({
+  quota: {
+    refreshIntervalSeconds: 20,
+    opencodego: openCodeGoConfig,
+  },
+})
+
+function createTrackedProvider(id, key, created) {
+  const provider = {
+    id,
+    key,
+    order: id === "zai" ? 110 : id === "openai" ? 120 : 130,
+    sessions: [],
+    disposeCount: 0,
+    panel: () => ({ id, order: 10, title: id, groups: [] }),
+    home: () => (() => ({
+      provider: id === "zai" ? "Z.AI" : id === "openai" ? "OpenAI" : "OpenCode GO",
+      plan: "Test",
+      primary: { text: "50%", pct: 50 },
+      secondary: null,
+    })),
+    quotaSummary: () => null,
+    configured: () => true,
+    freshness: () => "ready",
+    refresh: async () => {},
+    setSessionID(sessionID) {
+      provider.sessions.push(sessionID)
+    },
+    dispose() {
+      provider.disposeCount += 1
+    },
+  }
+  created.push(provider)
+  return provider
+}
+
+function createControlledHubMeta() {
+  const createdProviders = []
+  const demandHistory = []
+  const providerSnapshots = []
+  const hubs = new WeakMap()
+  let hubCreateCount = 0
+  let hubDisposeCount = 0
+  let currentProviders = []
+
+  function normalizeQuotaDemand(demand) {
+    return {
+      consumer: "quota",
+      refreshIntervalMs: demand.refreshIntervalMs
+        ?? demand.openai?.refreshIntervalMs
+        ?? demand.zai?.refreshIntervalMs
+        ?? demand.openCodeGo?.refreshIntervalMs,
+      zai: demand.zai ? { hideTools: demand.zai.hideTools } : undefined,
+      openCodeGo: demand.openCodeGo
+        ? {
+            config: demand.openCodeGo.config ?? null,
+            refreshIntervalMs: demand.openCodeGo.refreshIntervalMs
+              ?? demand.refreshIntervalMs
+              ?? demand.openai?.refreshIntervalMs
+              ?? demand.zai?.refreshIntervalMs,
+          }
+        : null,
+    }
+  }
+
+  function providerSpecs(demands) {
+    const quotaDemands = demands.filter((demand) => demand.consumer === "quota")
+    if (quotaDemands.length > 0) {
+      const demand = normalizeQuotaDemand(quotaDemands.at(-1))
+      return [
+        {
+          id: "zai",
+          key: JSON.stringify(["zai", demand.refreshIntervalMs ?? 10_000, demand.zai?.hideTools ?? false]),
+        },
+        {
+          id: "openai",
+          key: JSON.stringify(["openai", demand.refreshIntervalMs ?? 10_000]),
+        },
+        ...(demand.openCodeGo?.config
+          ? [{
+              id: "opencode-go",
+              key: JSON.stringify([
+                "opencode-go",
+                demand.openCodeGo.refreshIntervalMs ?? demand.refreshIntervalMs ?? 10_000,
+                demand.openCodeGo.config.workspaceId,
+                demand.openCodeGo.config.workspaceToken,
+              ]),
+            }]
+          : []),
+      ]
+    }
+
+    if (!demands.some((demand) => demand.consumer === "home")) return []
+    return [
+      { id: "zai", key: JSON.stringify(["zai", 10_000, false]) },
+      { id: "openai", key: JSON.stringify(["openai", 10_000]) },
+    ]
+  }
+
+  function createHub() {
+    hubCreateCount += 1
+    const demands = new Map()
+    let nextDemandToken = 0
+    let records = new Map()
+
+    const reconcile = () => {
+      const nextRecords = new Map()
+      const nextProviders = []
+      for (const spec of providerSpecs([...demands.values()])) {
+        const current = records.get(spec.id)
+        if (current && current.key === spec.key) {
+          nextRecords.set(spec.id, current)
+          nextProviders.push(current.adapter)
+          continue
+        }
+
+        const adapter = createTrackedProvider(spec.id, spec.key, createdProviders)
+        nextRecords.set(spec.id, { key: spec.key, adapter })
+        nextProviders.push(adapter)
+      }
+
+      for (const [id, record] of records) {
+        const nextRecord = nextRecords.get(id)
+        if (!nextRecord || nextRecord.adapter !== record.adapter) record.adapter.dispose()
+      }
+
+      records = nextRecords
+      currentProviders = nextProviders
+    }
+
+    return {
+      providers() {
+        providerSnapshots.push(currentProviders.map((provider) => provider.id))
+        return currentProviders
+      },
+      addDemand(demand) {
+        demandHistory.push(demand)
+        const token = nextDemandToken
+        nextDemandToken += 1
+        demands.set(token, demand)
+        reconcile()
+        let removed = false
+        return () => {
+          if (removed) return
+          removed = true
+          if (!demands.delete(token)) return
+          reconcile()
+        }
+      },
+      dispose() {
+        hubDisposeCount += 1
+        for (const record of records.values()) record.adapter.dispose()
+        records.clear()
+        currentProviders = []
+      },
+    }
+  }
+
+  return {
+    meta: {
+      acquireHub(context, demand) {
+        let record = hubs.get(context.api)
+        if (!record) {
+          record = { hub: createHub(), references: 0 }
+          hubs.set(context.api, record)
+        }
+
+        record.references += 1
+        const removeDemand = record.hub.addDemand(demand)
+        let released = false
+        const release = () => {
+          if (released) return
+          released = true
+          removeDemand()
+          record.references -= 1
+          if (record.references > 0) return
+          hubs.delete(context.api)
+          record.hub.dispose()
+        }
+
+        context.onCleanup(release)
+        return { value: record.hub, release }
+      },
+    },
+    state: {
+      createdProviders,
+      demandHistory,
+      providerSnapshots,
+      hubCreateCount: () => hubCreateCount,
+      hubDisposeCount: () => hubDisposeCount,
+      currentProviderIDs: () => currentProviders.map((provider) => provider.id),
+    },
+  }
+}
+
+function invokeSlot(render, ...args) {
+  const previousReact = globalThis.React
+  globalThis.React = { createElement: () => null, Fragment: Symbol.for("react.fragment") }
+  try {
+    return render(...args)
+  } finally {
+    if (previousReact === undefined) delete globalThis.React
+    else globalThis.React = previousReact
+  }
+}
+
 function createLifecycle() {
   const controller = new AbortController()
   let cleanup = []
@@ -23,6 +234,11 @@ function createLifecycle() {
     },
     count() {
       return cleanup.length
+    },
+    async disposeAt(index) {
+      const [fn] = cleanup.splice(index, 1)
+      if (!fn) return
+      await fn()
     },
     async dispose() {
       if (disposed) return
@@ -140,8 +356,8 @@ function createApi({ route = { name: "home" } } = {}) {
   return { api, lifecycle }
 }
 
-async function activate(plugin, options, api) {
-  await plugin.tui(api, options)
+async function activate(plugin, options, api, meta) {
+  await plugin.tui(api, options, meta)
 }
 
 function slotNames(api) {
@@ -189,6 +405,7 @@ test("quota adapter registers only the sidebar surface and cleans up selection l
     await activate(quotaPlugin, undefined, api)
 
     assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content"]])
+    assert.equal(api.slots.registrations[0].order, 110)
     assert.deepEqual(api.keymap.registrations, [])
     assert.deepEqual(api.route.registrations, [])
     assert.equal(api.event.listeners.length, 1)
@@ -219,6 +436,126 @@ test("home adapter registers only the home surface and disposes its providers", 
 
   assert.equal(api.event.listeners.length, 0)
   assert.equal(lifecycle.count(), 0)
+})
+
+test("activation order: home then quota share one hub and home survives quota cleanup", async () => {
+  const { api, lifecycle } = createApi()
+  const hub = createControlledHubMeta()
+
+  try {
+    await activate(homePlugin, undefined, api, hub.meta)
+    assert.equal(hub.state.hubCreateCount(), 1)
+    assert.deepEqual(hub.state.currentProviderIDs(), ["zai", "openai"])
+
+    invokeSlot(api.slots.registrations[0].slots.home_bottom)
+    assert.deepEqual(hub.state.providerSnapshots.at(-1), ["zai", "openai"])
+
+    await activate(quotaPlugin, quotaHubOptions, api, hub.meta)
+    const quotaCleanupIndex = lifecycle.count() - 1
+    assert.equal(hub.state.hubCreateCount(), 1)
+    assert.deepEqual(hub.state.currentProviderIDs(), ["zai", "openai", "opencode-go"])
+    assert.deepEqual(hub.state.demandHistory, [
+      { consumer: "home" },
+      {
+        consumer: "quota",
+        refreshIntervalMs: 20_000,
+        openCodeGo: { config: openCodeGoConfig, refreshIntervalMs: 20_000 },
+        zai: { hideTools: false },
+      },
+    ])
+
+    const quotaSlot = api.slots.registrations[1].slots.sidebar_content
+    invokeSlot(quotaSlot, {}, { session_id: "session-1" })
+    assert.deepEqual(
+      hub.state.createdProviders
+        .filter((provider) => provider.id === "opencode-go")
+        .at(-1)?.sessions,
+      ["session-1"],
+    )
+
+    await lifecycle.disposeAt(quotaCleanupIndex)
+    assert.deepEqual(hub.state.currentProviderIDs(), ["zai", "openai"])
+
+    invokeSlot(api.slots.registrations[0].slots.home_bottom)
+    assert.deepEqual(hub.state.providerSnapshots.at(-1), ["zai", "openai"])
+  } finally {
+    await lifecycle.dispose()
+  }
+
+  assert.equal(hub.state.hubDisposeCount(), 1)
+  assert.equal(hub.state.createdProviders.every((provider) => provider.disposeCount === 1), true)
+})
+
+test("activation order: quota then home keeps one hub and one provider owner set", async () => {
+  const { api, lifecycle } = createApi()
+  const hub = createControlledHubMeta()
+
+  try {
+    await activate(quotaPlugin, quotaHubOptions, api, hub.meta)
+    assert.equal(hub.state.hubCreateCount(), 1)
+    assert.deepEqual(hub.state.currentProviderIDs(), ["zai", "openai", "opencode-go"])
+
+    await activate(homePlugin, undefined, api, hub.meta)
+    const homeCleanupIndex = lifecycle.count() - 1
+    assert.equal(hub.state.hubCreateCount(), 1)
+    assert.deepEqual(hub.state.currentProviderIDs(), ["zai", "openai", "opencode-go"])
+
+    const quotaSlot = api.slots.registrations[0].slots.sidebar_content
+    invokeSlot(quotaSlot, {}, { session_id: "session-2" })
+    assert.deepEqual(
+      hub.state.createdProviders.map((provider) => [provider.id, provider.sessions.at(-1)]),
+      [["zai", "session-2"], ["openai", "session-2"], ["opencode-go", "session-2"]],
+    )
+
+    await lifecycle.disposeAt(homeCleanupIndex)
+    assert.deepEqual(hub.state.currentProviderIDs(), ["zai", "openai", "opencode-go"])
+  } finally {
+    await lifecycle.dispose()
+  }
+
+  assert.equal(hub.state.hubDisposeCount(), 1)
+  assert.equal(hub.state.createdProviders.every((provider) => provider.disposeCount === 1), true)
+})
+
+test("installed alone: quota acquires the shared hub and releases it once", async () => {
+  const { api, lifecycle } = createApi()
+  const hub = createControlledHubMeta()
+
+  try {
+    await activate(quotaPlugin, quotaHubOptions, api, hub.meta)
+    assert.equal(hub.state.hubCreateCount(), 1)
+    assert.deepEqual(hub.state.currentProviderIDs(), ["zai", "openai", "opencode-go"])
+
+    invokeSlot(api.slots.registrations[0].slots.sidebar_content, {}, { session_id: "standalone-quota" })
+    assert.deepEqual(
+      hub.state.createdProviders.map((provider) => [provider.id, provider.sessions.at(-1)]),
+      [["zai", "standalone-quota"], ["openai", "standalone-quota"], ["opencode-go", "standalone-quota"]],
+    )
+  } finally {
+    await lifecycle.dispose()
+  }
+
+  assert.equal(hub.state.hubDisposeCount(), 1)
+  assert.equal(hub.state.createdProviders.every((provider) => provider.disposeCount === 1), true)
+})
+
+test("installed alone: home acquires the shared hub and releases it once", async () => {
+  const { api, lifecycle } = createApi()
+  const hub = createControlledHubMeta()
+
+  try {
+    await activate(homePlugin, undefined, api, hub.meta)
+    assert.equal(hub.state.hubCreateCount(), 1)
+    assert.deepEqual(hub.state.currentProviderIDs(), ["zai", "openai"])
+
+    invokeSlot(api.slots.registrations[0].slots.home_bottom)
+    assert.deepEqual(hub.state.providerSnapshots.at(-1), ["zai", "openai"])
+  } finally {
+    await lifecycle.dispose()
+  }
+
+  assert.equal(hub.state.hubDisposeCount(), 1)
+  assert.equal(hub.state.createdProviders.every((provider) => provider.disposeCount === 1), true)
 })
 
 test("token adapter registers only the two keymap layers", async () => {
