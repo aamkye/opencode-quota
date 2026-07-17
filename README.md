@@ -6,8 +6,8 @@
 > - [farrukh2002/opencode-glm-reset](https://github.com/farrukh2002/opencode-glm-reset)
 
 OpenCode TUI plugins that show quota usage, reset countdowns, rate-limit
-status, compact homepage summaries, and `/tokens_*` reports for **Z.AI (GLM)**,
-**OpenAI (ChatGPT Plus/Pro)**, and **OpenCode Go**.
+status, compact homepage summaries, MCP server health, and `/tokens_*` reports
+for **Z.AI (GLM)**, **OpenAI (ChatGPT Plus/Pro)**, and **OpenCode Go**.
 
 ![opencode-tools homepage bottom](img/img0.jpg)
 
@@ -56,6 +56,15 @@ status, compact homepage summaries, and `/tokens_*` reports for **Z.AI (GLM)**,
   one-second countdowns, reset-boundary refresh, and a ten-minute stale horizon
   without exhausted backoff.
 
+### MCP
+
+- **Reactive server health** — shows OpenCode's synchronized MCP server list in
+  source order without polling.
+- **Native status roles** — connected, disabled, failed, authentication, and
+  client-registration states use compact labels and status-colored bullets.
+- **Persistent collapse state** — remembers the user's preference while an
+  empty MCP list stays compact as a muted `0/0` summary.
+
 ### Shared
 
 - **Homepage summary** — each provider plugin also registers a compact homepage
@@ -78,36 +87,55 @@ status, compact homepage summaries, and `/tokens_*` reports for **Z.AI (GLM)**,
 
 The plugins are built and loaded only from local files. This package is not
 published to npm, and OpenCode is never configured with an npm package spec.
+OpenCode 1.18.1 or newer is required for the standalone TUI plugin and
+synchronized MCP APIs.
 
 ### Configuration
 
 Native TUI options can be supplied with the local plugin entry:
 
 ```json
-[
-  "./opencode-tools-quota.js",
-  {
-    "quota": {
-      "refreshIntervalSeconds": 10,
-      "progressColors": {
-        "enabled": true,
-        "errorBelow": 10,
-        "warningBelow": 30
-      },
-      "percentageMode": "remaining",
-      "hideInactive": false,
-      "openai": { "hideInactive": false },
-      "zai": { "hideTools": false, "hideInactive": false },
-      "opencodego": {
-        "workspaceId": "wrk_TESTWORKSPACE",
-        "workspaceToken": "TOKEN_TEST_ONLY_DO_NOT_USE",
-        "hideInactive": false
-      },
-      "otherProviders": { "sortDirection": "desc" }
-    }
+{
+  "$schema": "https://opencode.ai/tui.json",
+  "plugin": [
+    [
+      "./opencode-tools-quota.js",
+      {
+        "quota": {
+          "refreshIntervalSeconds": 10,
+          "progressColors": {
+            "enabled": true,
+            "errorBelow": 10,
+            "warningBelow": 30
+          },
+          "percentageMode": "remaining",
+          "hideInactive": false,
+          "openai": { "hideInactive": false },
+          "zai": { "hideTools": false, "hideInactive": false },
+          "opencodego": {
+            "workspaceId": "wrk_TESTWORKSPACE",
+            "workspaceToken": "TOKEN_TEST_ONLY_DO_NOT_USE",
+            "hideInactive": false
+          },
+          "otherProviders": { "sortDirection": "desc" }
+        }
+      }
+    ],
+    "./opencode-tools-home.js",
+    "./opencode-tools-token-report.js",
+    "./opencode-tools-mcp.js"
+  ],
+  "plugin_enabled": {
+    "internal:sidebar-mcp": false
   }
-]
+}
 ```
+
+The entries must remain standalone. Only quota accepts the options object;
+home, token-report, and MCP use string entries. The external MCP plugin does
+not deactivate OpenCode's built-in panel. Users must disable
+`internal:sidebar-mcp` themselves, as shown by `plugin_enabled`, to avoid two
+MCP panels.
 
 `quota.opencodego.workspaceId` identifies the OpenCode Go workspace.
 `quota.opencodego.workspaceToken` authenticates the console request;
@@ -151,9 +179,53 @@ respectively. The legacy root-level `otherProviders` object is also ignored:
 move `otherProviders.percentageMode` to `quota.percentageMode` and
 `otherProviders.sortDirection` to `quota.otherProviders.sortDirection`.
 
+### MCP sidebar layouts
+
+MCP names truncate before the right-aligned status label. Every line remains
+within the 37-cell sidebar width and contains no trailing whitespace.
+
+#### Expanded
+
+```text
+▼ MCP
+-------------------------------------
+• codegraph-global          Connected
+• context7-global           Connected
+• postgres-test-vendsystem   Disabled
+• postgres-test-vendsystem…  Disabled
+-------------------------------------
+```
+
+#### Collapsed, all connected
+
+```text
+▶ MCP                             2/2
+-------------------------------------
+```
+
+#### Collapsed, attention needed
+
+```text
+▶ MCP                             2/3
+-------------------------------------
+```
+
+#### Collapsed, empty
+
+```text
+▶ MCP                             0/0
+-------------------------------------
+```
+
+For the healthy `2/2` summary, both numbers use the success color and the slash
+is muted. For the unhealthy `2/3` summary, `2` uses the success color, `3` uses
+the error color, and the slash is muted.
+For the empty `0/0` summary, both numbers and the slash are muted.
+
 ### Build and deploy
 
-Build the three minified ESM artifacts:
+Build the four standalone minified ESM plugins and their imported shared
+artifact:
 
 ```bash
 npm run build:plugins
@@ -168,12 +240,26 @@ npm run deploy:local
 npm run deploy:global
 ```
 
-Both deploy commands rebuild first, replace obsolete opencode-tools/quota/token
-entries, and preserve unrelated TUI plugins. Local deployment also removes
-managed source entries from the project-root `tui.json`, because OpenCode loads
-it together with `.opencode/tui.json`; options in the selected `.opencode`
-config take precedence. Repeating either command produces the same files and
-configuration. Fully restart OpenCode after deployment.
+Each deploy command rebuilds first and automatically migrates managed
+configuration entries to the four standalone entries in manifest order. It
+preserves unrelated plugin entries and preserves existing quota options;
+quota options remain attached only to the quota entry. Local deployment also
+removes managed source entries from the project-root `tui.json`, because
+OpenCode loads it together with `.opencode/tui.json`; options in the selected
+`.opencode` config take precedence. Repeating either command produces the same
+files and configuration. Fully restart OpenCode after deployment.
+
+The normalized quota runtime ID is now `aamkye/opencode-tools-quota`. This is
+an intentional ID change, so host-managed plugin state may reset during
+migration; the deployer still preserves quota's configuration options.
+
+#### Rollback
+
+To return to OpenCode's built-in MCP panel, remove `./opencode-tools-mcp.js`
+from the `plugin` array, then remove the `"internal:sidebar-mcp": false`
+override (or set it to `true`) to re-enable `internal:sidebar-mcp`, then restart
+OpenCode. To roll back the complete standalone migration, optionally restore
+the prior composed release and its configuration before restarting.
 
 ### Artifact layout
 
@@ -181,15 +267,18 @@ configuration. Fully restart OpenCode after deployment.
 dist/
 ├── opencode-tools-shared.js
 ├── opencode-tools-quota.js
-└── plugins/
-    └── opencode-tools-tokens.js
+├── opencode-tools-home.js
+├── opencode-tools-token-report.js
+└── opencode-tools-mcp.js
 ```
 
-| File | Responsibility |
-| --- | --- |
-| `opencode-tools-shared.js` | Imported-only quota/provider and token computation; it is not registered as a plugin. |
-| `opencode-tools-quota.js` | Sole TUI plugin; registers sidebar and home slots and imports `./opencode-tools-shared.js`. |
-| `plugins/opencode-tools-tokens.js` | Regular OpenCode plugin for `/tokens_*`; imports `../opencode-tools-shared.js`. |
+| File | Runtime ID | Responsibility |
+| --- | --- | --- |
+| `opencode-tools-shared.js` | Not registered | Imported-only provider, presentation, and token-report logic. |
+| `opencode-tools-quota.js` | `aamkye/opencode-tools-quota` | Quota sidebar panel and provider polling. |
+| `opencode-tools-home.js` | `aamkye/opencode-tools-home` | Compact homepage provider summary. |
+| `opencode-tools-token-report.js` | `aamkye/opencode-tools-token-report` | TUI `/tokens_*` commands and reports. |
+| `opencode-tools-mcp.js` | `aamkye/opencode-tools-mcp` | Reactive MCP sidebar health panel immediately after quota. |
 
 `solid-js`, `@opentui/*`, `@opencode-ai/plugin`, host SDK modules, and
 Node/Bun built-ins remain external and are provided by the OpenCode host.
@@ -207,13 +296,15 @@ change that title.
 
 | File                        | Purpose                                                               |
 | --------------------------- | --------------------------------------------------------------------- |
-| `tui/quota.tsx`             | Aggregate sidebar registration and quota composition                  |
-| `tui/home.tsx`              | Compact homepage registration and formatter                           |
+| `tui/quota.tsx`             | Standalone quota sidebar adapter                                      |
+| `tui/home.tsx`              | Standalone compact homepage adapter                                   |
+| `tui/token-report.tsx`      | Standalone TUI token-report command adapter                           |
+| `tui/mcp.tsx`               | Standalone reactive MCP sidebar adapter                               |
 | `tui/providers/`            | Z.AI, OpenAI, and OpenCode Go provider adapters                       |
-| `opencode-tools-tokens.ts`  | Server plugin entry for `/tokens_*` commands                          |
 | `lib/tokens/`               | Vendored token reporting library ([upstream](https://github.com/slkiser/opencode-quota), MIT) |
-| `build-plugins.mjs`         | Builds the three minified local ESM artifacts                          |
-| `deploy-plugins.mjs`        | Idempotently deploys local/global artifacts and updates `tui.json`    |
+| `plugin-manifest.json`      | Manifest order, runtime IDs, artifacts, slots, and option ownership   |
+| `build-plugins.mjs`         | Builds the shared artifact and four standalone local ESM plugins      |
+| `deploy-plugins.mjs`        | Idempotently migrates local/global artifacts and `tui.json` entries   |
 
 ### Edit workflow
 
@@ -222,7 +313,7 @@ Edit the relevant source, redeploy, then fully restart OpenCode to reload.
 ```bash
 npm install       # install/refresh deps in node_modules
 npm run typecheck # tsc --noEmit (informational; runtime resolves via Bun)
-npm run build:plugins # rebuild all three local artifacts
+npm run build:plugins # rebuild all four standalone plugins plus shared code
 npm run deploy:local # rebuild and deploy into this repository
 npm test          # run tests
 ```

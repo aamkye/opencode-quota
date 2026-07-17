@@ -61,6 +61,88 @@ test("tracked project files contain no active legacy identifier", () => {
   }
 })
 
+test("documents standalone installation, migration, MCP layouts, and rollback", () => {
+  const readme = readFileSync("README.md", "utf8")
+  const prose = readme.replace(/\s+/gu, " ")
+  const configurationText = readme.match(/### Configuration\n\n[\s\S]*?```json\n([\s\S]*?)\n```/u)?.[1]
+  assert.ok(configurationText, "missing documented tui.json configuration")
+
+  const configuration = JSON.parse(configurationText)
+  assert.equal(Array.isArray(configuration.plugin), true, "documented tui.json must contain a plugin array")
+  assert.deepEqual(configuration.plugin.map((entry) => Array.isArray(entry) ? entry[0] : entry), [
+    "./opencode-tools-quota.js",
+    "./opencode-tools-home.js",
+    "./opencode-tools-token-report.js",
+    "./opencode-tools-mcp.js",
+  ])
+  assert.deepEqual(Object.keys(configuration.plugin[0][1]), ["quota"])
+  assert.equal(configuration.plugin.slice(1).every((entry) => typeof entry === "string"), true)
+  assert.deepEqual(configuration.plugin_enabled, { "internal:sidebar-mcp": false })
+
+  for (const id of [
+    "aamkye/opencode-tools-quota",
+    "aamkye/opencode-tools-home",
+    "aamkye/opencode-tools-token-report",
+    "aamkye/opencode-tools-mcp",
+  ]) assert.equal(readme.includes(`\`${id}\``), true, `missing runtime ID: ${id}`)
+
+  for (const text of [
+    "OpenCode 1.18.1 or newer",
+    "automatically migrates managed configuration entries",
+    "preserves unrelated plugin entries",
+    "preserves existing quota options",
+    "quota options remain attached only to the quota entry",
+    "normalized quota runtime ID",
+    "host-managed plugin state may reset",
+    "must disable `internal:sidebar-mcp` themselves",
+    "Rollback",
+    "remove `./opencode-tools-mcp.js`",
+    "re-enable `internal:sidebar-mcp`",
+    "restart OpenCode",
+  ]) assert.equal(prose.includes(text), true, `missing README text: ${text}`)
+  assert.doesNotMatch(prose, /automatically disables? `?internal:sidebar-mcp`?/iu)
+
+  const expectedLayouts = new Map([
+    ["Expanded", [
+      "▼ MCP",
+      "-".repeat(37),
+      `${"• codegraph-global".padEnd(28)}Connected`,
+      `${"• context7-global".padEnd(28)}Connected`,
+      `${"• postgres-test-vendsystem".padEnd(29)}Disabled`,
+      `${"• postgres-test-vendsystem…".padEnd(29)}Disabled`,
+      "-".repeat(37),
+    ]],
+    ["Collapsed, all connected", [
+      `${"▶ MCP".padEnd(34)}2/2`,
+      "-".repeat(37),
+    ]],
+    ["Collapsed, attention needed", [
+      `${"▶ MCP".padEnd(34)}2/3`,
+      "-".repeat(37),
+    ]],
+    ["Collapsed, empty", [
+      `${"▶ MCP".padEnd(34)}0/0`,
+      "-".repeat(37),
+    ]],
+  ])
+
+  for (const [heading, expected] of expectedLayouts) {
+    const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")
+    const layout = readme.match(new RegExp(`#### ${escapedHeading}\\n\\n\`\`\`text\\n([\\s\\S]*?)\\n\`\`\``, "u"))?.[1]
+    assert.ok(layout, `missing ${heading} MCP layout`)
+    const lines = layout.split("\n")
+    assert.deepEqual(lines, expected, `${heading} MCP layout changed`)
+    for (const line of lines) {
+      assert.ok([...line].length <= 37, `${heading} layout exceeds 37 cells: ${line}`)
+      assert.equal(line.trimEnd(), line, `${heading} layout has trailing whitespace`)
+    }
+  }
+
+  assert.match(prose, /For the healthy `2\/2` summary, both numbers use the success color and the slash is muted\./u)
+  assert.match(prose, /For the unhealthy `2\/3` summary, `2` uses the success color, `3` uses the error color, and the slash is muted\./u)
+  assert.match(prose, /For the empty `0\/0` summary, both numbers and the slash are muted\./u)
+})
+
 test("documents secret-safe OpenCode Go configuration", () => {
   const readme = readFileSync("README.md", "utf8")
   for (const text of [
