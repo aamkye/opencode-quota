@@ -10,7 +10,7 @@
 
 - [x] 2.1 Add parity tests that lock quota, home, and token-report behavior before migration.
 - [x] 2.2 Move reusable quota composition, options, selection, and provider ownership behind shared exports.
-- [ ] 2.3 Move reusable home and token-report decisions behind shared exports and reduce all current TUI entries to thin adapters.
+- [x] 2.3 Move reusable home and token-report decisions behind shared exports and reduce all current TUI entries to thin adapters.
 - [ ] 2.4 Convert quota, home, and token-report to standalone modules with normalized manifest IDs.
 - [ ] 2.5 Verify quota and home share one provider hub when both are active and remain functional when installed alone.
 

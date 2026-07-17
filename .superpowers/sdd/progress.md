@@ -41,3 +41,4 @@ add-opencode-tools-mcp Task 3: complete (commits 977bf03..be43af0, review clean 
 add-opencode-tools-mcp Task 4: complete (commits ba6eeff..bbd5661, review clean after one transactional reconciliation fix round)
 add-opencode-tools-mcp Task 5: complete (commit b613875, thorough review clean)
 add-opencode-tools-mcp Task 6: complete (commits 0ce6d77..c3650be, human-resolved manifest-derived order preserved, exceptional final review approved; accepted Minor shared-facade indirection for final reassessment)
+add-opencode-tools-mcp Task 7: complete (commit 4a773a1, thorough review clean; later artifact/runtime requirements gated to Tasks 8, 15, and 16)

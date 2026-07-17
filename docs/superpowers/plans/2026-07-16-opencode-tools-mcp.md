@@ -448,27 +448,27 @@ git commit -m "refactor: move quota decisions into shared feature logic"
 - Produces: `formatHomeQuotaLine`, `homeQuotaPercentParts`, `homeQuotaStatusRole`, `activeSessionID`, and `persistTokenReport`.
 - TUI adapters retain `HomeQuotaLine` JSX and token keymap/range-dialog ownership.
 
-- [ ] **Step 1: Redirect pure tests and strengthen boundaries**
+- [x] **Step 1: Redirect pure tests and strengthen boundaries**
 
 Compile each future feature module. Extend home tests with exact role thresholds: `9.6 -> error`, `30 -> warning`, `30.1 -> success`. Extend token tests to call the adapter while persistence remains observable through `api.client.session.prompt`. Require that adapter source no longer calls `computeTokenReport` or `renderTokenReport` directly.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/home-quota.test.mjs tests/token-tui.test.mjs tests/shared-boundary.test.mjs`
 
 Expected: FAIL because the new feature modules and role helper do not exist.
 
-- [ ] **Step 3: Extract decisions and persistence**
+- [x] **Step 3: Extract decisions and persistence**
 
 Move home formatting/percentage/role logic into `tui/features/home.ts`. Move route-to-session resolution and the current compute/render/no-reply/toast behavior into `tui/features/token-report.ts`; preserve the exact user-facing strings. Leave range mode push/pop, `DialogPrompt`, Enter confirmation, Escape binding, and keymap registration in `tui/token-report.tsx`. Export the new functions through the shared facade.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/home-quota.test.mjs tests/token-tui.test.mjs tests/plugin-adapters.test.mjs tests/shared-boundary.test.mjs`
 
 Expected: PASS; command names, dialog close behavior, report persistence, and home text/colors remain unchanged.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tui/features/home.ts tui/features/token-report.ts tui/home.tsx tui/token-report.tsx shared/opencode-tools-shared.ts tests/compile-presentation.mjs tests/home-quota.test.mjs tests/token-tui.test.mjs tests/shared-boundary.test.mjs
