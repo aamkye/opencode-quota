@@ -1,9 +1,11 @@
 import assert from "node:assert/strict"
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { basename, join, resolve } from "node:path"
+import { basename, dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import test, { after, before } from "node:test"
+
+import { pluginManifest } from "../plugin-manifest.mjs"
 
 const projectRoot = resolve(import.meta.dirname, "..")
 const obsoleteNamespace = ["opencode", "quota"].join("-")
@@ -44,6 +46,27 @@ const tokenCommands = [
   "tokens_session_all",
   "tokens_between",
 ]
+const deployedFiles = [
+  "opencode-tools-shared.js",
+  ...pluginManifest.map((entry) => entry.outfile),
+]
+const obsoleteArtifacts = [
+  `${obsoleteNamespace}.js`,
+  `${obsoleteNamespace}.ts`,
+  `${obsoleteNamespace}-zai.tsx`,
+  `${obsoleteNamespace}-openai.tsx`,
+  `${obsoleteNamespace}-shared.tsx`,
+  "opencode-tools-tokens.ts",
+  "plugins/opencode-tools-tokens.js",
+  "plugins/opencode-tools-tokens.ts",
+  `plugins/${obsoleteNamespace}-tokens.js`,
+  `plugins/${obsoleteNamespace}-tokens.ts`,
+  "tokens.js",
+  "tokens.ts",
+  "plugins/tokens.js",
+  "plugins/tokens.ts",
+  ...pluginManifest.map((entry) => entry.source),
+]
 const temporaryRoots = []
 let deployPlugins
 let resolveGlobalConfigRoot
@@ -71,16 +94,26 @@ async function fixture() {
       "/tmp/unrelated/tui/home.tsx",
       "file:///tmp/unrelated/opencode-tools-quota.js",
       ["file:///tmp/unrelated/tokens.ts?version=1", { preserve: "tokens" }],
-      ["./tui/quota.tsx", localOptions],
+      ["./opencode-tools-quota.js", localOptions],
+      "./opencode-tools-quota.js",
+      ["./opencode-tools-home.js", { ignored: "home options" }],
+      "./opencode-tools-token-report.js",
+      "./opencode-tools-mcp.js",
+      ["./tui/quota.tsx", rootOptions],
       "./tui/home.tsx",
-      "@aamkye/opencode-tools/tui",
+      "./tui/token-report.tsx",
+      "./tui/mcp.tsx",
+      ["@aamkye/opencode-tools/tui", globalOptions],
+      [`./${obsoleteNamespace}-zai.tsx`, { legacy: "lower priority" }],
       `./${obsoleteNamespace}.js`,
       "./plugins/opencode-tools-tokens.js",
     ],
   }, null, 2))
-  await writeFile(join(root, "plugins", "opencode-tools-tokens.js"), "obsolete")
-  await writeFile(join(root, "plugins", "opencode-tools-tokens.ts"), "obsolete")
-  await writeFile(join(root, "plugins", `${obsoleteNamespace}-tokens.js`), "obsolete")
+  for (const file of obsoleteArtifacts) {
+    const path = join(root, file)
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, `obsolete ${file}`)
+  }
   await writeFile(join(root, "plugins", "unrelated.js"), "preserve")
   await writeFile(join(root, "opencode.json"), JSON.stringify({
     $schema: "https://opencode.ai/config.json",
@@ -98,8 +131,7 @@ async function fixture() {
 
 async function snapshot(root) {
   const files = [
-    "opencode-tools-shared.js",
-    "opencode-tools-quota.js",
+    ...deployedFiles,
     "plugins/unrelated.js",
     "tui.json",
     "opencode.json",
@@ -116,6 +148,25 @@ async function managedArtifactPaths(root, relative = "") {
   return paths.flat().filter((path) => /(?:^|\/)opencode-tools-[^/]+\.(?:js|ts)$/.test(path)).sort()
 }
 
+function expectedManagedEntries(options) {
+  return pluginManifest.map((entry) => (
+    entry.options === "quota" && options !== undefined
+      ? [`./${entry.outfile}`, options]
+      : `./${entry.outfile}`
+  ))
+}
+
+function assertSingleTrailingNewline(contents, label) {
+  assert.equal(contents.endsWith("\n"), true, `${label} must end with a newline`)
+  assert.equal(contents.endsWith("\n\n"), false, `${label} must end with exactly one newline`)
+}
+
+async function assertObsoleteArtifactsRemoved(root) {
+  for (const file of obsoleteArtifacts) {
+    await assert.rejects(readFile(join(root, file), "utf8"), { code: "ENOENT" })
+  }
+}
+
 test("local deployment removes token artifacts and commands while preserving unrelated config", async () => {
   const root = await fixture()
 
@@ -126,6 +177,8 @@ test("local deployment removes token artifacts and commands while preserving unr
 
   assert.deepEqual(second, first)
   assert.equal(first["plugins/unrelated.js"], "preserve")
+  assertSingleTrailingNewline(first["tui.json"], "tui.json")
+  assertSingleTrailingNewline(first["opencode.json"], "opencode.json")
 
   const commands = JSON.parse(await readFile(join(root, "opencode.json"), "utf8"))
   assert.equal(commands.$schema, "https://opencode.ai/config.json")
@@ -145,7 +198,7 @@ test("local deployment removes token artifacts and commands while preserving unr
     "/tmp/unrelated/tui/home.tsx",
     "file:///tmp/unrelated/opencode-tools-quota.js",
     ["file:///tmp/unrelated/tokens.ts?version=1", { preserve: "tokens" }],
-    ["./opencode-tools-quota.js", localOptions],
+    ...expectedManagedEntries(localOptions),
   ])
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "used", sortDirection: "asc" },
@@ -159,20 +212,12 @@ test("local deployment removes token artifacts and commands while preserving unr
   assert.equal(config.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-quota.js").length, 1)
   assert.ok(config.plugin.every((entry) => !/^@aamkye\/opencode-(?:tools|quota)/.test(Array.isArray(entry) ? entry[0] : entry)))
 
-  await assert.rejects(readFile(join(root, "plugins", "opencode-tools-tokens.ts"), "utf8"), { code: "ENOENT" })
-  await assert.rejects(readFile(join(root, "plugins", "opencode-tools-tokens.js"), "utf8"), { code: "ENOENT" })
-  await assert.rejects(readFile(join(root, "plugins", `${obsoleteNamespace}-tokens.js`), "utf8"), { code: "ENOENT" })
+  await assertObsoleteArtifactsRemoved(root)
 
-  for (const [deployed, built] of [
-    ["opencode-tools-shared.js", "dist/opencode-tools-shared.js"],
-    ["opencode-tools-quota.js", "dist/opencode-tools-quota.js"],
-  ]) {
-    assert.equal(first[deployed], await readFile(resolve(projectRoot, built), "utf8"))
+  for (const deployed of deployedFiles) {
+    assert.equal(first[deployed], await readFile(resolve(projectRoot, "dist", deployed), "utf8"))
   }
-  assert.deepEqual(await managedArtifactPaths(root), [
-    "opencode-tools-quota.js",
-    "opencode-tools-shared.js",
-  ])
+  assert.deepEqual(await managedArtifactPaths(root), deployedFiles.toSorted())
 })
 
 test("deployment removes an empty managed command object", async () => {
@@ -184,8 +229,13 @@ test("deployment removes an empty managed command object", async () => {
 
   await deployPlugins(root, { logLevel: "silent" })
 
-  const config = JSON.parse(await readFile(join(root, "opencode.json"), "utf8"))
+  const openCodeBytes = await readFile(join(root, "opencode.json"), "utf8")
+  const tuiBytes = await readFile(join(root, "tui.json"), "utf8")
+  const config = JSON.parse(openCodeBytes)
   assert.equal("command" in config, false)
+  assert.deepEqual(JSON.parse(tuiBytes).plugin, expectedManagedEntries())
+  assertSingleTrailingNewline(openCodeBytes, "opencode.json")
+  assertSingleTrailingNewline(tuiBytes, "tui.json")
 })
 
 test("local deployment merges root and selected .opencode configs without duplicate managed plugins", async () => {
@@ -201,6 +251,9 @@ test("local deployment merges root and selected .opencode configs without duplic
       "./root-unrelated.js",
       ["./tui/quota.tsx", rootOptions],
       "./tui/home.tsx",
+      "./tui/token-report.tsx",
+      "./tui/mcp.tsx",
+      "./opencode-tools-home.js",
     ],
   }, null, 2))
   await writeFile(join(root, "opencode.json"), JSON.stringify({
@@ -219,6 +272,10 @@ test("local deployment merges root and selected .opencode configs without duplic
     theme: "selected-theme",
     plugin: [
       "./selected-unrelated.js",
+      "./opencode-tools-quota.js",
+      "./opencode-tools-home.js",
+      "./opencode-tools-token-report.js",
+      "./opencode-tools-mcp.js",
       "./tui/home.tsx",
     ],
   }, null, 2))
@@ -236,7 +293,7 @@ test("local deployment merges root and selected .opencode configs without duplic
   assert.equal(selectedConfig.theme, "selected-theme")
   assert.deepEqual(selectedConfig.plugin, [
     "./selected-unrelated.js",
-    ["./opencode-tools-quota.js", rootOptions],
+    ...expectedManagedEntries(rootOptions),
   ])
   assert.deepEqual(selectedConfig.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "asc" },
@@ -259,11 +316,15 @@ test("local deployment merges root and selected .opencode configs without duplic
     ...selectedConfig.plugin.map((entry) => ({ entry, root: configRoot })),
   ].filter(({ entry, root: entryRoot }) => {
     const spec = Array.isArray(entry) ? entry[0] : entry
-    return resolve(entryRoot, spec) === join(configRoot, "opencode-tools-quota.js")
-      || resolve(entryRoot, spec) === join(root, "tui", "quota.tsx")
-      || resolve(entryRoot, spec) === join(root, "tui", "home.tsx")
+    return pluginManifest.some((manifestEntry) => (
+      resolve(entryRoot, spec) === join(configRoot, manifestEntry.outfile)
+      || resolve(entryRoot, spec) === join(root, manifestEntry.source)
+    ))
   })
-  assert.equal(activeManagedEntries.length, 1)
+  assert.equal(activeManagedEntries.length, pluginManifest.length)
+  assertSingleTrailingNewline(await readFile(join(root, "tui.json"), "utf8"), "project tui.json")
+  assertSingleTrailingNewline(await readFile(join(configRoot, "tui.json"), "utf8"), "selected tui.json")
+  assertSingleTrailingNewline(await readFile(join(root, "opencode.json"), "utf8"), "project opencode.json")
 })
 
 test("global deployment removes token artifacts and commands while preserving unrelated config", async () => {
@@ -282,10 +343,23 @@ test("global deployment removes token artifacts and commands while preserving un
       "file:///tmp/unrelated/tokens.ts",
       ["opencode-tools", globalOptions],
       "./opencode-tools-quota.js",
+      "./opencode-tools-home.js",
+      "./opencode-tools-token-report.js",
+      "./opencode-tools-mcp.js",
+      ["./opencode-tools-home.js", { ignored: "home options" }],
+      "./tui/quota.tsx",
+      "./tui/home.tsx",
+      "./tui/token-report.tsx",
+      "./tui/mcp.tsx",
+      [`./${obsoleteNamespace}-openai.tsx`, { legacy: "lower priority" }],
       "./tokens.ts",
     ],
   }))
-  await writeFile(join(root, "plugins", "opencode-tools-tokens.js"), "obsolete")
+  for (const file of obsoleteArtifacts) {
+    const path = join(root, file)
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, `obsolete ${file}`)
+  }
   await writeFile(join(root, "plugins", "unrelated.js"), "preserve")
   await writeFile(join(root, "opencode.json"), JSON.stringify({
     $schema: "https://opencode.ai/config.json",
@@ -307,6 +381,8 @@ test("global deployment removes token artifacts and commands while preserving un
 
   assert.deepEqual(second, first)
   assert.equal(first["plugins/unrelated.js"], "preserve")
+  assertSingleTrailingNewline(first["tui.json"], "global tui.json")
+  assertSingleTrailingNewline(first["opencode.json"], "global opencode.json")
 
   const config = JSON.parse(first["tui.json"])
   assert.deepEqual(config.plugin, [
@@ -315,7 +391,7 @@ test("global deployment removes token artifacts and commands while preserving un
     "/tmp/unrelated/tui/home.tsx",
     "file:///tmp/unrelated/opencode-tools-quota.js",
     "file:///tmp/unrelated/tokens.ts",
-    ["./opencode-tools-quota.js", globalOptions],
+    ...expectedManagedEntries(globalOptions),
   ])
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "desc" },
@@ -335,7 +411,8 @@ test("global deployment removes token artifacts and commands while preserving un
     unrelated: { description: "Preserve this command", template: "echo unrelated" },
   })
   assert.ok(tokenCommands.every((id) => !(id in commands.command)))
-  await assert.rejects(readFile(join(root, "plugins", "opencode-tools-tokens.js"), "utf8"), { code: "ENOENT" })
+  await assertObsoleteArtifactsRemoved(root)
+  assert.deepEqual(await managedArtifactPaths(root), deployedFiles.toSorted())
 })
 
 test("package scripts expose local and global deployment without npm plugin specs", async () => {

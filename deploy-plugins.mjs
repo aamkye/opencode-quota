@@ -1,22 +1,35 @@
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { buildPlugins } from "./build-plugins.mjs"
+import { pluginManifest, validatePluginManifest } from "./plugin-manifest.mjs"
 
 const projectRoot = dirname(fileURLToPath(import.meta.url))
 const obsoleteNamespace = ["opencode", "quota"].join("-")
+const sharedArtifact = "opencode-tools-shared.js"
+const quotaPlugin = pluginManifest.find((entry) => entry.options === "quota")
 
-const obsoleteFiles = [
+const historicalManagedPaths = [
   `${obsoleteNamespace}.js`,
   `${obsoleteNamespace}.ts`,
+  `${obsoleteNamespace}-zai.tsx`,
+  `${obsoleteNamespace}-openai.tsx`,
+  `${obsoleteNamespace}-shared.tsx`,
   "opencode-tools-tokens.ts",
   "plugins/opencode-tools-tokens.js",
   "plugins/opencode-tools-tokens.ts",
   `plugins/${obsoleteNamespace}-tokens.js`,
   `plugins/${obsoleteNamespace}-tokens.ts`,
+  "tokens.js",
+  "tokens.ts",
   "plugins/tokens.js",
   "plugins/tokens.ts",
+]
+
+const obsoleteFiles = [
+  ...historicalManagedPaths,
+  ...pluginManifest.map((entry) => entry.source),
 ]
 
 const managedTokenCommandIds = [
@@ -31,23 +44,8 @@ const managedTokenCommandIds = [
 ]
 
 const managedConfigPaths = [
-  "opencode-tools-quota.js",
-  "opencode-tools-tokens.ts",
-  "plugins/opencode-tools-tokens.js",
-  "plugins/opencode-tools-tokens.ts",
-  `${obsoleteNamespace}.js`,
-  `${obsoleteNamespace}.ts`,
-  `${obsoleteNamespace}-zai.tsx`,
-  `${obsoleteNamespace}-openai.tsx`,
-  `${obsoleteNamespace}-shared.tsx`,
-  `plugins/${obsoleteNamespace}-tokens.js`,
-  `plugins/${obsoleteNamespace}-tokens.ts`,
-  "tokens.js",
-  "tokens.ts",
-  "plugins/tokens.js",
-  "plugins/tokens.ts",
-  "tui/quota.tsx",
-  "tui/home.tsx",
+  ...pluginManifest.flatMap((entry) => [entry.outfile, entry.source]),
+  ...historicalManagedPaths,
 ]
 
 function entrySpec(entry) {
@@ -83,8 +81,8 @@ function isManagedSpec(spec, targetRoot) {
 
 function optionsPriority(spec, targetRoot) {
   const path = managedConfigPath(spec, targetRoot)
-  if (path === "opencode-tools-quota.js") return 0
-  if (path === "tui/quota.tsx") return 1
+  if (path === quotaPlugin?.outfile) return 0
+  if (path === quotaPlugin?.source) return 1
   if (/^(?:@aamkye\/)?opencode-(?:tools|quota)(?:\/.*)?$/i.test(spec)) return 2
   if (path === `${obsoleteNamespace}-zai.tsx` || path === `${obsoleteNamespace}-openai.tsx`) return 3
   return Infinity
@@ -141,18 +139,32 @@ function cleanManagedEntries(config, configRoot) {
   return { unrelated, options, priority, removed }
 }
 
+async function copyBuiltArtifact(artifact, targetRoot) {
+  const source = resolve(projectRoot, "dist", artifact)
+  const deadline = Date.now() + 1_000
+
+  while (true) {
+    const contents = await readFile(source)
+    if (contents.length > 0 && contents.at(-1) === 0x0a) {
+      await writeFile(join(targetRoot, artifact), contents)
+      return
+    }
+    if (Date.now() >= deadline) throw new Error(`built artifact is incomplete: ${artifact}`)
+    await new Promise((resolveWait) => setTimeout(resolveWait, 10))
+  }
+}
+
 export function resolveGlobalConfigRoot(env = process.env, home = homedir()) {
   return join(env.XDG_CONFIG_HOME?.trim() || join(home, ".config"), "opencode")
 }
 
 export async function deployPlugins(targetRoot, { logLevel = "info", projectConfigRoot } = {}) {
+  validatePluginManifest(pluginManifest)
   await buildPlugins({ logLevel })
   await mkdir(join(targetRoot, "plugins"), { recursive: true })
 
-  await Promise.all([
-    copyFile(resolve(projectRoot, "dist/opencode-tools-shared.js"), join(targetRoot, "opencode-tools-shared.js")),
-    copyFile(resolve(projectRoot, "dist/opencode-tools-quota.js"), join(targetRoot, "opencode-tools-quota.js")),
-  ])
+  const artifacts = [sharedArtifact, ...pluginManifest.map((entry) => entry.outfile)]
+  await Promise.all(artifacts.map((artifact) => copyBuiltArtifact(artifact, targetRoot)))
 
   await Promise.all(obsoleteFiles.map((file) => rm(join(targetRoot, file), { force: true })))
 
@@ -186,10 +198,12 @@ export async function deployPlugins(targetRoot, { logLevel = "info", projectConf
   }
 
   const configured = selected.priority < Infinity ? selected : fallback
-  const quotaEntry = configured?.priority < Infinity
-    ? ["./opencode-tools-quota.js", configured.options]
-    : "./opencode-tools-quota.js"
-  config.plugin = [...selected.unrelated, quotaEntry]
+  const managedEntries = pluginManifest.map((entry) => (
+    entry.options === "quota" && configured?.priority < Infinity
+      ? [`./${entry.outfile}`, configured.options]
+      : `./${entry.outfile}`
+  ))
+  config.plugin = [...selected.unrelated, ...managedEntries]
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`)
 
   const openCodeConfigPath = join(targetRoot, "opencode.json")
