@@ -540,27 +540,27 @@ git commit -m "refactor: register current features as standalone plugins"
 - Quota acquires `quotaProviderDemand(normalizeQuotaOptions(rawOptions))`; home acquires `{ consumer: "home" }`.
 - Both read `hub.providers()` reactively and remain independently installable.
 
-- [ ] **Step 1: Add adapter-level activation-order tests**
+- [x] **Step 1: Add adapter-level activation-order tests**
 
 Activate home then quota against one API, and quota then home against a fresh API. Count provider factory/network/timer ownership through injected hub factories or controlled provider constructors. Assert one hub, quota sees optional OpenCode Go, home continues after quota disposal, quota-alone/home-alone work, and final lifecycle disposal releases all adapters once.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="hub|activation order|installed alone" tests/provider-hub.test.mjs tests/plugin-adapters.test.mjs`
 
 Expected: FAIL because adapters still construct private provider arrays.
 
-- [ ] **Step 3: Replace private provider ownership**
+- [x] **Step 3: Replace private provider ownership**
 
 Acquire the hub through `TuiFeatureContext`, derive current provider arrays through the stable accessor, and update quota selection/composition and home `<For>` to consume that accessor. When quota's sidebar receives a session ID, call `setSessionID` on the current hub adapters. Remove adapter-level provider disposal; lease cleanup owns it.
 
-- [ ] **Step 4: Run GREEN and all provider tests**
+- [x] **Step 4: Run GREEN and all provider tests**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/provider-hub.test.mjs tests/plugin-adapters.test.mjs tests/provider-zai.test.mjs tests/provider-openai.test.mjs tests/provider-opencode-go.test.mjs`
 
 Expected: PASS for both activation orders, standalone installs, demand replacement, and provider regressions.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tui/quota.tsx tui/home.tsx tests/provider-hub.test.mjs tests/plugin-adapters.test.mjs
