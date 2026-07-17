@@ -56,3 +56,4 @@ add-opencode-tools-mcp Task 8: complete (commit 51ae486, thorough task review ap
 add-opencode-tools-lsp Task 1: complete (commit dce5e1e, standard risk review approved; accepted Minor pre-existing npm warning noise)
 add-opencode-tools-lsp Task 2: complete (commit 48f3307, standard non-risk task; targeted tests and typecheck passed)
 add-opencode-tools-lsp Task 3: complete (commit 3361106, standard risk review approved; accepted two Minor test/evidence quality notes)
+add-opencode-tools-lsp Task 4: complete (commit b19e13f, standard non-risk task; 5 mounted tests passed)
