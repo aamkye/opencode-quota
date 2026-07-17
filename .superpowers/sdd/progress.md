@@ -46,6 +46,7 @@ add-opencode-tools-mcp Task 15: complete (commits 6252a54..d00905d, thorough rev
 add-opencode-tools-mcp Task 16: complete (commits 6ff186d..fb0734f, thorough review approved with one evidence Minor)
 add-opencode-tools-mcp Task 17: complete (commits 63cf46f..2f8771f, thorough review clean after one test fix)
 add-opencode-tools-mcp Task 18: complete (commit c731b31, thorough review approved)
+add-opencode-tools-mcp final review: READY at d32a99d (no findings; release gates 278/278, typecheck and five-artifact build pass)
 add-opencode-tools-mcp Task 3: complete (commits 977bf03..be43af0, review clean after one API-contract fix; engine-floor cross-task gate deferred to Task 16)
 add-opencode-tools-mcp Task 4: complete (commits ba6eeff..bbd5661, review clean after one transactional reconciliation fix round)
 add-opencode-tools-mcp Task 5: complete (commit b613875, thorough review clean)
