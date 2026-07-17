@@ -24,6 +24,7 @@
     "session-title.ts",
     "tui/**/*.ts",
     "tui/**/*.tsx",
-    "shared/**/*.ts"
+    "shared/**/*.ts",
+    "tests/*-state-types.fixture.ts"
   ]
 }

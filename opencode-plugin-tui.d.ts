@@ -45,6 +45,16 @@ declare module "@opencode-ai/plugin/tui" {
     error?: string
   }
 
+  export type TuiLspKnownStatus = "connected" | "error"
+  export type TuiLspStatus = TuiLspKnownStatus | (string & {})
+
+  export interface TuiLspEntry {
+    id: string
+    name: string
+    root: string
+    status: TuiLspStatus
+  }
+
   export interface TuiPluginApi {
     keymap: {
       registerLayer(input: { mode?: string; commands?: TuiCommand[]; bindings?: TuiBinding[] }): void
@@ -90,6 +100,7 @@ declare module "@opencode-ai/plugin/tui" {
     }
     state: {
       mcp(): readonly TuiMcpEntry[]
+      lsp(): readonly TuiLspEntry[]
       provider: readonly Provider[]
       session: {
         messages(sessionID: string): readonly import("@opencode-ai/sdk/v2").Message[]
