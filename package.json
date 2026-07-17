@@ -5,11 +5,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./tui": "./tui/quota.tsx"
+    "./quota": "./tui/quota.tsx",
+    "./home": "./tui/home.tsx",
+    "./token-report": "./tui/token-report.tsx",
+    "./mcp": "./tui/mcp.tsx"
   },
   "files": [
     "dist",
+    "plugin-manifest.json",
     "tui",
+    "shared",
     "README.md"
   ],
   "scripts": {
@@ -32,7 +37,7 @@
   ],
   "license": "MIT",
   "engines": {
-    "opencode": ">=1.4.3"
+    "opencode": ">=1.18.1"
   },
   "dependencies": {
     "@opencode-ai/plugin": "^1.3.3",

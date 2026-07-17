@@ -5,6 +5,27 @@ import test from "node:test"
 
 const legacyIdentifier = ["opencode", "quota"].join("-")
 
+test("publishes and typechecks the standalone plugins", () => {
+  const pkg = JSON.parse(readFileSync("package.json", "utf8"))
+  const lock = JSON.parse(readFileSync("package-lock.json", "utf8"))
+  const tsconfig = JSON.parse(readFileSync("tsconfig.json", "utf8"))
+
+  assert.deepEqual(pkg.exports, {
+    "./quota": "./tui/quota.tsx",
+    "./home": "./tui/home.tsx",
+    "./token-report": "./tui/token-report.tsx",
+    "./mcp": "./tui/mcp.tsx",
+  })
+  for (const file of ["dist", "plugin-manifest.json", "tui", "shared", "README.md"]) {
+    assert.equal(pkg.files.includes(file), true, `package files omit ${file}`)
+  }
+  for (const input of ["tui/**/*.ts", "tui/**/*.tsx", "shared/**/*.ts"]) {
+    assert.equal(tsconfig.include.includes(input), true, `typecheck omits ${input}`)
+  }
+  assert.equal(pkg.engines.opencode, ">=1.18.1")
+  assert.equal(lock.packages[""].engines.opencode, ">=1.18.1")
+})
+
 test("source modules own the TUI slots without root-config activation", () => {
   const pkg = JSON.parse(readFileSync("package.json", "utf8"))
   const tui = JSON.parse(readFileSync("tui.json", "utf8"))
