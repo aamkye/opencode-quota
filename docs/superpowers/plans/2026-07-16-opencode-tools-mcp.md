@@ -486,7 +486,7 @@ git commit -m "refactor: share home and token report decisions"
 **Interfaces:**
 - Each default export is `defineTuiPlugin(pluginDescriptor(key), activate)` and activates one feature only.
 
-- [ ] **Step 1: Change parity expectations to normalized standalone modules**
+- [x] **Step 1: Change parity expectations to normalized standalone modules**
 
 Assert exact IDs and one activation surface per module:
 
@@ -505,23 +505,23 @@ assert.equal(tokenApi.slotNames.length, 0)
 assert.equal(tokenApi.keymapLayers.length, 2)
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED for standalone feature contracts**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/plugin-adapters.test.mjs`
 
 Expected: FAIL on quota's old runtime ID and direct lifecycle ownership.
 
-- [ ] **Step 3: Adopt descriptors and activation contexts**
+- [x] **Step 3: Adopt descriptors and activation contexts**
 
 Replace hand-built module objects with `defineTuiPlugin`. Use `context.api` for host calls and `context.onCleanup` for adapter-owned Solid roots or dialogs. Remove direct `api.lifecycle.onDispose` calls for resources owned by the activation scope. Do not call another feature's adapter.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN for standalone feature contracts**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/plugin-adapters.test.mjs tests/token-tui.test.mjs tests/home-quota.test.mjs`
 
 Expected: PASS with normalized IDs and isolated activation.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit standalone feature contracts**
 
 ```bash
 git add tui/quota.tsx tui/home.tsx tui/token-report.tsx tests/plugin-adapters.test.mjs
