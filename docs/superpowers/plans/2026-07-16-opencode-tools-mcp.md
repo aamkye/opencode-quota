@@ -759,7 +759,7 @@ git commit -m "feat: model MCP sidebar status"
 - Default module ID comes from manifest key `mcp`; registers only `sidebar_content` at order `111`.
 - Reads `api.state.mcp()` inside a Solid memo and persists only non-empty user toggles.
 
-- [ ] **Step 1: Add mounted adapter scenarios**
+- [x] **Step 1: Add mounted adapter scenarios**
 
 Build a harness with a reactive MCP accessor, KV map/write log, captured slot registration, fake theme, and lifecycle. Assert expanded rows/order/colors/separators; collapsed summary and no rows/footer; saved collapsed restore; click writes opposite preference; empty forces `▶ MCP 0/0`, has only header divider, click does not write; servers appearing restore saved signal; additions/removals/reorder/status changes update without reactivation; long names preserve labels and 37-cell text has no trailing whitespace.
 
@@ -774,23 +774,23 @@ setMcp([{ name: "docs", status: "connected" }])
 assert.equal(view.marker(), savedCollapsed ? "▶ " : "▼ ")
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/mcp-mounted.test.mjs`
 
 Expected: FAIL because `tui/mcp.tsx` and its fixture do not exist.
 
-- [ ] **Step 3: Implement the adapter**
+- [x] **Step 3: Implement the adapter**
 
 Create one activation-scoped signal initialized with `api.kv.get("aamkye.opencode-tools-mcp.collapsed", false)`. Create a memo from `createMcpPanelModel(api.state.mcp())`; derive `effectiveCollapsed = model().total === 0 || collapsed()`. Ignore header toggles when total is zero. Otherwise flip the signal and write the new boolean. Render `CompactPanel` with summary only when effectively collapsed and `footerDivider` only for expanded non-empty content; render each ordered row with `CompactStatusRow`. Use `defineTuiPlugin(pluginDescriptor("mcp"), activate)`.
 
-- [ ] **Step 4: Run GREEN and adapter regressions**
+- [x] **Step 4: Run GREEN and adapter regressions**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/mcp-mounted.test.mjs tests/mcp-model.test.mjs tests/plugin-adapters.test.mjs tests/compact-panel-mounted.test.mjs tests/shared-boundary.test.mjs`
 
 Expected: PASS; MCP is reactive, persisted, isolated, bounded, and empty-safe.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tui/mcp.tsx tests/mcp-mounted.fixture.ts tests/mcp-mounted.test.mjs tests/compile-presentation.mjs tests/plugin-adapters.test.mjs tests/shared-boundary.test.mjs

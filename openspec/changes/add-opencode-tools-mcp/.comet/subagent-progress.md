@@ -4,15 +4,15 @@
 - Review mode: thorough
 - TDD mode: tdd
 - Dispatch constraint: native Task subagents only; never invoke `opencode run` or another external agent CLI
-- Current plan task: Implement the Pure MCP Panel Model (OpenSpec 4.2, 4.3)
-- Mapped OpenSpec tasks: 4.2 Add shared MCP model tests for order, labels, native roles, unknown fallback, and healthy, unhealthy, and empty summaries.; 4.3 Implement and export the pure MCP status model through the shared artifact.
+- Current plan task: Implement the Reactive Persisted MCP Adapter (OpenSpec 4.4, 4.5)
+- Mapped OpenSpec tasks: 4.4 Add mounted tests for expanded, collapsed, empty, long-name, reactive-update, and persisted-preference scenarios.; 4.5 Implement the standalone MCP adapter with shared primitives, namespaced KV persistence, and placement immediately after quota.
 - Stage: done
 - Review-fix round: 1 of 2
-- Implementation commit: b26cd90
+- Implementation commit: 5ce6f95; fix 2fd48e0
 - Changed files: five allowed Task 11 files
 - RED evidence: 3 expected missing-contract failures
 - GREEN evidence: focused tests passed 9/9; typecheck passed
-- Review status: thorough review approved with no findings
+- Review status: thorough re-review approved with no findings after reactive mount fix
 - RED evidence: missing MCP feature module resolution failure
 - GREEN evidence: MCP model tests passed 2/2; typecheck passed
 - Risk signals: shared presentation API

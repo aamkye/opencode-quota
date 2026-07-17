@@ -25,8 +25,8 @@
 - [x] 4.1 Extend local TUI declarations with `api.state.mcp()`, known MCP statuses, and the runtime-safe unknown boundary.
 - [x] 4.2 Add shared MCP model tests for order, labels, native roles, unknown fallback, and healthy, unhealthy, and empty summaries.
 - [x] 4.3 Implement and export the pure MCP status model through the shared artifact.
-- [ ] 4.4 Add mounted tests for expanded, collapsed, empty, long-name, reactive-update, and persisted-preference scenarios.
-- [ ] 4.5 Implement the standalone MCP adapter with shared primitives, namespaced KV persistence, and placement immediately after quota.
+- [x] 4.4 Add mounted tests for expanded, collapsed, empty, long-name, reactive-update, and persisted-preference scenarios.
+- [x] 4.5 Implement the standalone MCP adapter with shared primitives, namespaced KV persistence, and placement immediately after quota.
 
 ## 5. Build, Deployment, and Documentation
 
