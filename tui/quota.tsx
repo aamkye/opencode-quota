@@ -66,7 +66,12 @@ const plugin = defineTuiPlugin(pluginDescriptor("quota"), (context, api, rawOpti
   const options = quotaAdapterShared.normalizeOptions(rawOptions)
   const hub = acquireHub(context, api, quotaHubDemand(options), meta)
   const [currentProviders, setCurrentProviders] = createSignal(hub.value.providers())
-  context.onCleanup(hub.value.subscribe(() => setCurrentProviders(hub.value.providers())))
+  let currentSessionID = ""
+  context.onCleanup(hub.value.subscribe(() => {
+    const providers = hub.value.providers()
+    for (const provider of providers) provider.setSessionID(currentSessionID)
+    setCurrentProviders(providers)
+  }))
   const providers = reactiveProviders(currentProviders)
   const selection: QuotaSelectionController = quotaAdapterShared.createSelection(api, providers)
   const model = createMemo(() => quotaAdapterShared.composePanel(selection.selectedProviderID(), providers, options))
@@ -78,6 +83,7 @@ const plugin = defineTuiPlugin(pluginDescriptor("quota"), (context, api, rawOpti
     slots: {
       sidebar_content(_ctx, props) {
         const sessionID = props.session_id ?? ""
+        currentSessionID = sessionID
         selection.setSessionID(sessionID)
         for (const provider of currentProviders()) provider.setSessionID(sessionID)
         return <PanelRenderer model={model} theme={theme} />

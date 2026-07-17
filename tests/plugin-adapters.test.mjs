@@ -577,7 +577,7 @@ test("activation order: quota-first mounted home excludes OpenCode Go and follow
   }
 })
 
-test("mounted quota recomputes when a later quota demand replaces hub providers", async () => {
+test("mounted quota gives its active session to replacement hub providers", async () => {
   const { api, lifecycle } = createApi()
   const hub = createControlledHubMeta()
   api.state.provider = [{ id: "zai" }]
@@ -590,6 +590,7 @@ test("mounted quota recomputes when a later quota demand replaces hub providers"
       { session_id: "replacement-session" },
     )
     const firstItemID = mountedQuota.props.model().groups[0].items[0].id
+    const initialProviderCount = hub.state.createdProviders.length
 
     await activate(quotaPlugin, {
       quota: {
@@ -601,6 +602,16 @@ test("mounted quota recomputes when a later quota demand replaces hub providers"
     const replacementItemID = mountedQuota.props.model().groups[0].items[0].id
     assert.notEqual(replacementItemID, firstItemID)
     assert.match(replacementItemID, /30000/)
+    assert.deepEqual(
+      hub.state.createdProviders
+        .slice(initialProviderCount)
+        .map((provider) => [provider.id, provider.sessions]),
+      [
+        ["zai", ["replacement-session"]],
+        ["openai", ["replacement-session"]],
+        ["opencode-go", ["replacement-session"]],
+      ],
+    )
   } finally {
     await lifecycle.dispose()
   }
