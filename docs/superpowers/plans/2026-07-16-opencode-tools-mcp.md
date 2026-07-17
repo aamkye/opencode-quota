@@ -2,6 +2,7 @@
 change: add-opencode-tools-mcp
 design-doc: docs/superpowers/specs/2026-07-16-opencode-tools-mcp-design.md
 base-ref: ce0960229bdf299dd3ef678f3dbee9d538cbda50
+archived-with: 2026-07-17-add-opencode-tools-mcp
 ---
 
 # Standalone TUI Plugin Foundation and MCP Panel Implementation Plan
