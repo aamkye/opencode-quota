@@ -67,3 +67,4 @@ add-todo-tui-plugin Task 2: complete (commits a17ca3a..96ba2cc, standard risk re
 add-todo-tui-plugin Task 3: complete (commits df627c5..aa1be7f, standard risk review passed after one contract-hardening round)
 add-todo-tui-plugin Task 4: complete (commit 78eeb09, standard public-API risk review approved)
 add-todo-tui-plugin Task 5: complete (commit e916100, standard reactive adapter risk review approved)
+add-todo-tui-plugin Task 6: complete (commits 060e50d..e846d72, debug recovery and standard integration risk review approved)
