@@ -16,7 +16,17 @@ function LspRow(props: { row: LspStatusRow; theme: () => PanelTheme }) {
   return (
     <box flexDirection="row" width="100%" overflow="hidden">
       <text width={2} flexShrink={0} fg={props.theme()[props.row.status]}>• </text>
-      <text overflow="hidden" wrapMode="none" truncate={true}>{props.row.id}</text>
+      <text
+        flexBasis={0}
+        flexGrow={1}
+        flexShrink={1}
+        minWidth={0}
+        overflow="hidden"
+        wrapMode="none"
+        truncate={true}
+      >
+        {props.row.id}
+      </text>
     </box>
   )
 }

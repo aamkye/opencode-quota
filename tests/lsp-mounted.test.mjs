@@ -122,3 +122,69 @@ test("restores expanded and collapsed preferences for an empty list", async () =
     }
   }
 })
+
+test("truncates long IDs inside 37 and 36 cells without trailing whitespace", async () => {
+  const longID = "typescript-language-server-with-an-extremely-long-id"
+  const mounted = await mountLspPanel({
+    entries: [{ id: longID, name: "ignored", root: "/ignored", status: "connected" }],
+  })
+  try {
+    const wide = mounted.view(37).rows[0]
+    const narrow = mounted.view(36).rows[0]
+    assert.equal(wide.renderedText, `• ${longID.slice(0, 34)}…`)
+    assert.equal(narrow.renderedText, `• ${longID.slice(0, 33)}…`)
+    assert.equal(wide.renderedText.length, 37)
+    assert.equal(narrow.renderedText.length, 36)
+    assert.equal(wide.renderedText.trimEnd(), wide.renderedText)
+    assert.equal(narrow.renderedText.trimEnd(), narrow.renderedText)
+    assert.equal(wide.bullet, "• ")
+    assert.deepEqual({
+      flexBasis: wide.idProps.flexBasis,
+      flexGrow: wide.idProps.flexGrow,
+      flexShrink: wide.idProps.flexShrink,
+      minWidth: wide.idProps.minWidth,
+      overflow: wide.idProps.overflow,
+      wrapMode: wide.idProps.wrapMode,
+      truncate: wide.idProps.truncate,
+      width: wide.idProps.width,
+    }, {
+      flexBasis: 0,
+      flexGrow: 1,
+      flexShrink: 1,
+      minWidth: 0,
+      overflow: "hidden",
+      wrapMode: "none",
+      truncate: true,
+      width: undefined,
+    })
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("uses two full-width separators expanded and one collapsed", async () => {
+  for (const entries of [[], [
+    { id: "typescript", name: "TypeScript", root: "/workspace", status: "connected" },
+  ]]) {
+    const mounted = await mountLspPanel({ entries })
+    try {
+      assert.equal(mounted.view().dividerCount, 2)
+      mounted.view().clickHeader()
+      assert.equal(mounted.view().dividerCount, 1)
+      assert.equal(mounted.view().rows.length, 0)
+      assert.equal(mounted.view().hint, "")
+    } finally {
+      await mounted.dispose()
+    }
+  }
+})
+
+test("disposes the Solid root and plugin lifecycle", async () => {
+  const mounted = await mountLspPanel({ entries })
+  assert.equal(mounted.slotMounts(), 1)
+  assert.equal(mounted.lifecycleAborted(), false)
+  assert.ok(mounted.lifecycleCleanups() >= 1)
+  await mounted.dispose()
+  assert.equal(mounted.lifecycleAborted(), true)
+  assert.equal(mounted.lifecycleCleanups(), 0)
+})
