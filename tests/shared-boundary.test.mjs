@@ -44,10 +44,12 @@ test("loadable TUI entries use the shared facade for computation", () => {
   const quota = source("tui/quota.tsx")
   const home = source("tui/home.tsx")
   const tokenReport = source("tui/token-report.tsx")
+  const mcp = source("tui/mcp.tsx")
 
   assert.match(quota, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(home, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(tokenReport, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
+  assert.match(mcp, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assertRelativeImports("tui/quota.tsx", [
     "../shared/opencode-tools-shared.js",
     "./presentation/renderer.js",
@@ -60,9 +62,11 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assert.doesNotMatch(quota, /\bcomposeQuotaPanel\b/)
   assertRelativeImports("tui/home.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/token-report.tsx", ["../shared/opencode-tools-shared.js"])
+  assertRelativeImports("tui/mcp.tsx", ["../shared/opencode-tools-shared.js"])
   assert.doesNotMatch(tokenReport, /\bcomputeTokenReport\b|\brenderTokenReport\b/)
   assert.doesNotMatch(tokenReport, /client\.session\.prompt/)
   assert.doesNotMatch(tokenReport, /\bhistory\b|\bmodel\b/)
+  assert.doesNotMatch(mcp, /\.sort\(|setInterval|setTimeout/)
 })
 
 test("shared facade exports computation without plugin registration or JSX", () => {

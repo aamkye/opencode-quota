@@ -10,6 +10,7 @@ const {
   homeProviderHubTestKey,
 } = await import("../.tmp-test/plugin-adapters-home-fixture.mjs")
 const { default: tokenPlugin, registerTokenReportTui, tokenReportCommands } = await import("../.tmp-test/plugin-adapters-token-fixture.mjs")
+const { default: mcpPlugin } = await import("../.tmp-test/plugin-adapters-mcp-fixture.mjs")
 
 const openCodeGoConfig = Object.freeze({
   workspaceId: "wrk_TESTWORKSPACE",
@@ -349,6 +350,9 @@ function createApi({ route = { name: "home" } } = {}) {
       },
     },
     state: {
+      mcp() {
+        return []
+      },
       provider: [],
       session: {
         messages() {
@@ -408,28 +412,52 @@ test("current feature adapters expose normalized standalone plugin contracts", a
   const quotaApi = createApi()
   const homeApi = createApi()
   const tokenApi = createApi({ route: { name: "session", params: { sessionID: "session-1" } } })
+  const mcpApi = createApi()
 
   try {
     await activate(quotaPlugin, undefined, quotaApi.api)
     await activate(homePlugin, undefined, homeApi.api)
     await activate(tokenPlugin, undefined, tokenApi.api)
+    await activate(mcpPlugin, undefined, mcpApi.api)
 
     assert.deepEqual(
-      [quotaPlugin.id, homePlugin.id, tokenPlugin.id],
+      [quotaPlugin.id, homePlugin.id, tokenPlugin.id, mcpPlugin.id],
       [
         "aamkye/opencode-tools-quota",
         "aamkye/opencode-tools-home",
         "aamkye/opencode-tools-token-report",
+        "aamkye/opencode-tools-mcp",
       ],
     )
     assert.deepEqual(slotNames(quotaApi.api), ["sidebar_content"])
     assert.deepEqual(slotNames(homeApi.api), ["home_bottom"])
     assert.equal(slotNames(tokenApi.api).length, 0)
     assert.equal(keymapLayers(tokenApi.api).length, 2)
+    assert.deepEqual(slotNames(mcpApi.api), ["sidebar_content"])
+    assert.equal(mcpApi.api.slots.registrations[0].order, 111)
   } finally {
     await quotaApi.lifecycle.dispose()
     await homeApi.lifecycle.dispose()
     await tokenApi.lifecycle.dispose()
+    await mcpApi.lifecycle.dispose()
+  }
+})
+
+test("MCP adapter registers only its standalone sidebar surface", async () => {
+  const { api, lifecycle } = createApi()
+
+  try {
+    assert.equal(mcpPlugin.id, "aamkye/opencode-tools-mcp")
+    await activate(mcpPlugin, undefined, api)
+
+    assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content"]])
+    assert.equal(api.slots.registrations[0].order, 111)
+    assert.deepEqual(api.keymap.registrations, [])
+    assert.deepEqual(api.route.registrations, [])
+    assert.equal(api.event.listeners.length, 0)
+    assert.equal(lifecycle.count(), 1)
+  } finally {
+    await lifecycle.dispose()
   }
 })
 
