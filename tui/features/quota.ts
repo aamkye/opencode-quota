@@ -5,6 +5,7 @@ import { normalizeOpenCodeGoConfig, type OpenCodeGoConfig, type OpenCodeGoOption
 import type { QuotaProviderAdapter } from "../providers/types.js"
 import { sortByOrderThenId } from "../presentation/types.js"
 import type { PanelItem, PanelModel, PanelStatus } from "../presentation/types.js"
+import { pluginDescriptor } from "../runtime/manifest.js"
 
 export type PercentageMode = "remaining" | "used"
 export type SortDirection = "desc" | "asc"
@@ -356,8 +357,7 @@ export function composeQuotaPanel(
 
   return {
     id: "quota",
-    // Sidebar placement is owned by the adapter's manifest slot registration.
-    order: 0,
+    order: pluginDescriptor("quota").slotOrder ?? 0,
     title: "Quota",
     collapsedSummary: selection.kind === "unsupported"
       ? {

@@ -491,6 +491,14 @@ test("quota plugin keeps the manifest-owned sidebar slot order", async (t) => {
   assert.equal(registration.order, 110)
 })
 
+test("shared quota composition preserves the legacy manifest order", () => {
+  const model = composeQuotaPanel(supported("zai"), [
+    provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50 }),
+  ])
+
+  assert.equal(model.order, 110)
+})
+
 test("keeps the selected supported provider first while loading or unavailable", () => {
   const openai = provider({ id: "openai", title: "OpenAI", order: 120, primaryPct: 75 })
 
