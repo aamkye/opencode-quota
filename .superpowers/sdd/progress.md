@@ -55,3 +55,4 @@ add-opencode-tools-mcp Task 7: complete (commit 4a773a1, thorough review clean; 
 add-opencode-tools-mcp Task 8: complete (commit 51ae486, thorough task review approved after provider-hub finding assigned to Task 9; accepted Minor direct-lifecycle RED coverage gap retained for final reassessment)
 add-opencode-tools-lsp Task 1: complete (commit dce5e1e, standard risk review approved; accepted Minor pre-existing npm warning noise)
 add-opencode-tools-lsp Task 2: complete (commit 48f3307, standard non-risk task; targeted tests and typecheck passed)
+add-opencode-tools-lsp Task 3: complete (commit 3361106, standard risk review approved; accepted two Minor test/evidence quality notes)
