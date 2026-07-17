@@ -57,3 +57,4 @@ add-opencode-tools-lsp Task 1: complete (commit dce5e1e, standard risk review ap
 add-opencode-tools-lsp Task 2: complete (commit 48f3307, standard non-risk task; targeted tests and typecheck passed)
 add-opencode-tools-lsp Task 3: complete (commit 3361106, standard risk review approved; accepted two Minor test/evidence quality notes)
 add-opencode-tools-lsp Task 4: complete (commit b19e13f, standard non-risk task; 5 mounted tests passed)
+add-opencode-tools-lsp Task 5: complete (commit 2fc22c4, standard non-risk task; 12 LSP and MCP mounted tests passed)
