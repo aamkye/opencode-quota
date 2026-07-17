@@ -660,7 +660,7 @@ git commit -m "feat: add compact sidebar status rows"
 - Produces: `TuiMcpKnownStatus`, `TuiMcpStatus`, `TuiMcpEntry`, and `TuiPluginApi.state.mcp()`.
 - Runtime mapper still accepts arbitrary status strings; declaration does not make unknown runtime values impossible.
 
-- [ ] **Step 1: Add the compile fixture**
+- [x] **Step 1: Add the compile fixture**
 
 ```ts
 import type { TuiMcpEntry, TuiMcpKnownStatus, TuiPluginApi } from "@opencode-ai/plugin/tui"
@@ -670,23 +670,23 @@ export const readMcp = (api: TuiPluginApi): readonly TuiMcpEntry[] => api.state.
 export const statuses: readonly string[] = known
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `npx tsc --noEmit --strict --skipLibCheck --module ESNext --moduleResolution bundler --target ES2022 --types node opencode-plugin-tui.d.ts tests/mcp-state-types.fixture.ts`
 
 Expected: FAIL because `TuiMcpEntry`, `TuiMcpKnownStatus`, and `state.mcp` are missing.
 
-- [ ] **Step 3: Extend the local declaration**
+- [x] **Step 3: Extend the local declaration**
 
 Declare the five known string literals and an open string boundary using `type TuiMcpStatus = TuiMcpKnownStatus | (string & {})`. Define entries with `name`, `status`, and optional `error?: string`; add `mcp(): readonly TuiMcpEntry[]` under `state`.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `npx tsc --noEmit --strict --skipLibCheck --module ESNext --moduleResolution bundler --target ES2022 --types node opencode-plugin-tui.d.ts tests/mcp-state-types.fixture.ts`
 
 Expected: PASS with no diagnostics.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add opencode-plugin-tui.d.ts tests/mcp-state-types.fixture.ts

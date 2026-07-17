@@ -22,7 +22,7 @@
 
 ## 4. MCP Status Feature
 
-- [ ] 4.1 Extend local TUI declarations with `api.state.mcp()`, known MCP statuses, and the runtime-safe unknown boundary.
+- [x] 4.1 Extend local TUI declarations with `api.state.mcp()`, known MCP statuses, and the runtime-safe unknown boundary.
 - [ ] 4.2 Add shared MCP model tests for order, labels, native roles, unknown fallback, and healthy, unhealthy, and empty summaries.
 - [ ] 4.3 Implement and export the pure MCP status model through the shared artifact.
 - [ ] 4.4 Add mounted tests for expanded, collapsed, empty, long-name, reactive-update, and persisted-preference scenarios.
