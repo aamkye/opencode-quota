@@ -1,5 +1,6 @@
 import { For, Show, type Accessor, type JSX } from "solid-js"
 
+import { allocateStatusRow } from "./layout.js"
 import type { PanelStatus, PanelTextSegment } from "./types.js"
 
 export type PanelTheme = Record<PanelStatus, string>
@@ -20,8 +21,40 @@ export type CompactPanelProps = {
   theme: Accessor<PanelTheme>
 }
 
+export type CompactStatusRowProps = {
+  name: string
+  label: string
+  status: PanelStatus
+  theme: Accessor<PanelTheme>
+}
+
 function Divider() {
   return <box width="100%" height={1} border={["top"]} />
+}
+
+export function CompactStatusRow(props: CompactStatusRowProps) {
+  const allocation = () => allocateStatusRow(37, props.label.length)
+
+  return (
+    <box flexDirection="row" width="100%" overflow="hidden">
+      <text width={allocation().bullet} flexShrink={0} fg={props.theme()[props.status]}>• </text>
+      <text
+        width={allocation().name}
+        flexGrow={1}
+        flexShrink={1}
+        minWidth={0}
+        overflow="hidden"
+        wrapMode="none"
+        truncate={true}
+      >
+        {props.name}
+      </text>
+      <text width={allocation().beforeLabelGap} flexShrink={0}> </text>
+      <box width={allocation().label} flexShrink={0} overflow="hidden" justifyContent="flex-end">
+        <text fg={props.theme().textMuted} wrapMode="none">{props.label}</text>
+      </box>
+    </box>
+  )
 }
 
 export function CompactPanel(props: CompactPanelProps) {

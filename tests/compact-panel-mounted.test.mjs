@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { build } from "esbuild"
 import test from "node:test"
 
 globalThis.React = {
@@ -8,6 +9,25 @@ globalThis.React = {
 }
 
 const { mountCompactPanel } = await import("../.tmp-test/compact-panel-mounted.mjs")
+
+await build({
+  bundle: true,
+  entryPoints: ["tui/presentation/compact-panel.tsx"],
+  external: ["solid-js"],
+  format: "esm",
+  outfile: ".tmp-test/compact-status-row.mjs",
+  platform: "node",
+  target: "es2022",
+})
+
+const { CompactStatusRow } = await import("../.tmp-test/compact-status-row.mjs")
+
+function mountedElements(value, parent) {
+  if (Array.isArray(value)) return value.flatMap((child) => mountedElements(child, parent))
+  if (!value || typeof value !== "object" || !("type" in value) || !("props" in value)) return []
+  const mounted = { element: value, parent }
+  return [mounted, ...mountedElements(value.props.children, mounted)]
+}
 
 function dividers(elements) {
   return elements.filter((element) =>
@@ -89,5 +109,41 @@ test("clips expanded children to parent width and obeys footerDivider", () => {
   } finally {
     withFooter.dispose()
     withoutFooter.dispose()
+  }
+})
+
+test("mounts a bounded status row with a semantic bullet and truncating long name", () => {
+  const labels = ["Connected", "Disabled", "Failed", "Needs auth", "Needs client ID", "Unknown"]
+  const longName = "postgres-test-vendsystem-with-a-name-that-exceeds-the-sidebar"
+  const theme = {
+    error: "#ff0000",
+    warning: "#ffaa00",
+    success: "#00ff00",
+    text: "#ffffff",
+    textMuted: "#888888",
+  }
+
+  for (const label of labels) {
+    const row = CompactStatusRow({ name: longName, label, status: "warning", theme: () => theme })
+    const mounted = mountedElements(row)
+    const root = mounted[0]?.element
+    const bullet = mounted.find(({ element }) => element.type === "text" && element.props.children === "• ")?.element
+    const name = mounted.find(({ element }) => element.type === "text" && element.props.children === longName)?.element
+    const labelMount = mounted.find(({ element }) => element.type === "text" && element.props.children === label)
+
+    assert.equal(root?.type, "box")
+    assert.equal(root?.props.flexDirection, "row")
+    assert.equal(root?.props.width, "100%")
+    assert.equal(root?.props.overflow, "hidden")
+    assert.equal(bullet?.props.width, 2)
+    assert.equal(bullet?.props.fg, "#ffaa00", "the supplied semantic role colors the bullet")
+    assert.equal(mounted.some(({ element }) => element.props.children === "● "), false)
+    assert.equal(name?.props.minWidth, 0)
+    assert.equal(name?.props.overflow, "hidden")
+    assert.equal(name?.props.wrapMode, "none")
+    assert.equal(name?.props.truncate, true)
+    assert.equal(labelMount?.element.props.fg, "#888888")
+    assert.equal(labelMount?.parent?.element.props.width, label.length)
+    assert.equal(labelMount?.parent?.element.props.justifyContent, "flex-end")
   }
 })

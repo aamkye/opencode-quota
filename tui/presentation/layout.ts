@@ -22,6 +22,13 @@ export type CompactTableAllocation = {
   valueAlign: "right"
 }
 
+export type StatusRowAllocation = {
+  bullet: number
+  name: number
+  beforeLabelGap: number
+  label: number
+}
+
 export function allocateHeader(availableCells: number, _label: string, summary?: string): HeaderAllocation {
   const available = Math.max(0, Math.floor(availableCells))
   const marker = Math.min(2, available)
@@ -47,6 +54,19 @@ export function allocateProgressRow(availableCells: number): ProgressRowAllocati
   const bar = Math.max(0, available - marker - beforeBarGap - beforePercentGap - percent)
 
   return { marker, beforeBarGap, bar, beforePercentGap, percent }
+}
+
+export function allocateStatusRow(availableCells: number, labelLength: number): StatusRowAllocation {
+  const available = Number.isFinite(availableCells) ? Math.max(0, Math.floor(availableCells)) : 0
+  const desiredLabel = Number.isFinite(labelLength) ? Math.max(0, Math.floor(labelLength)) : 0
+  const label = Math.min(desiredLabel, available)
+  const afterLabel = available - label
+  const beforeLabelGap = Math.min(1, afterLabel)
+  const afterLabelGap = afterLabel - beforeLabelGap
+  const bullet = Math.min(2, afterLabelGap)
+  const name = afterLabelGap - bullet
+
+  return { bullet, name, beforeLabelGap, label }
 }
 
 export function allocateCompactTable(
