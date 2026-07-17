@@ -583,27 +583,27 @@ git commit -m "refactor: share provider hub across quota and home"
 - Produces controlled `CompactPanel` with design fields `title`, `collapsed`, `summary`, `onToggle`, `children`, and `footerDivider`, plus an `Accessor<PanelTheme>` used only to resolve semantic roles.
 - `PanelRenderer` continues to own quota panel/group signals and its one-second timer.
 
-- [ ] **Step 1: Add mounted shell tests before extraction**
+- [x] **Step 1: Add mounted shell tests before extraction**
 
 Mount a controlled shell and assert: two-cell marker; flexible title; collapsed-only segmented summary with independent colors; header click calls `onToggle` without internal state; header divider always renders; children are omitted when collapsed and clipped to parent width when expanded; footer divider obeys `footerDivider`. Add textual snapshots for quota extended, semi-collapsed, and collapsed 37-cell layouts before changing renderer code.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/compact-panel-mounted.test.mjs tests/presentation-mounted.test.mjs`
 
 Expected: FAIL because `CompactPanel` does not exist; existing quota tests remain the parity baseline.
 
-- [ ] **Step 3: Extract the shell and migrate quota rendering**
+- [x] **Step 3: Extract the shell and migrate quota rendering**
 
 Move only outer header/summary/header-divider/expanded-region/footer-divider JSX into `compact-panel.tsx`. Keep normalized quota items, group collapse, middle dividers, timers, tables, and semantic formatting in `renderer.tsx`. Render quota with `footerDivider={normalized().groups.length > 0}` so existing expanded/collapsed separator counts stay exact. Preserve the current ephemeral `createSignal(Set)` in `PanelRenderer`; do not read or write KV.
 
-- [ ] **Step 4: Run GREEN and all presentation tests**
+- [x] **Step 4: Run GREEN and all presentation tests**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/compact-panel-mounted.test.mjs tests/presentation-mounted.test.mjs tests/presentation-render-model.test.mjs tests/presentation-layout.test.mjs tests/quota-composition.test.mjs`
 
 Expected: PASS; the three quota snapshots and mounted allocations are unchanged.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tui/presentation/compact-panel.tsx tui/presentation/renderer.tsx shared/opencode-tools-shared.ts tests/compact-panel-mounted.fixture.ts tests/compact-panel-mounted.test.mjs tests/presentation-mounted.fixture.ts tests/presentation-mounted.test.mjs tests/compile-presentation.mjs
