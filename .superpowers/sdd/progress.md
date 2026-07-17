@@ -65,3 +65,4 @@ add-opencode-tools-lsp final review: READY at 89745db (spec pass; accepted one M
 add-todo-tui-plugin Task 1: complete (commit 2774b7b, standard non-risk task, expected RED contract verified)
 add-todo-tui-plugin Task 2: complete (commits a17ca3a..96ba2cc, standard risk review approved after one fix round)
 add-todo-tui-plugin Task 3: complete (commits df627c5..aa1be7f, standard risk review passed after one contract-hardening round)
+add-todo-tui-plugin Task 4: complete (commit 78eeb09, standard public-API risk review approved)
