@@ -45,11 +45,13 @@ test("loadable TUI entries use the shared facade for computation", () => {
   const home = source("tui/home.tsx")
   const tokenReport = source("tui/token-report.tsx")
   const mcp = source("tui/mcp.tsx")
+  const todo = source("tui/todo.tsx")
 
   assert.match(quota, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(home, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(tokenReport, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(mcp, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
+  assert.match(todo, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assertRelativeImports("tui/quota.tsx", [
     "../shared/opencode-tools-shared.js",
     "./presentation/renderer.js",
@@ -64,10 +66,12 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assertRelativeImports("tui/token-report.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/mcp.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/lsp.tsx", ["../shared/opencode-tools-shared.js"])
+  assertRelativeImports("tui/todo.tsx", ["../shared/opencode-tools-shared.js"])
   assert.doesNotMatch(tokenReport, /\bcomputeTokenReport\b|\brenderTokenReport\b/)
   assert.doesNotMatch(tokenReport, /client\.session\.prompt/)
   assert.doesNotMatch(tokenReport, /\bhistory\b|\bmodel\b/)
   assert.doesNotMatch(mcp, /\.sort\(|setInterval|setTimeout/)
+  assert.doesNotMatch(todo, /todo\.updated|setInterval|setTimeout/)
 })
 
 test("shared facade exports computation without plugin registration or JSX", () => {
@@ -98,6 +102,7 @@ test("shared facade exports computation without plugin registration or JSX", () 
   assert.match(shared, /activeSessionID/)
   assert.match(shared, /persistTokenReport/)
   assert.match(shared, /createLspPanelModel/)
+  assert.match(shared, /createTodoPanelModel/)
   assert.doesNotMatch(shared, /@opentui\/|slots\.register|export\s+default|<[a-z][^>]*>/i)
   assert.match(homeFeature, /export function formatHomeQuotaLine/)
   assert.match(homeFeature, /export function homeQuotaPercentParts/)

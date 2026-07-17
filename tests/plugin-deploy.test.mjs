@@ -52,6 +52,7 @@ const expectedManagedSpecs = [
   "./opencode-tools-token-report.js",
   "./opencode-tools-mcp.js",
   "./opencode-tools-lsp.js",
+  "./opencode-tools-todo.js",
 ]
 const deployedFiles = [
   "opencode-tools-shared.js",
@@ -106,10 +107,12 @@ async function fixture() {
       ["./opencode-tools-home.js", { ignored: "home options" }],
       "./opencode-tools-token-report.js",
       "./opencode-tools-mcp.js",
+      "./opencode-tools-todo.js",
       ["./tui/quota.tsx", rootOptions],
       "./tui/home.tsx",
       "./tui/token-report.tsx",
       "./tui/mcp.tsx",
+      "./tui/todo.tsx",
       ["@aamkye/opencode-tools/tui", globalOptions],
       [`./${obsoleteNamespace}-zai.tsx`, { legacy: "lower priority" }],
       `./${obsoleteNamespace}.js`,
@@ -123,6 +126,8 @@ async function fixture() {
   }
   await writeFile(join(root, "opencode-tools-lsp.js"), "stale managed LSP artifact")
   await writeFile(join(root, "tui/lsp.tsx"), "stale managed LSP source")
+  await writeFile(join(root, "opencode-tools-todo.js"), "stale managed TODO artifact")
+  await writeFile(join(root, "tui/todo.tsx"), "stale managed TODO source")
   await writeFile(join(root, "plugins", "unrelated.js"), "preserve")
   await writeFile(join(root, "opencode.json"), JSON.stringify({
     $schema: "https://opencode.ai/config.json",
@@ -182,6 +187,11 @@ function assertPlainLspEntry(config) {
   assert.deepEqual(entries, ["./opencode-tools-lsp.js"])
 }
 
+function assertPlainTodoEntry(config) {
+  const entries = config.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-todo.js")
+  assert.deepEqual(entries, ["./opencode-tools-todo.js"])
+}
+
 function assertSingleTrailingNewline(contents, label) {
   assert.equal(contents.endsWith("\n"), true, `${label} must end with a newline`)
   assert.equal(contents.endsWith("\n\n"), false, `${label} must end with exactly one newline`)
@@ -227,6 +237,7 @@ test("local deployment removes token artifacts and commands while preserving unr
     ...expectedManagedEntries(localOptions),
   ])
   assertPlainLspEntry(config)
+  assertPlainTodoEntry(config)
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "used", sortDirection: "asc" },
     quota: {
@@ -281,6 +292,7 @@ test("local deployment preserves project fallback semantics across repeated migr
       "./tui/home.tsx",
       "./tui/token-report.tsx",
       "./tui/mcp.tsx",
+      "./tui/todo.tsx",
       ["@aamkye/opencode-tools/tui", globalOptions],
       "@scope/root-unrelated-last",
       [`./${obsoleteNamespace}-zai.tsx`, localOptions],
@@ -308,6 +320,7 @@ test("local deployment preserves project fallback semantics across repeated migr
       ["./selected-unrelated-middle.js", { preserve: "middle" }],
       "./opencode-tools-token-report.js",
       "./opencode-tools-mcp.js",
+      "./opencode-tools-todo.js",
       "./tui/home.tsx",
       "@aamkye/opencode-tools/tui",
       "file:///tmp/selected-unrelated-last.js",
@@ -320,6 +333,8 @@ test("local deployment preserves project fallback semantics across repeated migr
   }
   await writeFile(join(configRoot, "opencode-tools-lsp.js"), "stale managed LSP artifact")
   await writeFile(join(configRoot, "tui/lsp.tsx"), "stale managed LSP source")
+  await writeFile(join(configRoot, "opencode-tools-todo.js"), "stale managed TODO artifact")
+  await writeFile(join(configRoot, "tui/todo.tsx"), "stale managed TODO source")
 
   const initialSelectedConfig = JSON.parse(await readFile(join(configRoot, "tui.json"), "utf8"))
   assert.equal(JSON.stringify(initialSelectedConfig).includes("opencodego"), false)
@@ -348,6 +363,7 @@ test("local deployment preserves project fallback semantics across repeated migr
     ...expectedManagedEntries(rootOptions),
   ])
   assertPlainLspEntry(selectedConfig)
+  assertPlainTodoEntry(selectedConfig)
   assert.deepEqual(selectedConfig.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "asc" },
     quota: {
@@ -405,11 +421,13 @@ test("global deployment removes token artifacts and commands while preserving un
       "./opencode-tools-home.js",
       "./opencode-tools-token-report.js",
       "./opencode-tools-mcp.js",
+      "./opencode-tools-todo.js",
       ["./opencode-tools-home.js", { ignored: "home options" }],
       "./tui/quota.tsx",
       "./tui/home.tsx",
       "./tui/token-report.tsx",
       "./tui/mcp.tsx",
+      "./tui/todo.tsx",
       [`./${obsoleteNamespace}-openai.tsx`, { legacy: "lower priority" }],
       "./tokens.ts",
     ],
@@ -421,6 +439,8 @@ test("global deployment removes token artifacts and commands while preserving un
   }
   await writeFile(join(root, "opencode-tools-lsp.js"), "stale managed LSP artifact")
   await writeFile(join(root, "tui/lsp.tsx"), "stale managed LSP source")
+  await writeFile(join(root, "opencode-tools-todo.js"), "stale managed TODO artifact")
+  await writeFile(join(root, "tui/todo.tsx"), "stale managed TODO source")
   await writeFile(join(root, "plugins", "unrelated.js"), "preserve")
   await writeFile(join(root, "opencode.json"), JSON.stringify({
     $schema: "https://opencode.ai/config.json",
@@ -455,6 +475,7 @@ test("global deployment removes token artifacts and commands while preserving un
     ...expectedManagedEntries(globalOptions),
   ])
   assertPlainLspEntry(config)
+  assertPlainTodoEntry(config)
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "desc" },
     quota: {

@@ -16,6 +16,7 @@ test("publishes and typechecks the standalone plugins", () => {
     "./token-report": "./tui/token-report.tsx",
     "./mcp": "./tui/mcp.tsx",
     "./lsp": "./tui/lsp.tsx",
+    "./todo": "./tui/todo.tsx",
   })
   assert.deepEqual(pkg.files, ["dist", "plugin-manifest.json", "tui", "shared", "README.md"])
   assert.deepEqual(tsconfig.include, [
