@@ -70,3 +70,4 @@ add-todo-tui-plugin Task 5: complete (commit e916100, standard reactive adapter 
 add-todo-tui-plugin Task 6: complete (commits 060e50d..e846d72, debug recovery and standard integration risk review approved)
 add-todo-tui-plugin Task 7: complete (commit 61e400a, standard documentation-interface risk review approved)
 add-todo-tui-plugin Task 8: complete (verification-only, focused 9/9 and integration 30/30, typecheck and scope review passed)
+add-todo-tui-plugin Task 9: complete (verification-only, full 300/300, typecheck, seven-artifact build, isolated deploy 13/13, review approved)
