@@ -5,6 +5,8 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { build } from "esbuild"
 import { transformAsync } from "@babel/core"
 
+import { pluginManifest, validatePluginManifest } from "./plugin-manifest.mjs"
+
 const projectRoot = dirname(fileURLToPath(import.meta.url))
 const distRoot = resolve(projectRoot, "dist")
 
@@ -81,7 +83,8 @@ function hostRuntimeImports() {
   }
 }
 
-export async function buildPlugins({ logLevel = "info" } = {}) {
+export async function buildPlugins({ logLevel = "info", manifest = pluginManifest } = {}) {
+  validatePluginManifest(manifest)
   await mkdir(distRoot, { recursive: true })
   await rm(resolve(distRoot, "plugins/opencode-tools-tokens.js"), { force: true })
 
@@ -93,33 +96,18 @@ export async function buildPlugins({ logLevel = "info" } = {}) {
     plugins: [solidTransformPlugin(), hostRuntimeImports()],
   })
 
-  const quota = await build({
-    ...common,
-    stdin: {
-      contents: [
-        'import quota from "./tui/quota.tsx"',
-        'import home from "./tui/home.tsx"',
-        'import { registerTokenReportTui } from "./tui/token-report.tsx"',
-        "const plugin = {",
-        '  id: "aamkye/opencode-tools",',
-        "  async tui(api, options) {",
-        "    await quota.tui(api, options)",
-        "    await home.tui(api, options)",
-        "    await registerTokenReportTui(api)",
-        "  },",
-        "}",
-        "export default plugin",
-      ].join("\n"),
-      loader: "js",
-      resolveDir: projectRoot,
-      sourcefile: "opencode-tools-quota-entry.js",
-    },
-    logLevel,
-    outfile: resolve(distRoot, "opencode-tools-quota.js"),
-    plugins: [solidTransformPlugin(), hostRuntimeImports(), sharedImport("./opencode-tools-shared.js")],
-  })
+  const features = {}
+  for (const entry of manifest) {
+    features[entry.key] = await build({
+      ...common,
+      entryPoints: [entry.source],
+      logLevel,
+      outfile: resolve(distRoot, entry.outfile),
+      plugins: [solidTransformPlugin(), hostRuntimeImports(), sharedImport("./opencode-tools-shared.js")],
+    })
+  }
 
-  return { shared, quota }
+  return { shared, features }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
