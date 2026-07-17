@@ -30,7 +30,7 @@
 
 ## 5. Build, Deployment, and Documentation
 
-- [ ] 5.1 Replace the synthetic composed build entry with manifest-driven standalone builds and test all four artifacts and shared imports.
+- [x] 5.1 Replace the synthetic composed build entry with manifest-driven standalone builds and test all four artifacts and shared imports.
 - [ ] 5.2 Update package exports, included files, TypeScript inputs, and the OpenCode engine floor to 1.18.1.
 - [ ] 5.3 Add local and global deployment migration tests for legacy entries, quota options, normalized IDs, unrelated entries, stale files, and idempotency.
 - [ ] 5.4 Implement manifest-driven deployment of four standalone entries and removal of obsolete composed artifacts.

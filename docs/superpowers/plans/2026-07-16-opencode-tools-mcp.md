@@ -807,27 +807,27 @@ git commit -m "feat: add standalone MCP sidebar plugin"
 - `buildPlugins({ logLevel, manifest = pluginManifest })` returns `{ shared, features }`, where `features[key]` is its esbuild result.
 - Validation happens before creating feature output; every feature externalizes `./opencode-tools-shared.js` and host runtime packages.
 
-- [ ] **Step 1: Replace composed-build expectations**
+- [x] **Step 1: Replace composed-build expectations**
 
 Derive expected artifact paths from `pluginManifest`, then assert five non-empty minified ESM files; feature result keys equal manifest keys; every feature imports shared; feature metafiles contain their own source and no sibling source; shared has no default; every feature default has its manifest ID and one `tui`; loading one artifact registers only that feature. Add duplicate-ID/path build rejection and assert the synthetic source name `opencode-tools-quota-entry.js` is absent.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node --test tests/plugin-build.test.mjs`
 
 Expected: FAIL because only shared and composed quota artifacts are emitted.
 
-- [ ] **Step 3: Iterate the validated manifest**
+- [x] **Step 3: Iterate the validated manifest**
 
 Call `validatePluginManifest(manifest)` before `mkdir` or esbuild. Build shared first. Loop records and call esbuild with `entryPoints: [entry.source]`, `outfile: resolve(distRoot, entry.outfile)`, host-runtime transforms, and shared externalization. Remove the synthetic `stdin` entry. Return feature results keyed by manifest key. Keep stale token artifact cleanup and ensure old composed output is overwritten by standalone quota.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `node --test tests/plugin-build.test.mjs`
 
 Expected: PASS for manifest validation, all artifacts, external imports, isolation, hermetic loading, and lifecycle cleanup.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add build-plugins.mjs tests/plugin-build.test.mjs
