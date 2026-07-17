@@ -15,7 +15,7 @@ const COLLAPSED_KEY = "aamkye.opencode-tools-todo.collapsed"
 function TodoRow(props: { row: TodoStatusRow; theme: () => PanelTheme }) {
   return (
     <box flexDirection="row" width="100%" overflow="hidden">
-      <text width={4} flexShrink={0} fg={props.theme()[props.row.status]}>{props.row.marker} </text>
+      <text width={4} flexShrink={0} fg={props.theme()[props.row.status]}>{`${props.row.marker} `}</text>
       <text
         flexBasis={0}
         flexGrow={1}
