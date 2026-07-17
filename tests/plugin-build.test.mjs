@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { existsSync } from "node:fs"
-import { copyFile, mkdir, mkdtemp, readFile, rm } from "node:fs/promises"
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { builtinModules, registerHooks } from "node:module"
 import { tmpdir } from "node:os"
 import { resolve } from "node:path"
@@ -123,6 +123,8 @@ let contents
 
 before(async () => {
   ;({ buildPlugins } = await import(pathToFileURL(resolve(root, "build-plugins.mjs"))))
+  await mkdir(resolve(root, "dist/plugins"), { recursive: true })
+  await writeFile(resolve(root, "dist/plugins/opencode-tools-tokens.js"), "stale artifact")
   buildResults = await buildPlugins({ logLevel: "silent" })
   contents = Object.fromEntries(await Promise.all(expectedArtifacts.map(async (file) => [
     file,
