@@ -1,5 +1,6 @@
 import { For, Show, createSignal, onCleanup, type Accessor } from "solid-js"
 
+import { CompactPanel, type PanelTheme } from "./compact-panel.js"
 import { alignText, formatBytes, formatCount, formatCurrency, formatDuration, formatPercent, formatTimer, truncateText } from "./format.js"
 import { allocateCompactTable, allocateHeader, allocateProgressRow, type CompactTableAllocation, type HeaderAllocation, type ProgressRowAllocation } from "./layout.js"
 import { sortByOrderThenId, type DisplayValue, type PanelAlignment, type PanelGroup, type PanelItem, type PanelModel, type PanelStatus, type PanelTextSegment } from "./types.js"
@@ -82,7 +83,7 @@ type RenderedItem =
   | { kind: "timer"; text: string; detail?: string; status?: PanelStatus }
   | { kind: "table"; rows: RenderedCell[][] }
 
-export type PanelTheme = Record<PanelStatus, string>
+export type { PanelTheme } from "./compact-panel.js"
 
 export type RenderedPanelLayout = {
   collapsed: boolean
@@ -368,10 +369,6 @@ export function renderPanelLayout(model: PanelModel, options: RendererLayoutOpti
   }
 }
 
-function Divider() {
-  return <box width="100%" height={1} border={["top"]} />
-}
-
 function GroupDivider(props: { theme: Accessor<PanelTheme> }) {
   return (
     <box flexDirection="row" width="100%" height={1}>
@@ -501,47 +498,38 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Acces
   const panelCollapsed = () => collapsed().has(`panel:${props.model().id}`)
 
   return (
-    <box flexDirection="column" width="100%">
-      <box flexDirection="row" width="100%" onMouseDown={() => toggle(`panel:${props.model().id}`)}>
-        <text width={2}>{panelCollapsed() ? "▶ " : "▼ "}</text>
-        <text flexBasis={0} flexGrow={1}>{props.model().title}</text>
-        <Show when={panelCollapsed() ? normalized().header.summary : undefined}>
-          {(summary) => summary().segments?.length
-            ? (
-                <box flexDirection="row">
-                  <For each={summary().segments}>
-                    {(segment) => <text fg={segment.status ? props.theme()[segment.status] : undefined}>{segment.text}</text>}
-                  </For>
-                </box>
-              )
-            : <text fg={summary().status ? props.theme()[summary().status!] : undefined}>{summary().text}</text>}
-        </Show>
-      </box>
-      <Divider />
-      <Show when={!panelCollapsed()}>
-        <For each={normalized().groups}>
-          {(group, index) => {
-            const groupCollapsed = () => group.header?.collapsible === true && collapsed().has(`group:${group.id}`)
-            const isLastGroup = () => index() === normalized().groups.length - 1
-            return (
-              <box flexDirection="column" width="100%">
-                <Show when={group.header}>
-                  {(header) => (
-                    <box flexDirection="row" width="100%" onMouseDown={header().collapsible ? () => toggle(`group:${group.id}`) : undefined}>
-                      <text fg={group.id === "other-providers" ? props.theme().textMuted : undefined}>{header().collapsible ? (groupCollapsed() ? "▶ " : "▼ ") : ""}</text>
-                      <text fg={group.id === "other-providers" ? props.theme().textMuted : undefined}>{header().title}</text>
-                    </box>
-                  )}
-                </Show>
-                <Show when={!groupCollapsed()}>
-                  <For each={group.items}>{(item) => <MountedItem item={item} theme={props.theme} />}</For>
-                </Show>
-                {isLastGroup() ? <Divider /> : <GroupDivider theme={props.theme} />}
-              </box>
-            )
-          }}
-        </For>
-      </Show>
-    </box>
+    <CompactPanel
+      title={props.model().title}
+      collapsed={panelCollapsed()}
+      summary={normalized().header.summary}
+      onToggle={() => toggle(`panel:${props.model().id}`)}
+      footerDivider={normalized().groups.length > 0}
+      theme={props.theme}
+    >
+      <For each={normalized().groups}>
+        {(group, index) => {
+          const groupCollapsed = () => group.header?.collapsible === true && collapsed().has(`group:${group.id}`)
+          const isLastGroup = () => index() === normalized().groups.length - 1
+          return (
+            <box flexDirection="column" width="100%">
+              <Show when={group.header}>
+                {(header) => (
+                  <box flexDirection="row" width="100%" onMouseDown={header().collapsible ? () => toggle(`group:${group.id}`) : undefined}>
+                    <text fg={group.id === "other-providers" ? props.theme().textMuted : undefined}>{header().collapsible ? (groupCollapsed() ? "▶ " : "▼ ") : ""}</text>
+                    <text fg={group.id === "other-providers" ? props.theme().textMuted : undefined}>{header().title}</text>
+                  </box>
+                )}
+              </Show>
+              <Show when={!groupCollapsed()}>
+                <For each={group.items}>{(item) => <MountedItem item={item} theme={props.theme} />}</For>
+              </Show>
+              <Show when={!isLastGroup()}>
+                <GroupDivider theme={props.theme} />
+              </Show>
+            </box>
+          )
+        }}
+      </For>
+    </CompactPanel>
   )
 }

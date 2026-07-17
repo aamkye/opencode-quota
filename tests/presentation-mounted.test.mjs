@@ -57,6 +57,96 @@ const model = {
   ],
 }
 
+const quotaSnapshotModel = {
+  id: "quota",
+  order: 10,
+  title: "Quota",
+  collapsedSummary: { kind: "text", text: "46%" },
+  groups: [
+    {
+      id: "openai",
+      order: 10,
+      items: [
+        { id: "openai-header", order: 10, kind: "header", title: "OpenAI: Pro Lite" },
+        { id: "openai-weekly", order: 20, kind: "progress", label: "7D", value: 46, total: 100 },
+        { id: "openai-reset", order: 30, kind: "timer", label: "7D reset", state: "countdown", epoch: 143 * 3_600_000 },
+      ],
+    },
+    {
+      id: "other-providers",
+      order: 20,
+      header: { title: "Other providers", collapsible: true },
+      items: [
+        { id: "zai-header", order: 10, kind: "header", title: "Z.AI: Max" },
+        { id: "zai-five-hour", order: 20, kind: "progress", label: "5H", value: 100, total: 100 },
+        { id: "zai-reset", order: 30, kind: "timer", label: "5H reset", state: "idle" },
+      ],
+    },
+  ],
+}
+
+function textualSnapshot(layout, width) {
+  const divider = "-".repeat(width)
+  const middleDivider = `---${" ".repeat(width - 6)}---`
+  const row = (cells) => cells.map((cell) => cell.text).join("").trimEnd()
+  const itemLines = (item) => {
+    if (item.kind === "divider") return [middleDivider]
+    if (item.kind === "progress") return [row(item.cells)]
+    if (item.kind === "timer") return [`   ${item.text}`, ...(item.detail ? [`   ${item.detail}`] : [])]
+    if (item.kind === "table") return item.rows.map(row)
+    return [item.text]
+  }
+  const lines = [row(layout.header.cells), divider]
+
+  if (!layout.collapsed) {
+    layout.groups.forEach((group, index) => {
+      if (group.header) lines.push(`${group.header.collapsible ? (group.collapsed ? "▶ " : "▼ ") : ""}${group.header.title}`)
+      if (!group.collapsed) lines.push(...group.items.flatMap(itemLines))
+      if (index < layout.groups.length - 1) lines.push(middleDivider)
+    })
+    if (layout.groups.length > 0) lines.push(divider)
+  }
+
+  assert.ok(lines.every((line) => line.length <= width), `snapshot exceeds ${width} cells`)
+  assert.ok(lines.every((line) => line === line.trimEnd()), "snapshot contains trailing whitespace")
+  return lines.join("\n")
+}
+
+test("preserves extended, semi-collapsed, and collapsed quota snapshots within 37 cells", () => {
+  const options = { availableCells: 37, now: 0 }
+  const extended = textualSnapshot(renderPanelLayout(quotaSnapshotModel, options), 37)
+  const semiCollapsed = textualSnapshot(renderPanelLayout(quotaSnapshotModel, {
+    ...options,
+    collapsed: new Set(["group:other-providers"]),
+  }), 37)
+  const collapsed = textualSnapshot(renderPanelLayout(quotaSnapshotModel, {
+    ...options,
+    collapsed: new Set(["panel:quota"]),
+  }), 37)
+
+  assert.equal(extended, `▼ Quota
+-------------------------------------
+OpenAI: Pro Lite
+7D █████████████░░░░░░░░░░░░░░░░  46%
+   resets in 5d 23h
+---                               ---
+▼ Other providers
+Z.AI: Max
+5H █████████████████████████████ 100%
+   resets in -
+-------------------------------------`)
+  assert.equal(semiCollapsed, `▼ Quota
+-------------------------------------
+OpenAI: Pro Lite
+7D █████████████░░░░░░░░░░░░░░░░  46%
+   resets in 5d 23h
+---                               ---
+▶ Other providers
+-------------------------------------`)
+  assert.equal(collapsed, `▶ Quota                           46%
+-------------------------------------`)
+})
+
 test("mounts responsive framing, bars, reset indentation, and right-aligned status", () => {
   const { elements, dispose } = mountPanel(model)
   const text = elements.filter((element) => element.type === "text")

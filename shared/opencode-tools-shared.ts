@@ -11,6 +11,12 @@ import { createOpenCodeGoProvider } from "../tui/providers/opencode-go.js";
 import { pluginDescriptor } from "../tui/runtime/manifest.js";
 import { createZaiProvider } from "../tui/providers/zai.js";
 
+export { CompactPanel } from "../tui/presentation/compact-panel.js";
+export type {
+  CompactPanelProps,
+  CompactPanelSummary,
+  PanelTheme,
+} from "../tui/presentation/compact-panel.js";
 export { createOpenAiProvider };
 export {
   acquireQuotaProviderHub,
