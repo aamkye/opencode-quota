@@ -39,3 +39,7 @@
 ## 6. Verification
 
 - [x] 6.1 Run the complete test suite, strict typecheck, and production plugin build, then resolve any regressions.
+
+## 7. Verification Adjustment
+
+- [x] 7.1 Add a scrollbar-width regression test and make the compact MCP status row preserve its full label when the viewport narrows.

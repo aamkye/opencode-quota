@@ -147,3 +147,32 @@ test("mounts a bounded status row with a semantic bullet and truncating long nam
     assert.equal(labelMount?.parent?.element.props.justifyContent, "flex-end")
   }
 })
+
+test("makes the name the only flexible status-row child", () => {
+  const label = "Connected"
+  const row = CompactStatusRow({
+    name: "codegraph-global",
+    label,
+    status: "success",
+    theme: () => ({
+      error: "#ff0000",
+      warning: "#ffaa00",
+      success: "#00ff00",
+      text: "#ffffff",
+      textMuted: "#888888",
+    }),
+  })
+  const mounted = mountedElements(row)
+  const bullet = mounted.find(({ element }) => element.type === "text" && element.props.children === "• ")?.element
+  const name = mounted.find(({ element }) => element.type === "text" && element.props.children === "codegraph-global")?.element
+  const gap = mounted.find(({ element }) => element.type === "text" && element.props.children === " ")?.element
+  const labelMount = mounted.find(({ element }) => element.type === "text" && element.props.children === label)
+
+  assert.equal(Number(bullet?.props.width) + Number(gap?.props.width) + Number(labelMount?.parent?.element.props.width), 12)
+  assert.equal(name?.props.width, undefined, "the name must not retain a fixed 37-cell allocation")
+  assert.equal(name?.props.flexBasis, 0)
+  assert.equal(name?.props.flexGrow, 1)
+  assert.equal(name?.props.flexShrink, 1)
+  assert.equal(labelMount?.parent?.element.props.flexShrink, 0)
+  assert.equal(labelMount?.element.props.children, "Connected")
+})

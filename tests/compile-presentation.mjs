@@ -2,7 +2,7 @@ import { build } from "esbuild"
 import { mkdirSync, rmSync } from "node:fs"
 import { resolve } from "node:path"
 
-for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "mcp-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "mcp-model", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "mcp-model", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
 }
 mkdirSync(".tmp-test", { recursive: true })
@@ -51,3 +51,15 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
     external: ["bun:sqlite", "better-sqlite3", "node:sqlite", ...(external ?? [])],
   })
 }
+
+await build({
+  bundle: true,
+  entryPoints: ["tests/compact-status-row-render.fixture.tsx"],
+  external: ["@opentui/*", "solid-js"],
+  format: "esm",
+  jsx: "automatic",
+  jsxImportSource: "@opentui/solid",
+  outfile: ".tmp-test/compact-status-row-render.mjs",
+  platform: "node",
+  target: "es2022",
+})

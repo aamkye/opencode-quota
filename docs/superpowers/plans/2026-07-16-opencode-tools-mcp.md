@@ -987,4 +987,34 @@ Expected: PASS and `dist/` contains non-empty `opencode-tools-shared.js`, `openc
 
 Run: `git status --short && git diff --check && git log --oneline ce0960229bdf299dd3ef678f3dbee9d538cbda50..HEAD`
 
-Expected: `git diff --check` exits 0; no OpenSpec artifact, Comet state, or unrelated file is modified; history contains the 18 focused commits above. If verification exposes a regression, fix only that regression, rerun Steps 2-4, and create one focused `fix:` commit naming the affected subsystem.
+Expected: `git diff --check` exits 0; no unrelated file is modified; history contains the focused commits above. If verification exposes a regression, fix only that regression, rerun Steps 2-4, and create one focused `fix:` commit naming the affected subsystem.
+
+## Verification Adjustment: Scrollbar-Safe MCP Rows (OpenSpec 7.1)
+
+**Files:**
+- Create: `tests/compact-status-row-render.fixture.tsx`
+- Create: `tests/bun/compact-status-row-render.test.mjs`
+- Modify: `tests/compile-presentation.mjs`
+- Modify: `tests/compact-panel-mounted.test.mjs`
+- Modify: `tests/mcp-mounted.fixture.ts`
+- Modify: `tui/presentation/compact-panel.tsx`
+
+- [x] **Step 1: Add a narrow-viewport regression test**
+
+Mount a status row in a 36-cell parent, representing the sidebar after a vertical scrollbar appears. Assert that the bullet and complete status label retain fixed widths while the name is the only flexible child and remains truncating.
+
+- [x] **Step 2: Run RED**
+
+Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="status.row|scrollbar" tests/compact-panel-mounted.test.mjs`, then run the real OpenTUI renderer assertion under Bun: `bun test tests/bun/compact-status-row-render.test.mjs`.
+
+Expected: the Node structural assertion fails because the name still has a fixed 37-cell allocation. The Bun assertion uses OpenTUI's native renderer because OpenTUI 0.4.3 does not expose renderer FFI to Node.
+
+- [x] **Step 3: Implement the fluid name allocation**
+
+Keep the bullet, one-cell gap, and full label fixed. Replace the name's fixed width with `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, and `minWidth={0}` while preserving clipping, no wrapping, and truncation.
+
+- [x] **Step 4: Run GREEN and release regressions**
+
+Run the focused Node status-row test and Bun renderer test, then `npm test`, `npm run typecheck`, `npm run build:plugins`, and `git diff --check`.
+
+Expected: the full status label remains visible at 36 cells, all 37-cell layouts remain unchanged, and every release gate passes.

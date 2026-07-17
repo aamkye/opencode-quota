@@ -174,11 +174,14 @@ export async function mountMcpPanel(options: {
       const labelBox = children.find((node) => node.element.type === "box")
       const label = mounted.find((node) => node.parent === labelBox && node.element.type === "text")
       const bulletWidth = Number(bullet.element.props.width)
-      const nameWidth = Number(name?.element.props.width)
       const gapWidth = children
         .filter((node) => node.element.type === "text" && textOf(node) === " ")
         .reduce((total, node) => total + Number(node.element.props.width), 0)
       const labelWidth = Number(labelBox?.element.props.width)
+      const fixedNameWidth = Number(name?.element.props.width)
+      const nameWidth = Number.isFinite(fixedNameWidth)
+        ? fixedNameWidth
+        : Math.max(0, 37 - bulletWidth - gapWidth - labelWidth)
       const renderedName = truncate(textOf(name), nameWidth).padEnd(nameWidth)
       return {
         name: textOf(name),

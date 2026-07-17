@@ -39,7 +39,7 @@ export function CompactStatusRow(props: CompactStatusRowProps) {
     <box flexDirection="row" width="100%" overflow="hidden">
       <text width={allocation().bullet} flexShrink={0} fg={props.theme()[props.status]}>• </text>
       <text
-        width={allocation().name}
+        flexBasis={0}
         flexGrow={1}
         flexShrink={1}
         minWidth={0}
