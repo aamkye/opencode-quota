@@ -4,15 +4,15 @@
 - Review mode: thorough
 - TDD mode: tdd
 - Dispatch constraint: native Task subagents only; never invoke `opencode run` or another external agent CLI
-- Current plan task: Publish Standalone Metadata and Raise the Engine Floor (OpenSpec 5.2)
-- Mapped OpenSpec task: 5.2 Update package exports, included files, TypeScript inputs, and the OpenCode engine floor to 1.18.1.
+- Current plan task: Migrate Local and Global Deployments (OpenSpec 5.3, 5.4)
+- Mapped OpenSpec tasks: 5.3 Add local and global deployment migration tests for legacy entries, quota options, normalized IDs, unrelated entries, stale files, and idempotency.; 5.4 Implement manifest-driven deployment of four standalone entries and removal of obsolete composed artifacts.
 - Stage: done
 - Review-fix round: 1 of 2
-- Implementation commit: 6ff186d; fix fb0734f
+- Implementation commit: 63cf46f; fix 2f8771f
 - Changed files: five allowed Task 11 files
 - RED evidence: 3 expected missing-contract failures
 - GREEN evidence: focused tests passed 9/9; typecheck passed
-- Review status: thorough re-review approved; one non-blocking stale pack-count evidence correction retained
+- Review status: thorough re-review approved with no implementation findings
 - RED evidence: missing MCP feature module resolution failure
 - GREEN evidence: MCP model tests passed 2/2; typecheck passed
 - Risk signals: shared presentation API

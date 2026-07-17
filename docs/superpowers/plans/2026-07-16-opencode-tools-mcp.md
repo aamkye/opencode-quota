@@ -883,7 +883,7 @@ git commit -m "chore: publish standalone plugin metadata"
 - Copies shared plus every manifest `outfile`.
 - Classifies current manifest outputs and historical composed/source/token paths as managed; preserves quota options by existing priority rules.
 
-- [ ] **Step 1: Expand migration fixtures and expected snapshots**
+- [x] **Step 1: Expand migration fixtures and expected snapshots**
 
 Seed local, project-fallback, and global fixtures with duplicate current standalone entries, old composed entries, old source entries, stale token artifacts/commands, unrelated relative/file/npm entries, and quota options at competing priorities. Expect unrelated entries unchanged in relative order followed by:
 
@@ -898,23 +898,23 @@ Seed local, project-fallback, and global fixtures with duplicate current standal
 
 When no managed options exist, quota must also use string form. Snapshot all five managed files and JSON bytes before and after a second deploy. Assert obsolete token/composed files are absent and JSON ends with one newline.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node --test tests/plugin-deploy.test.mjs`
 
 Expected: FAIL because deployment currently copies/configures only shared plus quota.
 
-- [ ] **Step 3: Drive deployment from the manifest**
+- [x] **Step 3: Drive deployment from the manifest**
 
 Validate the manifest, copy shared and every `outfile`, generate current managed paths from manifest outputs/sources, and retain explicit historical paths. Keep current option priority selection and project-to-global fallback. Remove every managed entry, append entries in manifest order, use tuple form only for quota when options were found, remove stale files and managed token commands, and write `JSON.stringify(config, null, 2) + "\n"` only after deterministic transformation.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `node --test tests/plugin-deploy.test.mjs tests/plugin-build.test.mjs`
 
 Expected: PASS for local/global/fallback migrations, options, unrelated order, stale cleanup, and byte-identical second deployment.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add deploy-plugins.mjs tests/plugin-deploy.test.mjs
