@@ -18,7 +18,7 @@
 
 - [x] 3.1 Add mounted tests for a controlled compact-panel shell, summary segments, separators, bounded content, and collapse callbacks.
 - [x] 3.2 Extract shared compact-panel primitives and migrate quota without changing its rendered layouts or ephemeral collapse behavior.
-- [ ] 3.3 Add a reusable status-row primitive that preserves a right-aligned label and truncates names within 37 cells.
+- [x] 3.3 Add a reusable status-row primitive that preserves a right-aligned label and truncates names within 37 cells.
 
 ## 4. MCP Status Feature
 

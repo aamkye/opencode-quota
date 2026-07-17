@@ -623,27 +623,27 @@ git commit -m "refactor: extract controlled compact panel shell"
 - Produces: `CompactStatusRow({ name, label, status, theme })` and pure `allocateStatusRow(availableCells, labelLength)`.
 - Allocation reserves bullet width `2`, one gap before the label, full label width, and gives all remaining cells to a truncating name.
 
-- [ ] **Step 1: Add long-name and exact-width failures**
+- [x] **Step 1: Add long-name and exact-width failures**
 
 Test labels `Connected`, `Disabled`, `Failed`, `Needs auth`, `Needs client ID`, and `Unknown` at 37 cells. Assert every allocation sums to 37, label width equals its full text length, mounted label is right-aligned/muted, bullet uses the supplied semantic role, and name has `minWidth={0}`, `overflow="hidden"`, `wrapMode="none"`, and truncation.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node tests/compile-presentation.mjs && node --test --test-name-pattern="status row|status allocation|long name" tests/compact-panel-mounted.test.mjs tests/presentation-layout.test.mjs`
 
 Expected: FAIL because the row and allocator are missing.
 
-- [ ] **Step 3: Implement fixed-edge allocation and JSX**
+- [x] **Step 3: Implement fixed-edge allocation and JSX**
 
 Clamp available cells to a non-negative integer. Reserve from the right in this order: full label, one gap if possible, two-cell bullet; name receives the remainder. Mount a full-width clipped flex row with a colored `• ` bullet, a shrinking/truncating name box, one spacer cell, and muted fixed-width label. Export both contracts through the shared facade.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/compact-panel-mounted.test.mjs tests/presentation-layout.test.mjs`
 
 Expected: PASS; no allocation exceeds 37 and labels remain intact.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tui/presentation/compact-panel.tsx tui/presentation/layout.ts shared/opencode-tools-shared.ts tests/compact-panel-mounted.test.mjs tests/presentation-layout.test.mjs
