@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs"
 import test from "node:test"
 
 import { build } from "esbuild"
+import ts from "typescript"
 
 const sharedPath = "shared/opencode-tools-shared.ts"
 const dataPath = "lib/tokens/token-report-data.ts"
@@ -12,6 +13,51 @@ const tokenFeaturePath = "tui/features/token-report.ts"
 
 function source(path) {
   return existsSync(path) ? readFileSync(path, "utf8") : ""
+}
+
+function parsedSource(path) {
+  return ts.createSourceFile(path, source(path), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+}
+
+function hasNamedReExport(sourceFile, moduleSpecifier, exportName) {
+  return sourceFile.statements.some((statement) =>
+    ts.isExportDeclaration(statement)
+    && !statement.isTypeOnly
+    && statement.moduleSpecifier
+    && ts.isStringLiteral(statement.moduleSpecifier)
+    && statement.moduleSpecifier.text === moduleSpecifier
+    && ts.isNamedExports(statement.exportClause)
+    && statement.exportClause.elements.some((element) =>
+      !element.isTypeOnly
+      && element.name.text === exportName
+      && (element.propertyName?.text ?? element.name.text) === exportName
+    )
+  )
+}
+
+function namedImportLocalName(sourceFile, moduleSpecifier, importName) {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)
+      || !ts.isStringLiteral(statement.moduleSpecifier)
+      || statement.moduleSpecifier.text !== moduleSpecifier
+      || statement.importClause?.isTypeOnly
+      || !ts.isNamedImports(statement.importClause?.namedBindings)) continue
+
+    const specifier = statement.importClause.namedBindings.elements.find((element) =>
+      !element.isTypeOnly && (element.propertyName?.text ?? element.name.text) === importName
+    )
+    if (specifier) return specifier.name.text
+  }
+}
+
+function callsIdentifier(sourceFile, name) {
+  let found = false
+  function visit(node) {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === name) found = true
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return found
 }
 
 function relativeImports(code) {
@@ -40,17 +86,32 @@ test("relative import allowlists cover static, side-effect, dynamic, and CommonJ
   ])
 })
 
+test("TODO facade syntax checks reject comments and strings", () => {
+  const deadText = ts.createSourceFile("dead.tsx", `
+    // export { createTodoPanelModel } from "../tui/features/todo.js"
+    const text = 'import { createTodoPanelModel } from "../shared/opencode-tools-shared.js"; createTodoPanelModel()'
+  `, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+
+  assert.equal(hasNamedReExport(deadText, "../tui/features/todo.js", "createTodoPanelModel"), false)
+  assert.equal(namedImportLocalName(deadText, "../shared/opencode-tools-shared.js", "createTodoPanelModel"), undefined)
+  assert.equal(callsIdentifier(deadText, "createTodoPanelModel"), false)
+})
+
 test("loadable TUI entries use the shared facade for computation", () => {
   const quota = source("tui/quota.tsx")
   const home = source("tui/home.tsx")
   const tokenReport = source("tui/token-report.tsx")
   const mcp = source("tui/mcp.tsx")
   const todo = source("tui/todo.tsx")
+  const todoSource = parsedSource("tui/todo.tsx")
 
   assert.match(quota, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(home, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(tokenReport, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(mcp, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
+  const todoModelImport = namedImportLocalName(todoSource, "../shared/opencode-tools-shared.js", "createTodoPanelModel")
+  assert.ok(todoModelImport, "tui/todo.tsx must named-import createTodoPanelModel from the shared facade")
+  assert.ok(callsIdentifier(todoSource, todoModelImport), "tui/todo.tsx must call the imported createTodoPanelModel")
   assert.match(todo, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assertRelativeImports("tui/quota.tsx", [
     "../shared/opencode-tools-shared.js",
@@ -76,6 +137,7 @@ test("loadable TUI entries use the shared facade for computation", () => {
 
 test("shared facade exports computation without plugin registration or JSX", () => {
   const shared = source(sharedPath)
+  const sharedSource = parsedSource(sharedPath)
   const quotaFeature = source("tui/features/quota.ts")
   const homeFeature = source(homeFeaturePath)
   const tokenFeature = source(tokenFeaturePath)
@@ -102,7 +164,10 @@ test("shared facade exports computation without plugin registration or JSX", () 
   assert.match(shared, /activeSessionID/)
   assert.match(shared, /persistTokenReport/)
   assert.match(shared, /createLspPanelModel/)
-  assert.match(shared, /createTodoPanelModel/)
+  assert.ok(
+    hasNamedReExport(sharedSource, "../tui/features/todo.js", "createTodoPanelModel"),
+    "shared facade must re-export createTodoPanelModel from the TODO feature",
+  )
   assert.doesNotMatch(shared, /@opentui\/|slots\.register|export\s+default|<[a-z][^>]*>/i)
   assert.match(homeFeature, /export function formatHomeQuotaLine/)
   assert.match(homeFeature, /export function homeQuotaPercentParts/)

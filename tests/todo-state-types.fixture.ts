@@ -11,6 +11,11 @@ export type TodoStateIsReadonlySdkTodo = Expect<Equal<
   readonly Todo[]
 >>
 
+export type TodoStateRequiresSessionID = Expect<Equal<
+  Parameters<TuiPluginApi["state"]["session"]["todo"]>,
+  [sessionID: string]
+>>
+
 export function inspectTodoState(api: TuiPluginApi, sessionID: string): readonly Todo[] {
   return api.state.session.todo(sessionID)
 }
