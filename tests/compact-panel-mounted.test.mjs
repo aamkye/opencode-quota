@@ -32,14 +32,14 @@ test("mounts a controlled collapsed header with independently colored summary se
   })
 
   try {
-    const header = mounted.elements.find((element) => element.type === "box" && typeof element.props.onMouseDown === "function")
-    const marker = mounted.elements.find((element) => element.type === "text" && element.props.children === "▶ ")
+    const header = () => mounted.elements.find((element) => element.type === "box" && typeof element.props.onMouseDown === "function")
+    const marker = () => mounted.elements.find((element) => element.type === "text" && ["▶ ", "▼ "].includes(element.props.children))
     const title = mounted.elements.find((element) => element.type === "text" && element.props.children === "Quota")
     const summary = mounted.elements
       .filter((element) => element.type === "text")
       .filter((element) => ["stale", " ", "46%/80%"].includes(element.props.children))
 
-    assert.equal(marker?.props.width, 2)
+    assert.equal(marker()?.props.width, 2)
     assert.equal(title?.props.flexBasis, 0)
     assert.equal(title?.props.flexGrow, 1)
     assert.deepEqual(summary.map((element) => [element.props.children, element.props.fg]), [
@@ -50,10 +50,18 @@ test("mounts a controlled collapsed header with independently colored summary se
     assert.equal(mounted.elements.some((element) => element.props.children === "Expanded content beyond the parent width"), false)
     assert.equal(dividers(mounted.elements).length, 1, "the header divider always renders but the expanded footer does not")
 
-    header.props.onMouseDown()
-    header.props.onMouseDown()
+    header().props.onMouseDown()
+    mounted.rerender({ collapsed: true })
+    assert.equal(marker()?.props.children, "▶ ", "a click cannot change collapse state without a new controlled prop")
+
+    mounted.rerender({ collapsed: false })
+    assert.equal(marker()?.props.children, "▼ ", "the controlled collapsed prop expands the shell")
+    assert.equal(mounted.elements.some((element) => element.props.children === "Expanded content beyond the parent width"), true)
+
+    header().props.onMouseDown()
+    mounted.rerender({ collapsed: false })
     assert.equal(mounted.toggleCalls(), 2)
-    assert.equal(marker.props.children, "▶ ", "the shell does not own collapse state")
+    assert.equal(marker()?.props.children, "▼ ", "the shell owns no collapse state after repeated clicks")
   } finally {
     mounted.dispose()
   }

@@ -44,15 +44,16 @@ export function mountCompactPanel(options: {
   footerDivider?: boolean
 } = {}) {
   let tree: unknown
+  let collapsed = options.collapsed ?? false
+  let elements: MountedElement[] = []
   let toggleCalls = 0
   let dispose: () => void = () => undefined
   const child = { type: "text", props: { children: "Expanded content beyond the parent width" } }
 
-  createRoot((cleanup) => {
-    dispose = cleanup
+  const render = () => {
     tree = CompactPanel({
       title: "Quota",
-      collapsed: options.collapsed ?? false,
+      collapsed,
       summary: options.summary,
       onToggle: () => {
         toggleCalls += 1
@@ -61,11 +62,23 @@ export function mountCompactPanel(options: {
       footerDivider: options.footerDivider ?? false,
       children: child as never,
     })
+    elements = expand(tree).filter(isElement)
+  }
+
+  createRoot((cleanup) => {
+    dispose = cleanup
+    render()
   })
 
   try {
     return {
-      elements: expand(tree).filter(isElement),
+      get elements() {
+        return elements
+      },
+      rerender(next: { collapsed: boolean }) {
+        collapsed = next.collapsed
+        render()
+      },
       toggleCalls: () => toggleCalls,
       dispose,
     }
