@@ -7,6 +7,8 @@ import { build } from "esbuild"
 const sharedPath = "shared/opencode-tools-shared.ts"
 const dataPath = "lib/tokens/token-report-data.ts"
 const presenterPath = "lib/tokens/token-report-presenter.ts"
+const homeFeaturePath = "tui/features/home.ts"
+const tokenFeaturePath = "tui/features/token-report.ts"
 
 function source(path) {
   return existsSync(path) ? readFileSync(path, "utf8") : ""
@@ -58,13 +60,16 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assert.doesNotMatch(quota, /\bcomposeQuotaPanel\b/)
   assertRelativeImports("tui/home.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/token-report.tsx", ["../shared/opencode-tools-shared.js"])
-  assert.match(tokenReport, /client\.session\.prompt/)
+  assert.doesNotMatch(tokenReport, /\bcomputeTokenReport\b|\brenderTokenReport\b/)
+  assert.doesNotMatch(tokenReport, /client\.session\.prompt/)
   assert.doesNotMatch(tokenReport, /\bhistory\b|\bmodel\b/)
 })
 
 test("shared facade exports computation without plugin registration or JSX", () => {
   const shared = source(sharedPath)
   const quotaFeature = source("tui/features/quota.ts")
+  const homeFeature = source(homeFeaturePath)
+  const tokenFeature = source(tokenFeaturePath)
 
   assert.ok(shared, `missing ${sharedPath}`)
   assert.match(shared, /createZaiProvider/)
@@ -82,7 +87,20 @@ test("shared facade exports computation without plugin registration or JSX", () 
   assert.match(shared, /pluginDescriptor\(["']quota["']\)\.slotOrder/)
   assert.match(shared, /computeTokenReport/)
   assert.match(shared, /renderTokenReport/)
+  assert.match(shared, /formatHomeQuotaLine/)
+  assert.match(shared, /homeQuotaPercentParts/)
+  assert.match(shared, /homeQuotaStatusRole/)
+  assert.match(shared, /activeSessionID/)
+  assert.match(shared, /persistTokenReport/)
   assert.doesNotMatch(shared, /@opentui\/|slots\.register|export\s+default|<[a-z][^>]*>/i)
+  assert.match(homeFeature, /export function formatHomeQuotaLine/)
+  assert.match(homeFeature, /export function homeQuotaPercentParts/)
+  assert.match(homeFeature, /export function homeQuotaStatusRole/)
+  assert.match(tokenFeature, /export function activeSessionID/)
+  assert.match(tokenFeature, /export async function persistTokenReport/)
+  assert.match(tokenFeature, /computeTokenReport/)
+  assert.match(tokenFeature, /renderTokenReport/)
+  assert.match(tokenFeature, /client\.session\.prompt/)
   assert.match(quotaFeature, /pluginDescriptor\(["']quota["']\)\.slotOrder/)
   assert.doesNotMatch(quotaFeature, /quotaSidebarSlotOrder/)
   assert.doesNotMatch(quotaFeature, /\border:\s*110\b/)

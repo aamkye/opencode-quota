@@ -65,6 +65,15 @@ export type {
   QuotaSelection,
   SortDirection,
 } from "../tui/features/quota.js";
+export {
+  formatHomeQuotaLine,
+  homeQuotaPercentParts,
+  homeQuotaStatusRole,
+} from "../tui/features/home.js";
+export {
+  activeSessionID,
+  persistTokenReport,
+} from "../tui/features/token-report.js";
 
 export type QuotaAdapterShared = {
   sidebarSlotOrder: typeof quotaSidebarSlotOrder;

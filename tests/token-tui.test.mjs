@@ -3,6 +3,7 @@ import test from "node:test"
 
 const { registerTokenReportTui, tokenReportCommands } = await import("../.tmp-test/token-tui.mjs")
 const { registerTokenReportTui: registerControlledTokenReportTui } = await import("../.tmp-test/token-tui-controlled.mjs")
+const { activeSessionID } = await import("../.tmp-test/token-report-feature.mjs")
 
 const TOKEN_COMMANDS = [
   "tokens_today",
@@ -98,6 +99,12 @@ test("token commands register native slash handlers without a model client", () 
   assert.deepEqual(tokenReportCommands(api).map((command) => command.slashName), TOKEN_COMMANDS)
   assert.deepEqual(api.commands.map((command) => command.slashName), TOKEN_COMMANDS)
   assert.deepEqual(api.routes, [])
+})
+
+test("activeSessionID resolves only active session routes", () => {
+  assert.equal(activeSessionID(createTuiApi()), undefined)
+  assert.equal(activeSessionID(createTuiApi({ route: { name: "session", params: { sessionID: "s1" } } })), "s1")
+  assert.equal(activeSessionID(createTuiApi({ route: { name: "session", params: { sessionID: 1 } } })), undefined)
 })
 
 test("token commands persist a no-reply report in the active session", async () => {

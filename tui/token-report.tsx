@@ -1,46 +1,12 @@
 import type { TuiCommand, TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui"
 
 import {
-  computeTokenReport,
-  renderTokenReport,
+  activeSessionID,
+  persistTokenReport,
   TOKEN_REPORT_COMMANDS,
-  type TokenReportCommandId,
 } from "../shared/opencode-tools-shared.js"
 
 const RANGE_MODE = "aamkye.token-report-range"
-
-function sourceSessionID(api: TuiPluginApi): string | undefined {
-  const route = api.route.current
-  const sessionID = route.name === "session" ? route.params?.sessionID : undefined
-  return typeof sessionID === "string" ? sessionID : undefined
-}
-
-async function persistReport(
-  api: TuiPluginApi,
-  sessionID: string,
-  command: TokenReportCommandId,
-  argumentsValue?: string,
-): Promise<void> {
-  let text: string
-  try {
-    text = renderTokenReport(await computeTokenReport({
-      command,
-      arguments: argumentsValue,
-      sessionID,
-    }))
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    text = `Token report failed: ${message}`
-  }
-  try {
-    await api.client.session.prompt({
-      path: { id: sessionID },
-      body: { noReply: true, parts: [{ type: "text", text }] },
-    })
-  } catch {
-    api.ui.toast({ message: "Unable to save token report" })
-  }
-}
 
 export function tokenReportCommands(
   api: TuiPluginApi,
@@ -52,13 +18,13 @@ export function tokenReportCommands(
     namespace: "palette",
     slashName: spec.id,
     async run() {
-      const sessionID = sourceSessionID(api)
+      const sessionID = activeSessionID(api)
       if (!sessionID) {
         api.ui.toast({ message: "Open a session to view token usage" })
         return
       }
       if (spec.id !== "tokens_between") {
-        await persistReport(api, sessionID, spec.id)
+        await persistTokenReport(api, sessionID, spec.id)
         return
       }
 
@@ -77,7 +43,7 @@ export function tokenReportCommands(
           placeholder: "YYYY-MM-DD YYYY-MM-DD",
           onConfirm(value) {
             close()
-            void persistReport(api, sessionID, spec.id, value)
+            void persistTokenReport(api, sessionID, spec.id, value)
           },
         }),
         close,

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { formatHomeQuotaLine, homeQuotaPercentParts } from "../.tmp-test/home-composition.mjs"
+import {
+  formatHomeQuotaLine,
+  homeQuotaPercentParts,
+  homeQuotaStatusRole,
+} from "../.tmp-test/home-feature.mjs"
 
 test("formats two-window homepage quota lines", () => {
   assert.equal(
@@ -29,4 +33,10 @@ test("exposes colorable percentage parts", () => {
       { text: "30%", pct: 30.1 },
     ],
   )
+})
+
+test("assigns exact home quota status thresholds", () => {
+  assert.equal(homeQuotaStatusRole(9.6), "error")
+  assert.equal(homeQuotaStatusRole(30), "warning")
+  assert.equal(homeQuotaStatusRole(30.1), "success")
 })
