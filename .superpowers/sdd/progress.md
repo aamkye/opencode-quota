@@ -60,3 +60,4 @@ add-opencode-tools-lsp Task 4: complete (commit b19e13f, standard non-risk task;
 add-opencode-tools-lsp Task 5: complete (commit 2fc22c4, standard non-risk task; 12 LSP and MCP mounted tests passed)
 add-opencode-tools-lsp Task 6: complete (commit bb4e459, standard risk review approved; accepted external npm warning)
 add-opencode-tools-lsp Task 7: complete (commit eb020b0, standard risk review clean)
+add-opencode-tools-lsp Task 8: complete (commit 896ba2d, full suite 290/290; standard risk re-review approved after coordinator checkoff)
