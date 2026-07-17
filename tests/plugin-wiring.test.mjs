@@ -15,6 +15,7 @@ test("publishes and typechecks the standalone plugins", () => {
     "./home": "./tui/home.tsx",
     "./token-report": "./tui/token-report.tsx",
     "./mcp": "./tui/mcp.tsx",
+    "./lsp": "./tui/lsp.tsx",
   })
   assert.deepEqual(pkg.files, ["dist", "plugin-manifest.json", "tui", "shared", "README.md"])
   assert.deepEqual(tsconfig.include, [
@@ -24,6 +25,7 @@ test("publishes and typechecks the standalone plugins", () => {
     "tui/**/*.ts",
     "tui/**/*.tsx",
     "shared/**/*.ts",
+    "tests/*-state-types.fixture.ts",
   ])
   assert.equal(pkg.engines.opencode, ">=1.18.1")
   assert.equal(lock.packages[""].engines.opencode, ">=1.18.1")
@@ -61,7 +63,7 @@ test("tracked project files contain no active legacy identifier", () => {
   }
 })
 
-test("documents standalone installation, migration, MCP layouts, and rollback", () => {
+test("documents standalone installation, migration, MCP and LSP layouts, and rollback", () => {
   const readme = readFileSync("README.md", "utf8")
   const prose = readme.replace(/\s+/gu, " ")
   const configurationText = readme.match(/### Configuration\n\n[\s\S]*?```json\n([\s\S]*?)\n```/u)?.[1]
@@ -74,16 +76,21 @@ test("documents standalone installation, migration, MCP layouts, and rollback", 
     "./opencode-tools-home.js",
     "./opencode-tools-token-report.js",
     "./opencode-tools-mcp.js",
+    "./opencode-tools-lsp.js",
   ])
   assert.deepEqual(Object.keys(configuration.plugin[0][1]), ["quota"])
   assert.equal(configuration.plugin.slice(1).every((entry) => typeof entry === "string"), true)
-  assert.deepEqual(configuration.plugin_enabled, { "internal:sidebar-mcp": false })
+  assert.deepEqual(configuration.plugin_enabled, {
+    "internal:sidebar-mcp": false,
+    "internal:sidebar-lsp": false,
+  })
 
   for (const id of [
     "aamkye/opencode-tools-quota",
     "aamkye/opencode-tools-home",
     "aamkye/opencode-tools-token-report",
     "aamkye/opencode-tools-mcp",
+    "aamkye/opencode-tools-lsp",
   ]) assert.equal(readme.includes(`\`${id}\``), true, `missing runtime ID: ${id}`)
 
   for (const text of [
@@ -94,13 +101,18 @@ test("documents standalone installation, migration, MCP layouts, and rollback", 
     "quota options remain attached only to the quota entry",
     "normalized quota runtime ID",
     "host-managed plugin state may reset",
-    "must disable `internal:sidebar-mcp` themselves",
+    "Users must disable `internal:sidebar-mcp` and `internal:sidebar-lsp` themselves",
+    "Deployment does not edit `plugin_enabled` or disable the built-in MCP or LSP panel",
+    "Set the overrides in the configuration example yourself when replacing either built-in panel",
     "Rollback",
     "remove `./opencode-tools-mcp.js`",
     "re-enable `internal:sidebar-mcp`",
+    "remove `./opencode-tools-lsp.js`",
+    "re-enable `internal:sidebar-lsp`",
     "restart OpenCode",
   ]) assert.equal(prose.includes(text), true, `missing README text: ${text}`)
   assert.doesNotMatch(prose, /automatically disables? `?internal:sidebar-mcp`?/iu)
+  assert.doesNotMatch(prose, /automatically disables? `?internal:sidebar-lsp`?/iu)
 
   const expectedLayouts = new Map([
     ["Expanded", [
@@ -141,6 +153,42 @@ test("documents standalone installation, migration, MCP layouts, and rollback", 
   assert.match(prose, /For the healthy `2\/2` summary, both numbers use the success color and the slash is muted\./u)
   assert.match(prose, /For the unhealthy `2\/3` summary, `2` uses the success color, `3` uses the error color, and the slash is muted\./u)
   assert.match(prose, /For the empty `0\/0` summary, both numbers and the slash are muted\./u)
+
+  const lspLayouts = readme.match(/### LSP sidebar layouts\n\n([\s\S]*?)(?=\n### Build and deploy)/u)?.[1]
+  assert.ok(lspLayouts, "missing LSP sidebar layouts")
+  const expectedLspLayouts = new Map([
+    ["Expanded", [
+      "▼ LSP",
+      "-".repeat(37),
+      "• typescript",
+      "• yaml-ls",
+      "-".repeat(37),
+    ]],
+    ["Expanded, empty", [
+      "▼ LSP",
+      "-".repeat(37),
+      "LSPs will activate as files are read",
+      "-".repeat(37),
+    ]],
+    ["Collapsed", [
+      `${"▶ LSP".padEnd(36)}2`,
+      "-".repeat(37),
+    ]],
+  ])
+
+  for (const [heading, expected] of expectedLspLayouts) {
+    const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")
+    const layout = lspLayouts.match(new RegExp(`#### ${escapedHeading}\\n\\n\`\`\`text\\n([\\s\\S]*?)\\n\`\`\``, "u"))?.[1]
+    assert.ok(layout, `missing ${heading} LSP layout`)
+    const lines = layout.split("\n")
+    assert.deepEqual(lines, expected, `${heading} LSP layout changed`)
+    for (const line of lines) {
+      assert.ok([...line].length <= 37, `${heading} LSP layout exceeds 37 cells: ${line}`)
+      assert.equal(line.trimEnd(), line, `${heading} LSP layout has trailing whitespace`)
+    }
+  }
+
+  assert.match(prose, /Long IDs truncate with an ellipsis so expanded lines fit within 37 cells and collapsed lines fit within 36 cells\./u)
 })
 
 test("documents secret-safe OpenCode Go configuration", () => {
