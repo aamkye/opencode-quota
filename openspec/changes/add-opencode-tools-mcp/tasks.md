@@ -34,7 +34,7 @@
 - [x] 5.2 Update package exports, included files, TypeScript inputs, and the OpenCode engine floor to 1.18.1.
 - [x] 5.3 Add local and global deployment migration tests for legacy entries, quota options, normalized IDs, unrelated entries, stale files, and idempotency.
 - [x] 5.4 Implement manifest-driven deployment of four standalone entries and removal of obsolete composed artifacts.
-- [ ] 5.5 Document standalone installation, normalized IDs, MCP layouts, the automatic config migration, and replacement of `internal:sidebar-mcp`.
+- [x] 5.5 Document standalone installation, normalized IDs, MCP layouts, the automatic config migration, and replacement of `internal:sidebar-mcp`.
 
 ## 6. Verification
 

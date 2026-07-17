@@ -930,27 +930,27 @@ git commit -m "feat: migrate deployments to standalone plugins"
 **Interfaces:**
 - Documentation identifies four standalone entries, OpenCode 1.18.1 floor, normalized IDs, automatic migration, built-in MCP replacement, and rollback without claiming automatic built-in deactivation.
 
-- [ ] **Step 1: Add documentation contract assertions**
+- [x] **Step 1: Add documentation contract assertions**
 
 Require README text for all four filenames and runtime IDs, `OpenCode 1.18.1`, `internal:sidebar-mcp`, explicit user disablement, automatic managed-config migration, quota option preservation, normalized quota ID state warning, and rollback. Require fenced layouts containing extended rows, collapsed healthy/unhealthy summaries, and empty muted `0/0`. Reject wording matching `automatically disables internal:sidebar-mcp`.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node --test --test-name-pattern="documents|documentation" tests/plugin-wiring.test.mjs`
 
 Expected: FAIL because README describes one composed quota artifact and has no MCP replacement guidance.
 
-- [ ] **Step 3: Rewrite affected README sections**
+- [x] **Step 3: Rewrite affected README sections**
 
 Update overview/features, local configuration, build/deploy artifact count, artifact table, source table, and edit workflow. Show the four manifest-ordered `tui.json` entries with options only on quota. State that deployment migrates managed entries automatically and preserves unrelated entries/options. State users must disable `internal:sidebar-mcp` themselves to avoid duplicate panels. Explain rollback: remove `opencode-tools-mcp.js` from `tui.json`, restore/re-enable `internal:sidebar-mcp`, optionally restore the prior composed release/config, then restart OpenCode. Preserve all existing OpenCode Go secret-safety and provider semantics text required by current tests.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `node --test tests/plugin-wiring.test.mjs`
 
 Expected: PASS for new documentation contracts and existing secret-safe guidance.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md tests/plugin-wiring.test.mjs
