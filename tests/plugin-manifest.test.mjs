@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
 import test from "node:test"
 import { pluginManifest, validatePluginManifest } from "../plugin-manifest.mjs"
 
@@ -13,6 +14,17 @@ const expected = [
 test("manifest describes the five standalone plugins in deployment order", () => {
   assert.deepEqual(pluginManifest.map((entry) => [entry.key, entry.id, entry.source, entry.outfile, entry.slotOrder, entry.options]), expected)
   assert.doesNotThrow(() => validatePluginManifest(pluginManifest))
+})
+
+test("package exports every standalone plugin", async () => {
+  const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"))
+  assert.deepEqual(pkg.exports, {
+    "./quota": "./tui/quota.tsx",
+    "./home": "./tui/home.tsx",
+    "./token-report": "./tui/token-report.tsx",
+    "./mcp": "./tui/mcp.tsx",
+    "./lsp": "./tui/lsp.tsx",
+  })
 })
 
 for (const field of ["key", "id", "source", "outfile"]) {

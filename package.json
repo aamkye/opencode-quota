@@ -8,7 +8,8 @@
     "./quota": "./tui/quota.tsx",
     "./home": "./tui/home.tsx",
     "./token-report": "./tui/token-report.tsx",
-    "./mcp": "./tui/mcp.tsx"
+    "./mcp": "./tui/mcp.tsx",
+    "./lsp": "./tui/lsp.tsx"
   },
   "files": [
     "dist",
