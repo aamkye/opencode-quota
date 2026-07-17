@@ -404,27 +404,27 @@ git commit -m "test: lock current TUI feature parity"
 - Produces existing `normalizeQuotaOptions`, `composeQuotaPanel`, `selectedQuotaProviderID`, `selectedSessionQuotaProviderID`, and `createQuotaSelection` signatures plus `quotaProviderDemand(options)`.
 - Adapter retains slot registration, session prop binding, provider `setSessionID`, JSX, and theme mapping.
 
-- [ ] **Step 1: Point tests at the future shared feature module**
+- [x] **Step 1: Point tests at the future shared feature module**
 
 Compile `tui/features/quota.ts` as `.tmp-test/quota-composition.mjs`, and update boundary assertions so `tui/quota.tsx` may import only `../shared/opencode-tools-shared.js` plus presentation JSX modules. Add an assertion that option normalization and composition names are absent from the adapter source.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/quota-composition.test.mjs tests/shared-boundary.test.mjs`
 
 Expected: FAIL because `tui/features/quota.ts` is missing and decisions still live in the adapter.
 
-- [ ] **Step 3: Move code without semantic edits**
+- [x] **Step 3: Move code without semantic edits**
 
 Move quota option/type definitions, thresholds, ordering, provider composition, selection resolution, and Solid selection controller to `tui/features/quota.ts`. Add `quotaProviderDemand` that derives only adapter-construction inputs from `NormalizedQuotaOptions`. Re-export all consumed values/types from `shared/opencode-tools-shared.ts`. Keep `SIDEBAR_ORDER` out of feature code; the manifest owns it.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/quota-composition.test.mjs tests/plugin-adapters.test.mjs tests/shared-boundary.test.mjs`
 
 Expected: PASS with unchanged quota models and adapter output.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tui/features/quota.ts tui/quota.tsx shared/opencode-tools-shared.ts tests/compile-presentation.mjs tests/quota-composition.test.mjs tests/shared-boundary.test.mjs
