@@ -9,7 +9,8 @@
     "./home": "./tui/home.tsx",
     "./token-report": "./tui/token-report.tsx",
     "./mcp": "./tui/mcp.tsx",
-    "./lsp": "./tui/lsp.tsx"
+    "./lsp": "./tui/lsp.tsx",
+    "./todo": "./tui/todo.tsx"
   },
   "files": [
     "dist",

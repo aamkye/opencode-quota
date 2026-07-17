@@ -37,5 +37,13 @@
     "outfile": "opencode-tools-lsp.js",
     "slotOrder": 112,
     "options": "none"
+  },
+  {
+    "key": "todo",
+    "id": "aamkye/opencode-tools-todo",
+    "source": "tui/todo.tsx",
+    "outfile": "opencode-tools-todo.js",
+    "slotOrder": 113,
+    "options": "none"
   }
 ]
