@@ -116,6 +116,8 @@ test("reacts to MCP additions, removals, reorder, and status changes without rea
   })
 
   try {
+    assert.equal(mounted.slotMounts(), 1)
+    assert.deepEqual(mounted.kvReads, ["aamkye.opencode-tools-mcp.collapsed"])
     assert.deepEqual(mounted.view().rows.map((row) => row.name), ["first", "second"])
     mounted.setMcp([
       { name: "third", status: "needs_auth" },
@@ -138,6 +140,8 @@ test("reacts to MCP additions, removals, reorder, and status changes without rea
     mounted.setMcp([])
     assert.equal(mounted.view().summaryText, "0/0")
     assert.equal(mounted.registrations.length, 1)
+    assert.equal(mounted.slotMounts(), 1)
+    assert.deepEqual(mounted.kvReads, ["aamkye.opencode-tools-mcp.collapsed"])
   } finally {
     await mounted.dispose()
   }

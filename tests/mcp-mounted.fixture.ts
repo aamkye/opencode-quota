@@ -22,7 +22,14 @@ function isElement(value: unknown): value is MountedElement {
   return typeof value === "object" && value !== null && "type" in value && "props" in value
 }
 
+function mount(value: unknown): unknown {
+  if (!isElement(value) || typeof value.type !== "function") return value
+  if (["For", "Show"].includes(value.type.name)) return value
+  return mount(value.type(value.props))
+}
+
 function expand(value: unknown, parent?: MountedNode): MountedNode[] {
+  if (typeof value === "function") return expand(value(), parent)
   if (Array.isArray(value)) return value.flatMap((child) => expand(child, parent))
   if (!isElement(value)) return []
   if (typeof value.type === "string") {
@@ -100,6 +107,7 @@ export async function mountMcpPanel(options: {
     store.set("aamkye.opencode-tools-mcp.collapsed", options.savedCollapsed)
   }
   const kvWrites: Array<[string, unknown]> = []
+  const kvReads: string[] = []
   const registrations: Array<{ order?: number; slots: Record<string, () => unknown> }> = []
   const theme = {
     error: "#ff0000",
@@ -120,6 +128,7 @@ export async function mountMcpPanel(options: {
     },
     kv: {
       get<T>(key: string, fallback: T): T {
+        kvReads.push(key)
         return store.has(key) ? store.get(key) as T : fallback
       },
       set<T>(key: string, value: T) {
@@ -135,12 +144,16 @@ export async function mountMcpPanel(options: {
   if (!slot) throw new Error("MCP sidebar slot was not registered")
 
   let disposeRoot: () => void = () => undefined
+  let tree: unknown
+  let slotMounts = 0
   createRoot((dispose) => {
     disposeRoot = dispose
+    slotMounts += 1
+    tree = mount(slot())
   })
 
   function nodes(): MountedNode[] {
-    return expand(slot())
+    return expand(tree)
   }
 
   function view() {
@@ -200,8 +213,10 @@ export async function mountMcpPanel(options: {
   return {
     pluginID: mcpPlugin.id,
     registrations,
+    kvReads,
     kvWrites,
     setMcp: setEntries,
+    slotMounts: () => slotMounts,
     view,
     async dispose() {
       disposeRoot()
