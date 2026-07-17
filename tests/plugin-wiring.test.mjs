@@ -16,12 +16,15 @@ test("publishes and typechecks the standalone plugins", () => {
     "./token-report": "./tui/token-report.tsx",
     "./mcp": "./tui/mcp.tsx",
   })
-  for (const file of ["dist", "plugin-manifest.json", "tui", "shared", "README.md"]) {
-    assert.equal(pkg.files.includes(file), true, `package files omit ${file}`)
-  }
-  for (const input of ["tui/**/*.ts", "tui/**/*.tsx", "shared/**/*.ts"]) {
-    assert.equal(tsconfig.include.includes(input), true, `typecheck omits ${input}`)
-  }
+  assert.deepEqual(pkg.files, ["dist", "plugin-manifest.json", "tui", "shared", "README.md"])
+  assert.deepEqual(tsconfig.include, [
+    "opencode-plugin-tui.d.ts",
+    "lib/session-title.ts",
+    "session-title.ts",
+    "tui/**/*.ts",
+    "tui/**/*.tsx",
+    "shared/**/*.ts",
+  ])
   assert.equal(pkg.engines.opencode, ">=1.18.1")
   assert.equal(lock.packages[""].engines.opencode, ">=1.18.1")
 })
