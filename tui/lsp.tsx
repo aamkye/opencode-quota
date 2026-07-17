@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, type JSX } from "solid-js"
+import { createMemo, createSignal, For, Show, type JSX } from "solid-js"
 
 import {
   CompactPanel,
@@ -40,9 +40,14 @@ const plugin = defineTuiPlugin(descriptor, (_context, api) => {
         footerDivider={!collapsed()}
         theme={() => api.theme.current}
       >
-        <For each={model().rows}>
-          {(row) => <LspRow row={row} theme={() => api.theme.current} />}
-        </For>
+        <Show
+          when={model().rows.length > 0}
+          fallback={<text fg={api.theme.current.textMuted}>LSPs will activate as files are read</text>}
+        >
+          <For each={model().rows}>
+            {(row) => <LspRow row={row} theme={() => api.theme.current} />}
+          </For>
+        </Show>
       </CompactPanel>
     )
 

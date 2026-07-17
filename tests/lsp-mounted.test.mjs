@@ -57,3 +57,68 @@ test("persists populated collapse toggles and restores them after restart", asyn
     await second.dispose()
   }
 })
+
+test("defaults empty LSP expanded and persists empty collapse interaction", async () => {
+  const mounted = await mountLspPanel()
+  try {
+    let view = mounted.view()
+    assert.equal(view.marker, "▼ ")
+    assert.equal(view.summaryText, "")
+    assert.equal(view.hint, "LSPs will activate as files are read")
+    assert.equal(view.hintColor, "#888888")
+    assert.equal(view.dividerCount, 2)
+    assert.deepEqual(mounted.kvWrites, [])
+
+    view.clickHeader()
+    view = mounted.view()
+    assert.equal(view.marker, "▶ ")
+    assert.equal(view.summaryText, "0")
+    assert.equal(view.hint, "")
+    assert.equal(view.dividerCount, 1)
+    assert.deepEqual(mounted.kvWrites, [["aamkye.opencode-tools-lsp.collapsed", true]])
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("reacts between empty and populated lists without remounting or resetting preference", async () => {
+  const mounted = await mountLspPanel()
+  try {
+    assert.equal(mounted.slotMounts(), 1)
+    assert.deepEqual(mounted.kvReads, ["aamkye.opencode-tools-lsp.collapsed"])
+    mounted.setLsp([
+      { id: "yaml-ls", name: "YAML", root: "/workspace", status: "error" },
+      { id: "typescript", name: "TypeScript", root: "/workspace", status: "connected" },
+    ])
+    assert.deepEqual(mounted.view().rows.map((row) => [row.id, row.bulletColor]), [
+      ["yaml-ls", "#ff0000"],
+      ["typescript", "#00ff00"],
+    ])
+    mounted.view().clickHeader()
+    assert.equal(mounted.view().summaryText, "2")
+    mounted.setLsp([{ id: "future", name: "Future", root: "/workspace", status: "loading" }])
+    assert.equal(mounted.view().summaryText, "1")
+    mounted.setLsp([])
+    assert.equal(mounted.view().summaryText, "0")
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.equal(mounted.slotMounts(), 1)
+    assert.equal(mounted.registrations.length, 1)
+    assert.deepEqual(mounted.kvReads, ["aamkye.opencode-tools-lsp.collapsed"])
+    assert.deepEqual(mounted.kvWrites, [["aamkye.opencode-tools-lsp.collapsed", true]])
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("restores expanded and collapsed preferences for an empty list", async () => {
+  for (const savedCollapsed of [false, true]) {
+    const mounted = await mountLspPanel({ savedCollapsed })
+    try {
+      assert.equal(mounted.view().marker, savedCollapsed ? "▶ " : "▼ ")
+      assert.equal(mounted.view().hint, savedCollapsed ? "" : "LSPs will activate as files are read")
+      assert.deepEqual(mounted.kvWrites, [])
+    } finally {
+      await mounted.dispose()
+    }
+  }
+})
