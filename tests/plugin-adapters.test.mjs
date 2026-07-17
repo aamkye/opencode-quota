@@ -1,8 +1,14 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-const { default: quotaPlugin } = await import("../.tmp-test/plugin-adapters-quota-fixture.mjs")
-const { default: homePlugin } = await import("../.tmp-test/plugin-adapters-home-fixture.mjs")
+const {
+  default: quotaPlugin,
+  quotaProviderHubTestKey,
+} = await import("../.tmp-test/plugin-adapters-quota-fixture.mjs")
+const {
+  default: homePlugin,
+  homeProviderHubTestKey,
+} = await import("../.tmp-test/plugin-adapters-home-fixture.mjs")
 const { default: tokenPlugin, registerTokenReportTui, tokenReportCommands } = await import("../.tmp-test/plugin-adapters-token-fixture.mjs")
 
 const openCodeGoConfig = Object.freeze({
@@ -24,7 +30,16 @@ function createTrackedProvider(id, key, created) {
     order: id === "zai" ? 110 : id === "openai" ? 120 : 130,
     sessions: [],
     disposeCount: 0,
-    panel: () => ({ id, order: 10, title: id, groups: [] }),
+    panel: () => ({
+      id,
+      order: 10,
+      title: id,
+      groups: [{
+        id,
+        order: 10,
+        items: [{ id: `${id}:${key}`, order: 10, kind: "text", text: key }],
+      }],
+    }),
     home: () => (() => ({
       provider: id === "zai" ? "Z.AI" : id === "openai" ? "OpenAI" : "OpenCode GO",
       plan: "Test",
@@ -114,6 +129,7 @@ function createControlledHubMeta() {
     const demands = new Map()
     let nextDemandToken = 0
     let records = new Map()
+    const listeners = new Set()
 
     const reconcile = () => {
       const nextRecords = new Map()
@@ -138,12 +154,17 @@ function createControlledHubMeta() {
 
       records = nextRecords
       currentProviders = nextProviders
+      for (const listener of listeners) listener()
     }
 
     return {
       providers() {
         providerSnapshots.push(currentProviders.map((provider) => provider.id))
         return currentProviders
+      },
+      subscribe(listener) {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
       },
       addDemand(demand) {
         demandHistory.push(demand)
@@ -164,35 +185,39 @@ function createControlledHubMeta() {
         for (const record of records.values()) record.adapter.dispose()
         records.clear()
         currentProviders = []
+        listeners.clear()
       },
     }
   }
 
+  function acquireHub(context, demand) {
+    let record = hubs.get(context.api)
+    if (!record) {
+      record = { hub: createHub(), references: 0 }
+      hubs.set(context.api, record)
+    }
+
+    record.references += 1
+    const removeDemand = record.hub.addDemand(demand)
+    let released = false
+    const release = () => {
+      if (released) return
+      released = true
+      removeDemand()
+      record.references -= 1
+      if (record.references > 0) return
+      hubs.delete(context.api)
+      record.hub.dispose()
+    }
+
+    context.onCleanup(release)
+    return { value: record.hub, release }
+  }
+
   return {
     meta: {
-      acquireHub(context, demand) {
-        let record = hubs.get(context.api)
-        if (!record) {
-          record = { hub: createHub(), references: 0 }
-          hubs.set(context.api, record)
-        }
-
-        record.references += 1
-        const removeDemand = record.hub.addDemand(demand)
-        let released = false
-        const release = () => {
-          if (released) return
-          released = true
-          removeDemand()
-          record.references -= 1
-          if (record.references > 0) return
-          hubs.delete(context.api)
-          record.hub.dispose()
-        }
-
-        context.onCleanup(release)
-        return { value: record.hub, release }
-      },
+      [quotaProviderHubTestKey]: acquireHub,
+      [homeProviderHubTestKey]: acquireHub,
     },
     state: {
       createdProviders,
@@ -207,7 +232,18 @@ function createControlledHubMeta() {
 
 function invokeSlot(render, ...args) {
   const previousReact = globalThis.React
-  globalThis.React = { createElement: () => null, Fragment: Symbol.for("react.fragment") }
+  globalThis.React = {
+    createElement(type, props, ...children) {
+      return {
+        type,
+        props: {
+          ...props,
+          children: children.length > 1 ? children : children[0],
+        },
+      }
+    },
+    Fragment: Symbol.for("react.fragment"),
+  }
   try {
     return render(...args)
   } finally {
@@ -517,6 +553,59 @@ test("activation order: quota then home keeps one hub and one provider owner set
   assert.equal(hub.state.createdProviders.every((provider) => provider.disposeCount === 1), true)
 })
 
+test("activation order: quota-first mounted home excludes OpenCode Go and follows replacements", async () => {
+  const { api, lifecycle } = createApi()
+  const hub = createControlledHubMeta()
+
+  try {
+    await activate(quotaPlugin, quotaHubOptions, api, hub.meta)
+    const quotaCleanupIndex = lifecycle.count() - 1
+    await activate(homePlugin, undefined, api, hub.meta)
+
+    const mountedHome = invokeSlot(api.slots.registrations[1].slots.home_bottom)
+    assert.equal(typeof mountedHome.props.providers, "function")
+    const initial = mountedHome.props.providers()
+    assert.deepEqual(initial.map((provider) => provider.id), ["zai", "openai"])
+
+    await lifecycle.disposeAt(quotaCleanupIndex)
+    const replaced = mountedHome.props.providers()
+    assert.deepEqual(replaced.map((provider) => provider.id), ["zai", "openai"])
+    assert.notEqual(replaced[0], initial[0])
+    assert.notEqual(replaced[1], initial[1])
+  } finally {
+    await lifecycle.dispose()
+  }
+})
+
+test("mounted quota recomputes when a later quota demand replaces hub providers", async () => {
+  const { api, lifecycle } = createApi()
+  const hub = createControlledHubMeta()
+  api.state.provider = [{ id: "zai" }]
+
+  try {
+    await activate(quotaPlugin, quotaHubOptions, api, hub.meta)
+    const mountedQuota = invokeSlot(
+      api.slots.registrations[0].slots.sidebar_content,
+      {},
+      { session_id: "replacement-session" },
+    )
+    const firstItemID = mountedQuota.props.model().groups[0].items[0].id
+
+    await activate(quotaPlugin, {
+      quota: {
+        refreshIntervalSeconds: 30,
+        opencodego: openCodeGoConfig,
+      },
+    }, api, hub.meta)
+
+    const replacementItemID = mountedQuota.props.model().groups[0].items[0].id
+    assert.notEqual(replacementItemID, firstItemID)
+    assert.match(replacementItemID, /30000/)
+  } finally {
+    await lifecycle.dispose()
+  }
+})
+
 test("installed alone: quota acquires the shared hub and releases it once", async () => {
   const { api, lifecycle } = createApi()
   const hub = createControlledHubMeta()
@@ -556,6 +645,25 @@ test("installed alone: home acquires the shared hub and releases it once", async
 
   assert.equal(hub.state.hubDisposeCount(), 1)
   assert.equal(hub.state.createdProviders.every((provider) => provider.disposeCount === 1), true)
+})
+
+test("ordinary metadata cannot override hub acquisition and non-functions are ignored", async () => {
+  const { api, lifecycle } = createApi()
+  let collisionCalled = false
+
+  try {
+    await activate(homePlugin, undefined, api, {
+      acquireHub() {
+        collisionCalled = true
+        throw new Error("ordinary metadata collision")
+      },
+      [homeProviderHubTestKey]: "not a function",
+    })
+    assert.equal(collisionCalled, false)
+    assert.deepEqual(slotNames(api), ["home_bottom"])
+  } finally {
+    await lifecycle.dispose()
+  }
 })
 
 test("token adapter registers only the two keymap layers", async () => {

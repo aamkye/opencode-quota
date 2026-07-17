@@ -1,4 +1,4 @@
-import { createMemo } from "solid-js"
+import { createMemo, createSignal } from "solid-js"
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 
 import { PanelRenderer, type PanelTheme } from "./presentation/renderer.js"
@@ -19,9 +19,7 @@ import {
 
 type QuotaSelectionController = ReturnType<typeof createQuotaSelection>
 
-type HubMeta = {
-  acquireHub?: typeof acquireQuotaProviderHub
-}
+export const quotaProviderHubTestKey = Symbol("quota-provider-hub-test")
 
 function acquireHub(
   context: TuiFeatureContext,
@@ -29,8 +27,13 @@ function acquireHub(
   demand: QuotaProviderDemand,
   meta: unknown,
 ): ServiceLease<QuotaProviderHub> {
-  const injected = meta && typeof meta === "object" ? (meta as HubMeta).acquireHub : undefined
-  return (injected ?? acquireQuotaProviderHub)({ ...context, api }, demand)
+  const injected = meta && typeof meta === "object"
+    ? (meta as Record<PropertyKey, unknown>)[quotaProviderHubTestKey]
+    : undefined
+  const acquire = typeof injected === "function"
+    ? injected as typeof acquireQuotaProviderHub
+    : acquireQuotaProviderHub
+  return acquire({ ...context, api }, demand)
 }
 
 function quotaHubDemand(options: ReturnType<typeof quotaAdapterShared.normalizeOptions>): QuotaProviderDemand {
@@ -43,31 +46,28 @@ function quotaHubDemand(options: ReturnType<typeof quotaAdapterShared.normalizeO
   }
 }
 
-function liveProviders(providers: () => readonly QuotaProviderAdapter[]): readonly QuotaProviderAdapter[] {
-  return new Proxy([] as QuotaProviderAdapter[], {
-    get(_target, property) {
-      const current = providers()
-      const value = Reflect.get(current, property, current)
-      return typeof value === "function" ? value.bind(current) : value
+function reactiveProviders(providers: () => readonly QuotaProviderAdapter[]): readonly QuotaProviderAdapter[] {
+  type Predicate = (provider: QuotaProviderAdapter, index: number, values: readonly QuotaProviderAdapter[]) => unknown
+  // Quota helpers only use these methods; each read tracks the current hub signal.
+  return {
+    filter(predicate: Predicate, thisArg?: unknown) {
+      return providers().filter(predicate, thisArg)
     },
-    has(_target, property) {
-      return property in providers()
+    find(predicate: Predicate, thisArg?: unknown) {
+      return providers().find(predicate, thisArg)
     },
-    ownKeys() {
-      return Reflect.ownKeys(providers())
+    some(predicate: Predicate, thisArg?: unknown) {
+      return providers().some(predicate, thisArg)
     },
-    getOwnPropertyDescriptor(_target, property) {
-      const descriptor = Object.getOwnPropertyDescriptor(providers(), property)
-      return descriptor ? { ...descriptor, configurable: true } : undefined
-    },
-  })
+  } as unknown as readonly QuotaProviderAdapter[]
 }
 
 const plugin = defineTuiPlugin(pluginDescriptor("quota"), (context, api, rawOptions, meta) => {
   const options = quotaAdapterShared.normalizeOptions(rawOptions)
   const hub = acquireHub(context, api, quotaHubDemand(options), meta)
-  const currentProviders = () => hub.value.providers()
-  const providers = liveProviders(currentProviders)
+  const [currentProviders, setCurrentProviders] = createSignal(hub.value.providers())
+  context.onCleanup(hub.value.subscribe(() => setCurrentProviders(hub.value.providers())))
+  const providers = reactiveProviders(currentProviders)
   const selection: QuotaSelectionController = quotaAdapterShared.createSelection(api, providers)
   const model = createMemo(() => quotaAdapterShared.composePanel(selection.selectedProviderID(), providers, options))
   const theme = () => api.theme.current as PanelTheme

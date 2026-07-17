@@ -203,6 +203,29 @@ test("reuses home adapters when quota demand matches effective default options",
   assert.equal(created[1].disposeCount, 1)
 })
 
+test("notifies subscribers when provider adapters are replaced or removed", () => {
+  const created = []
+  const hub = createQuotaProviderHub({}, createProviderFactories(created))
+  const releaseHome = hub.addDemand({ consumer: "home" })
+  const snapshots = []
+  const unsubscribe = hub.subscribe(() => {
+    snapshots.push(hub.providers().map((provider) => provider.id))
+  })
+
+  const releaseQuota = hub.addDemand(quotaDemand())
+  assert.deepEqual(snapshots, [["zai", "openai", "opencode-go"]])
+
+  releaseQuota()
+  assert.deepEqual(snapshots, [
+    ["zai", "openai", "opencode-go"],
+    ["zai", "openai"],
+  ])
+
+  unsubscribe()
+  releaseHome()
+  assert.equal(snapshots.length, 2)
+})
+
 test("rolls back a failed replacement while another consumer remains active", () => {
   const created = []
   let failQuotaReplacement = true

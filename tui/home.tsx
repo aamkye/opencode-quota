@@ -1,4 +1,4 @@
-import { For, Show } from "solid-js"
+import { createSignal, For, Show } from "solid-js"
 
 import {
   acquireQuotaProviderHub,
@@ -17,9 +17,7 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 
 const HOME_ORDER = pluginDescriptor("home").slotOrder ?? 0
 
-type HubMeta = {
-  acquireHub?: typeof acquireQuotaProviderHub
-}
+export const homeProviderHubTestKey = Symbol("home-provider-hub-test")
 
 function acquireHub(
   context: TuiFeatureContext,
@@ -27,8 +25,13 @@ function acquireHub(
   demand: QuotaProviderDemand,
   meta: unknown,
 ): ServiceLease<QuotaProviderHub> {
-  const injected = meta && typeof meta === "object" ? (meta as HubMeta).acquireHub : undefined
-  return (injected ?? acquireQuotaProviderHub)({ ...context, api }, demand)
+  const injected = meta && typeof meta === "object"
+    ? (meta as Record<PropertyKey, unknown>)[homeProviderHubTestKey]
+    : undefined
+  const acquire = typeof injected === "function"
+    ? injected as typeof acquireQuotaProviderHub
+    : acquireQuotaProviderHub
+  return acquire({ ...context, api }, demand)
 }
 
 function HomeQuotaLine(props: { summary: HomeQuotaSummary; theme: () => { error: string; warning: string; success: string; textMuted: string } }) {
@@ -46,22 +49,32 @@ function HomeQuotaLine(props: { summary: HomeQuotaSummary; theme: () => { error:
   )
 }
 
+function HomeQuotaLines(props: {
+  providers: () => readonly QuotaProviderAdapter[]
+  theme: () => { error: string; warning: string; success: string; textMuted: string }
+}) {
+  return (
+    <box flexDirection="column">
+      <For each={props.providers()}>
+        {(provider) => <Show when={provider.home()}>{(item) => <HomeQuotaLine summary={item()} theme={props.theme} />}</Show>}
+      </For>
+    </box>
+  )
+}
+
 const plugin = defineTuiPlugin(pluginDescriptor("home"), (context, api, _options, meta) => {
   const hub = acquireHub(context, api, { consumer: "home" }, meta)
-  const providers = (): readonly QuotaProviderAdapter[] => hub.value.providers()
+  const [hubProviders, setHubProviders] = createSignal(hub.value.providers())
+  context.onCleanup(hub.value.subscribe(() => setHubProviders(hub.value.providers())))
+  const providers = (): readonly QuotaProviderAdapter[] => hubProviders()
+    .filter((provider) => provider.id === "zai" || provider.id === "openai")
 
   api.slots.register({
     // A distinct home slot preserves the compact provider summaries during initial loading.
     order: HOME_ORDER,
     slots: {
       home_bottom() {
-        return (
-          <box flexDirection="column">
-            <For each={providers()}>
-              {(provider) => <Show when={provider.home()}>{(item) => <HomeQuotaLine summary={item()} theme={() => api.theme.current} />}</Show>}
-            </For>
-          </box>
-        )
+        return <HomeQuotaLines providers={providers} theme={() => api.theme.current} />
       },
     },
   })

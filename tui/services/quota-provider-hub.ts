@@ -25,6 +25,7 @@ export type QuotaProviderDemand = {
 
 export interface QuotaProviderHub {
   providers(): readonly QuotaProviderAdapter[]
+  subscribe(listener: () => void): () => void
   addDemand(demand: QuotaProviderDemand): () => void
   dispose(): void
 }
@@ -160,7 +161,18 @@ export function createQuotaProviderHub(
   let nextDemandToken = 0
   let records = new Map<string, ProviderRecord>()
   let currentProviders: readonly QuotaProviderAdapter[] = []
+  const listeners = new Set<() => void>()
   let disposed = false
+
+  const notify = (): void => {
+    for (const listener of listeners) {
+      try {
+        listener()
+      } catch {
+        // A consumer cannot leave provider reconciliation half-complete.
+      }
+    }
+  }
 
   const reconcile = (): void => {
     if (disposed) return
@@ -195,15 +207,28 @@ export function createQuotaProviderHub(
       }
       if (nextRecord.adapter !== record.adapter) replacedAdapters.push(record.adapter)
     }
+    const changed = currentProviders.length !== nextProviders.length
+      || currentProviders.some((provider, index) => provider !== nextProviders[index])
     records = nextRecords
     currentProviders = nextProviders
     for (const adapter of replacedAdapters) adapter.dispose()
     for (const adapter of removedAdapters) adapter.dispose()
+    if (changed) notify()
   }
 
   return {
     providers() {
       return currentProviders
+    },
+    subscribe(listener) {
+      if (disposed || typeof listener !== "function") return () => {}
+      listeners.add(listener)
+      let removed = false
+      return () => {
+        if (removed) return
+        removed = true
+        listeners.delete(listener)
+      }
     },
     addDemand(demand) {
       if (disposed) return () => {}
@@ -231,6 +256,8 @@ export function createQuotaProviderHub(
       for (const record of records.values()) record.adapter.dispose()
       records.clear()
       currentProviders = []
+      notify()
+      listeners.clear()
     },
   }
 }
