@@ -6,8 +6,9 @@
 > - [farrukh2002/opencode-glm-reset](https://github.com/farrukh2002/opencode-glm-reset)
 
 OpenCode TUI plugins that show quota usage, reset countdowns, rate-limit
-status, compact homepage summaries, MCP server health, and `/tokens_*` reports
-for **Z.AI (GLM)**, **OpenAI (ChatGPT Plus/Pro)**, and **OpenCode Go**.
+status, compact homepage summaries, MCP server health, LSP status, and
+`/tokens_*` reports for **Z.AI (GLM)**, **OpenAI (ChatGPT Plus/Pro)**, and
+**OpenCode Go**.
 
 ![opencode-tools homepage bottom](img/img0.jpg)
 
@@ -65,6 +66,17 @@ for **Z.AI (GLM)**, **OpenAI (ChatGPT Plus/Pro)**, and **OpenCode Go**.
 - **Persistent collapse state** — remembers the user's preference while an
   empty MCP list stays compact as a muted `0/0` summary.
 
+### LSP
+
+- **Reactive server list** — shows OpenCode's synchronized LSP IDs in source
+  order without polling.
+- **Status-colored bullets** — successful servers use the success color,
+  failed servers use the error color, and unknown statuses remain in the list
+  with a muted bullet.
+- **Persistent collapse state** — remembers the user's header-click preference
+  and shows `LSPs will activate as files are read` when the expanded list is
+  empty.
+
 ### Shared
 
 - **Homepage summary** — each provider plugin also registers a compact homepage
@@ -88,7 +100,7 @@ for **Z.AI (GLM)**, **OpenAI (ChatGPT Plus/Pro)**, and **OpenCode Go**.
 The plugins are built and loaded only from local files. This package is not
 published to npm, and OpenCode is never configured with an npm package spec.
 OpenCode 1.18.1 or newer is required for the standalone TUI plugin and
-synchronized MCP APIs.
+synchronized MCP and LSP APIs.
 
 ### Configuration
 
@@ -123,19 +135,21 @@ Native TUI options can be supplied with the local plugin entry:
     ],
     "./opencode-tools-home.js",
     "./opencode-tools-token-report.js",
-    "./opencode-tools-mcp.js"
+    "./opencode-tools-mcp.js",
+    "./opencode-tools-lsp.js"
   ],
   "plugin_enabled": {
-    "internal:sidebar-mcp": false
+    "internal:sidebar-mcp": false,
+    "internal:sidebar-lsp": false
   }
 }
 ```
 
 The entries must remain standalone. Only quota accepts the options object;
-home, token-report, and MCP use string entries. The external MCP plugin does
-not deactivate OpenCode's built-in panel. Users must disable
-`internal:sidebar-mcp` themselves, as shown by `plugin_enabled`, to avoid two
-MCP panels.
+home, token-report, MCP, and LSP use string entries. LSP accepts no options.
+Neither external panel deactivates its built-in counterpart. Users must disable
+`internal:sidebar-mcp` and `internal:sidebar-lsp` themselves, as shown by
+`plugin_enabled`, to avoid duplicate panels.
 
 `quota.opencodego.workspaceId` identifies the OpenCode Go workspace.
 `quota.opencodego.workspaceToken` authenticates the console request;
@@ -222,9 +236,45 @@ is muted. For the unhealthy `2/3` summary, `2` uses the success color, `3` uses
 the error color, and the slash is muted.
 For the empty `0/0` summary, both numbers and the slash are muted.
 
+### LSP sidebar layouts
+
+LSP IDs stay in synchronized source order. Long IDs truncate with an ellipsis
+so expanded lines fit within 37 cells and collapsed lines fit within 36 cells.
+
+#### Expanded
+
+```text
+▼ LSP
+-------------------------------------
+• typescript
+• yaml-ls
+-------------------------------------
+```
+
+#### Expanded, empty
+
+```text
+▼ LSP
+-------------------------------------
+LSPs will activate as files are read
+-------------------------------------
+```
+
+#### Collapsed
+
+```text
+▶ LSP                               2
+-------------------------------------
+```
+
+The collapsed count uses normal header text. Successful servers use a success
+bullet, failed servers use an error bullet, and unknown statuses remain present
+with a muted bullet. Only header clicks write the persisted collapse
+preference.
+
 ### Build and deploy
 
-Build the four standalone minified ESM plugins and their imported shared
+Build the five standalone minified ESM plugins and their imported shared
 artifact:
 
 ```bash
@@ -241,13 +291,16 @@ npm run deploy:global
 ```
 
 Each deploy command rebuilds first and automatically migrates managed
-configuration entries to the four standalone entries in manifest order. It
+configuration entries to the five standalone entries in manifest order. It
 preserves unrelated plugin entries and preserves existing quota options;
 quota options remain attached only to the quota entry. Local deployment also
 removes managed source entries from the project-root `tui.json`, because
 OpenCode loads it together with `.opencode/tui.json`; options in the selected
 `.opencode` config take precedence. Repeating either command produces the same
-files and configuration. Fully restart OpenCode after deployment.
+files and configuration. Deployment does not edit `plugin_enabled` or disable
+the built-in MCP or LSP panel. Set the overrides in the configuration example
+yourself when replacing either built-in panel. Fully restart OpenCode after
+deployment.
 
 The normalized quota runtime ID is now `aamkye/opencode-tools-quota`. This is
 an intentional ID change, so host-managed plugin state may reset during
@@ -258,8 +311,12 @@ migration; the deployer still preserves quota's configuration options.
 To return to OpenCode's built-in MCP panel, remove `./opencode-tools-mcp.js`
 from the `plugin` array, then remove the `"internal:sidebar-mcp": false`
 override (or set it to `true`) to re-enable `internal:sidebar-mcp`, then restart
-OpenCode. To roll back the complete standalone migration, optionally restore
-the prior composed release and its configuration before restarting.
+OpenCode. To return to OpenCode's built-in LSP panel, remove
+`./opencode-tools-lsp.js` from the `plugin` array, then remove the
+`"internal:sidebar-lsp": false` override (or set it to `true`) to re-enable
+`internal:sidebar-lsp`, then restart OpenCode. To roll back the complete
+standalone migration, optionally restore the prior composed release and its
+configuration before restarting.
 
 ### Artifact layout
 
@@ -269,7 +326,8 @@ dist/
 ├── opencode-tools-quota.js
 ├── opencode-tools-home.js
 ├── opencode-tools-token-report.js
-└── opencode-tools-mcp.js
+├── opencode-tools-mcp.js
+└── opencode-tools-lsp.js
 ```
 
 | File | Runtime ID | Responsibility |
@@ -279,6 +337,7 @@ dist/
 | `opencode-tools-home.js` | `aamkye/opencode-tools-home` | Compact homepage provider summary. |
 | `opencode-tools-token-report.js` | `aamkye/opencode-tools-token-report` | TUI `/tokens_*` commands and reports. |
 | `opencode-tools-mcp.js` | `aamkye/opencode-tools-mcp` | Reactive MCP sidebar health panel immediately after quota. |
+| `opencode-tools-lsp.js` | `aamkye/opencode-tools-lsp` | Reactive LSP sidebar status panel immediately after MCP. |
 
 `solid-js`, `@opentui/*`, `@opencode-ai/plugin`, host SDK modules, and
 Node/Bun built-ins remain external and are provided by the OpenCode host.
@@ -300,10 +359,11 @@ change that title.
 | `tui/home.tsx`              | Standalone compact homepage adapter                                   |
 | `tui/token-report.tsx`      | Standalone TUI token-report command adapter                           |
 | `tui/mcp.tsx`               | Standalone reactive MCP sidebar adapter                               |
+| `tui/lsp.tsx`               | Standalone reactive LSP sidebar adapter                               |
 | `tui/providers/`            | Z.AI, OpenAI, and OpenCode Go provider adapters                       |
 | `lib/tokens/`               | Vendored token reporting library ([upstream](https://github.com/slkiser/opencode-quota), MIT) |
 | `plugin-manifest.json`      | Manifest order, runtime IDs, artifacts, slots, and option ownership   |
-| `build-plugins.mjs`         | Builds the shared artifact and four standalone local ESM plugins      |
+| `build-plugins.mjs`         | Builds the shared artifact and five standalone local ESM plugins      |
 | `deploy-plugins.mjs`        | Idempotently migrates local/global artifacts and `tui.json` entries   |
 
 ### Edit workflow
@@ -313,7 +373,7 @@ Edit the relevant source, redeploy, then fully restart OpenCode to reload.
 ```bash
 npm install       # install/refresh deps in node_modules
 npm run typecheck # tsc --noEmit (informational; runtime resolves via Bun)
-npm run build:plugins # rebuild all four standalone plugins plus shared code
+npm run build:plugins # rebuild all five standalone plugins plus shared code
 npm run deploy:local # rebuild and deploy into this repository
 npm test          # run tests
 ```
