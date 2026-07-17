@@ -29,5 +29,13 @@
     "outfile": "opencode-tools-mcp.js",
     "slotOrder": 111,
     "options": "none"
+  },
+  {
+    "key": "lsp",
+    "id": "aamkye/opencode-tools-lsp",
+    "source": "tui/lsp.tsx",
+    "outfile": "opencode-tools-lsp.js",
+    "slotOrder": 112,
+    "options": "none"
   }
 ]

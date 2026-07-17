@@ -46,9 +46,16 @@ const tokenCommands = [
   "tokens_session_all",
   "tokens_between",
 ]
+const expectedManagedSpecs = [
+  "./opencode-tools-quota.js",
+  "./opencode-tools-home.js",
+  "./opencode-tools-token-report.js",
+  "./opencode-tools-mcp.js",
+  "./opencode-tools-lsp.js",
+]
 const deployedFiles = [
   "opencode-tools-shared.js",
-  ...pluginManifest.map((entry) => entry.outfile),
+  ...expectedManagedSpecs.map((spec) => spec.slice(2)),
 ]
 const obsoleteArtifacts = [
   `${obsoleteNamespace}.js`,
@@ -65,7 +72,7 @@ const obsoleteArtifacts = [
   "tokens.ts",
   "plugins/tokens.js",
   "plugins/tokens.ts",
-  ...pluginManifest.map((entry) => entry.source),
+  ...new Set([...pluginManifest.map((entry) => entry.source), "tui/lsp.tsx"]),
 ]
 const temporaryRoots = []
 let deployPlugins
@@ -114,6 +121,8 @@ async function fixture() {
     await mkdir(dirname(path), { recursive: true })
     await writeFile(path, `obsolete ${file}`)
   }
+  await writeFile(join(root, "opencode-tools-lsp.js"), "stale managed LSP artifact")
+  await writeFile(join(root, "tui/lsp.tsx"), "stale managed LSP source")
   await writeFile(join(root, "plugins", "unrelated.js"), "preserve")
   await writeFile(join(root, "opencode.json"), JSON.stringify({
     $schema: "https://opencode.ai/config.json",
@@ -161,11 +170,16 @@ async function managedArtifactPaths(root, relative = "") {
 }
 
 function expectedManagedEntries(options) {
-  return pluginManifest.map((entry) => (
-    entry.options === "quota" && options !== undefined
-      ? [`./${entry.outfile}`, options]
-      : `./${entry.outfile}`
+  return expectedManagedSpecs.map((spec) => (
+    spec === "./opencode-tools-quota.js" && options !== undefined
+      ? [spec, options]
+      : spec
   ))
+}
+
+function assertPlainLspEntry(config) {
+  const entries = config.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-lsp.js")
+  assert.deepEqual(entries, ["./opencode-tools-lsp.js"])
 }
 
 function assertSingleTrailingNewline(contents, label) {
@@ -212,6 +226,7 @@ test("local deployment removes token artifacts and commands while preserving unr
     ["file:///tmp/unrelated/tokens.ts?version=1", { preserve: "tokens" }],
     ...expectedManagedEntries(localOptions),
   ])
+  assertPlainLspEntry(config)
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "used", sortDirection: "asc" },
     quota: {
@@ -303,6 +318,8 @@ test("local deployment preserves project fallback semantics across repeated migr
     await mkdir(dirname(path), { recursive: true })
     await writeFile(path, `obsolete ${file}`)
   }
+  await writeFile(join(configRoot, "opencode-tools-lsp.js"), "stale managed LSP artifact")
+  await writeFile(join(configRoot, "tui/lsp.tsx"), "stale managed LSP source")
 
   const initialSelectedConfig = JSON.parse(await readFile(join(configRoot, "tui.json"), "utf8"))
   assert.equal(JSON.stringify(initialSelectedConfig).includes("opencodego"), false)
@@ -330,6 +347,7 @@ test("local deployment preserves project fallback semantics across repeated migr
     "file:///tmp/selected-unrelated-last.js",
     ...expectedManagedEntries(rootOptions),
   ])
+  assertPlainLspEntry(selectedConfig)
   assert.deepEqual(selectedConfig.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "asc" },
     quota: {
@@ -401,6 +419,8 @@ test("global deployment removes token artifacts and commands while preserving un
     await mkdir(dirname(path), { recursive: true })
     await writeFile(path, `obsolete ${file}`)
   }
+  await writeFile(join(root, "opencode-tools-lsp.js"), "stale managed LSP artifact")
+  await writeFile(join(root, "tui/lsp.tsx"), "stale managed LSP source")
   await writeFile(join(root, "plugins", "unrelated.js"), "preserve")
   await writeFile(join(root, "opencode.json"), JSON.stringify({
     $schema: "https://opencode.ai/config.json",
@@ -434,6 +454,7 @@ test("global deployment removes token artifacts and commands while preserving un
     "file:///tmp/unrelated/tokens.ts",
     ...expectedManagedEntries(globalOptions),
   ])
+  assertPlainLspEntry(config)
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "desc" },
     quota: {
