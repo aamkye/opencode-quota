@@ -65,12 +65,17 @@ The panel SHALL always expose a collapse or expand marker and SHALL persist the 
 - **THEN** the panel restores that preference
 
 ### Requirement: Compact empty state
-The system SHALL render a configured-empty MCP panel as a forced-collapsed header with a muted `0/0` summary and no rows.
+The system SHALL render a configured-empty MCP panel as a forced-collapsed header with a muted `0/0` summary and no rows, and SHALL preserve an expand activation received while reactive MCP state is temporarily empty so it takes effect when entries become available.
 
 #### Scenario: No MCP servers are configured
 - **WHEN** `api.state.mcp()` returns an empty list
 - **THEN** the panel shows `▶ MCP` with right-aligned muted `0/0` and the header separator
 - **AND** the forced state does not overwrite the user's stored non-empty preference
+
+#### Scenario: User expands before MCP state hydration completes
+- **WHEN** a collapsed preference is stored, the user activates the MCP header while `api.state.mcp()` is empty, and MCP entries then become available
+- **THEN** the empty panel remains forced collapsed and performs no KV write before entries arrive
+- **AND** the first non-empty state renders expanded and stores the expanded preference without requiring another activation
 
 ### Requirement: Bounded quota-like layout
 The panel SHALL use the shared compact-sidebar primitives, fit within 37 terminal cells, use full-width separators immediately below the header and at the end of expanded content, and avoid trailing whitespace in textual output.
@@ -101,3 +106,4 @@ The project documentation SHALL explain how to install the standalone MCP plugin
 #### Scenario: User follows installation documentation
 - **WHEN** a user configures `opencode-tools-mcp` as documented
 - **THEN** the documentation identifies the built-in MCP plugin that must be disabled and does not claim the external plugin disables it automatically
+
