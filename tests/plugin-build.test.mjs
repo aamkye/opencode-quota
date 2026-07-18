@@ -154,6 +154,10 @@ test("build:plugins emits the manifest artifact layout and return shape", async 
   assert.equal(existsSync(resolve(root, "dist/plugins/opencode-tools-tokens.js")), false)
 })
 
+test("compiled MCP keeps collapse state reactive", () => {
+  assert.match(contents["dist/opencode-tools-mcp.js"], /get collapsed\(\)\{/)
+})
+
 test("every standalone feature imports the external shared artifact", () => {
   for (const entry of pluginManifest) {
     const result = buildResults.features[entry.key]
