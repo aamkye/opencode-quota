@@ -57,8 +57,9 @@ The expanded panel SHALL render one row per MCP entry with a status-colored bull
 The panel SHALL always expose a collapse or expand marker and SHALL persist the user's non-empty-panel preference through the plugin KV store.
 
 #### Scenario: User collapses or expands the panel
-- **WHEN** the user activates the MCP header
-- **THEN** the panel toggles between expanded and collapsed forms and stores that preference under a namespaced key
+- **WHEN** the non-empty MCP panel is expanded or collapsed and the user activates its header once
+- **THEN** the visible panel immediately toggles between expanded and collapsed forms and stores that preference under a namespaced key
+- **AND** the state change does not require a second activation
 
 #### Scenario: Plugin restarts with configured MCP servers
 - **WHEN** the plugin starts after a collapse preference has been stored
