@@ -5,16 +5,25 @@ import {
   createContextPanelModel,
   defineTuiPlugin,
   pluginDescriptor,
+  type PanelTheme,
 } from "../shared/opencode-tools-shared.js"
+import type { PanelStatus } from "./presentation/types.js"
 
 const descriptor = pluginDescriptor("context")
 const COLLAPSED_KEY = "aamkye.opencode-tools-context.collapsed"
 
-function ContextMetricRow(props: { label: string; value: string }) {
+function ContextMetricRow(props: {
+  label: string
+  value: string
+  status?: PanelStatus
+  theme: () => PanelTheme
+}) {
   return (
     <box flexDirection="row" width="100%" overflow="hidden">
       <text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0}>{props.label}</text>
-      <text flexShrink={0} wrapMode="none">{props.value}</text>
+      <text flexShrink={0} wrapMode="none" fg={props.status ? props.theme()[props.status] : undefined}>
+        {props.value}
+      </text>
     </box>
   )
 }
@@ -38,14 +47,25 @@ const plugin = defineTuiPlugin(descriptor, (_context, api) => {
       <CompactPanel
         title="Context"
         collapsed={collapsed()}
-        summary={collapsed() ? { text: model().summary } : undefined}
+        summary={collapsed() ? { text: model().summary, status: model().usageStatus } : undefined}
         onToggle={toggle}
         footerDivider={!collapsed()}
         theme={() => api.theme.current}
       >
-        <ContextMetricRow label="Tokens" value={model().tokens} />
-        <ContextMetricRow label="Used" value={model().used} />
-        <ContextMetricRow label="Spent" value={model().spent} />
+        <ContextMetricRow label="Limit" value={model().limit} theme={() => api.theme.current} />
+        <ContextMetricRow label="Tokens" value={model().tokens} theme={() => api.theme.current} />
+        <ContextMetricRow
+          label="Used"
+          value={model().used}
+          status={model().usageStatus}
+          theme={() => api.theme.current}
+        />
+        <ContextMetricRow
+          label="Spent"
+          value={model().spent}
+          status={model().spentStatus}
+          theme={() => api.theme.current}
+        />
       </CompactPanel>
     )
     return render as unknown as JSX.Element

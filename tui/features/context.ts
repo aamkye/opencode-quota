@@ -1,6 +1,7 @@
 import type { AssistantMessage, Message, Provider } from "@opencode-ai/sdk/v2"
 
 import { formatCount, formatCurrency } from "../presentation/format.js"
+import type { PanelStatus } from "../presentation/types.js"
 
 export type ContextMessage = Pick<Message, "role"> & Partial<Pick<
   AssistantMessage,
@@ -14,10 +15,13 @@ export type ContextProvider = Pick<Provider, "id"> & {
 }
 
 export type ContextPanelModel = {
+  limit: string
   tokens: string
   used: string
   spent: string
   summary: string
+  usageStatus?: PanelStatus
+  spentStatus?: PanelStatus
 }
 
 function finite(value: unknown): number {
@@ -51,7 +55,17 @@ export function createContextPanelModel(
     }
   }
 
-  const unavailable = { tokens: "-", used: "-", spent: formatCurrency(spent), summary: "-" }
+  const spentValue = formatCurrency(spent)
+  const spentStatus = spent === 0 ? "textMuted" as const : undefined
+  const tokens = selected ? formatCount(selected.tokens, 2) : "-"
+  const unavailable: ContextPanelModel = {
+    limit: "-",
+    tokens,
+    used: "-",
+    spent: spentValue,
+    summary: "-",
+    ...(spentStatus ? { spentStatus } : {}),
+  }
   if (!selected) return unavailable
 
   const provider = providers.find((candidate) => candidate.id === selected.message.providerID)
@@ -60,11 +74,18 @@ export function createContextPanelModel(
     : undefined
   if (typeof limit !== "number" || !Number.isFinite(limit) || limit <= 0) return unavailable
 
-  const used = `${Math.round((selected.tokens / limit) * 100)}%`
+  const percentage = Math.round((selected.tokens / limit) * 100)
+  const used = `${percentage}%`
+  const usageStatus: PanelStatus = percentage < 40
+    ? "success"
+    : percentage <= 60 ? "warning" : "error"
   return {
-    tokens: formatCount(limit),
+    limit: formatCount(limit),
+    tokens,
     used,
-    spent: formatCurrency(spent),
+    spent: spentValue,
     summary: used,
+    usageStatus,
+    ...(spentStatus ? { spentStatus } : {}),
   }
 }
