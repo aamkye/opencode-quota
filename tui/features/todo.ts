@@ -1,5 +1,7 @@
 import type { Todo } from "@opencode-ai/sdk/v2"
 
+type TodoPanelRecord = Pick<Todo, "content" | "status">
+
 export type TodoStatusRole = "success" | "warning" | "text" | "textMuted"
 
 export type TodoStatusRow = {
@@ -26,7 +28,7 @@ const STATUS_DISPLAY = Object.freeze({
 
 const UNKNOWN_STATUS = Object.freeze({ marker: "[ ]", status: "text" } satisfies TodoStatusDisplay)
 
-export function createTodoPanelModel(records: readonly Todo[]): TodoPanelModel {
+export function createTodoPanelModel(records: readonly TodoPanelRecord[]): TodoPanelModel {
   let completed = 0
   const rows = records.map((record): TodoStatusRow => {
     if (record.status === "completed") completed += 1

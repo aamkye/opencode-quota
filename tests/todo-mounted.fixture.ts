@@ -3,7 +3,7 @@ import { createRoot, createSignal } from "solid-js"
 
 import todoPlugin from "../tui/todo.js"
 
-export type TodoFixtureRecord = Todo
+export type TodoFixtureRecord = Pick<Todo, "content" | "status">
 
 export type TodoFixtureOptions = {
   sessionID?: string

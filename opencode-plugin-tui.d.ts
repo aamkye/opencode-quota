@@ -55,6 +55,8 @@ declare module "@opencode-ai/plugin/tui" {
     status: TuiLspStatus
   }
 
+  export type TuiSidebarTodoItem = Pick<Todo, "content" | "status">
+
   export interface TuiPluginApi {
     keymap: {
       registerLayer(input: { mode?: string; commands?: TuiCommand[]; bindings?: TuiBinding[] }): void
@@ -103,7 +105,7 @@ declare module "@opencode-ai/plugin/tui" {
       lsp(): readonly TuiLspEntry[]
       provider: readonly Provider[]
       session: {
-        todo(sessionID: string): readonly Todo[]
+        todo(sessionID: string): readonly TuiSidebarTodoItem[]
         messages(sessionID: string): readonly import("@opencode-ai/sdk/v2").Message[]
       }
       part(messageID: string): readonly import("@opencode-ai/sdk/v2").Part[]

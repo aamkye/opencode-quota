@@ -153,16 +153,18 @@ Native TUI options can be supplied with the local plugin entry:
   ],
   "plugin_enabled": {
     "internal:sidebar-mcp": false,
-    "internal:sidebar-lsp": false
+    "internal:sidebar-lsp": false,
+    "internal:sidebar-todo": false
   }
 }
 ```
 
 The entries must remain standalone. Only quota accepts the options object;
-home, token-report, MCP, LSP, and TODO use string entries. LSP and TODO accept no
-options. Neither external panel deactivates its built-in counterpart. Users
-must disable `internal:sidebar-mcp` and `internal:sidebar-lsp` themselves, as
-shown by `plugin_enabled`, to avoid duplicate panels.
+home, token-report, MCP, LSP, and TODO use string entries. MCP, LSP, and TODO
+accept no options. These external panels do not deactivate their built-in
+counterparts. Users must disable `internal:sidebar-mcp`,
+`internal:sidebar-lsp`, and `internal:sidebar-todo` themselves, as shown by
+`plugin_enabled`, to avoid duplicate panels.
 
 `quota.opencodego.workspaceId` identifies the OpenCode Go workspace.
 `quota.opencodego.workspaceToken` authenticates the console request;
@@ -347,8 +349,8 @@ removes managed source entries from the project-root `tui.json`, because
 OpenCode loads it together with `.opencode/tui.json`; options in the selected
 `.opencode` config take precedence. Repeating either command produces the same
 files and configuration. Deployment does not edit `plugin_enabled` or disable
-the built-in MCP or LSP panel. Set the overrides in the configuration example
-yourself when replacing either built-in panel. Fully restart OpenCode after
+the built-in MCP, LSP, or TODO panel. Set the overrides in the configuration
+example yourself when replacing any built-in panel. Fully restart OpenCode after
 deployment.
 
 The normalized quota runtime ID is now `aamkye/opencode-tools-quota`. This is
@@ -363,9 +365,12 @@ override (or set it to `true`) to re-enable `internal:sidebar-mcp`, then restart
 OpenCode. To return to OpenCode's built-in LSP panel, remove
 `./opencode-tools-lsp.js` from the `plugin` array, then remove the
 `"internal:sidebar-lsp": false` override (or set it to `true`) to re-enable
-`internal:sidebar-lsp`, then restart OpenCode. To roll back the complete
-standalone migration, optionally restore the prior composed release and its
-configuration before restarting.
+`internal:sidebar-lsp`, then restart OpenCode. To return to OpenCode's built-in
+TODO panel, remove `./opencode-tools-todo.js` from the `plugin` array, then
+remove the `"internal:sidebar-todo": false` override (or set it to `true`) to
+re-enable `internal:sidebar-todo`, then restart OpenCode. To roll back the
+complete standalone migration, optionally restore the prior composed release
+and its configuration before restarting.
 
 ### Artifact layout
 

@@ -85,6 +85,7 @@ test("documents standalone installation, migration, MCP, LSP, and TODO layouts, 
   assert.deepEqual(configuration.plugin_enabled, {
     "internal:sidebar-mcp": false,
     "internal:sidebar-lsp": false,
+    "internal:sidebar-todo": false,
   })
 
   for (const id of [
@@ -104,18 +105,21 @@ test("documents standalone installation, migration, MCP, LSP, and TODO layouts, 
     "quota options remain attached only to the quota entry",
     "normalized quota runtime ID",
     "host-managed plugin state may reset",
-    "Users must disable `internal:sidebar-mcp` and `internal:sidebar-lsp` themselves",
-    "Deployment does not edit `plugin_enabled` or disable the built-in MCP or LSP panel",
-    "Set the overrides in the configuration example yourself when replacing either built-in panel",
+    "Users must disable `internal:sidebar-mcp`, `internal:sidebar-lsp`, and `internal:sidebar-todo` themselves",
+    "Deployment does not edit `plugin_enabled` or disable the built-in MCP, LSP, or TODO panel",
+    "Set the overrides in the configuration example yourself when replacing any built-in panel",
     "Rollback",
     "remove `./opencode-tools-mcp.js`",
     "re-enable `internal:sidebar-mcp`",
     "remove `./opencode-tools-lsp.js`",
     "re-enable `internal:sidebar-lsp`",
+    "remove `./opencode-tools-todo.js`",
+    "re-enable `internal:sidebar-todo`",
     "restart OpenCode",
   ]) assert.equal(prose.includes(text), true, `missing README text: ${text}`)
   assert.doesNotMatch(prose, /automatically disables? `?internal:sidebar-mcp`?/iu)
   assert.doesNotMatch(prose, /automatically disables? `?internal:sidebar-lsp`?/iu)
+  assert.doesNotMatch(prose, /automatically disables? `?internal:sidebar-todo`?/iu)
 
   const expectedLayouts = new Map([
     ["Expanded", [
