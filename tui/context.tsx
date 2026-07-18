@@ -5,9 +5,9 @@ import {
   createContextPanelModel,
   defineTuiPlugin,
   pluginDescriptor,
+  type PanelStatus,
   type PanelTheme,
 } from "../shared/opencode-tools-shared.js"
-import type { PanelStatus } from "./presentation/types.js"
 
 const descriptor = pluginDescriptor("context")
 const COLLAPSED_KEY = "aamkye.opencode-tools-context.collapsed"

@@ -18,6 +18,7 @@ export type {
   CompactStatusRowProps,
   PanelTheme,
 } from "../tui/presentation/compact-panel.js";
+export type { PanelStatus } from "../tui/presentation/types.js";
 export { allocateStatusRow } from "../tui/presentation/layout.js";
 export type { StatusRowAllocation } from "../tui/presentation/layout.js";
 export { createMcpPanelModel } from "../tui/features/mcp.js";
