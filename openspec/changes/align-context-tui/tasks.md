@@ -9,4 +9,4 @@
 
 ## 3. Verification
 
-- [ ] 3.1 Run focused Context tests, type checking, the full test suite, and the plugin build.
+- [x] 3.1 Run focused Context tests, type checking, the full test suite, and the plugin build.

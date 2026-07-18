@@ -436,7 +436,7 @@ git commit -m "fix(context): preserve shared facade boundary"
 - Consumes: the complete implementation and documentation commits from Tasks 1-3.
 - Produces: focused, typecheck, full-suite, build, and whitespace evidence; checked OpenSpec task 3.1.
 
-- [ ] **Step 1: Re-run the focused Context verification from a clean compile**
+- [x] **Step 1: Re-run the focused Context verification from a clean compile**
 
 Run:
 
@@ -446,7 +446,7 @@ node tests/compile-presentation.mjs && node --test tests/context-model.test.mjs 
 
 Expected: PASS, 19 tests, 0 failures.
 
-- [ ] **Step 2: Run TypeScript type checking**
+- [x] **Step 2: Run TypeScript type checking**
 
 Run:
 
@@ -456,7 +456,7 @@ npm run typecheck
 
 Expected: exit code 0 with no TypeScript diagnostics.
 
-- [ ] **Step 3: Run the complete test suite**
+- [x] **Step 3: Run the complete test suite**
 
 Run:
 
@@ -466,7 +466,7 @@ npm test
 
 Expected: exit code 0; all session-title, presentation, model, mounted, wiring, lifecycle, provider, and plugin tests pass with 0 failures.
 
-- [ ] **Step 4: Build all plugins**
+- [x] **Step 4: Build all plugins**
 
 Run:
 
@@ -476,7 +476,7 @@ npm run build
 
 Expected: exit code 0 from `npm run build:plugins`; all configured plugin bundles are generated successfully.
 
-- [ ] **Step 5: Verify patch hygiene**
+- [x] **Step 5: Verify patch hygiene**
 
 Run:
 
@@ -486,7 +486,7 @@ git diff --check 4c540398a7b987fc9ac9f30fd0b3ad9ac42f487e..HEAD
 
 Expected: exit code 0 with no output, confirming no trailing whitespace or whitespace errors in the committed implementation range.
 
-- [ ] **Step 6: Check off OpenSpec verification task 3.1 only after every gate passes**
+- [x] **Step 6: Check off OpenSpec verification task 3.1 only after every gate passes**
 
 In `openspec/changes/align-context-tui/tasks.md`, make this exact change:
 
@@ -495,14 +495,14 @@ In `openspec/changes/align-context-tui/tasks.md`, make this exact change:
 +- [x] 3.1 Run focused Context tests, type checking, the full test suite, and the plugin build.
 ```
 
-- [ ] **Step 7: Commit the final verification checkoff**
+- [x] **Step 7: Commit the final verification checkoff**
 
 ```bash
 git add openspec/changes/align-context-tui/tasks.md
 git commit -m "chore: complete context TUI verification"
 ```
 
-- [ ] **Step 8: Confirm the implementation range and worktree state**
+- [x] **Step 8: Confirm the implementation range and worktree state**
 
 Run:
 
