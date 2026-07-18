@@ -2,6 +2,7 @@
 change: align-context-tui
 design-doc: docs/superpowers/specs/2026-07-18-align-context-tui-design.md
 base-ref: 4c540398a7b987fc9ac9f30fd0b3ad9ac42f487e
+archived-with: 2026-07-18-align-context-tui
 ---
 
 # Align Context TUI Implementation Plan

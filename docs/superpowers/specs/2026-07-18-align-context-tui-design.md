@@ -2,6 +2,8 @@
 comet_change: align-context-tui
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-18-align-context-tui
+status: final
 ---
 
 # Align Context TUI Design

@@ -1,0 +1,13 @@
+{
+  "change": "align-context-tui",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "20c861752a7bf5a05cff4f379f6a74f2241b196981d7abc9c8cbef3ca1994c7e",
+  "files": [
+    { "path": "openspec/changes/align-context-tui/proposal.md", "sha256": "7bc0248e8eb1f5549ad708415aac4a01645026c7d5f9e15f3abbc5b6e55043c3" },
+    { "path": "openspec/changes/align-context-tui/design.md", "sha256": "4f12a3fe8e9e5d378f72bf6bccbe01f3a29843d44998ed96463d7e881fb08620" },
+    { "path": "openspec/changes/align-context-tui/tasks.md", "sha256": "0870bebfea7bb773e26d811f1f7691d7359251c09766913d0a06d1abafc43238" }
+  ]
+}
