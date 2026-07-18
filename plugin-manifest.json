@@ -31,11 +31,19 @@
     "options": "none"
   },
   {
+    "key": "context",
+    "id": "aamkye/opencode-tools-context",
+    "source": "tui/context.tsx",
+    "outfile": "opencode-tools-context.js",
+    "slotOrder": 112,
+    "options": "none"
+  },
+  {
     "key": "lsp",
     "id": "aamkye/opencode-tools-lsp",
     "source": "tui/lsp.tsx",
     "outfile": "opencode-tools-lsp.js",
-    "slotOrder": 112,
+    "slotOrder": 113,
     "options": "none"
   },
   {
@@ -43,7 +51,7 @@
     "id": "aamkye/opencode-tools-todo",
     "source": "tui/todo.tsx",
     "outfile": "opencode-tools-todo.js",
-    "slotOrder": 113,
+    "slotOrder": 114,
     "options": "none"
   }
 ]

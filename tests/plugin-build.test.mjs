@@ -139,9 +139,9 @@ before(async () => {
 test("build:plugins emits the manifest artifact layout and return shape", async () => {
   const pkg = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"))
   assert.equal(pkg.scripts["build:plugins"], "node build-plugins.mjs")
-  assert.equal(expectedArtifacts.length, 7)
+  assert.equal(expectedArtifacts.length, 8)
   assert.deepEqual(Object.keys(buildResults).sort(), ["features", "shared"])
-  assert.equal(Object.keys(buildResults.features).length, 6)
+  assert.equal(Object.keys(buildResults.features).length, 7)
   assert.deepEqual(Object.keys(buildResults.features), pluginManifest.map((entry) => entry.key))
 
   for (const file of expectedArtifacts) {
@@ -229,6 +229,7 @@ test("each artifact loads alone, activates only its feature, and cleans up", asy
     home: { slots: ["home_bottom"], keymaps: 0 },
     "token-report": { slots: [], keymaps: 2 },
     mcp: { slots: ["sidebar_content"], keymaps: 0 },
+    context: { slots: ["sidebar_content"], keymaps: 0 },
     lsp: { slots: ["sidebar_content"], keymaps: 0 },
     todo: { slots: ["sidebar_content"], keymaps: 0 },
   }

@@ -2,7 +2,7 @@ import { build } from "esbuild"
 import { mkdirSync, rmSync } from "node:fs"
 import { resolve } from "node:path"
 
-for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "lsp-mounted", "todo-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "context-mounted", "lsp-mounted", "todo-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
 }
 mkdirSync(".tmp-test", { recursive: true })
@@ -15,6 +15,7 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
   ["tests/presentation-mounted.fixture.ts", ".tmp-test/presentation-mounted.mjs"],
   ["tests/compact-panel-mounted.fixture.ts", ".tmp-test/compact-panel-mounted.mjs"],
   ["tests/mcp-mounted.fixture.ts", ".tmp-test/mcp-mounted.mjs", ["browser"]],
+  ["tests/context-mounted.fixture.ts", ".tmp-test/context-mounted.mjs", ["browser"]],
   ["tests/lsp-mounted.fixture.ts", ".tmp-test/lsp-mounted.mjs", ["browser"]],
   ["tests/todo-mounted.fixture.ts", ".tmp-test/todo-mounted.mjs", ["browser"]],
   ["tui/providers/zai.ts", ".tmp-test/provider-zai.mjs", ["browser"]],

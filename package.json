@@ -9,6 +9,7 @@
     "./home": "./tui/home.tsx",
     "./token-report": "./tui/token-report.tsx",
     "./mcp": "./tui/mcp.tsx",
+    "./context": "./tui/context.tsx",
     "./lsp": "./tui/lsp.tsx",
     "./todo": "./tui/todo.tsx"
   },

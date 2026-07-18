@@ -8,11 +8,12 @@ const expected = [
   ["home", "aamkye/opencode-tools-home", "tui/home.tsx", "opencode-tools-home.js", 110, "none"],
   ["token-report", "aamkye/opencode-tools-token-report", "tui/token-report.tsx", "opencode-tools-token-report.js", undefined, "none"],
   ["mcp", "aamkye/opencode-tools-mcp", "tui/mcp.tsx", "opencode-tools-mcp.js", 111, "none"],
-  ["lsp", "aamkye/opencode-tools-lsp", "tui/lsp.tsx", "opencode-tools-lsp.js", 112, "none"],
-  ["todo", "aamkye/opencode-tools-todo", "tui/todo.tsx", "opencode-tools-todo.js", 113, "none"],
+  ["context", "aamkye/opencode-tools-context", "tui/context.tsx", "opencode-tools-context.js", 112, "none"],
+  ["lsp", "aamkye/opencode-tools-lsp", "tui/lsp.tsx", "opencode-tools-lsp.js", 113, "none"],
+  ["todo", "aamkye/opencode-tools-todo", "tui/todo.tsx", "opencode-tools-todo.js", 114, "none"],
 ]
 
-test("manifest describes the six standalone plugins in deployment order", () => {
+test("manifest describes the seven standalone plugins in deployment order", () => {
   assert.deepEqual(pluginManifest.map((entry) => [entry.key, entry.id, entry.source, entry.outfile, entry.slotOrder, entry.options]), expected)
   assert.doesNotThrow(() => validatePluginManifest(pluginManifest))
 })
@@ -24,6 +25,7 @@ test("package exports every standalone plugin", async () => {
     "./home": "./tui/home.tsx",
     "./token-report": "./tui/token-report.tsx",
     "./mcp": "./tui/mcp.tsx",
+    "./context": "./tui/context.tsx",
     "./lsp": "./tui/lsp.tsx",
     "./todo": "./tui/todo.tsx",
   })

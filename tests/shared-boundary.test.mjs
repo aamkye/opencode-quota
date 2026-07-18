@@ -102,6 +102,8 @@ test("loadable TUI entries use the shared facade for computation", () => {
   const home = source("tui/home.tsx")
   const tokenReport = source("tui/token-report.tsx")
   const mcp = source("tui/mcp.tsx")
+  const context = source("tui/context.tsx")
+  const contextSource = parsedSource("tui/context.tsx")
   const todo = source("tui/todo.tsx")
   const todoSource = parsedSource("tui/todo.tsx")
 
@@ -109,6 +111,10 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assert.match(home, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(tokenReport, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(mcp, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
+  const contextModelImport = namedImportLocalName(contextSource, "../shared/opencode-tools-shared.js", "createContextPanelModel")
+  assert.ok(contextModelImport, "tui/context.tsx must named-import createContextPanelModel from the shared facade")
+  assert.ok(callsIdentifier(contextSource, contextModelImport), "tui/context.tsx must call the imported createContextPanelModel")
+  assert.match(context, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   const todoModelImport = namedImportLocalName(todoSource, "../shared/opencode-tools-shared.js", "createTodoPanelModel")
   assert.ok(todoModelImport, "tui/todo.tsx must named-import createTodoPanelModel from the shared facade")
   assert.ok(callsIdentifier(todoSource, todoModelImport), "tui/todo.tsx must call the imported createTodoPanelModel")
@@ -126,12 +132,14 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assertRelativeImports("tui/home.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/token-report.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/mcp.tsx", ["../shared/opencode-tools-shared.js"])
+  assertRelativeImports("tui/context.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/lsp.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/todo.tsx", ["../shared/opencode-tools-shared.js"])
   assert.doesNotMatch(tokenReport, /\bcomputeTokenReport\b|\brenderTokenReport\b/)
   assert.doesNotMatch(tokenReport, /client\.session\.prompt/)
   assert.doesNotMatch(tokenReport, /\bhistory\b|\bmodel\b/)
   assert.doesNotMatch(mcp, /\.sort\(|setInterval|setTimeout/)
+  assert.doesNotMatch(context, /message\.updated|setInterval|setTimeout/)
   assert.doesNotMatch(todo, /todo\.updated|setInterval|setTimeout/)
 })
 
@@ -164,6 +172,10 @@ test("shared facade exports computation without plugin registration or JSX", () 
   assert.match(shared, /activeSessionID/)
   assert.match(shared, /persistTokenReport/)
   assert.match(shared, /createLspPanelModel/)
+  assert.ok(
+    hasNamedReExport(sharedSource, "../tui/features/context.js", "createContextPanelModel"),
+    "shared facade must re-export createContextPanelModel from the Context feature",
+  )
   assert.ok(
     hasNamedReExport(sharedSource, "../tui/features/todo.js", "createTodoPanelModel"),
     "shared facade must re-export createTodoPanelModel from the TODO feature",

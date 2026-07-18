@@ -1,6 +1,6 @@
 import manifest from "../../plugin-manifest.json"
 
-export type PluginKey = "quota" | "home" | "token-report" | "mcp" | "lsp" | "todo"
+export type PluginKey = "quota" | "home" | "token-report" | "mcp" | "context" | "lsp" | "todo"
 export type PluginManifestEntry = {
   key: PluginKey
   id: string
