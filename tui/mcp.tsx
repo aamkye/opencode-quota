@@ -14,10 +14,16 @@ const COLLAPSED_KEY = "aamkye.opencode-tools-mcp.collapsed"
 const plugin = defineTuiPlugin(descriptor, (_context, api) => {
   function McpPanel() {
     const [collapsed, setCollapsed] = createSignal(api.kv.get(COLLAPSED_KEY, false))
+    let pendingExpand = false
     const model = createMemo(() => createMcpPanelModel(api.state.mcp()))
 
     const toggle = () => {
-      if (model().total === 0) return
+      if (model().total === 0) {
+        pendingExpand = true
+        setCollapsed(false)
+        return
+      }
+      pendingExpand = false
       const next = !collapsed()
       setCollapsed(next)
       api.kv.set(COLLAPSED_KEY, next)
@@ -25,6 +31,10 @@ const plugin = defineTuiPlugin(descriptor, (_context, api) => {
 
     const render = () => {
       const panel = model()
+      if (panel.total > 0 && pendingExpand) {
+        pendingExpand = false
+        api.kv.set(COLLAPSED_KEY, false)
+      }
       const isCollapsed = panel.total === 0 || collapsed()
 
       return (

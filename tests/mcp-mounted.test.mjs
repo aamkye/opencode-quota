@@ -81,7 +81,7 @@ test("restores and persists only non-empty MCP collapse toggles", async () => {
   }
 })
 
-test("forces empty MCP state collapsed without writes and restores the saved signal", async () => {
+test("forces empty MCP state collapsed without writes and restores the saved signal without interaction", async () => {
   for (const savedCollapsed of [false, true]) {
     const mounted = await mountMcpPanel({ savedCollapsed })
     try {
@@ -95,7 +95,6 @@ test("forces empty MCP state collapsed without writes and restores the saved sig
       ])
       assert.equal(view.rows.length, 0)
       assert.equal(view.dividerCount, 1)
-      view.clickHeader()
       assert.deepEqual(mounted.kvWrites, [])
 
       mounted.setMcp([{ name: "docs", status: "connected" }])
@@ -104,6 +103,27 @@ test("forces empty MCP state collapsed without writes and restores the saved sig
     } finally {
       await mounted.dispose()
     }
+  }
+})
+
+test("honors one expand click received before MCP entries hydrate", async () => {
+  const mounted = await mountMcpPanel({ savedCollapsed: true })
+
+  try {
+    let view = mounted.view()
+    assert.equal(view.marker, "▶ ")
+
+    view.clickHeader()
+    view = mounted.view()
+    assert.equal(view.marker, "▶ ")
+    assert.deepEqual(mounted.kvWrites, [])
+
+    mounted.setMcp([{ name: "docs", status: "connected" }])
+    view = mounted.view()
+    assert.equal(view.marker, "▼ ")
+    assert.deepEqual(mounted.kvWrites, [["aamkye.opencode-tools-mcp.collapsed", false]])
+  } finally {
+    await mounted.dispose()
   }
 })
 
