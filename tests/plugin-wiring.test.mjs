@@ -199,13 +199,14 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
   assert.ok(contextLayouts, "missing Context sidebar layouts between MCP and LSP")
   assert.match(
     contextLayouts.replace(/\s+/gu, " "),
-    /The expanded panel uses `Tokens -`, `Used -`, and `Spent \$0\.00` when context values are unavailable; the collapsed summary uses `-`\./u,
+    /The expanded panel uses `Limit -`, `Tokens -`, `Used -`, and `Spent \$0\.00` when context values are unavailable; the collapsed summary uses `-`\./u,
   )
   const expectedContextLayouts = new Map([
     ["Expanded", [
       "▼ Context",
       "-".repeat(37),
-      "Tokens                           322K",
+      "Limit                            500K",
+      "Tokens                        322.12K",
       "Used                              64%",
       "Spent                           $0.00",
       "-".repeat(37),

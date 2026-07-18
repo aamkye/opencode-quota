@@ -30,10 +30,12 @@ test("registers at order 112 and renders the expanded metric contract", async ()
     assert.equal(view.title, "Context")
     assert.equal(view.summaryText, "")
     assert.deepEqual(view.rows.map(({ label, value }) => [label, value]), [
-      ["Tokens", "322K"],
+      ["Limit", "322K"],
+      ["Tokens", "205K"],
       ["Used", "64%"],
       ["Spent", "$1.25"],
     ])
+    assert.equal(view.rows[2].valueColor, "#ff0000")
     assert.equal(view.dividerCount, 2)
   } finally { await mounted.dispose() }
 })
@@ -45,6 +47,7 @@ test("collapses to usage, persists the key, and restores on remount", async () =
   first.view().clickHeader()
   assert.equal(first.view().marker, "▶ ")
   assert.equal(first.view().summaryText, "64%")
+  assert.equal(first.view().summaryColor, "#ff0000")
   assert.equal(first.view().rows.length, 0)
   assert.equal(first.view().dividerCount, 1)
   assert.deepEqual(first.kvWrites, [["aamkye.opencode-tools-context.collapsed", true]])
@@ -64,8 +67,9 @@ test("renders and collapses unavailable state without an empty-session host call
   try {
     assert.deepEqual(mounted.messageCalls, [])
     assert.deepEqual(mounted.view().rows.map(({ label, value }) => [label, value]), [
-      ["Tokens", "-"], ["Used", "-"], ["Spent", "$0.00"],
+      ["Limit", "-"], ["Tokens", "-"], ["Used", "-"], ["Spent", "$0.00"],
     ])
+    assert.equal(mounted.view().rows[3].valueColor, "#888888")
     mounted.view().clickHeader()
     assert.equal(mounted.view().summaryText, "-")
   } finally { await mounted.dispose() }
@@ -78,15 +82,15 @@ test("switches sessions and reacts to messages and providers without remounting"
   ])
   const mounted = await mountContextPanel({ sessionID: "session-a", sessions: initial, providers: [provider()] })
   try {
-    assert.equal(mounted.view().rows[1].value, "64%")
+    assert.equal(mounted.view().rows[2].value, "64%")
     mounted.setSessionID("session-b")
-    assert.deepEqual(mounted.view().rows.map((row) => row.value), ["322K", "16%", "$0.50"])
+    assert.deepEqual(mounted.view().rows.map((row) => row.value), ["322K", "50K", "16%", "$0.50"])
     mounted.setMessages("session-b", [message({ input: 100_000, cost: 0.75 })])
-    assert.equal(mounted.view().rows[1].value, "31%")
+    assert.equal(mounted.view().rows[2].value, "31%")
     mounted.setProviders([provider(200_000)])
-    assert.deepEqual(mounted.view().rows.map((row) => row.value), ["200K", "50%", "$0.75"])
+    assert.deepEqual(mounted.view().rows.map((row) => row.value), ["200K", "100K", "50%", "$0.75"])
     mounted.setSessionID()
-    assert.deepEqual(mounted.view().rows.map((row) => row.value), ["-", "-", "$0.00"])
+    assert.deepEqual(mounted.view().rows.map((row) => row.value), ["-", "-", "-", "$0.00"])
     assert.equal(mounted.messageCalls.includes(""), false)
     assert.equal(mounted.slotMounts(), 1)
   } finally { await mounted.dispose() }

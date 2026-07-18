@@ -35,10 +35,12 @@ test("uses all detailed buckets from the newest positive assistant and preserves
   ]
 
   assert.deepEqual(createContextPanelModel(messages, [provider(1_000)]), {
-    tokens: "1K",
+    limit: "1K",
+    tokens: "1.05K",
     used: "105%",
     spent: "$1.00",
     summary: "105%",
+    usageStatus: "error",
   })
 })
 
@@ -54,16 +56,20 @@ test("ignores a newer zero-token assistant and uses the newest positive post-com
 
 test("returns placeholders and zero spend without a token-bearing assistant", () => {
   assert.deepEqual(createContextPanelModel([], []), {
+    limit: "-",
     tokens: "-",
     used: "-",
     spent: "$0.00",
     summary: "-",
+    spentStatus: "textMuted",
   })
   assert.deepEqual(createContextPanelModel([{ role: "user" }], [provider(1_000)]), {
+    limit: "-",
     tokens: "-",
     used: "-",
     spent: "$0.00",
     summary: "-",
+    spentStatus: "textMuted",
   })
 })
 
@@ -77,7 +83,8 @@ test("keeps spend when provider, model, or context limit is unavailable", () => 
     [provider(Number.POSITIVE_INFINITY)],
   ]) {
     assert.deepEqual(createContextPanelModel(messages, providers), {
-      tokens: "-",
+      limit: "-",
+      tokens: "10",
       used: "-",
       spent: "$1.25",
       summary: "-",
@@ -100,20 +107,31 @@ test("ignores non-finite buckets and costs without mutating inputs", () => {
   ])
 
   assert.deepEqual(createContextPanelModel(messages, [provider(200)]), {
-    tokens: "200",
+    limit: "200",
+    tokens: "50",
     used: "25%",
     spent: "$0.13",
     summary: "25%",
+    usageStatus: "success",
   })
 })
 
 test("formats compact limits and rounds usage to the nearest integer", () => {
-  const messages = [assistant({ tokens: { input: 205_000, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } })]
-  assert.deepEqual(createContextPanelModel(messages, [provider(322_000)]), {
-    tokens: "322K",
+  const messages = [assistant({ tokens: { input: 322_120, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } })]
+  assert.deepEqual(createContextPanelModel(messages, [provider(500_000)]), {
+    limit: "500K",
+    tokens: "322.12K",
     used: "64%",
     spent: "$0.00",
     summary: "64%",
+    usageStatus: "error",
+    spentStatus: "textMuted",
   })
-  assert.equal(createContextPanelModel(messages, [provider(1_500_000)]).tokens, "1.5M")
+  assert.equal(createContextPanelModel(messages, [provider(1_500_000)]).limit, "1.5M")
+})
+
+test("colors collapsed usage at the documented percentage boundaries", () => {
+  for (const [input, status] of [[39, "success"], [40, "warning"], [60, "warning"], [61, "error"]]) {
+    assert.equal(createContextPanelModel([assistant({ tokens: { input, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } })], [provider(100)]).usageStatus, status)
+  }
 })

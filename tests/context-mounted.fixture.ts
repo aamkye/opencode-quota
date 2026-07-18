@@ -30,7 +30,7 @@ export type ContextFixtureOptions = {
 type MountedElement = { type: string | ((props: Record<string, unknown>) => unknown); props: Record<string, unknown> }
 type MountedNode = { element: MountedElement; parent?: MountedNode }
 const COLLAPSED_KEY = "aamkye.opencode-tools-context.collapsed"
-const LABELS = new Set(["Tokens", "Used", "Spent"])
+const LABELS = new Set(["Limit", "Tokens", "Used", "Spent"])
 
 function isElement(value: unknown): value is MountedElement {
   return typeof value === "object" && value !== null && "type" in value && "props" in value
@@ -143,6 +143,7 @@ export async function mountContextPanel(options: ContextFixtureOptions = {}) {
       return {
         label: labelText,
         value: valueText,
+        valueColor: value?.element.props.fg,
         renderedText: `${labelText}${" ".repeat(Math.max(0, width - labelText.length - valueText.length))}${valueText}`,
         rowProps: row.element.props,
         labelProps: label.element.props,
@@ -157,6 +158,7 @@ export async function mountContextPanel(options: ContextFixtureOptions = {}) {
       marker: textOf(marker),
       title: textOf(title),
       summaryText: textOf(summary),
+      summaryColor: summary?.element.props.fg,
       rows,
       dividerCount: dividers.length,
       clickHeader() {
