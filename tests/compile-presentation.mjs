@@ -2,7 +2,7 @@ import { build } from "esbuild"
 import { mkdirSync, rmSync } from "node:fs"
 import { resolve } from "node:path"
 
-for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "lsp-mounted", "todo-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "mcp-model", "lsp-model", "todo-model", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "lsp-mounted", "todo-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
 }
 mkdirSync(".tmp-test", { recursive: true })
@@ -26,6 +26,7 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
   ["tests/quota-selection.fixture.ts", ".tmp-test/quota-selection.mjs", ["browser"]],
   ["tui/features/home.ts", ".tmp-test/home-feature.mjs", ["browser"]],
   ["tui/home.tsx", ".tmp-test/home-composition.mjs", ["browser"]],
+  ["tui/features/context.ts", ".tmp-test/context-model.mjs", ["browser"]],
   ["tui/features/mcp.ts", ".tmp-test/mcp-model.mjs", ["browser"]],
   ["tui/features/lsp.ts", ".tmp-test/lsp-model.mjs", ["browser"]],
   ["tui/features/todo.ts", ".tmp-test/todo-model.mjs", ["browser"]],
