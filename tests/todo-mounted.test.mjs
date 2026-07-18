@@ -23,7 +23,7 @@ test("registers after LSP and renders ordered TODO status rows", async () => {
     const view = mounted.view()
     assert.equal(mounted.pluginID, "aamkye/opencode-tools-todo")
     assert.equal(mounted.registrations.length, 1)
-    assert.equal(mounted.registrations[0].order, 113)
+    assert.equal(mounted.registrations[0].order, 114)
     assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
     assert.equal(view.marker, "▼ ")
     assert.equal(view.title, "TODO")
