@@ -15,6 +15,7 @@ test("publishes and typechecks the standalone plugins", () => {
     "./home": "./tui/home.tsx",
     "./token-report": "./tui/token-report.tsx",
     "./mcp": "./tui/mcp.tsx",
+    "./context": "./tui/context.tsx",
     "./lsp": "./tui/lsp.tsx",
     "./todo": "./tui/todo.tsx",
   })
@@ -64,7 +65,7 @@ test("tracked project files contain no active legacy identifier", () => {
   }
 })
 
-test("documents standalone installation, migration, MCP, LSP, and TODO layouts, and rollback", () => {
+test("documents standalone installation, migration, MCP, Context, LSP, and TODO layouts, and rollback", () => {
   const readme = readFileSync("README.md", "utf8")
   const prose = readme.replace(/\s+/gu, " ")
   const configurationText = readme.match(/### Configuration\n\n[\s\S]*?```json\n([\s\S]*?)\n```/u)?.[1]
@@ -77,9 +78,11 @@ test("documents standalone installation, migration, MCP, LSP, and TODO layouts, 
     "./opencode-tools-home.js",
     "./opencode-tools-token-report.js",
     "./opencode-tools-mcp.js",
+    "./opencode-tools-context.js",
     "./opencode-tools-lsp.js",
     "./opencode-tools-todo.js",
   ])
+  assert.equal(configuration.plugin.includes("./opencode-tools-context.js"), true)
   assert.deepEqual(Object.keys(configuration.plugin[0][1]), ["quota"])
   assert.equal(configuration.plugin.slice(1).every((entry) => typeof entry === "string"), true)
   assert.deepEqual(configuration.plugin_enabled, {
@@ -93,6 +96,7 @@ test("documents standalone installation, migration, MCP, LSP, and TODO layouts, 
     "aamkye/opencode-tools-home",
     "aamkye/opencode-tools-token-report",
     "aamkye/opencode-tools-mcp",
+    "aamkye/opencode-tools-context",
     "aamkye/opencode-tools-lsp",
     "aamkye/opencode-tools-todo",
   ]) assert.equal(readme.includes(`\`${id}\``), true, `missing runtime ID: ${id}`)
@@ -111,6 +115,7 @@ test("documents standalone installation, migration, MCP, LSP, and TODO layouts, 
     "Rollback",
     "remove `./opencode-tools-mcp.js`",
     "re-enable `internal:sidebar-mcp`",
+    "remove `./opencode-tools-context.js`",
     "remove `./opencode-tools-lsp.js`",
     "re-enable `internal:sidebar-lsp`",
     "remove `./opencode-tools-todo.js`",
@@ -160,6 +165,35 @@ test("documents standalone installation, migration, MCP, LSP, and TODO layouts, 
   assert.match(prose, /For the healthy `2\/2` summary, both numbers use the success color and the slash is muted\./u)
   assert.match(prose, /For the unhealthy `2\/3` summary, `2` uses the success color, `3` uses the error color, and the slash is muted\./u)
   assert.match(prose, /For the empty `0\/0` summary, both numbers and the slash are muted\./u)
+
+  const contextLayouts = readme.match(/### Context sidebar layouts\n\n([\s\S]*?)(?=\n### LSP sidebar layouts)/u)?.[1]
+  assert.ok(contextLayouts, "missing Context sidebar layouts between MCP and LSP")
+  const expectedContextLayouts = new Map([
+    ["Expanded", [
+      "▼ Context",
+      "-".repeat(37),
+      "Tokens                           322K",
+      "Used                              64%",
+      "Spent                           $0.00",
+      "-".repeat(37),
+    ]],
+    ["Collapsed", [
+      "▶ Context                         64%",
+      "-".repeat(37),
+    ]],
+  ])
+
+  for (const [heading, expected] of expectedContextLayouts) {
+    const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")
+    const layout = contextLayouts.match(new RegExp(`#### ${escapedHeading}\\n\\n\`\`\`text\\n([\\s\\S]*?)\\n\`\`\``, "u"))?.[1]
+    assert.ok(layout, `missing ${heading} Context layout`)
+    const lines = layout.split("\n")
+    assert.deepEqual(lines, expected, `${heading} Context layout changed`)
+    for (const line of lines) {
+      assert.ok([...line].length <= 37, `${heading} Context layout exceeds 37 cells: ${line}`)
+      assert.equal(line.trimEnd(), line, `${heading} Context layout has trailing whitespace`)
+    }
+  }
 
   const lspLayouts = readme.match(/### LSP sidebar layouts\n\n([\s\S]*?)(?=\n### TODO sidebar layouts)/u)?.[1]
   assert.ok(lspLayouts, "missing LSP sidebar layouts")
