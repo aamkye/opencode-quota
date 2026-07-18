@@ -67,16 +67,25 @@ test("tracked project files contain no active legacy identifier", () => {
 
 test("documents standalone installation, migration, MCP, Context, LSP, and TODO layouts, and rollback", () => {
   const readme = readFileSync("README.md", "utf8")
+  const agents = readFileSync("AGENTS.md", "utf8")
   const prose = readme.replace(/\s+/gu, " ")
   const introduction = readme.match(/^# opencode-tools\n\n([\s\S]*?)(?=\n## Features)/u)?.[1]
   const contextFeatures = readme.match(/### Context\n\n([\s\S]*?)(?=\n### LSP)/u)?.[1]
+  const contextContract = agents.match(/### Context\n\n([\s\S]*?)(?=\n### LSP)/u)?.[1]
   const configurationSection = readme.match(/### Configuration\n\n([\s\S]*?)(?=\n### MCP sidebar layouts)/u)?.[1]
   const configurationText = readme.match(/### Configuration\n\n[\s\S]*?```json\n([\s\S]*?)\n```/u)?.[1]
   assert.ok(introduction, "missing README introduction")
   assert.ok(contextFeatures, "missing Context feature section")
+  assert.ok(contextContract, "missing AGENTS.md Context contract")
   assert.ok(configurationSection, "missing Configuration section")
   assert.ok(configurationText, "missing documented tui.json configuration")
   assert.match(introduction.replace(/\s+/gu, " "), /MCP server health, active-session context and spend, LSP status/u)
+
+  const normalizedContextContract = contextContract.replace(/\s+/gu, " ")
+  for (const text of [
+    "same thresholds as collapsed: below 40% green, 40% through 60% yellow, above 60% red",
+    "only the $0.00 value should be grayed out",
+  ]) assert.equal(normalizedContextContract.includes(text), true, `missing AGENTS.md Context contract: ${text}`)
 
   const configuration = JSON.parse(configurationText)
   assert.equal(Array.isArray(configuration.plugin), true, "documented tui.json must contain a plugin array")

@@ -272,15 +272,18 @@ For the empty `0/0` summary, both numbers and the slash are muted.
 ### Context sidebar layouts
 
 Context values come from the active session. The expanded panel uses
-`Tokens -`, `Used -`, and `Spent $0.00` when context values are unavailable;
-the collapsed summary uses `-`.
+`Limit -`, `Tokens -`, `Used -`, and `Spent $0.00` when context values are
+unavailable; the collapsed summary uses `-`. The expanded `Used` value and
+collapsed summary are green below 40%, yellow from 40% through 60%, and red
+above 60%. Only a `$0.00` value in the `Spent` row is muted.
 
 #### Expanded
 
 ```text
 ▼ Context
 -------------------------------------
-Tokens                           322K
+Limit                            500K
+Tokens                        322.12K
 Used                              64%
 Spent                           $0.00
 -------------------------------------

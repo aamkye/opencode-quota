@@ -1,0 +1,333 @@
+<comet-ambient-resume>
+<!-- Managed by Comet. Edits inside this block may be replaced by comet init/update. -->
+
+## Comet Ambient Resume
+
+In this repository, before starting work that may need code changes or investigation, run the Comet resume probe (read-only) if a Comet workflow may already be active.
+
+- If the probe returns `auto_resume`, briefly state the selected active change and continue through its `nextCommand`.
+- If the probe returns `ask_user`, ask one short question and wait.
+- If the probe returns `out_of_scope` or `none`, do not enter the Comet workflow.
+- Never attach unrelated work to an active Comet change only because `.comet.yaml` exists.
+</comet-ambient-resume>
+
+## Tui Layout rules
+
+Max width: **37 columns**
+
+### Quota
+
+#### Extended
+
+```
+▼ Quota                              | 1. plain name; 2. no percent; 3. no reset time; 4. no spacer; 5. no used/total
+------------------------------------ | 6. line filled from left to right; 7. no trailing whitespace
+OpenAI: Pro Lite                     | 7. <provider>: <plan> (optional); 8. for this particular provider there is no peak time
+7D █████████████████░░░░░░░░░░░  46% | 8. <id> (1-2 chars); 9. <bar> 28 chars wide; 10. <percent> 2-4 chars wide;
+   resets in 5d 23h                  | 11. <resets> with 3 chars padding;
+---                              --- |
+▼ Other Providers                    | 12. should be grayed out
+Z.AI: Max                   off-peak | 13. `peak`, `off-peak`, `stale` or `limited` (optional)
+5H ████████████████████████████ 100% |
+   resets in -                       | 14. should be grayed out
+7D ████████████████████████████ 100% |
+   resets in -                       |
+T  ████████████████████████████ 100% |
+   resets in -                       |
+                                     |
+Tools used: 0                        | 15. `Tools used` and `Tools total` are optional; if present, they should be grayed out
+Tools total: 4k                      |
+---                              --- |
+OpenCode GO:                         |
+5H ████████████████████████████ 100% |
+   resets in -                       |
+7D ████████████████████████████ 100% |
+   resets in -                       |
+1M ████████████████████████████ 100% |
+   resets in -                       |
+------------------------------------ |
+```
+
+or
+
+```
+▼ Quota                              |
+------------------------------------ |
+OpenAI: Pro Lite                     |
+7D █████████████████░░░░░░░░░░░  46% |
+   resets in 5d 23h                  |
+---                              --- |
+▼ Other Providers                    |
+Z.AI: Max           off-peak / stale | 1. combined status (optional), `stale` should be yellow, `limited` should be red, `/` should be gray
+5H ████████████████████████████ 100% |
+   resets in -                       |
+7D ████████████████████████████ 100% |
+   resets in -                       |
+T  ████████████████████████████ 100% |
+   resets in -                       |
+                                     |
+Tools used: 0                        |
+Tools total: 4k                      |
+---                              --- |
+OpenCode GO:                         |
+5H ████████████████████████████ 100% |
+   resets in -                       |
+7D ████████████████████████████ 100% |
+   resets in -                       |
+1M ████████████████████████████ 100% |
+   resets in -                       |
+------------------------------------ |
+```
+
+#### Semi-collapsed
+
+```
+▼ Quota                              |
+------------------------------------ |
+OpenAI: Pro Lite                     |
+7D █████████████████░░░░░░░░░░░  46% |
+   resets in 5d 23h                  |
+---                              --- |
+▶ Other Providers                    |
+------------------------------------ |
+```
+
+or
+
+```
+▼ Quota                              |
+------------------------------------ |
+OpenAI: Pro Lite               stale |
+7D █████████████████░░░░░░░░░░░  46% |
+   resets in 5d 23h                  |
+---                              --- |
+▶ Other Providers                    |
+------------------------------------ |
+```
+
+or
+
+```
+▼ Quota                              |
+------------------------------------ |
+OpenAI: Pro Lite             limited |
+7D █████████████████░░░░░░░░░░░  46% |
+   resets in 5d 23h                  |
+---                              --- |
+▶ Other Providers                    |
+------------------------------------ |
+```
+
+#### Collapsed
+
+```
+▶ Quota                          46% |
+------------------------------------ |
+```
+
+or (depending on the provider's plan type)
+
+```
+▶ Quota                      46%/80% |
+------------------------------------ |
+```
+
+or
+
+```
+▶ Quota                stale 46%/80% | 1. `stale` should be yellow, `limited` should be red
+------------------------------------ |
+```
+
+### MCP
+
+#### Extended
+
+```
+▼ MCP                                | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+• codegraph-global         Connected |
+• context7-global          Connected |
+• postgres-test-vendsystem  Disabled |
+• postgres-test-vendsystem… Disabled | 6. if the name is too long, it should be truncated with an ellipsis; 7. no trailing whitespace
+------------------------------------ |
+```
+
+#### Collapsed
+
+```
+▶ MCP                            2/4 | 1. plain name; 2. used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+```
+
+### Context
+
+#### Extended
+
+```
+▶ Context                            | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+Limit                           500K | 6. limit of context tokens; 7. no trailing whitespace
+Tokens                       322.12K | 8. number of tokens used; 9. no trailing whitespace
+Used                             64% | 10. percentage of used context; 11. no trailing whitespace; 12. same thresholds as collapsed: below 40% green, 40% through 60% yellow, above 60% red
+Spent                          $0.00 | 13. cost of used tokens; 14. no trailing whitespace; 15. only the $0.00 value should be grayed out
+------------------------------------ |
+```
+
+#### Collapsed
+
+```
+▶ Context                        64% | 1. plain name; 2. percentage of used context; 3. no reset time; 4. no spacer; 5. if percentage is below 40%, it should be green; if between 40% and 60%, it should be yellow; if above 60%, it should be red
+------------------------------------ |
+```
+
+### LSP
+
+#### Extended
+
+```
+▼ LSP                                | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+• typescript                         |
+• yaml-ls                            |
+------------------------------------ |
+```
+
+or when empty:
+
+```
+▼ LSP                                | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+LSPs will activate as files are read | 6. should be grayed out
+------------------------------------ |
+```
+
+#### Collapsed
+
+```
+▶ LSP                              2 | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+```
+
+### TODO
+
+#### Extended
+
+```
+▶ TODO                               | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+[✓] Explore MCP and existing quota   |
+    plugin context                   |
+[✓] Clarify goals, scope, status     |
+    semantics, and acceptance        |
+    scenarios                        |
+[•] Implement a TUI for the MCP and  |
+    quota plugin                     |
+[ ] Implement a TUI                  |
+[ ] Implement a TUI v2               |
+------------------------------------ |
+```
+
+#### Collapsed
+
+```
+▶ TODO                           2/5 | 1. plain name; 2. used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+```
+
+### SubAgent
+
+#### Extended (one details)
+
+```
+▼ SubAgent                           | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+▶ • SubAgent11 with super lo… 9m 45s | 6. `SubAgent11 with super long name` is truncated with an ellipsis; 7. no trailing whitespace
+▶ • SubAgent10                1h 15m |
+▼ • SubAgent9                        |
+  agent:                     general |
+  status:                    running |
+  time:                       15m 4s |
+  model:                 gpt-4o-mini |
+  Open Session                       |
+▶ • SubAgent8                 2h 18m |
+▶ • SubAgent7                 2h 18m |
+---                              --- |
+▼ Rest                               |
+▶ • SubAgent6                 9m 45s |
+▶ • SubAgent5                 1h 15m |
+▶ • SubAgent4                    15s |
+▶ • SubAgent3                    25s |
+▶ • SubAgent2                     5s |
+▶ • SubAgent1                  1h 2m |
+------------------------------------ |
+```
+
+#### Extended
+
+```
+▼ SubAgent                           | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+▶ • SubAgent11 with super lo… 9m 45s | 6. `SubAgent11 with super long name` is truncated with an ellipsis; 7. no trailing whitespace
+▶ • SubAgent10                1h 15m |
+▶ • SubAgent9                 15m 4s |
+▶ • SubAgent8                 2h 18m |
+▶ • SubAgent7                 2h 18m |
+---                              --- |
+▼ Rest                               |
+▶ • SubAgent6                 9m 45s |
+▶ • SubAgent5                 1h 15m |
+▶ • SubAgent4                    15s |
+▶ • SubAgent3                    25s |
+▶ • SubAgent2                     5s |
+▶ • SubAgent1                  1h 2m |
+------------------------------------ |
+```
+
+#### Semi-collapsed
+
+```
+▼ SubAgent                           | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+▶ • SubAgent11 with super lo… 9m 45s | 6. `SubAgent11 with super long name` is truncated with an ellipsis; 7. no trailing whitespace
+▶ • SubAgent10                1h 15m |
+▶ • SubAgent9                 15m 4s |
+▶ • SubAgent8                 2h 18m |
+▶ • SubAgent7                 2h 18m |
+---                              --- |
+▶ Rest                               |
+------------------------------------ |
+```
+
+#### Collapsed
+
+```
+▶ SubAgent                     7/1/3 | 1. plain name; 2. succesful/running/failed; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+```
+
+### Session tokens
+
+#### Extended
+
+```
+▼ Session tokens                     | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+↻ turns                           97 |
+↑ in                            4.4M |
+↓ out                          18.6K |
+▤ cache write                      0 |
+▤ cache read                   24.7M |
+ø cache hit ratio               5.6× |
+✦ think                         2.8K |
+---                              --- |
+Σ total                        29.1M |
+------------------------------------ |
+```
+
+#### Collapsed
+
+```
+▶ Session tokens      Σ 29.1M / ↻ 97 | 1. plain name; 2. sum of used tokens; 3. number of turns; 4. no percent; 5. no reset time; 6. no spacer
+------------------------------------ |
+```
