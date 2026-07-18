@@ -283,7 +283,7 @@ git commit -m "fix: align context TUI metrics"
 - Consumes: the same four presentation strings and threshold statuses implemented in Task 2.
 - Produces: canonical contract prose and examples that fit 37 cells without trailing whitespace; checked OpenSpec task 2.1.
 
-- [ ] **Step 1: Add a failing `AGENTS.md` value-color contract assertion**
+- [x] **Step 1: Add a failing `AGENTS.md` value-color contract assertion**
 
 In the existing documentation test in `tests/plugin-wiring.test.mjs`, read `AGENTS.md`, extract the `### Context` section through `### LSP`, and assert its normalized prose states both of these requirements:
 
@@ -292,7 +292,7 @@ In the existing documentation test in `tests/plugin-wiring.test.mjs`, read `AGEN
 
 Run the selected documentation test and confirm it fails against the current `AGENTS.md` wording before editing documentation.
 
-- [ ] **Step 2: Clarify the canonical `AGENTS.md` value-color contract**
+- [x] **Step 2: Clarify the canonical `AGENTS.md` value-color contract**
 
 Keep the existing Context examples and change the expanded `Used` and `Spent` annotations to:
 
@@ -303,7 +303,7 @@ Spent                          $0.00 | 13. cost of used tokens; 14. no trailing 
 
 Do not color or describe the `Spent` label as muted.
 
-- [ ] **Step 3: Replace the README Context prose and expanded example**
+- [x] **Step 3: Replace the README Context prose and expanded example**
 
 Replace `README.md` lines 274-287 with:
 
@@ -334,7 +334,7 @@ Keep the existing collapsed example unchanged:
 -------------------------------------
 ```
 
-- [ ] **Step 4: Run the focused documentation contract test**
+- [x] **Step 4: Run the focused documentation contract test**
 
 Run:
 
@@ -344,7 +344,7 @@ node --test --test-name-pattern="documents standalone installation, migration, M
 
 Expected: PASS for the selected documentation test. Its exact line arrays verify the four Context rows, 37-cell maximum, and no trailing whitespace.
 
-- [ ] **Step 5: Re-run all focused Context tests together**
+- [x] **Step 5: Re-run all focused Context tests together**
 
 Run:
 
@@ -354,7 +354,7 @@ node tests/compile-presentation.mjs && node --test tests/context-model.test.mjs 
 
 Expected: PASS, 19 tests, 0 failures.
 
-- [ ] **Step 6: Check off OpenSpec implementation task 2.1 only after focused GREEN**
+- [x] **Step 6: Check off OpenSpec implementation task 2.1 only after focused GREEN**
 
 In `openspec/changes/align-context-tui/tasks.md`, make this exact change and leave tasks 1.1 and 3.1 otherwise unchanged:
 
@@ -363,7 +363,7 @@ In `openspec/changes/align-context-tui/tasks.md`, make this exact change and lea
 +- [x] 2.1 Extend the Context model and presentation to render the canonical values and statuses, and align the README example with `AGENTS.md`.
 ```
 
-- [ ] **Step 7: Commit documentation and the task checkoff**
+- [x] **Step 7: Commit documentation and the task checkoff**
 
 ```bash
 git add AGENTS.md README.md tests/plugin-wiring.test.mjs
