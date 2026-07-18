@@ -70,8 +70,9 @@ and spend, LSP status, synchronized session TODOs, and `/tokens_*` reports for *
 
 - **Reactive active-session metrics**: updates context and spend values from
   synchronized session and message state without polling.
-- **Newest positive assistant token selection**: reports context usage from the
-  newest assistant message whose token total is positive.
+- **Newest positive assistant token selection**: sums finite detailed `input`,
+  `output`, `reasoning`, `cache.read`, and `cache.write` buckets and uses the
+  newest assistant message whose sum is positive.
 - **Cumulative finite assistant spend**: sums finite assistant-message costs for
   the active session and ignores missing or non-finite costs.
 - **Unavailable values**: shows `Tokens -`, `Used -`, and `Spent $0.00` when the
@@ -171,6 +172,9 @@ Native TUI options can be supplied with the local plugin entry:
   }
 }
 ```
+
+Context ships as a separate opt-in artifact. Enable it by adding
+`./opencode-tools-context.js` to the `plugin` array.
 
 The entries must remain standalone. Only quota accepts the options object;
 home, token-report, MCP, Context, LSP, and TODO use string entries. MCP,

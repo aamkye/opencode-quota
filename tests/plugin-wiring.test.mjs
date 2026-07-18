@@ -68,8 +68,15 @@ test("tracked project files contain no active legacy identifier", () => {
 test("documents standalone installation, migration, MCP, Context, LSP, and TODO layouts, and rollback", () => {
   const readme = readFileSync("README.md", "utf8")
   const prose = readme.replace(/\s+/gu, " ")
+  const introduction = readme.match(/^# opencode-tools\n\n([\s\S]*?)(?=\n## Features)/u)?.[1]
+  const contextFeatures = readme.match(/### Context\n\n([\s\S]*?)(?=\n### LSP)/u)?.[1]
+  const configurationSection = readme.match(/### Configuration\n\n([\s\S]*?)(?=\n### MCP sidebar layouts)/u)?.[1]
   const configurationText = readme.match(/### Configuration\n\n[\s\S]*?```json\n([\s\S]*?)\n```/u)?.[1]
+  assert.ok(introduction, "missing README introduction")
+  assert.ok(contextFeatures, "missing Context feature section")
+  assert.ok(configurationSection, "missing Configuration section")
   assert.ok(configurationText, "missing documented tui.json configuration")
+  assert.match(introduction.replace(/\s+/gu, " "), /MCP server health, active-session context and spend, LSP status/u)
 
   const configuration = JSON.parse(configurationText)
   assert.equal(Array.isArray(configuration.plugin), true, "documented tui.json must contain a plugin array")
@@ -90,6 +97,21 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
     "internal:sidebar-lsp": false,
     "internal:sidebar-todo": false,
   })
+
+  for (const text of [
+    "updates context and spend values from synchronized session and message state without polling",
+    "sums finite detailed `input`, `output`, `reasoning`, `cache.read`, and `cache.write` buckets and uses the newest assistant message whose sum is positive",
+    "sums finite assistant-message costs for the active session and ignores missing or non-finite costs",
+    "shows `Tokens -`, `Used -`, and `Spent $0.00` when the host has not supplied usable context data",
+    "remembers the user's header-click preference",
+  ]) assert.equal(contextFeatures.replace(/\s+/gu, " ").includes(text), true, `missing Context feature text: ${text}`)
+
+  assert.match(
+    configurationSection.replace(/\s+/gu, " "),
+    /Context ships as a separate opt-in artifact\. Enable it by adding `\.\/opencode-tools-context\.js` to the `plugin` array\./u,
+  )
+  assert.match(configurationSection, /Context, LSP, and TODO accept no options\./u)
+  assert.match(configurationSection, /Context has no built-in panel override\s+to disable\./u)
 
   for (const id of [
     "aamkye/opencode-tools-quota",
@@ -168,6 +190,10 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
 
   const contextLayouts = readme.match(/### Context sidebar layouts\n\n([\s\S]*?)(?=\n### LSP sidebar layouts)/u)?.[1]
   assert.ok(contextLayouts, "missing Context sidebar layouts between MCP and LSP")
+  assert.match(
+    contextLayouts.replace(/\s+/gu, " "),
+    /The expanded panel uses `Tokens -`, `Used -`, and `Spent \$0\.00` when context values are unavailable; the collapsed summary uses `-`\./u,
+  )
   const expectedContextLayouts = new Map([
     ["Expanded", [
       "▼ Context",
@@ -265,6 +291,36 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
       assert.equal(line.trimEnd(), line, `${heading} TODO layout has trailing whitespace`)
     }
   }
+
+  const buildAndDeploy = readme.match(/### Build and deploy\n\n([\s\S]*?)(?=\n#### Rollback)/u)?.[1]
+  const rollback = readme.match(/#### Rollback\n\n([\s\S]*?)(?=\n### Artifact layout)/u)?.[1]
+  const artifactLayout = readme.match(/### Artifact layout\n\n([\s\S]*?)(?=\n### Session title plugin)/u)?.[1]
+  const sourceFiles = readme.match(/### Source files\n\n([\s\S]*?)(?=\n### Edit workflow)/u)?.[1]
+  const editWorkflow = readme.match(/### Edit workflow\n\n([\s\S]*?)(?=\n## Breaking migration)/u)?.[1]
+  assert.ok(buildAndDeploy, "missing Build and deploy section")
+  assert.ok(rollback, "missing Rollback section")
+  assert.ok(artifactLayout, "missing Artifact layout section")
+  assert.ok(sourceFiles, "missing Source files section")
+  assert.ok(editWorkflow, "missing Edit workflow section")
+  assert.match(buildAndDeploy, /Build the seven standalone minified ESM plugins/u)
+  assert.match(buildAndDeploy, /configuration entries to the seven standalone entries in manifest order/u)
+  assert.match(
+    rollback.replace(/\s+/gu, " "),
+    /To remove the Context panel, remove `\.\/opencode-tools-context\.js` from the `plugin` array and restart OpenCode\./u,
+  )
+  assert.doesNotMatch(rollback.match(/To remove the Context panel,[^.]*\./su)?.[0] ?? "", /plugin_enabled/u)
+  assert.match(artifactLayout, /^├── opencode-tools-context\.js$/mu)
+  assert.match(
+    artifactLayout,
+    /^\| `opencode-tools-context\.js` \| `aamkye\/opencode-tools-context` \| Reactive active-session context and spend panel between MCP and LSP\. \|$/mu,
+  )
+  assert.match(
+    sourceFiles,
+    /^\| `tui\/context\.tsx`\s+\| Standalone reactive active-session context and spend sidebar adapter\s+\|$/mu,
+  )
+  assert.match(sourceFiles, /Builds the shared artifact and seven standalone local ESM plugins/u)
+  assert.match(sourceFiles, /Idempotently migrates seven local\/global plugins and `tui\.json` entries/u)
+  assert.match(editWorkflow, /npm run build:plugins # rebuild all seven standalone plugins plus shared code/u)
 
   assert.match(prose, /Long IDs truncate with an ellipsis so expanded lines fit within 37 cells and collapsed lines fit within 36 cells\./u)
   assert.match(prose, /TODO continuation lines align under the content column, and only completed records contribute to the collapsed numerator\./u)
