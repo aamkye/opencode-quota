@@ -162,10 +162,14 @@ or
 
 ### Context
 
+When consumed tokens are known but the model context limit is unavailable, the
+panel preserves the known `Tokens` value and accumulated `Spent`, while `Limit`,
+`Used`, and the collapsed summary remain `-`.
+
 #### Extended
 
 ```
-▶ Context                            | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+▼ Context                            | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
 ------------------------------------ |
 Limit                           500K | 6. limit of context tokens; 7. no trailing whitespace
 Tokens                       322.12K | 8. number of tokens used; 9. no trailing whitespace

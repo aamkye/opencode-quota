@@ -87,6 +87,16 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
     "only the $0.00 value should be grayed out",
   ]) assert.equal(normalizedContextContract.includes(text), true, `missing AGENTS.md Context contract: ${text}`)
 
+  const partialContextState = "When consumed tokens are known but the model context limit is unavailable, the panel preserves the known `Tokens` value and accumulated `Spent`, while `Limit`, `Used`, and the collapsed summary remain `-`."
+  for (const [document, content] of [["README.md", contextFeatures], ["AGENTS.md", contextContract]]) {
+    assert.equal(
+      content.replace(/\s+/gu, " ").includes(partialContextState),
+      true,
+      `missing ${document} partial Context state`,
+    )
+  }
+  assert.match(contextContract, /#### Extended\s+```\s+▼ Context/u)
+
   const configuration = JSON.parse(configurationText)
   assert.equal(Array.isArray(configuration.plugin), true, "documented tui.json must contain a plugin array")
   assert.deepEqual(configuration.plugin.map((entry) => Array.isArray(entry) ? entry[0] : entry), [

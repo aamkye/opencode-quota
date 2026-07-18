@@ -76,7 +76,10 @@ and spend, LSP status, synchronized session TODOs, and `/tokens_*` reports for *
 - **Cumulative finite assistant spend**: sums finite assistant-message costs for
   the active session and ignores missing or non-finite costs.
 - **Unavailable values**: shows `Tokens -`, `Used -`, and `Spent $0.00` when the
-  host has not supplied usable context data.
+  host has not supplied usable context data. When consumed tokens are known but
+  the model context limit is unavailable, the panel preserves the known `Tokens`
+  value and accumulated `Spent`, while `Limit`, `Used`, and the collapsed summary
+  remain `-`.
 - **Persistent collapse state**: remembers the user's header-click preference.
 
 ### LSP
