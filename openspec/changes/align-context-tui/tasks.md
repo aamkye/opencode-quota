@@ -5,6 +5,7 @@
 ## 2. Context Presentation Fix
 
 - [x] 2.1 Extend the Context model and presentation to render the canonical values and statuses, and align the README example with `AGENTS.md`.
+- [x] 2.2 Preserve the loadable Context entry's shared-facade import boundary for presentation types.
 
 ## 3. Verification
 

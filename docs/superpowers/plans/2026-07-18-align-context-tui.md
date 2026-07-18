@@ -21,6 +21,7 @@ base-ref: 4c540398a7b987fc9ac9f30fd0b3ad9ac42f487e
 - Keep every rendered Context line within 37 cells and free of trailing whitespace.
 - Preserve finite-cost accumulation, newest positive assistant-message selection, all five detailed token buckets, reactive updates without remounting, and the `aamkye.opencode-tools-context.collapsed` storage key.
 - Do not change plugin registration, public exports, host APIs, provider lookup semantics, token collection, shared layout primitives, or configuration.
+- Loadable TUI entries must import local computation and presentation types only through `shared/opencode-tools-shared.ts`.
 - Format consumed tokens with `formatCount(tokens, 2)` and context limits with the existing default `formatCount(limit)` precision.
 - Use `success` below 40%, `warning` from 40% through 60%, and `error` above 60%; percentages above 100 remain visible.
 - Color only expanded metric values, not their labels. Only a `$0.00` `Spent` value is `textMuted`.
@@ -36,6 +37,7 @@ base-ref: 4c540398a7b987fc9ac9f30fd0b3ad9ac42f487e
 - `tests/plugin-wiring.test.mjs`: preserve the existing README four-row and 37-cell contract assertions.
 - `tui/features/context.ts`: own separate limit/token strings, percentage status, zero-spend status, and unavailable-state formatting.
 - `tui/context.tsx`: render the four rows and map model statuses to value and collapsed-summary colors.
+- `shared/opencode-tools-shared.ts`: type-re-export `PanelStatus` so the Context entry preserves the facade-only import boundary.
 - `AGENTS.md`: clarify the canonical expanded/collapsed usage thresholds and value-only zero-spend muting.
 - `README.md`: publish the canonical four-row example, unavailable values, and color behavior.
 - `openspec/changes/align-context-tui/tasks.md`: record completion only after the corresponding focused and final gates pass.
@@ -189,7 +191,7 @@ The conditional spreads are required so nonzero-spend models omit `spentStatus` 
 
 - [x] **Step 3: Extend `ContextMetricRow` to color only right-aligned values**
 
-In `tui/context.tsx`, import `PanelTheme` from the existing shared type export and import `PanelStatus` directly without changing shared exports:
+In `tui/context.tsx`, import `PanelTheme` and `PanelStatus` through the shared facade:
 
 ```tsx
 import {
@@ -197,9 +199,9 @@ import {
   createContextPanelModel,
   defineTuiPlugin,
   pluginDescriptor,
+  type PanelStatus,
   type PanelTheme,
 } from "../shared/opencode-tools-shared.js"
-import type { PanelStatus } from "./presentation/types.js"
 ```
 
 Replace `ContextMetricRow` with:
@@ -371,7 +373,57 @@ git add -f docs/superpowers/specs/2026-07-18-align-context-tui-design.md docs/su
 git commit -m "docs: align context TUI contract"
 ```
 
-### Task 4: Run Final Verification And Complete OpenSpec Task 3.1
+### Task 4: Restore The Shared Facade Boundary
+
+**Files:**
+- Modify: `shared/opencode-tools-shared.ts:14-22`
+- Modify: `tui/context.tsx:3-10`
+- Test: `tests/shared-boundary.test.mjs:100-144`
+
+**Interfaces:**
+- Consumes: `PanelStatus` from `tui/presentation/types.ts` and the existing shared facade import used by `tui/context.tsx`.
+- Produces: a type-only `PanelStatus` facade export and a Context entry with no disallowed local imports.
+
+- [x] **Step 1: Reproduce the committed shared-boundary RED failure**
+
+Run:
+
+```bash
+node --test tests/shared-boundary.test.mjs
+```
+
+Expected: FAIL with `tui/context.tsx bypasses the shared computation facade` for `./presentation/types.js`.
+
+- [x] **Step 2: Re-export `PanelStatus` through the shared facade**
+
+Add this type-only export beside the existing presentation exports in `shared/opencode-tools-shared.ts`:
+
+```typescript
+export type { PanelStatus } from "../tui/presentation/types.js";
+```
+
+- [x] **Step 3: Import `PanelStatus` through the shared facade**
+
+Move `type PanelStatus` into the existing import from `../shared/opencode-tools-shared.js` in `tui/context.tsx` and remove the direct `./presentation/types.js` import.
+
+- [x] **Step 4: Verify the boundary and focused Context suites are GREEN**
+
+Run:
+
+```bash
+node --test tests/shared-boundary.test.mjs && node tests/compile-presentation.mjs && node --test tests/context-model.test.mjs tests/context-mounted.test.mjs tests/plugin-wiring.test.mjs
+```
+
+Expected: PASS, with all shared-boundary and 19 focused Context tests green.
+
+- [x] **Step 5: Commit the boundary correction**
+
+```bash
+git add shared/opencode-tools-shared.ts tui/context.tsx
+git commit -m "fix(context): preserve shared facade boundary"
+```
+
+### Task 5: Run Final Verification And Complete OpenSpec Task 3.1
 
 **Files:**
 - Modify: `openspec/changes/align-context-tui/tasks.md:9-11`

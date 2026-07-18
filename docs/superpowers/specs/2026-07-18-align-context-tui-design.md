@@ -21,7 +21,7 @@ The plugin already has stable behavior that this change must preserve:
 
 ## Scope
 
-The change aligns the Context model, mounted presentation, `AGENTS.md`, README, and focused regression tests. It does not change plugin registration, exports, host APIs, persistence, token collection, or provider lookup.
+The change aligns the Context model, mounted presentation, `AGENTS.md`, README, and focused regression tests. It does not change plugin registration, package exports, host APIs, persistence, token collection, or provider lookup. The shared facade gains one type-only `PanelStatus` re-export so the loadable Context entry preserves the repository's import boundary.
 
 ## Model Design
 
@@ -56,6 +56,8 @@ The model owns these rules because it already owns Context display formatting. T
 
 `ContextMetricRow` will accept an optional `status` and `theme` accessor. It will apply the corresponding foreground color to the right-aligned value only. Labels remain normal text, including the `Spent` label when its `$0.00` value is muted.
 
+The loadable entry `tui/context.tsx` will import `PanelTheme` and `PanelStatus` through `shared/opencode-tools-shared.ts`. The facade will re-export `PanelStatus` as a type from `tui/presentation/types.ts`. This adds no runtime code and preserves the architecture rule that loadable TUI entries do not bypass the shared computation facade.
+
 The expanded panel will render four rows in this order:
 
 1. `Limit`
@@ -84,8 +86,8 @@ No layout primitive changes are needed. Existing flex behavior keeps labels shri
 
 The existing red tests establish the regression before production edits. Build work will add any missing expanded-color assertion before implementation, then make the smallest production changes needed to pass.
 
-Focused model tests will verify separate limit and token values, compact precision, partial data, non-finite inputs, overflow, zero spend, and threshold boundaries. Mounted tests will verify row order, expanded and collapsed colors, muted zero-spend value, reactive session/provider changes, collapse persistence, and 37-cell alignment. Documentation contract tests will compare README and `AGENTS.md` examples. Final verification will run focused tests, TypeScript type checking, the full test suite, and the plugin build.
+Focused model tests will verify separate limit and token values, compact precision, partial data, non-finite inputs, overflow, zero spend, and threshold boundaries. Mounted tests will verify row order, expanded and collapsed colors, muted zero-spend value, reactive session/provider changes, collapse persistence, and 37-cell alignment. Documentation contract tests will compare README and `AGENTS.md` examples. The shared-boundary test will enforce the facade-only import rule for `tui/context.tsx`. Final verification will run focused tests, TypeScript type checking, the full test suite, and the plugin build.
 
 ## Alternatives Considered
 
-Returning raw numeric context data would create a cleaner domain model, but it would move formatting and status rules into JSX and expand the refactor. Migrating Context to the generic `PanelModel` renderer would improve architectural uniformity at the cost of touching shared presentation behavior. Extending the current model fixes the semantic boundary with less regression risk.
+Returning raw numeric context data would create a cleaner domain model, but it would move formatting and status rules into JSX and expand the refactor. Migrating Context to the generic `PanelModel` renderer would improve architectural uniformity at the cost of touching shared presentation behavior. Allowing direct type imports from loadable entries would weaken an existing architecture guard. Extending the current model and type-re-exporting `PanelStatus` through the facade fixes both boundaries with less regression risk.
