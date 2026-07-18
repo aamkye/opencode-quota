@@ -71,3 +71,4 @@ add-todo-tui-plugin Task 6: complete (commits 060e50d..e846d72, debug recovery a
 add-todo-tui-plugin Task 7: complete (commit 61e400a, standard documentation-interface risk review approved)
 add-todo-tui-plugin Task 8: complete (verification-only, focused 9/9 and integration 30/30, typecheck and scope review passed)
 add-todo-tui-plugin Task 9: complete (verification-only, full 300/300, typecheck, seven-artifact build, isolated deploy 13/13, review approved)
+add-todo-tui-plugin final review: READY at 33e1238 (one fix round; built-in override and host projection fixed, session finding rejected with upstream evidence)
