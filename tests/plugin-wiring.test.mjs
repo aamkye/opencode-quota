@@ -188,6 +188,13 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
   assert.match(prose, /For the unhealthy `2\/3` summary, `2` uses the success color, `3` uses the error color, and the slash is muted\./u)
   assert.match(prose, /For the empty `0\/0` summary, both numbers and the slash are muted\./u)
 
+  const mcpLayoutsIndex = readme.indexOf("\n### MCP sidebar layouts")
+  const contextLayoutsIndex = readme.indexOf("\n### Context sidebar layouts")
+  const lspLayoutsIndex = readme.indexOf("\n### LSP sidebar layouts")
+  assert.ok(
+    mcpLayoutsIndex >= 0 && mcpLayoutsIndex < contextLayoutsIndex && contextLayoutsIndex < lspLayoutsIndex,
+    "README sidebar layout sections must be ordered MCP -> Context -> LSP",
+  )
   const contextLayouts = readme.match(/### Context sidebar layouts\n\n([\s\S]*?)(?=\n### LSP sidebar layouts)/u)?.[1]
   assert.ok(contextLayouts, "missing Context sidebar layouts between MCP and LSP")
   assert.match(
@@ -308,7 +315,12 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
     rollback.replace(/\s+/gu, " "),
     /To remove the Context panel, remove `\.\/opencode-tools-context\.js` from the `plugin` array and restart OpenCode\./u,
   )
-  assert.doesNotMatch(rollback.match(/To remove the Context panel,[^.]*\./su)?.[0] ?? "", /plugin_enabled/u)
+  const contextRollback = rollback.match(/To remove the Context panel,[\s\S]*?restart OpenCode\./u)?.[0] ?? ""
+  assert.equal(
+    contextRollback.replace(/\s+/gu, " "),
+    "To remove the Context panel, remove `./opencode-tools-context.js` from the `plugin` array and restart OpenCode.",
+  )
+  assert.doesNotMatch(contextRollback, /plugin_enabled/u)
   assert.match(artifactLayout, /^├── opencode-tools-context\.js$/mu)
   assert.match(
     artifactLayout,
