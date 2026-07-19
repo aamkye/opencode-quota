@@ -1,9 +1,10 @@
 declare module "@opencode-ai/plugin/tui" {
   import type { JSX } from "@opentui/solid"
-  import type { Event, Provider, Todo } from "@opencode-ai/sdk/v2"
+  import type { Event, Message, Provider, Session, Todo } from "@opencode-ai/sdk/v2"
 
   type MessageUpdatedEvent = Extract<Event, { type: "message.updated" }> & { id: string }
   type TuiEvent = Exclude<Event, { type: "message.updated" }> | MessageUpdatedEvent
+  type TuiClientResult<Data> = Promise<{ data?: Data; error?: unknown }>
 
   export interface TuiCommand {
     name: string
@@ -79,6 +80,8 @@ declare module "@opencode-ai/plugin/tui" {
     }
     client: {
       session: {
+        list(input: { directory?: string }): TuiClientResult<readonly Session[]>
+        messages(input: { sessionID: string; directory?: string }): TuiClientResult<readonly { info: Message }[]>
         prompt(input: {
           path: { id: string }
           body: { noReply: true; parts: Array<{ type: "text"; text: string }> }
@@ -88,7 +91,7 @@ declare module "@opencode-ai/plugin/tui" {
     slots: {
       register(input: {
         order?: number
-        slots: Record<string, (ctx: any, props: any) => JSX.Element | null>
+        slots: Record<string, (ctx: any, props: { session_id?: string }) => JSX.Element | null>
       }): void
     }
     theme: {
@@ -101,6 +104,7 @@ declare module "@opencode-ai/plugin/tui" {
       }
     }
     state: {
+      path: { directory: string }
       mcp(): readonly TuiMcpEntry[]
       lsp(): readonly TuiLspEntry[]
       provider: readonly Provider[]
