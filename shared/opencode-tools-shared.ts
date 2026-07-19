@@ -33,6 +33,8 @@ export { createLspPanelModel } from "../tui/features/lsp.js";
 export type { LspPanelModel, LspStatusRow } from "../tui/features/lsp.js";
 export { createTodoPanelModel } from "../tui/features/todo.js";
 export type { TodoPanelModel, TodoStatusRole, TodoStatusRow } from "../tui/features/todo.js";
+export { createSesTokensPanelModel } from "../tui/features/ses-tokens.js";
+export type { SesTokenTotals, SesTokensMessage, SesTokensPanelModel } from "../tui/features/ses-tokens.js";
 export { createOpenAiProvider };
 export {
   acquireQuotaProviderHub,
