@@ -83,7 +83,6 @@ function SubagentRow(props: {
   entry: SubagentEntry
   expanded: boolean
   onToggle(): void
-  onOpen(): void
   theme: () => PanelTheme
 }) {
   const role = () => statusRole(props.entry.status)
@@ -113,7 +112,7 @@ function SubagentRow(props: {
         <DetailRow label="status:" value={props.entry.status} status={role()} theme={props.theme} />
         <DetailRow label="time:" value={props.entry.duration} theme={props.theme} />
         <DetailRow label="model:" value={props.entry.model} theme={props.theme} />
-        <box flexDirection="row" width="100%" overflow="hidden" onMouseDown={props.onOpen}>
+        <box flexDirection="row" width="100%" overflow="hidden">
           <text width={2} flexShrink={0}>{"  "}</text>
           <text>Open Session</text>
         </box>
@@ -172,8 +171,6 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
       else next.add(entryID)
       return next
     })
-    const openSession = (sessionID: string) => api.route.navigate("session", { sessionID })
-
     return (
       <CompactPanel
         title="SubAgent"
@@ -194,13 +191,12 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
                 entry={entry}
                 expanded={expandedIDs().has(entry.id)}
                 onToggle={() => toggleEntry(entry.id)}
-                onOpen={() => openSession(entry.id)}
                 theme={() => api.theme.current}
               />
             )}
           </For>
           <Show when={model().rest.length > 0}>
-            <box width="100%" height={1} border={["top"]} />
+            <box width="100%" height={1} border={["top"]} borderColor={api.theme.current.textMuted} />
             <box
               flexDirection="row"
               width="100%"
@@ -217,7 +213,6 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
                     entry={entry}
                     expanded={expandedIDs().has(entry.id)}
                     onToggle={() => toggleEntry(entry.id)}
-                    onOpen={() => openSession(entry.id)}
                     theme={() => api.theme.current}
                   />
                 )}

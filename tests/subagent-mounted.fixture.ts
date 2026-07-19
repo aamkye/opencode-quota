@@ -144,7 +144,7 @@ function rowLayout(row: HostNode, width: number) {
     const hasFollowingCell = index < cells.length - 1
     return hasFollowingCell && Number(cell.props.flexGrow ?? 0) > 0 ? text.padEnd(allocated) : text
   }).join("")
-  return { cells, childWidths, renderedText: renderedText.trimEnd(), rowWidth }
+  return { cells, childWidths, renderedText, rowWidth }
 }
 
 function isDivider(node: HostNode): boolean {
@@ -371,6 +371,7 @@ export async function mountSubagentPanel(options: {
     const openSession = rows.find(({ texts }) => texts[0] === "  " && texts[1] === "Open Session")
     const fallback = textNodes(root).find((node) => textOf(node) === "No subagents")
     const dividers = panel ? descendants(panel).filter(isDivider) : []
+    const restDivider = bodyItems.find(isDivider)
     const lines = panel && header ? [
       rowLayout(header, width).renderedText,
       "-".repeat(Math.max(0, width)),
@@ -399,6 +400,8 @@ export async function mountSubagentPanel(options: {
       fallbackText: textOf(fallback),
       fallbackColor: fallback?.props.fg,
       dividerCount: dividers.length,
+      restDividerColor: restDivider?.props.borderColor,
+      openSessionInteractive: typeof openSession?.node.props.onMouseDown === "function",
       lines,
       entryRows: entryRows.map(({ texts, layout }) => ({
         disclosure: texts[0],
@@ -425,8 +428,10 @@ export async function mountSubagentPanel(options: {
       async clickRest() {
         await clickRow(rows.find(({ texts }) => texts[1] === "Rest")?.node, "Rest")
       },
-      async clickOpenSession() {
-        await clickRow(openSession?.node, "Open Session")
+      async activateOpenSession() {
+        const onMouseDown = openSession?.node.props.onMouseDown
+        if (typeof onMouseDown === "function") onMouseDown()
+        await flushHost()
       },
     }
   }
