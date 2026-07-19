@@ -42,7 +42,14 @@ export type {
   SubagentPanelModel,
   SubagentStatus,
 } from "../tui/features/subagent.js";
-export type { SubagentChildSnapshot, SubagentSnapshot } from "../tui/services/subagent-snapshot.js";
+export { createSubagentSnapshotLoader } from "../tui/services/subagent-snapshot.js";
+export type {
+  CreateSubagentSnapshotLoaderOptions,
+  SubagentChildSnapshot,
+  SubagentSnapshot,
+  SubagentSnapshotLoadContext,
+  SubagentSnapshotLoader,
+} from "../tui/services/subagent-snapshot.js";
 export {
   collectSessionTreeIDs,
   createSessionTreeSnapshotLoader,
