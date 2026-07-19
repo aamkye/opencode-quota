@@ -1,4 +1,5 @@
-import { createRoot } from "solid-js"
+import { createRoot, createSignal } from "solid-js"
+import { createRenderer } from "solid-js/universal"
 
 import { CompactPanel, type CompactPanelSummary, type PanelTheme } from "../tui/presentation/compact-panel.js"
 
@@ -22,7 +23,7 @@ function expand(value: unknown): unknown[] {
     return items.flatMap((item, index) => expand(render(item, () => index)))
   }
   if (value.type.name === "Show") {
-    if (!value.props.when) return []
+    if (!value.props.when) return expand(value.props.fallback)
     const render = value.props.children
     return expand(typeof render === "function" ? render(() => value.props.when) : render)
   }
@@ -36,6 +37,100 @@ const theme: PanelTheme = {
   success: "#00ff00",
   text: "#ffffff",
   textMuted: "#888888",
+}
+
+type ReactiveNode = {
+  type: string
+  props: Record<string, unknown>
+  children: ReactiveNode[]
+  parent?: ReactiveNode
+  text?: string
+}
+
+const reactiveRenderer = createRenderer<ReactiveNode>({
+  createElement: (type: string) => ({ type, props: {}, children: [] }),
+  createTextNode: (text: string) => ({ type: "#text", props: {}, children: [], text }),
+  isTextNode: (node: ReactiveNode) => node.type === "#text",
+  replaceText(node: ReactiveNode, text: string) {
+    node.text = text
+  },
+  insertNode(parent: ReactiveNode, node: ReactiveNode, anchor?: ReactiveNode) {
+    if (node.parent) {
+      const previousIndex = node.parent.children.indexOf(node)
+      if (previousIndex >= 0) node.parent.children.splice(previousIndex, 1)
+    }
+    const index = anchor ? parent.children.indexOf(anchor) : -1
+    parent.children.splice(index >= 0 ? index : parent.children.length, 0, node)
+    node.parent = parent
+  },
+  removeNode(parent: ReactiveNode, node: ReactiveNode) {
+    const index = parent.children.indexOf(node)
+    if (index >= 0) parent.children.splice(index, 1)
+    node.parent = undefined
+  },
+  setProperty(node: ReactiveNode, name: string, value: unknown) {
+    node.props[name] = value
+  },
+  getParentNode: (node: ReactiveNode) => node.parent,
+  getFirstChild: (node: ReactiveNode) => node.children[0],
+  getNextSibling(node: ReactiveNode) {
+    if (!node.parent) return undefined
+    return node.parent.children[node.parent.children.indexOf(node) + 1]
+  },
+})
+
+export const reactiveCreateComponent = reactiveRenderer.createComponent
+export const reactiveCreateElement = reactiveRenderer.createElement
+export const reactiveCreateTextNode = reactiveRenderer.createTextNode
+export const reactiveEffect = reactiveRenderer.effect
+export const reactiveInsert = reactiveRenderer.insert
+export const reactiveInsertNode = reactiveRenderer.insertNode
+export const reactiveMemo = reactiveRenderer.memo
+export const reactiveMergeProps = reactiveRenderer.mergeProps
+export const reactiveSetProp = reactiveRenderer.setProp
+export const reactiveSpread = reactiveRenderer.spread
+
+export async function mountReactiveCompactPanel(detailValue: CompactPanelSummary) {
+  const [detail, setDetail] = createSignal(detailValue)
+  let panelMounts = 0
+  const root: ReactiveNode = { type: "root", props: {}, children: [] }
+  const dispose = reactiveRenderer.render(() => {
+    panelMounts += 1
+    return CompactPanel({
+      title: "Quota",
+      collapsed: false,
+      get detail() {
+        return detail()
+      },
+      onToggle: () => undefined,
+      theme: () => theme,
+      footerDivider: false,
+      children: "Expanded content" as never,
+    }) as never
+  }, root)
+
+  const textElements = () => {
+    const elements: ReactiveNode[] = []
+    const visit = (node: ReactiveNode) => {
+      if (node.type === "text") elements.push(node)
+      node.children.forEach(visit)
+    }
+    root.children.forEach(visit)
+    return elements.map((node) => ({
+      text: node.children.map((child) => child.text ?? "").join(""),
+      fg: node.props.fg,
+    }))
+  }
+
+  return {
+    panelMounts: () => panelMounts,
+    textElements,
+    async setDetail(value: CompactPanelSummary) {
+      setDetail(value)
+      await Promise.resolve()
+    },
+    dispose,
+  }
 }
 
 export function mountCompactPanel(options: {

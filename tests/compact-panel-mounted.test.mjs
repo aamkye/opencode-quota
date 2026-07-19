@@ -1,6 +1,9 @@
 import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
 import { build } from "esbuild"
 import test from "node:test"
+
+import { transformSolidSource } from "../node_modules/@opentui/solid/scripts/solid-transform.js"
 
 globalThis.React = {
   createElement(type, props, ...children) {
@@ -9,6 +12,53 @@ globalThis.React = {
 }
 
 const { mountCompactPanel } = await import("../.tmp-test/compact-panel-mounted.mjs")
+
+await build({
+  bundle: true,
+  conditions: ["browser"],
+  entryPoints: ["tests/compact-panel-mounted.fixture.ts"],
+  format: "esm",
+  outfile: ".tmp-test/compact-panel-reactive-mounted.mjs",
+  platform: "node",
+  plugins: [{
+    name: "compact-panel-reactive-mount",
+    setup(build) {
+      build.onResolve({ filter: /^compact-panel-test-renderer$/ }, () => ({
+        path: "compact-panel-test-renderer",
+        namespace: "compact-panel-test-renderer",
+      }))
+      build.onLoad({ filter: /.*/, namespace: "compact-panel-test-renderer" }, () => ({
+        contents: `export {
+          reactiveCreateComponent as createComponent,
+          reactiveCreateElement as createElement,
+          reactiveCreateTextNode as createTextNode,
+          reactiveEffect as effect,
+          reactiveInsert as insert,
+          reactiveInsertNode as insertNode,
+          reactiveMemo as memo,
+          reactiveMergeProps as mergeProps,
+          reactiveSetProp as setProp,
+          reactiveSpread as spread
+        } from ${JSON.stringify(`${process.cwd()}/tests/compact-panel-mounted.fixture.ts`)}`,
+        loader: "js",
+        resolveDir: process.cwd(),
+      }))
+      build.onLoad({ filter: /\.[cm]?tsx?$/ }, async (args) => {
+        if (args.path.includes("node_modules")) return undefined
+        return {
+          contents: await transformSolidSource(await readFile(args.path, "utf8"), {
+            filename: args.path,
+            moduleName: "compact-panel-test-renderer",
+          }),
+          loader: "js",
+        }
+      })
+    },
+  }],
+  target: "es2022",
+})
+
+const { mountReactiveCompactPanel } = await import("../.tmp-test/compact-panel-reactive-mounted.mjs")
 
 await build({
   bundle: true,
@@ -165,6 +215,39 @@ test("preserves statuses on segmented header detail", () => {
       && element.props.flexDirection === "row"
       && element.props.flexShrink === 0
     )))
+  } finally {
+    mounted.dispose()
+  }
+})
+
+test("reactively switches header detail from text to segments and back", async () => {
+  const mounted = await mountReactiveCompactPanel({ text: "stale", status: "warning" })
+  const coloredText = () => mounted.textElements()
+    .filter((element) => element.text.trim())
+    .map((element) => [element.text.trim(), element.fg])
+
+  try {
+    assert.equal(mounted.panelMounts(), 1)
+    assert.deepEqual(coloredText().slice(-1), [["stale", "#ffaa00"]])
+
+    await mounted.setDetail({
+      text: "stale / limited",
+      segments: [
+        { text: "stale", status: "warning" },
+        { text: " / ", status: "textMuted" },
+        { text: "limited", status: "error" },
+      ],
+    })
+    assert.equal(mounted.panelMounts(), 1, "CompactPanel remains mounted across the representation update")
+    assert.deepEqual(coloredText().slice(-3), [
+      ["stale", "#ffaa00"],
+      ["/", "#888888"],
+      ["limited", "#ff0000"],
+    ])
+
+    await mounted.setDetail({ text: "limited", status: "error" })
+    assert.equal(mounted.panelMounts(), 1)
+    assert.deepEqual(coloredText().slice(-1), [["limited", "#ff0000"]])
   } finally {
     mounted.dispose()
   }

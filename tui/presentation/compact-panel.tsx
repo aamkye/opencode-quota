@@ -36,15 +36,18 @@ function Divider() {
 function CompactSummary(props: { value: CompactPanelSummary; theme: Accessor<PanelTheme> }) {
   const color = (status?: PanelStatus) => (status ? props.theme()[status] : undefined)
 
-  return props.value.segments?.length
-    ? (
-        <box flexDirection="row" flexShrink={0}>
-          <For each={props.value.segments}>
-            {(segment) => <text flexShrink={0} fg={color(segment.status)}>{segment.text}</text>}
-          </For>
-        </box>
-      )
-    : <text flexShrink={0} fg={color(props.value.status)}>{props.value.text}</text>
+  return (
+    <Show
+      when={props.value.segments?.length}
+      fallback={<text flexShrink={0} fg={color(props.value.status)}>{props.value.text}</text>}
+    >
+      <box flexDirection="row" flexShrink={0}>
+        <For each={props.value.segments}>
+          {(segment) => <text flexShrink={0} fg={color(segment.status)}>{segment.text}</text>}
+        </For>
+      </box>
+    </Show>
+  )
 }
 
 export function CompactStatusRow(props: CompactStatusRowProps) {
