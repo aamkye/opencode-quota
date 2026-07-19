@@ -868,11 +868,11 @@ function MeasuredTitle(props: MeasuredTitleProps): JSX.Element
 ```
 
 - `truncateTerminalCellsEnd` segments with `new Intl.Segmenter(undefined, { granularity: "grapheme" })`, measures each complete grapheme and the `…` with direct `string-width`, returns the original value when it fits, returns `""` for zero available cells, and otherwise trims trailing whitespace from the longest complete grapheme prefix before appending one end ellipsis. Never render whitespace immediately before the ellipsis.
-- `MeasuredTitle` renders the sole flexible title `<text>`, obtains it through `ref={(renderable: Renderable) => ...}`, reads `renderable.width`, and updates its width signal on `LayoutEvents.RESIZED`. It must not pass OpenTUI's `truncate={true}`. Attach one stable listener per mounted title region and remove that same listener with `renderable.off(LayoutEvents.RESIZED, listener)` in `onCleanup`.
-- The installed public contract supports this exact implementation: `@opentui/core` 0.4.3 exports `LayoutEvents.RESIZED` and `Renderable.width`; `@opentui/solid` 0.4.3 types intrinsic refs as the concrete renderable. Do not use a private Yoga node, generated bundle symbol, or untyped event substitute.
-- `tests/shared-boundary.test.mjs` requires a runtime named import of `LayoutEvents` and a type import of `Renderable` from `@opentui/core`; it rejects a local `LayoutEvents` object. `tests/compile-presentation.mjs` externalizes `@opentui/core` for the SubAgent mounted and adapter fixture builds so the harness uses the installed host package instead of traversing its native optional packages.
+- `MeasuredTitle` renders the sole flexible title `<text>`, initializes measurement through `ref={(renderable: Renderable) => ...}`, reads `renderable.width`, and updates its width signal through the intrinsic `onSizeChange` callback. It must not pass OpenTUI's `truncate={true}`. Define one stable normal function whose `this` is the concrete `Renderable`; OpenTUI owns callback attachment and removal with the child renderable lifecycle.
+- The installed public contract supports this exact implementation: `@opentui/core` 0.4.3 exposes `Renderable.width` and types `onSizeChange?: (this: T) => void`; `@opentui/solid` 0.4.3 types intrinsic refs as the concrete renderable. `LayoutEvents.RESIZED` is root-only and must not be used for a child title. Do not use a private Yoga node, generated bundle symbol, event listener, or untyped event substitute.
+- `tests/shared-boundary.test.mjs` requires a type-only `Renderable` import from `@opentui/core`, requires an intrinsic `onSizeChange` prop, and rejects runtime `LayoutEvents` use. Because the OpenTUI import is type-only and erased by compilation, `tests/compile-presentation.mjs` must not externalize `@opentui/core` for either SubAgent fixture build.
 - `tests/plugin-build.test.mjs` replaces the blanket no-`node_modules` assertion with an exact policy: shared and every non-SubAgent feature still have zero `node_modules` inputs; SubAgent has only the `ansi-regex`, `strip-ansi`, `get-east-asian-width`, `emoji-regex`, and `string-width` package roots. Keep all host and built-in external assertions unchanged.
-- Extend only the test host's renderable simulation with this exact observable surface so mounted tests exercise the production ref/listener path:
+- Extend only the test host's renderable simulation with this exact observable surface so mounted tests exercise the production ref/callback path:
 
 ```ts
 export type HostNode = {
@@ -882,14 +882,10 @@ export type HostNode = {
   parent?: HostNode
   removed: boolean
   width: number
-  on(event: string, listener: (...args: unknown[]) => void): HostNode
-  off(event: string, listener: (...args: unknown[]) => void): HostNode
-  emit(event: string, ...args: unknown[]): boolean
-  listenerCount(event: string): number
 }
 ```
 
-- Extend `mountSubagentPanel` with `async resize(width: number): Promise<void>`, `totalResizeListeners(): number`, and a width-stable `view()` that reports each entry's `gap`, `gapWidth`, `durationColor`, measured `renderedTitle`, and `titleProps`; Rest reports separate disclosure/title colors and an explicit divider's child texts, colors, and flex values.
+- Extend `mountSubagentPanel` with `async resize(width: number): Promise<void>`, `sizeChangeCalls(): number`, and a width-stable `view()` that reports each entry's `gap`, `gapWidth`, `durationColor`, measured `renderedTitle`, and `titleProps`; Rest reports separate disclosure/title colors and an explicit divider's child texts, colors, and flex values.
 
 - [ ] **Step 1: Add explicit failing model, mounted-layout, resize, and README contract assertions**
 
@@ -921,11 +917,11 @@ test("allocates disclosure title gap and duration without a status bullet", () =
 
 Retain the existing NaN, infinity, fractional, and too-narrow invariant loop, but apply it to the four-field allocation.
 
-In `tests/opentui-solid-host-runtime.fixture.ts`, add the typed listener map behind the interface above. `on` inserts the exact function into the event set, `off` removes it, `emit` invokes a copied listener list, and `listenerCount` returns the current set size. Keep every existing host insertion/removal behavior unchanged.
+In `tests/opentui-solid-host-runtime.fixture.ts`, add only the numeric `width` field shown above. Keep every existing host insertion/removal behavior unchanged; the intrinsic callback remains observable through the existing `props` map.
 
-In `tests/shared-boundary.test.mjs`, add RED assertions that `namedImportLocalName(subagentSource, "@opentui/core", "LayoutEvents")` is present and that the source contains no local `const LayoutEvents =`. In `tests/plugin-build.test.mjs`, add the exact SubAgent-only package-input allowlist before changing the production import or build-policy assertion. Against commit `0c8bcf3`, these assertions must fail for the local enum workaround and blanket package-input rejection.
+In `tests/shared-boundary.test.mjs`, add RED assertions that `tui/subagent.tsx` type-imports `Renderable` from `@opentui/core`, passes an intrinsic `onSizeChange` prop, and has no runtime `LayoutEvents` import or use. In `tests/plugin-build.test.mjs`, retain the exact SubAgent-only package-input allowlist. Against commit `9f73246`, the source-boundary assertions must fail for the invalid child `LayoutEvents.RESIZED` listener.
 
-In `tests/subagent-mounted.fixture.ts`, stop identifying entry rows through `texts[1] === "• "`. Identify a row by disclosure in `texts[0]`, a non-`Rest` title in `texts[1]`, and its entry click handler. Track a mutable mounted width, defaulting to 36. During host flush, compute each title child's rendered flex width, assign it to the simulated renderable, emit `"resized"` only when the numeric width changed, settle Solid once more, and expose `resize(width)` for 37, 36, and scrollbar-reduced 35-cell assertions. Replace native-border-only Rest-divider discovery with explicit divider child inspection while retaining outer `CompactPanel` divider discovery.
+In `tests/subagent-mounted.fixture.ts`, stop identifying entry rows through `texts[1] === "• "`. Identify a row by disclosure in `texts[0]`, a non-`Rest` title in `texts[1]`, and its entry click handler. Track a mutable mounted width, defaulting to 36. During host flush, compute each title child's rendered flex width, assign it to the simulated renderable, invoke `titleRegion.props.onSizeChange.call(titleRegion)` only when the numeric width changed, count those invocations, and settle Solid once more. Expose `resize(width)` for 37, 36, and scrollbar-reduced 35-cell assertions. Replace native-border-only Rest-divider discovery with explicit divider child inspection while retaining outer `CompactPanel` divider discovery.
 
 Replace the obsolete mounted tests `colors bullets and status values by semantic status`, `truncates only titles at 37 and 36 cells without trailing whitespace`, and the bullet-dependent non-finite completion assertion. Add these explicit RED assertions:
 
@@ -984,16 +980,18 @@ test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells
       assert.equal(row.titleProps.truncate, undefined)
       for (const line of view.lines) assert.equal(line.trimEnd(), line)
     }
-    assert.equal(mounted.totalResizeListeners(), mounted.view().entryRows.length)
+    const callbackCalls = mounted.sizeChangeCalls()
+    assert.ok(callbackCalls >= mounted.view().entryRows.length)
     await mounted.view().clickHeader()
-    assert.equal(mounted.totalResizeListeners(), 0)
+    await mounted.resize(34)
+    assert.equal(mounted.sizeChangeCalls(), callbackCalls)
   } finally {
     await mounted.dispose()
   }
 })
 ```
 
-Keep and adapt the existing wide/combining test so `界` and `e\u0301` are never split and each rendered title ends in exactly one ellipsis. Add a disposal assertion that all resize listener counts are zero after panel disposal.
+Keep and adapt the existing wide/combining test so `界` and `e\u0301` are never split and each rendered title ends in exactly one ellipsis. Add a disposal assertion that resizing after panel disposal does not invoke an `onSizeChange` callback.
 
 Add Rest structure assertions to the expanded and semi-collapsed layout tests:
 
@@ -1021,7 +1019,7 @@ node tests/compile-presentation.mjs && node --test \
   tests/shared-boundary.test.mjs
 ```
 
-Expected RED before the original Task 9 implementation: the model returns a `bullet: 2` allocation; mounted rows render `• `, leave compact/detail `time` uncolored, use OpenTUI `truncate={true}`, expose no resize listener, render an unmuted Rest header and native border, and fail the AGENTS-derived layouts. README contains bullet-bearing obsolete SubAgent blocks. The post-`0c8bcf3` correction RED must isolate the local `LayoutEvents` workaround and blanket package-input rejection. Confirm failures are contract assertions, not unrelated source/lifecycle failures.
+Expected RED before the original Task 9 implementation: the model returns a `bullet: 2` allocation; mounted rows render `• `, leave compact/detail `time` uncolored, use OpenTUI `truncate={true}`, expose no measured resize callback, render an unmuted Rest header and native border, and fail the AGENTS-derived layouts. README contains bullet-bearing obsolete SubAgent blocks. The post-`9f73246` correction RED must isolate the invalid child `LayoutEvents.RESIZED` listener and fabricated event-host path. Confirm failures are contract assertions, not unrelated source/lifecycle failures.
 
 - [ ] **Step 3: Implement the minimal visual-contract correction**
 
@@ -1045,7 +1043,7 @@ In `package.json`, add only this direct production dependency in lexical/logical
 
 Mirror the same exact entry under `packages[""].dependencies` in `package-lock.json`. Leave `node_modules/string-width` resolved at version `7.2.0` with its existing integrity and transitive records; do not run a dependency upgrade or alter any other package version.
 
-In `tests/compile-presentation.mjs`, pass `external: ["@opentui/core"]` to the SubAgent mounted fixture and standalone adapter fixture entries. Do not externalize `string-width`; focused artifacts must exercise the bundled width helper.
+In `tests/compile-presentation.mjs`, remove the explicit `external: ["@opentui/core"]` entries from the SubAgent mounted fixture and standalone adapter fixture. The production import is type-only and erased before esbuild resolution. Do not externalize `string-width`; focused artifacts must exercise the bundled width helper.
 
 In `tests/plugin-build.test.mjs`, normalize each `node_modules/<package>/...` metafile input to its package root and compare exact sets. The SubAgent-only allowlist is:
 
@@ -1061,21 +1059,17 @@ In `tests/plugin-build.test.mjs`, normalize each `node_modules/<package>/...` me
 
 Every other feature and the shared artifact must still produce `[]`.
 
-In `tui/subagent.tsx`, import runtime `LayoutEvents` and type `Renderable` from `@opentui/core`, import `stringWidth` from `string-width`, and import type `JSX` from Solid. Implement the helper/component interfaces above. The listener must be stable and symmetrically cleaned up:
+In `tui/subagent.tsx`, import only type `Renderable` from `@opentui/core`, import `stringWidth` from `string-width`, and import type `JSX` from Solid. Implement the helper/component interfaces above. Initialize from the ref and use the stable public size callback:
 
 ```ts
-let titleRegion: Renderable | undefined
 const [measuredCells, setMeasuredCells] = createSignal(0)
-const measure = () => setMeasuredCells(titleRegion?.width ?? 0)
-const bindTitleRegion = (renderable: Renderable) => {
-  if (titleRegion === renderable) return
-  titleRegion?.off(LayoutEvents.RESIZED, measure)
-  titleRegion = renderable
-  titleRegion.on(LayoutEvents.RESIZED, measure)
-  measure()
+const measure = (renderable: Renderable) => setMeasuredCells(renderable.width)
+const handleSizeChange = function (this: Renderable) {
+  measure(this)
 }
-onCleanup(() => titleRegion?.off(LayoutEvents.RESIZED, measure))
 ```
+
+Pass `ref={measure}` and `onSizeChange={handleSizeChange}` to the title `<text>`. Do not add measurement cleanup: the callback is a renderable prop and disappears with the node.
 
 Render the title with `MeasuredTitle`, remove the status bullet node completely, retain a separate fixed `<text width={1} flexShrink={0}> </text>` before every collapsed duration, and set the duration foreground to `props.theme()[role()]`. Pass `status={role()}` to the detail `time:` row while preserving the existing status-row color and all row click handlers.
 
@@ -1116,15 +1110,15 @@ node tests/compile-presentation.mjs && node --test \
   tests/shared-boundary.test.mjs
 ```
 
-Expected GREEN: allocation has no bullet field; every AGENTS-derived layout and 37/36/35-cell assertion passes; wide/combining graphemes end-truncate safely; compact/detail time colors, muted Rest treatment, explicit divider children, fixed gap, listener cleanup, README synchronization, and no-trailing-whitespace assertions all pass. Existing persistence, clock, navigation, source, and stale-layout cases in the mounted suite remain green.
+Expected GREEN: allocation has no bullet field; every AGENTS-derived layout and 37/36/35-cell assertion passes; wide/combining graphemes end-truncate safely; compact/detail time colors, muted Rest treatment, explicit divider children, fixed gap, `onSizeChange` removal safety, README synchronization, and no-trailing-whitespace assertions all pass. Existing persistence, clock, navigation, source, and stale-layout cases in the mounted suite remain green.
 
-The same GREEN run must prove that `tui/subagent.tsx` uses the public runtime `LayoutEvents` import, the mounted compiler externalizes the host package, SubAgent bundles exactly the approved width-helper dependency chain, and no other artifact bundles a package.
+The same GREEN run must prove that `tui/subagent.tsx` uses a type-only public `Renderable` import and intrinsic `onSizeChange`, does not retain `LayoutEvents`, SubAgent bundles exactly the approved width-helper dependency chain, and no other artifact bundles a package.
 
 - [ ] **Step 5: Run strict type verification**
 
 Run: `npm run typecheck`
 
-Expected GREEN: TypeScript exits 0 with the public `Renderable` ref, `LayoutEvents.RESIZED` listener, JSX return type, exact four-field allocation, and extended host fixture types.
+Expected GREEN: TypeScript exits 0 with the public `Renderable` ref and `onSizeChange` callback, JSX return type, exact four-field allocation, and extended host fixture types.
 
 - [ ] **Step 6: Run the full regression suite**
 
@@ -1180,7 +1174,7 @@ git diff -- \
 git diff --cached --name-only
 ```
 
-Expected review: the unstaged diff contains only the approved visual contract, direct existing dependency declaration, test-host resize simulation, revised tests, and README synchronization. The cached list is empty before staging.
+Expected review: the unstaged diff contains only the approved visual contract, direct existing dependency declaration, test-host `onSizeChange` simulation, revised tests, and README synchronization. The cached list is empty before staging.
 
 Suggested Conventional Commit: `fix(subagent): correct panel visual contract`
 
@@ -1217,9 +1211,9 @@ git commit -m "fix(subagent): correct panel visual contract"
 | 4.1 integration tests | Tasks 1, 7 | facade plus manifest/build/deploy/wiring tests |
 | 4.2 integration/docs | Tasks 5, 7 | runtime key, exact manifest/package order, standalone build/deploy, README |
 | 5.1 final verification | Task 8 | focused, typecheck, full suite, build, bundle, AGENTS, artifact gates |
-| 6.1 corrective visual tests | Task 9 | strict RED/GREEN model, mounted 37/36/35-cell, color, divider, resize, cleanup, and README assertions |
+| 6.1 corrective visual tests | Task 9 | strict RED/GREEN model, mounted 37/36/35-cell, color, divider, `onSizeChange`, removal-safety, and README assertions |
 | 6.2 corrected implementation/docs | Task 9 | focused/full/type/build gates, exact dependency lock, bundle, hash, diff, and artifact checks |
 
 ## Planning Concern
 
-The only Task 9-specific planning concern is test fidelity: the lightweight Solid host currently has no Renderable resize/event surface, so Task 9 must extend that shared fixture narrowly to prove measured-width updates and listener cleanup. This is not a production API change. The installed OpenTUI 0.4.3 public declarations support the planned `Renderable.width`/`LayoutEvents.RESIZED` path, and the lock already resolves `string-width` 7.2.0, so there is no dependency or API ambiguity. The worktree currently also reports separate modified Comet-state files; they are outside this planning edit and Task 9 staging scope. Exact-path staging remains mandatory, Tasks 1-8 stay completed, and no unrelated accepted work or Comet state belongs in the Task 9 commit.
+The only Task 9-specific planning concern is test fidelity: the lightweight Solid host must invoke the intrinsic callback exactly as OpenTUI does so Task 9 proves measured-width updates without fabricating a root-only event on a child. This is not a production API change. The installed OpenTUI 0.4.3 public declarations support `Renderable.width` and `onSizeChange?: (this: T) => void`; `LayoutEvents.RESIZED` is not the child contract. The lock already resolves `string-width` 7.2.0, so there is no dependency ambiguity. The worktree currently also reports separate modified Comet-state files; they are outside this planning edit and Task 9 staging scope. Exact-path staging remains mandatory, Tasks 1-8 stay completed, and no unrelated accepted work or Comet state belongs in the Task 9 commit.

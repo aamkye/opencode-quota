@@ -345,7 +345,7 @@ Each entry row is a full-width horizontal box with these regions:
 disclosure + flexible title + gap + duration
 ```
 
-The disclosure renders `▶ ` or `▼ `. Entry rows have no status bullet. Only the title flexes. OpenTUI 0.4.x truncates text in the middle, so a title-region resize listener supplies its computed width to a grapheme-safe end-truncation helper. Declare the already-installed `string-width` package directly to measure terminal cells. The duration includes its leading one-cell gap in the fixed region, stays at the right edge, and uses the entry status color: success, warning, or error.
+The disclosure renders `▶ ` or `▼ `. Entry rows have no status bullet. Only the title flexes. OpenTUI 0.4.x truncates text in the middle, so the title renderable's public `onSizeChange` callback supplies its computed width to a grapheme-safe end-truncation helper. Declare the already-installed `string-width` package directly to measure terminal cells. The duration includes its leading one-cell gap in the fixed region, stays at the right edge, and uses the entry status color: success, warning, or error.
 
 Update the pure allocation helper for disclosure, title, gap, and duration at 37 cells and narrower. Do not build padded rows in the component.
 
@@ -427,7 +427,7 @@ Inject loader, timer, event, and failure-store dependencies. Cover immediate ini
 
 ### Mounted Panel Tests
 
-Assert every AGENTS layout: expanded, one detail, expanded Rest, semi-collapsed Rest, collapsed counts, stale expanded, and stale collapsed. Also cover no output for loading/unavailable, `No subagents`, exact row order, status-colored compact/detail time, end ellipsis, 37/36-cell boundaries, a scrollbar-reduced 35-cell row, muted Rest treatment, spaced divider segments, no trailing whitespace, parent-scoped persistence, one-entry expansion, invalid ID cleanup, hidden Rest details, conditional clock start/stop/disposal, and route navigation.
+Assert every AGENTS layout: expanded, one detail, expanded Rest, semi-collapsed Rest, collapsed counts, stale expanded, and stale collapsed. Also cover no output for loading/unavailable, `No subagents`, exact row order, status-colored compact/detail time, end ellipsis, 37/36-cell boundaries, a scrollbar-reduced 35-cell row, real `onSizeChange` callback measurement, muted Rest treatment, spaced divider segments, no trailing whitespace, parent-scoped persistence, one-entry expansion, invalid ID cleanup, hidden Rest details, conditional clock start/stop/disposal, and route navigation.
 
 ### Type And Integration Tests
 
