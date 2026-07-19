@@ -13,6 +13,7 @@ const root = resolve(import.meta.dirname, "..")
 const runtimeModulePrefix = "opentui:runtime-module:"
 const hostRuntimeUrls = {
   "solid-js": import.meta.resolve("solid-js/dist/solid.js"),
+  "@opentui/core": import.meta.resolve("@opentui/core"),
   "@opentui/solid": import.meta.resolve("@opentui/solid"),
   "@opentui/solid/jsx-runtime": import.meta.resolve("@opentui/solid/jsx-runtime"),
 }
@@ -24,6 +25,7 @@ const expectedArtifacts = [
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
+    if (specifier === "@opentui/core") return nextResolve(hostRuntimeUrls[specifier], context)
     if (specifier.startsWith(runtimeModulePrefix)) {
       const hostModule = decodeURIComponent(specifier.slice(runtimeModulePrefix.length))
       return nextResolve(hostRuntimeUrls[hostModule] ?? hostModule, context)
@@ -128,6 +130,13 @@ function includesSource(inputs, source) {
   return inputs.some((file) => file === normalized || file.endsWith(`/${normalized}`))
 }
 
+function nodeModulePackageRoots(result) {
+  return [...new Set(inputNames(result).flatMap((file) => {
+    const match = file.match(/(?:^|\/)node_modules\/((?:@[^/]+\/)?[^/]+)(?:\/|$)/)
+    return match ? [match[1]] : []
+  }))].sort()
+}
+
 let buildPlugins
 let buildResults
 let contents
@@ -226,7 +235,6 @@ test("all host and built-in dependencies remain external", () => {
   const results = [buildResults.shared, ...Object.values(buildResults.features)]
 
   for (const result of results) {
-    assert.ok(Object.keys(result.metafile.inputs).every((file) => !file.includes("node_modules")))
     for (const output of Object.values(result.metafile.outputs)) {
       for (const dependency of output.imports) {
         const bare = dependency.path.replace(/^node:/, "").split("/")[0]
@@ -241,6 +249,25 @@ test("all host and built-in dependencies remain external", () => {
         if (host) assert.equal(dependency.external, true, `${dependency.path} was bundled`)
       }
     }
+  }
+})
+
+test("only the SubAgent feature bundles its approved dependency chain", () => {
+  const approvedSubagentPackages = [
+    "ansi-regex",
+    "emoji-regex",
+    "get-east-asian-width",
+    "string-width",
+    "strip-ansi",
+  ]
+
+  assert.deepEqual(nodeModulePackageRoots(buildResults.shared), [], "shared bundled a package")
+  for (const [feature, result] of Object.entries(buildResults.features)) {
+    assert.deepEqual(
+      nodeModulePackageRoots(result),
+      feature === "subagent" ? approvedSubagentPackages : [],
+      `${feature} bundled an unapproved package`,
+    )
   }
 })
 

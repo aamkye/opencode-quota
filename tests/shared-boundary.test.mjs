@@ -159,6 +159,21 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assert.match(subagent, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
 })
 
+test("SubAgent uses the public runtime LayoutEvents import", () => {
+  const subagentSource = parsedSource("tui/subagent.tsx")
+
+  assert.ok(
+    namedImportLocalName(subagentSource, "@opentui/core", "LayoutEvents"),
+    "tui/subagent.tsx must runtime named-import LayoutEvents from @opentui/core",
+  )
+})
+
+test("SubAgent does not declare a local LayoutEvents substitute", () => {
+  const subagent = source("tui/subagent.tsx")
+
+  assert.doesNotMatch(subagent, /\bconst\s+LayoutEvents\s*=/)
+})
+
 test("shared facade exports computation without plugin registration or JSX", () => {
   const shared = source(sharedPath)
   const sharedSource = parsedSource(sharedPath)

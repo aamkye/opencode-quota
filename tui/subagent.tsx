@@ -1,4 +1,4 @@
-import type { LayoutEvents as OpenTuiLayoutEvents, Renderable } from "@opentui/core"
+import { LayoutEvents, type Renderable } from "@opentui/core"
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
 import type { JSX } from "solid-js"
 import stringWidth from "string-width"
@@ -26,9 +26,6 @@ const PANEL_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.panel-collapsed"
 const REST_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.rest-collapsed"
 const EXPANDED_CHILD_KEY = "aamkye.opencode-tools-subagent.expanded-child"
 export const subagentRuntimeTestKey = Symbol("subagent-runtime-test")
-const LayoutEvents = {
-  RESIZED: "resized" as OpenTuiLayoutEvents.RESIZED,
-}
 
 type SubagentSourceFactory = (dependencies: SubagentSourceDependencies) => SubagentSource
 type SubagentRuntime = {
