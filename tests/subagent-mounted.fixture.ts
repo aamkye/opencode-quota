@@ -250,6 +250,7 @@ export async function mountSubagentPanel(options: {
   let currentParentID = options.parentID ?? ""
   let currentTitles: string[] = []
   let mountedWidth = 36
+  let sizeChangeCallCount = 0
 
   const scheduler = {
     setTimer(callback: () => void, delay: number) {
@@ -379,7 +380,6 @@ export async function mountSubagentPanel(options: {
   }) as never, root)
   const mountedPanels = new Map<HostNode, HostNode>()
   const disposedPanels = new Set<HostNode>()
-  const measuredTitleNodes = new Set<HostNode>()
 
   function currentPanel(): HostNode | undefined {
     const title = textNodes(root).find((node) => textOf(node) === "SubAgent")
@@ -399,7 +399,7 @@ export async function mountSubagentPanel(options: {
     trackPanelLifecycle()
     let resized = false
     const panel = currentPanel()
-    if (panel) {
+    if (panel && !panel.removed) {
       for (const row of descendants(panel)) {
         const texts = directTexts(row)
         if (row.type !== "box"
@@ -410,11 +410,12 @@ export async function mountSubagentPanel(options: {
         const layout = rowLayout(row, mountedWidth)
         const titleRegion = layout.cells[1]
         if (!titleRegion) continue
-        measuredTitleNodes.add(titleRegion)
         const width = layout.childWidths[1] ?? 0
         if (titleRegion.width === width) continue
         titleRegion.width = width
-        titleRegion.emit("resized")
+        if (typeof titleRegion.props.onSizeChange !== "function") continue
+        titleRegion.props.onSizeChange.call(titleRegion)
+        sizeChangeCallCount += 1
         resized = true
       }
     }
@@ -617,11 +618,7 @@ export async function mountSubagentPanel(options: {
       mountedWidth = width
       await flushHost()
     },
-    totalResizeListeners() {
-      let count = 0
-      for (const node of measuredTitleNodes) count += node.listenerCount("resized")
-      return count
-    },
+    sizeChangeCalls: () => sizeChangeCallCount,
     view,
     async dispose() {
       disposeHost()

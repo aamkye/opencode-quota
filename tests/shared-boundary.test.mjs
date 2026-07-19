@@ -50,6 +50,21 @@ function namedImportLocalName(sourceFile, moduleSpecifier, importName) {
   }
 }
 
+function typeOnlyNamedImportLocalName(sourceFile, moduleSpecifier, importName) {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)
+      || !ts.isStringLiteral(statement.moduleSpecifier)
+      || statement.moduleSpecifier.text !== moduleSpecifier
+      || !statement.importClause?.isTypeOnly
+      || !ts.isNamedImports(statement.importClause.namedBindings)) continue
+
+    const specifier = statement.importClause.namedBindings.elements.find((element) =>
+      (element.propertyName?.text ?? element.name.text) === importName
+    )
+    if (specifier) return specifier.name.text
+  }
+}
+
 function callsIdentifier(sourceFile, name) {
   let found = false
   function visit(node) {
@@ -159,19 +174,17 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assert.match(subagent, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
 })
 
-test("SubAgent uses the public runtime LayoutEvents import", () => {
+test("SubAgent uses intrinsic onSizeChange with a type-only Renderable import", () => {
+  const subagent = source("tui/subagent.tsx")
   const subagentSource = parsedSource("tui/subagent.tsx")
 
   assert.ok(
-    namedImportLocalName(subagentSource, "@opentui/core", "LayoutEvents"),
-    "tui/subagent.tsx must runtime named-import LayoutEvents from @opentui/core",
+    typeOnlyNamedImportLocalName(subagentSource, "@opentui/core", "Renderable"),
+    "tui/subagent.tsx must type-only import Renderable from @opentui/core",
   )
-})
-
-test("SubAgent does not declare a local LayoutEvents substitute", () => {
-  const subagent = source("tui/subagent.tsx")
-
-  assert.doesNotMatch(subagent, /\bconst\s+LayoutEvents\s*=/)
+  assert.match(subagent, /\bonSizeChange\s*=/)
+  assert.equal(namedImportLocalName(subagentSource, "@opentui/core", "LayoutEvents"), undefined)
+  assert.doesNotMatch(subagent, /\bLayoutEvents\b/)
 })
 
 test("shared facade exports computation without plugin registration or JSX", () => {

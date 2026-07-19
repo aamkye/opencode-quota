@@ -352,9 +352,11 @@ test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells
       assert.equal(row.titleProps.truncate, undefined)
       for (const line of view.lines) assert.equal(line.trimEnd(), line)
     }
-    assert.equal(mounted.totalResizeListeners(), mounted.view().entryRows.length)
+    const callbackCalls = mounted.sizeChangeCalls()
+    assert.ok(callbackCalls >= mounted.view().entryRows.length)
     await mounted.view().clickHeader()
-    assert.equal(mounted.totalResizeListeners(), 0)
+    await mounted.resize(34)
+    assert.equal(mounted.sizeChangeCalls(), callbackCalls)
   } finally {
     await mounted.dispose()
   }
@@ -660,10 +662,12 @@ test("collapse parent switch completion and disposal stop the clock", async () =
 
   const disposed = await mountSubagentPanel({ parentID: "parent-a" })
   await disposed.resolveReady()
+  const callbackCalls = disposed.sizeChangeCalls()
   await disposed.dispose()
+  await disposed.resize(34)
   assert.equal(disposed.intervalClears(), 1)
   assert.deepEqual(disposed.activeIntervalDelays(), [])
-  assert.equal(disposed.totalResizeListeners(), 0)
+  assert.equal(disposed.sizeChangeCalls(), callbackCalls)
 })
 
 test("documents the corrected SubAgent visual behavior", () => {

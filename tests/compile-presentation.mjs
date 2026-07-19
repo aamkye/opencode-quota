@@ -58,7 +58,6 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
     ".tmp-test/subagent-mounted.mjs",
     ["browser"],
     [openTuiSolidPlugin],
-    ["@opentui/core"],
   ],
   ["tui/providers/zai.ts", ".tmp-test/provider-zai.mjs", ["browser"]],
   ["tui/providers/openai.ts", ".tmp-test/provider-openai.mjs", ["browser"]],
@@ -91,7 +90,7 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
   ["tui/home.tsx", ".tmp-test/plugin-adapters-home-fixture.mjs", ["browser"]],
   ["tui/token-report.tsx", ".tmp-test/plugin-adapters-token-fixture.mjs", ["browser"], undefined, ["solid-js"]],
   ["tui/mcp.tsx", ".tmp-test/plugin-adapters-mcp-fixture.mjs", ["browser"]],
-  ["tui/subagent.tsx", ".tmp-test/plugin-adapters-subagent-fixture.mjs", ["browser"], [openTuiSolidPlugin], ["@opentui/core"]],
+  ["tui/subagent.tsx", ".tmp-test/plugin-adapters-subagent-fixture.mjs", ["browser"], [openTuiSolidPlugin]],
   ["tui/runtime/plugin.ts", ".tmp-test/plugin-runtime.mjs"],
 ]) {
   await build({

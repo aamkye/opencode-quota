@@ -1,4 +1,4 @@
-import { LayoutEvents, type Renderable } from "@opentui/core"
+import type { Renderable } from "@opentui/core"
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
 import type { JSX } from "solid-js"
 import stringWidth from "string-width"
@@ -89,21 +89,16 @@ function truncateTerminalCellsEnd(value: string, maxCells: number): string {
 }
 
 function MeasuredTitle(props: MeasuredTitleProps): JSX.Element {
-  let titleRegion: Renderable | undefined
   const [measuredCells, setMeasuredCells] = createSignal(0)
-  const measure = () => setMeasuredCells(titleRegion?.width ?? 0)
-  const bindTitleRegion = (renderable: Renderable) => {
-    if (titleRegion === renderable) return
-    titleRegion?.off(LayoutEvents.RESIZED, measure)
-    titleRegion = renderable
-    titleRegion.on(LayoutEvents.RESIZED, measure)
-    measure()
+  const measure = (renderable: Renderable) => setMeasuredCells(renderable.width)
+  const handleSizeChange = function (this: Renderable) {
+    measure(this)
   }
-  onCleanup(() => titleRegion?.off(LayoutEvents.RESIZED, measure))
 
   return (
     <text
-      ref={bindTitleRegion}
+      ref={measure}
+      onSizeChange={handleSizeChange}
       flexBasis={0}
       flexGrow={1}
       flexShrink={1}
