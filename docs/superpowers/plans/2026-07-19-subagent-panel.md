@@ -32,7 +32,7 @@ base-ref: 5a0b6c3
 - Do not edit `AGENTS.md`, OpenSpec artifacts, or Comet state during implementation. Its current full-file SHA-256 is `488214c49e9b83b6770e1e0e03746ec5bd0c11daf9ea268545568e55bb223387`.
 - Use strict TDD for Tasks 1-7, Task 9, and Task 10: add the specified test first, run the exact RED command and confirm the stated failure, then edit production code and run the focused GREEN command. Tasks 1-9 remain completed and must not be reopened.
 - Task 9 is a visual-contract correction only. Preserve every existing source, lifecycle, navigation, persistence, status derivation, clock, stale-state, manifest, deployment, and integration behavior.
-- Task 10 supersedes Task 9's ref/callback measurement mechanism after live OpenCode showed that `onSizeChange`, child `resize`, and render-phase hooks cannot supply a useful width in this sidebar host. It must use the existing pure 37-cell allocation as an explicit shrinkable title basis without changing the approved visual contract.
+- Task 10 supersedes Task 9's ref/callback measurement mechanism after live OpenCode showed that `onSizeChange`, child `resize`, and render-phase hooks cannot supply a useful width in this sidebar host. It must follow the existing `CompactStatusRow` flexible-left/fixed-right pattern: `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, and `minWidth={0}` for the title beside fixed disclosure, gap, and duration siblings. This yields 28 title cells at width 37 and 27 at scrollbar-reduced width 36 without changing the approved visual contract.
 - Stage exact paths in each suggested commit. In particular, do not stage the accepted `README.md` or `plugin-manifest.json` changes before Task 7.
 
 ## File Map
@@ -1197,9 +1197,9 @@ Expected staged paths are exactly the twelve paths listed above. Then, only when
 git commit -m "fix(subagent): correct panel visual contract"
 ```
 
-### Task 10: Restore Initial Titles in Live OpenTUI
+### Task 10: Responsive SubAgent Titles in Live OpenTUI
 
-**OpenSpec mapping:** 7.1, 7.2; corrective acceptance for the initial title measurement and scrollbar scenarios. This task supersedes every failed Task 9/10 measurement hook.
+**OpenSpec mapping:** 7.1, 7.2; corrective acceptance for initial title rendering and scrollbar scenarios. This task supersedes every failed Task 9/10 measurement hook and fixed title-width basis.
 
 **Files:**
 - Modify: `tui/subagent.tsx`
@@ -1209,14 +1209,14 @@ git commit -m "fix(subagent): correct panel visual contract"
 - Modify: `tests/shared-boundary.test.mjs`
 
 **Interfaces:**
-- `MeasuredTitle` accepts its allocated title cells and directly renders `truncateTerminalCellsEnd(value, cells)` inside a `<text width={cells} flexShrink={1} minWidth={0} truncate={true}>` region.
-- `SubagentRow` calls `allocateSubagentEntryRow(37, stringWidth(entry.duration))` and uses the allocation's title, gap, and duration values as explicit sibling widths.
+- `MeasuredTitle` directly renders a grapheme-safe end-truncated title inside the sole flexible `<text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0} truncate={true}>` region.
+- `SubagentRow` calls `allocateSubagentEntryRow(37, stringWidth(entry.duration))` for the fixed disclosure, gap, and duration reservations. The title has no explicit width: flex assigns 28 cells at row width 37 and 27 when the scrollbar reduces the content row to 36.
 - Remove every title `ref`, `onSizeChange`, `renderBefore`, child event listener, `LayoutEvents`, and root-only `"resized"` use. The mounted fixture has no title lifecycle simulation.
-- Preserve direct `string-width` 7.2.0, grapheme-safe end truncation, all 37/36/35-cell expectations, fixed title/time gap, status colors, Rest treatment, detail clipping, source behavior, and build dependency policy.
+- Preserve direct `string-width` 7.2.0, grapheme-safe end truncation, 37/36-cell responsive title expectations, fixed title/time gap, status colors, Rest treatment, detail clipping, source behavior, and build dependency policy.
 
 - [ ] **Step 1: Add the failing real-event regression**
 
-Change the mounted host and source-boundary tests before production. Remove all title lifecycle simulation. Assert that the model-derived 37-cell allocation creates explicit sibling title/gap/duration widths, the title renders one end ellipsis at that allocation, and 36/35-cell fixture layout shrinks only the title while preserving a one-cell gap and full duration. Require direct allocation and native `truncate`, and reject `ref`, `onSizeChange`, `renderBefore`, child `resize` registration, `LayoutEvents`, and `"resized"` in `tui/subagent.tsx`.
+Change the mounted host and source-boundary tests before production. Assert that the title flex region receives 28 cells at row width 37 and 27 at scrollbar-reduced width 36, while the fixed gap and duration stay intact. Require `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, direct allocation for fixed siblings, and native `truncate`; reject `width` on the title plus `ref`, `onSizeChange`, `renderBefore`, child `resize` registration, `LayoutEvents`, and `"resized"` in `tui/subagent.tsx`.
 
 - [ ] **Step 2: Run and retain the focused RED**
 
@@ -1228,9 +1228,9 @@ node tests/compile-presentation.mjs && node --test \
   tests/shared-boundary.test.mjs
 ```
 
-Expected RED at `b1f9dcb`: source-boundary assertions reject the render hook and mounted narrow layouts demonstrate that the title consumes the dedicated gap before timing. Compilation must complete before the behavioral assertions fail.
+Expected RED at `ed05290`: source-boundary assertions reject the fixed title width and mounted scrollbar-reduced layout demonstrates the final duration cell is clipped. Compilation must complete before the behavioral assertions fail.
 
-- [ ] **Step 3: Implement the minimal listener correction**
+- [ ] **Step 3: Implement the responsive flex correction**
 
 Use the pure allocation directly:
 
@@ -1238,7 +1238,7 @@ Use the pure allocation directly:
 const allocation = () => allocateSubagentEntryRow(37, stringWidth(props.entry.duration))
 ```
 
-Pass `width={allocation().title}`, `flexShrink={1}`, `minWidth={0}`, `overflow="hidden"`, `wrapMode="none"`, and `truncate={true}` to the title `<text>`, with direct end-truncated content. Use `allocation().beforeDurationGap` and `allocation().duration` as the gap and duration widths. Do not change other rendering or source behavior.
+Pass `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, `overflow="hidden"`, `wrapMode="none"`, and `truncate={true}` to the title `<text>`, with direct end-truncated content. Use the allocation only for disclosure, `beforeDurationGap`, and duration widths. Do not change other rendering or source behavior.
 
 - [ ] **Step 4: Run automated GREEN gates and commit**
 
@@ -1270,4 +1270,4 @@ Run `npm run deploy:local`, restart or reload OpenCode, and confirm every visibl
 
 ## Planning Concern
 
-Task 10 exists because live OpenCode disproved every dynamic title-measurement path: `onSizeChange`, a ref-bound child `resize` listener, and `renderBefore` all left either blank or unbounded title text. The binding architecture uses the already-tested pure allocator as the explicit title basis. It preserves the separate gap and duration independently of host callback timing, with native truncation as a safety net only under narrower viewport pressure. The worktree also contains coordinator-owned Comet state and progress files; they remain outside Task 10 staging. Exact-path staging is mandatory, Tasks 1-9 stay completed, and no unrelated source belongs in the Task 10 commit.
+Task 10 exists because live OpenCode disproved every dynamic title-measurement path: `onSizeChange`, a ref-bound child `resize` listener, and `renderBefore` all left either blank or unbounded title text. It also proved that a fixed 28-cell title basis allows the scrollbar to overlay the final duration cell. The binding architecture now matches `CompactStatusRow`: a zero-basis growing/shrinking title beside fixed disclosure, gap, and duration siblings. The host flex layout selects 28 cells without a scrollbar and 27 with one, without callbacks or scrollbar state. The worktree also contains coordinator-owned Comet state and progress files; they remain outside Task 10 staging. Exact-path staging is mandatory, Tasks 1-9 stay completed, and no unrelated source belongs in the Task 10 commit.

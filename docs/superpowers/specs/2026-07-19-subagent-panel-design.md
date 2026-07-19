@@ -8,7 +8,7 @@ canonical_spec: openspec
 
 ## Scope
 
-Add a standalone `subagent` TUI plugin that monitors direct child sessions of the viewed session. The plugin shows the newest five children in its primary group, places older children under an independently collapsible Rest group, reconstructs status and identity after remount, preserves terminal failures, and opens a selected child through the built-in session route. Entry rows omit status bullets, color time by status, and use an explicit shrinkable title-cell basis so titles cannot consume the required gap or duration.
+Add a standalone `subagent` TUI plugin that monitors direct child sessions of the viewed session. The plugin shows the newest five children in its primary group, places older children under an independently collapsible Rest group, reconstructs status and identity after remount, preserves terminal failures, and opens a selected child through the built-in session route. Entry rows omit status bullets, color time by status, and use a flexible title region so titles cannot consume the required gap or duration.
 
 The OpenSpec delta at `openspec/changes/add-subagent-panel/specs/subagent-panel/spec.md` defines user-visible behavior. `AGENTS.md` defines the canonical 37-cell layouts. This document defines module boundaries, snapshot and event flow, status derivation, persistence, rendering, cleanup, and tests.
 
@@ -345,7 +345,7 @@ Each entry row is a full-width horizontal box with these regions:
 disclosure + flexible title + gap + duration
 ```
 
-The disclosure renders `▶ ` or `▼ `. Entry rows have no status bullet. The title uses the pure `allocateSubagentEntryRow(37, durationCells)` result as its explicit width, `flexShrink={1}`, and `minWidth={0}`. Its direct `string-width` end-truncated value preserves the designated one-cell gap and duration. OpenTUI native `truncate={true}` is retained only when the host narrows the explicit basis further, preventing a title from painting into the gap or duration. Declare the already-installed `string-width` package directly to measure terminal cells. The duration includes its leading one-cell gap in the fixed region, stays at the right edge, and uses the entry status color: success, warning, or error.
+The disclosure renders `▶ ` or `▼ `. Entry rows have no status bullet. Match `CompactStatusRow`: the title uses `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, and `minWidth={0}`, while the allocation reserves only disclosure, one gap cell, and the full duration at the right edge. The flex engine therefore assigns 28 title cells in a 37-cell row and 27 when the host scrollbar reduces the content row to 36 cells, without lifecycle measurement or scrollbar detection. Its direct `string-width` end-truncated value and native `truncate={true}` prevent title painting from entering the fixed region. Declare the already-installed `string-width` package directly to measure terminal cells. The duration uses the entry status color: success, warning, or error.
 
 Update the pure allocation helper for disclosure, title, gap, and duration at 37 cells and narrower. Do not build padded rows in the component.
 
@@ -427,7 +427,7 @@ Inject loader, timer, event, and failure-store dependencies. Cover immediate ini
 
 ### Mounted Panel Tests
 
-Assert every AGENTS layout: expanded, one detail, expanded Rest, semi-collapsed Rest, collapsed counts, stale expanded, and stale collapsed. Also cover no output for loading/unavailable, `No subagents`, exact row order, status-colored compact/detail time, end ellipsis, a fixed title basis at 37 cells, a shrinkable 36/35-cell safety path that preserves the one-cell gap and full duration, muted Rest treatment, spaced divider segments, no trailing whitespace, parent-scoped persistence, one-entry expansion, invalid ID cleanup, hidden Rest details, conditional clock start/stop/disposal, and route navigation.
+Assert every AGENTS layout: expanded, one detail, expanded Rest, semi-collapsed Rest, collapsed counts, stale expanded, and stale collapsed. Also cover no output for loading/unavailable, `No subagents`, exact row order, status-colored compact/detail time, end ellipsis, a flexible title region that receives 28 cells at width 37 and 27 at scrollbar-reduced width 36 while preserving the one-cell gap and full duration, muted Rest treatment, spaced divider segments, no trailing whitespace, parent-scoped persistence, one-entry expansion, invalid ID cleanup, hidden Rest details, conditional clock start/stop/disposal, and route navigation.
 
 ### Type And Integration Tests
 
