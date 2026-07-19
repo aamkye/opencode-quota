@@ -310,12 +310,29 @@ LSPs will activate as files are read | 6. should be grayed out
 ------------------------------------ |
 ```
 
-### Session tokens
+### SesTokens
 
 #### Extended
 
 ```
-▼ Session tokens                     | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+▼ SesTokens                          | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+↻ turns                           97 |
+↑ in                            4.4M |
+↓ out                          18.6K |
+▤ cache write                      0 |
+▤ cache read                   24.7M |
+ø cache hit ratio               5.6× |
+✦ think                         2.8K |
+---                              --- |
+Σ total                        29.1M |
+------------------------------------ |
+```
+
+or
+
+```
+▼ SesTokens                    stale | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer; 6. `stale` should be yellow
 ------------------------------------ |
 ↻ turns                           97 |
 ↑ in                            4.4M |
@@ -332,6 +349,13 @@ LSPs will activate as files are read | 6. should be grayed out
 #### Collapsed
 
 ```
-▶ Session tokens      Σ 29.1M / ↻ 97 | 1. plain name; 2. sum of used tokens; 3. number of turns; 4. no percent; 5. no reset time; 6. no spacer
+▶ SesTokens           Σ 29.1M / ↻ 97 | 1. plain name; 2. sum of used tokens; 3. number of turns; 4. no percent; 5. no reset time; 6. no spacer
+------------------------------------ |
+```
+
+or
+
+```
+▶ SesTokens     stale Σ 29.1M / ↻ 97 | 1. plain name; 2. sum of used tokens; 3. number of turns; 4. no percent; 5. no reset time; 6. no spacer; 7. `stale` should be yellow
 ------------------------------------ |
 ```
