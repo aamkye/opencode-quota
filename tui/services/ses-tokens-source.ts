@@ -55,7 +55,13 @@ export function createSesTokensSource({
   const retryTimers = new Set<unknown>()
 
   function notify(): void {
-    for (const listener of listeners) listener()
+    for (const listener of listeners) {
+      try {
+        listener()
+      } catch {
+        // Subscriber failures must not alter source state or retry behavior.
+      }
+    }
   }
 
   function clearRetryTimers(): void {

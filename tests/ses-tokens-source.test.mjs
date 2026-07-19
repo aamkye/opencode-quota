@@ -129,6 +129,26 @@ test("loads a non-empty initial target immediately and skips an empty target", a
   source.dispose()
 })
 
+test("isolates throwing subscribers from initial loading and successful publication", async () => {
+  const complete = snapshot("root", "child")
+  const calls = []
+  const { scheduler, source } = createHarness(async (sessionID) => {
+    calls.push(sessionID)
+    return complete
+  })
+  source.subscribe(() => {
+    throw new Error("subscriber failed")
+  })
+
+  assert.doesNotThrow(() => source.setSessionID("root"))
+  assert.deepEqual(calls, ["root"])
+  await settle()
+
+  assert.deepEqual(source.state(), { phase: "ready", sessionID: "root", snapshot: complete })
+  assert.deepEqual(scheduler.pendingDelays(), [])
+  source.dispose()
+})
+
 test("coalesces relevant message events into one 200 ms refresh", async () => {
   const first = snapshot("root", "child")
   const second = snapshot("root", "child")
@@ -185,9 +205,12 @@ test("refreshes for created updated and deleted descendant topology", async () =
   await settle()
 
   for (const event of [
+    { type: "session.created", properties: { sessionID: "outside", info: { id: "child", parentID: "other" } } },
+    { type: "session.created", properties: { sessionID: "root", info: { id: "new", parentID: "other" } } },
     { type: "session.created", properties: { sessionID: "new", info: { id: "new", parentID: "child" } } },
     { type: "session.updated", properties: { sessionID: "outside", info: { id: "child", parentID: "other" } } },
     { type: "session.updated", properties: { sessionID: "root", info: { id: "outside", parentID: "other" } } },
+    { type: "session.updated", properties: { sessionID: "outside", info: { id: "outside", parentID: "child" } } },
     { type: "session.deleted", properties: { sessionID: "child", info: { id: "child" } } },
   ]) {
     events.emit(event)
@@ -195,7 +218,7 @@ test("refreshes for created updated and deleted descendant topology", async () =
     await scheduler.runNext(200)
   }
 
-  assert.equal(calls.length, 5)
+  assert.equal(calls.length, 8)
   assert.deepEqual(source.state(), { phase: "ready", sessionID: "root", snapshot: complete })
   source.dispose()
 })
