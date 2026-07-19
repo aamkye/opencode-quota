@@ -89,21 +89,15 @@ function truncateTerminalCellsEnd(value: string, maxCells: number): string {
 }
 
 function MeasuredTitle(props: MeasuredTitleProps): JSX.Element {
-  let titleRegion: Renderable | undefined
-  const [measuredCells, setMeasuredCells] = createSignal(0)
-  const measure = () => setMeasuredCells(titleRegion?.width ?? 0)
-  const bindTitleRegion = (renderable: Renderable) => {
-    if (titleRegion === renderable) return
-    titleRegion?.off("resize", measure)
-    titleRegion = renderable
-    titleRegion.on("resize", measure)
-    measure()
+  const [measuredCells, setMeasuredCells] = createSignal<number>()
+  const measureBeforeRender = function (this: Renderable) {
+    const width = this.width
+    if (measuredCells() !== width) setMeasuredCells(width)
   }
-  onCleanup(() => titleRegion?.off("resize", measure))
 
   return (
     <text
-      ref={bindTitleRegion}
+      renderBefore={measureBeforeRender}
       flexBasis={0}
       flexGrow={1}
       flexShrink={1}
@@ -111,7 +105,9 @@ function MeasuredTitle(props: MeasuredTitleProps): JSX.Element {
       overflow="hidden"
       wrapMode="none"
     >
-      {truncateTerminalCellsEnd(props.value, measuredCells())}
+      {measuredCells() === undefined
+        ? props.value
+        : truncateTerminalCellsEnd(props.value, measuredCells()!)}
     </text>
   )
 }

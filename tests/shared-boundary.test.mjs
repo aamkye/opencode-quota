@@ -174,7 +174,7 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assert.match(subagent, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
 })
 
-test("SubAgent binds the child resize event with a type-only Renderable import", () => {
+test("SubAgent renders raw titles before stable render-phase measurement", () => {
   const subagent = source("tui/subagent.tsx")
   const subagentSource = parsedSource("tui/subagent.tsx")
 
@@ -182,11 +182,15 @@ test("SubAgent binds the child resize event with a type-only Renderable import",
     typeOnlyNamedImportLocalName(subagentSource, "@opentui/core", "Renderable"),
     "tui/subagent.tsx must type-only import Renderable from @opentui/core",
   )
-  assert.match(subagent, /\bref\s*=\s*\{\s*bindTitleRegion\s*\}/)
-  assert.match(subagent, /\bif\s*\(\s*titleRegion\s*===\s*renderable\s*\)\s*return/)
-  assert.match(subagent, /\btitleRegion\?\.off\(\s*["']resize["']\s*,\s*measure\s*\)/)
-  assert.match(subagent, /\btitleRegion\.on\(\s*["']resize["']\s*,\s*measure\s*\)[\s\S]{0,80}\bmeasure\(\)/)
+  assert.match(subagent, /\brenderBefore\s*=\s*\{\s*measureBeforeRender\s*\}/)
+  assert.match(subagent, /createSignal<number>\(\)/)
+  assert.match(subagent, /const\s+measureBeforeRender\s*=\s*function\s*\(\s*this:\s*Renderable\s*\)/)
+  assert.match(subagent, /const\s+width\s*=\s*this\.width/)
+  assert.match(subagent, /if\s*\(\s*measuredCells\(\)\s*!==\s*width\s*\)\s*setMeasuredCells\(width\)/)
+  assert.match(subagent, /measuredCells\(\)\s*===\s*undefined\s*\?\s*props\.value/)
+  assert.doesNotMatch(subagent, /\bref\s*=/)
   assert.doesNotMatch(subagent, /\bonSizeChange\b/)
+  assert.doesNotMatch(subagent, /["']resize["']/)
   assert.equal(namedImportLocalName(subagentSource, "@opentui/core", "LayoutEvents"), undefined)
   assert.doesNotMatch(subagent, /\bLayoutEvents\b/)
   assert.doesNotMatch(subagent, /["']resized["']/)

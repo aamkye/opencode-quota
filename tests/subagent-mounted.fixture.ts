@@ -264,6 +264,8 @@ export async function mountSubagentPanel(options: {
   let currentParentID = options.parentID ?? ""
   let currentTitles: string[] = []
   let mountedWidth = 36
+  let renderBeforeCallCount = 0
+  let titleTextBeforeRenderHook: string[] = []
 
   const scheduler = {
     setTimer(callback: () => void, delay: number) {
@@ -393,7 +395,6 @@ export async function mountSubagentPanel(options: {
   }) as never, root)
   const mountedPanels = new Map<HostNode, HostNode>()
   const disposedPanels = new Set<HostNode>()
-  const titleRegions = new Set<HostNode>()
 
   function currentPanel(): HostNode | undefined {
     const title = textNodes(root).find((node) => textOf(node) === "SubAgent")
@@ -411,12 +412,13 @@ export async function mountSubagentPanel(options: {
   async function flushHost() {
     await settle()
     trackPanelLifecycle()
-    let resized = false
+    const currentTitleRegions: Array<{ node: HostNode; width: number }> = []
     const panel = currentPanel()
     if (panel && !panel.removed) {
       for (const row of descendants(panel)) {
         const texts = directTexts(row)
-        if (row.type !== "box"
+        if (row === panel.children[0]
+          || row.type !== "box"
           || row.props.flexDirection !== "row"
           || typeof row.props.onMouseDown !== "function"
           || !["▶ ", "▼ "].includes(texts[0])
@@ -424,15 +426,20 @@ export async function mountSubagentPanel(options: {
         const layout = rowLayout(row, mountedWidth)
         const titleRegion = layout.cells[1]
         if (!titleRegion) continue
-        titleRegions.add(titleRegion)
-        const width = layout.childWidths[1] ?? 0
-        if (titleRegion.width === width) continue
-        titleRegion.width = width
-        titleRegion.emit("resize")
-        resized = true
+        currentTitleRegions.push({ node: titleRegion, width: layout.childWidths[1] ?? 0 })
       }
     }
-    if (resized) await settle()
+    titleTextBeforeRenderHook = currentTitleRegions.map(({ node }) => textOf(node))
+    let measurementChanged = false
+    for (const { node, width } of currentTitleRegions) {
+      const renderBefore = node.props.renderBefore
+      if (typeof renderBefore !== "function") continue
+      measurementChanged ||= node.width !== width
+      node.width = width
+      renderBeforeCallCount += 1
+      renderBefore.call(node)
+    }
+    if (measurementChanged) await settle()
   }
 
   await flushHost()
@@ -575,8 +582,8 @@ export async function mountSubagentPanel(options: {
     activeIntervalDelays: () => intervals.filter((interval) => !interval.cancelled).map((interval) => interval.delay),
     intervalStarts: () => intervals.length,
     intervalClears: () => intervalClearCount,
-    resizeListenerCount: () => [...titleRegions]
-      .reduce((total, titleRegion) => total + titleRegion.listenerCount("resize"), 0),
+    renderBeforeCalls: () => renderBeforeCallCount,
+    titleTextBeforeRenderHook: () => [...titleTextBeforeRenderHook],
     setNow(value: number) {
       currentNow = value
     },

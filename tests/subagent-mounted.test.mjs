@@ -386,10 +386,12 @@ test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells
   try {
     await mounted.resolveReady()
     const initialView = mounted.view()
+    assert.deepEqual(mounted.titleTextBeforeRenderHook(), canonicalChildren.map((entry) => entry.session.title))
+    assert.equal(mounted.renderBeforeCalls(), initialView.entryRows.length)
     assert.deepEqual(initialView.lines, expandedLayout)
     assert.equal(initialView.entryRows[0].renderedTitle, "SubAgent11 with super long…")
     assert.ok(initialView.entryRows.every((row) => row.renderedTitle.length > 0))
-    assert.equal(mounted.resizeListenerCount(), initialView.entryRows.length)
+    let expectedRenderBeforeCalls = initialView.entryRows.length
     for (const [width, expectedTitle] of [
       [37, "SubAgent11 with super long…"],
       [36, "SubAgent11 with super long…"],
@@ -409,13 +411,14 @@ test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells
       assert.equal(row.rowWidth, width)
       assert.equal(row.childWidths.reduce((total, cells) => total + cells, 0), width)
       assert.equal(row.titleProps.truncate, undefined)
-      assert.equal(mounted.resizeListenerCount(), view.entryRows.length)
+      expectedRenderBeforeCalls += view.entryRows.length
+      assert.equal(mounted.renderBeforeCalls(), expectedRenderBeforeCalls)
       for (const line of view.lines) assert.equal(line.trimEnd(), line)
     }
     await mounted.view().clickHeader()
-    assert.equal(mounted.resizeListenerCount(), 0)
+    assert.equal(mounted.renderBeforeCalls(), expectedRenderBeforeCalls)
     await mounted.resize(34)
-    assert.equal(mounted.resizeListenerCount(), 0)
+    assert.equal(mounted.renderBeforeCalls(), expectedRenderBeforeCalls)
   } finally {
     await mounted.dispose()
   }
@@ -721,12 +724,13 @@ test("collapse parent switch completion and disposal stop the clock", async () =
 
   const disposed = await mountSubagentPanel({ parentID: "parent-a" })
   await disposed.resolveReady()
-  assert.equal(disposed.resizeListenerCount(), disposed.view().entryRows.length)
+  const renderBeforeCalls = disposed.renderBeforeCalls()
+  assert.equal(renderBeforeCalls, disposed.view().entryRows.length)
   await disposed.dispose()
   await disposed.resize(34)
   assert.equal(disposed.intervalClears(), 1)
   assert.deepEqual(disposed.activeIntervalDelays(), [])
-  assert.equal(disposed.resizeListenerCount(), 0)
+  assert.equal(disposed.renderBeforeCalls(), renderBeforeCalls)
 })
 
 test("documents the corrected SubAgent visual behavior", () => {
