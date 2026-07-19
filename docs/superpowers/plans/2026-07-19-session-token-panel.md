@@ -604,7 +604,7 @@ git commit -m "feat: declare session token TUI APIs"
 - Consumes: existing `CompactPanelSummary`, `PanelTextSegment`, and `PanelTheme`.
 - Produces: backward-compatible `CompactPanelProps.detail?: CompactPanelSummary` rendered in expanded and collapsed headers.
 
-- [ ] **Step 1: Extend the fixture and add failing detail tests**
+- [x] **Step 1: Extend the fixture and add failing detail tests**
 
 Add `detail?: CompactPanelSummary` to the fixture options and pass it through to `CompactPanel`. Add tests that mount:
 
@@ -621,13 +621,13 @@ Assert all of the following:
 - Narrow allocation: title remains `flexBasis={0}`, `flexGrow={1}`, and `minWidth={0}`; detail, separator, and summary do not shrink.
 - Regression: the existing no-detail collapsed element text/color sequence and both existing divider tests remain byte-for-byte unchanged.
 
-- [ ] **Step 2: Run the CompactPanel suite to verify RED**
+- [x] **Step 2: Run the CompactPanel suite to verify RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/compact-panel-mounted.test.mjs`
 
 Expected: FAIL because fixture options/`CompactPanelProps` reject `detail`, or because no detail nodes render.
 
-- [ ] **Step 3: Implement one reusable summary renderer and optional detail**
+- [x] **Step 3: Implement one reusable summary renderer and optional detail**
 
 Add `detail?: CompactPanelSummary` to `CompactPanelProps`. Extract the existing segment-or-text branch into a local `CompactSummary` component receiving `value` and `theme`. Render in this order inside the header:
 
@@ -643,13 +643,13 @@ Add `detail?: CompactPanelSummary` to `CompactPanelProps`. Extract the existing 
 
 The summary wrapper and text nodes must use `flexShrink={0}`. Existing callers omit `detail`, so the separator condition stays false and their structure remains unchanged apart from the title's explicit shrink/min-width safeguards.
 
-- [ ] **Step 4: Run CompactPanel and existing mounted suites to verify GREEN/no regression**
+- [x] **Step 4: Run CompactPanel and existing mounted suites to verify GREEN/no regression**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/compact-panel-mounted.test.mjs tests/mcp-mounted.test.mjs tests/context-mounted.test.mjs tests/lsp-mounted.test.mjs tests/todo-mounted.test.mjs`
 
 Expected: PASS for new detail cases and all existing no-detail panels.
 
-- [ ] **Step 5: Commit the presentation primitive during implementation**
+- [x] **Step 5: Commit the presentation primitive during implementation**
 
 ```bash
 git add tui/presentation/compact-panel.tsx tests/compact-panel-mounted.fixture.ts tests/compact-panel-mounted.test.mjs

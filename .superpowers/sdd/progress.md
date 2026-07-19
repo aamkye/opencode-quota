@@ -81,3 +81,4 @@ add-session-token-panel Task 1: complete (commit c3fd6db plus checkoff commit 7a
 add-session-token-panel Task 2: complete (commit 4f5f44a, standard risk review approved; accepted Minor explicit out-of-order completion test gap)
 add-session-token-panel Task 3: complete (commits 641b8e2..58436ab, standard risk re-review approved after subscriber isolation fix)
 add-session-token-panel Task 4: complete (commits 409fbaa..83c3745, standard risk re-review approved after exact type-proof fix)
+add-session-token-panel Task 5: complete (commits 093ab1d..2a5703e, standard risk re-review approved after reactive summary-shape fix; accepted Minor exact host-count test note)

@@ -4,15 +4,15 @@
 - Plan: docs/superpowers/plans/2026-07-19-session-token-panel.md
 - Review mode: standard
 - TDD mode: tdd
-- Current task: Task 4: Local OpenCode TUI API Declarations
-- Mapped OpenSpec tasks: 2.3 Extend local OpenCode TUI API declarations and compile fixtures for the session, client, event, and state surface used by SesTokens
+- Current task: Task 5: Optional CompactPanel Header Detail
+- Mapped OpenSpec tasks: presentation support for 3.1 mounted AGENTS.md layouts and 3.2 standalone Solid panel
 - Stage: done
-- Implementation commit: 409fbaa plus fix 83c3745
-- Changed files: opencode-plugin-tui.d.ts; tests/ses-tokens-state-types.fixture.ts
-- RED evidence: `npm run typecheck` failed on missing `state.path`, `client.session.list`, and `client.session.messages`
-- GREEN evidence: exact assertion fixture `npm run typecheck` passed; `npm test` 337/337
+- Implementation commit: 093ab1d plus fix 2a5703e
+- Changed files: tui/presentation/compact-panel.tsx; tests/compact-panel-mounted.fixture.ts; tests/compact-panel-mounted.test.mjs
+- RED evidence: focused CompactPanel suite failed 2 new stale-detail tests with missing mounted output
+- GREEN evidence: reactive CompactPanel 7/7; mounted regressions 32/32; `npm run typecheck` passed; `npm test` 340/340
 - Risk review triggered: yes
-- Risk signals: public/external TUI API declaration interface; SDK shape compatibility concern
-- Review stages passed: initial standard risk review; one fixture-hardening fix round; re-review spec compliant and quality approved
-- Unresolved feedback: none; coordinator owns the non-blocking 2.3 checkoff note
+- Risk signals: shared presentation component; public CompactPanel prop interface; cross-plugin regression surface
+- Review stages passed: initial standard risk review; one reactive fix round; re-review spec compliant and quality approved
+- Unresolved feedback: accepted Minor exact stale-host count assertion hardening note for final review
 - Review-fix round: 1/1
