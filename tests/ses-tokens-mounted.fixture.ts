@@ -1,16 +1,17 @@
-import { createRoot } from "solid-js"
+import { createSignal } from "solid-js/dist/solid.js"
 
+import {
+  createComponent,
+  createHostNode,
+  render,
+  type HostNode,
+} from "./opentui-solid-host-runtime.fixture.js"
 import {
   createSesTokensSource,
   type SesTokensSourceDependencies,
 } from "../shared/opencode-tools-shared.js"
 import sesTokensPlugin, { sesTokensSourceTestKey } from "../tui/ses-tokens.js"
 
-type MountedElement = {
-  type: string | ((props: Record<string, unknown>) => unknown)
-  props: Record<string, unknown>
-}
-type MountedNode = { element: MountedElement; parent?: MountedNode }
 type ClientResult<Data> = { data?: Data; error?: unknown }
 type Timer = { callback: () => void; cancelled: boolean; delay: number }
 
@@ -66,50 +67,55 @@ export function oneMessage(sessionID: string, input: number) {
   })]
 }
 
-function isElement(value: unknown): value is MountedElement {
-  return typeof value === "object" && value !== null && "type" in value && "props" in value
+function descendants(root: HostNode): HostNode[] {
+  return [root, ...root.children.flatMap(descendants)]
 }
 
-function mount(value: unknown): unknown {
-  if (!isElement(value) || typeof value.type !== "function") return value
-  if (["For", "Show"].includes(value.type.name)) return value
-  return mount(value.type(value.props))
+function textOf(node: HostNode | undefined): string {
+  if (!node) return ""
+  if (node.type === "#text") return String(node.props.value ?? "")
+  return node.children.map(textOf).join("")
 }
 
-function expand(value: unknown, parent?: MountedNode): MountedNode[] {
-  if (typeof value === "function") return expand(value(), parent)
-  if (Array.isArray(value)) return value.flatMap((child) => expand(child, parent))
-  if (!isElement(value)) return []
-  if (typeof value.type === "string") {
-    const node = { element: value, parent }
-    return [node, ...expand(value.props.children, node)]
-  }
-  if (value.type.name === "For") {
-    const items = value.props.each as readonly unknown[]
-    const render = value.props.children as (item: unknown, index: () => number) => unknown
-    return items.flatMap((item, index) => expand(render(item, () => index), parent))
-  }
-  if (value.type.name === "Show") {
-    if (!value.props.when) return expand(value.props.fallback, parent)
-    const render = value.props.children
-    return expand(typeof render === "function" ? render(() => value.props.when) : render, parent)
-  }
-  return expand(value.type(value.props), parent)
+function mountedTextNodes(root: HostNode): HostNode[] {
+  return descendants(root).filter((node) => node.type === "text")
 }
 
-function descendantsOf(nodes: readonly MountedNode[], parent: MountedNode): MountedNode[] {
-  return nodes.filter((node) => {
-    let current = node.parent
-    while (current) {
-      if (current === parent) return true
-      current = current.parent
-    }
-    return false
+function cellWidth(text: string): number {
+  return [...text].length
+}
+
+function resolvedWidth(value: unknown, parentWidth: number): number {
+  if (typeof value === "number") return value
+  if (typeof value === "string" && value.endsWith("%")) {
+    return Math.floor(parentWidth * Number.parseFloat(value) / 100)
+  }
+  return 0
+}
+
+function rowLayout(row: HostNode, width: number) {
+  const rowWidth = resolvedWidth(row.props.width, width)
+  const cells = row.children.filter((child) => child.type !== "#text")
+  const fixedWidths = cells.map((cell) => {
+    const configured = resolvedWidth(cell.props.width, rowWidth)
+    if (configured > 0) return configured
+    return Number(cell.props.flexGrow ?? 0) > 0 ? undefined : cellWidth(textOf(cell))
   })
-}
-
-function textOf(node: MountedNode | undefined): string {
-  return typeof node?.element.props.children === "string" ? node.element.props.children : ""
+  const fixedTotal = fixedWidths.reduce<number>((total, childWidth) => total + (childWidth ?? 0), 0)
+  const growTotal = cells.reduce((total, cell, index) => (
+    total + (fixedWidths[index] === undefined ? Number(cell.props.flexGrow ?? 0) : 0)
+  ), 0)
+  const remaining = Math.max(0, rowWidth - fixedTotal)
+  const childWidths = cells.map((cell, index) => fixedWidths[index] ?? (
+    growTotal > 0 ? Math.floor(remaining * Number(cell.props.flexGrow ?? 0) / growTotal) : 0
+  ))
+  const renderedText = cells.map((cell, index) => {
+    const text = textOf(cell)
+    const allocated = childWidths[index]
+    if (cellWidth(text) >= allocated) return [...text].slice(0, allocated).join("")
+    return Number(cell.props.flexGrow ?? 0) > 0 ? text.padEnd(allocated) : text
+  }).join("")
+  return { cells, childWidths, renderedText, rowWidth }
 }
 
 async function settle() {
@@ -133,6 +139,7 @@ export async function mountSesTokensPanel(options: {
     resolve(result: ClientResult<readonly { info: unknown }[]>): void
   }> = []
   const handlers = new Map<string, (event: unknown) => void>()
+  const registrationCounts = new Map<string, number>()
   const unsubscribeCounts = new Map<string, number>()
   const timers: Timer[] = []
   const registrations: Array<{
@@ -141,6 +148,8 @@ export async function mountSesTokensPanel(options: {
   }> = []
   const controller = new AbortController()
   let cleanups: Array<() => void | Promise<void>> = []
+  let sourceFactoryCallCount = 0
+  let slotRenderCount = 0
 
   const scheduler = {
     setTimer(callback: () => void, delay: number) {
@@ -180,6 +189,7 @@ export async function mountSesTokensPanel(options: {
     },
     event: {
       on(type: string, handler: (event: unknown) => void) {
+        registrationCounts.set(type, (registrationCounts.get(type) ?? 0) + 1)
         if (handlers.has(type)) throw new Error(`${type} registered more than once`)
         handlers.set(type, handler)
         unsubscribeCounts.set(type, 0)
@@ -213,88 +223,116 @@ export async function mountSesTokensPanel(options: {
     },
   }
   const meta = {
-    [sesTokensSourceTestKey]: (dependencies: SesTokensSourceDependencies) => createSesTokensSource({
-      ...dependencies,
-      setTimer: scheduler.setTimer,
-      clearTimer: scheduler.clearTimer,
-    }),
+    [sesTokensSourceTestKey]: (dependencies: SesTokensSourceDependencies) => {
+      sourceFactoryCallCount += 1
+      return createSesTokensSource({
+        ...dependencies,
+        setTimer: scheduler.setTimer,
+        clearTimer: scheduler.clearTimer,
+      })
+    },
   }
 
   await sesTokensPlugin.tui(api as never, undefined, meta)
-  const slot = registrations[0]?.slots.sidebar_content
-  if (!slot) throw new Error("SesTokens sidebar slot was not registered")
+  const registration = registrations[0]
+  const slot = registration?.slots.sidebar_content
+  if (!registration || !slot) throw new Error("SesTokens sidebar slot was not registered")
 
-  let tree: unknown
-  let mountedTree = false
-  let slotMounts = 0
-  let disposeRoot: () => void = () => undefined
-  createRoot((dispose) => {
-    disposeRoot = dispose
-    slotMounts += 1
-    const result = slot({}, options.sessionID ? { session_id: options.sessionID } : {})
-    if (result !== null) {
-      tree = mount(result)
-      mountedTree = true
+  const root = createHostNode("root")
+  const [hostSessionID, setHostSessionID] = createSignal(options.sessionID ?? "")
+  const slotProps = {
+    get session_id() {
+      return hostSessionID()
+    },
+  }
+  const disposeHost = render(() => (() => {
+    slotRenderCount += 1
+    return slot({}, slotProps)
+  }) as never, root)
+  const mountedPanels = new Map<HostNode, HostNode>()
+  const disposedPanels = new Set<HostNode>()
+
+  function currentPanel(): HostNode | undefined {
+    const title = mountedTextNodes(root).find((node) => textOf(node) === "SesTokens")
+    return title?.parent?.parent
+  }
+
+  function trackPanelLifecycle() {
+    const panel = currentPanel()
+    if (panel) mountedPanels.set(panel, panel)
+    for (const mounted of mountedPanels.keys()) {
+      if (mounted.removed) disposedPanels.add(mounted)
     }
-  })
+  }
+
+  async function flushHost() {
+    await settle()
+    trackPanelLifecycle()
+  }
+
+  await flushHost()
 
   function view(width = 37) {
-    const nodes = expand(tree)
-    const header = nodes.find((node) => node.element.type === "box" && typeof node.element.props.onMouseDown === "function")
-    const headerNodes = header ? descendantsOf(nodes, header) : []
-    const marker = headerNodes.find((node) => ["▶ ", "▼ "].includes(textOf(node)))
-    const title = headerNodes.find((node) => textOf(node) === "SesTokens")
-    const detail = headerNodes.find((node) => textOf(node) === "stale")
+    const nodes = descendants(root)
+    const textNodes = mountedTextNodes(root)
+    const title = textNodes.find((node) => textOf(node) === "SesTokens")
+    const header = title?.parent
+    const headerNodes = header ? descendants(header) : []
+    const marker = headerNodes.find((node) => node.type === "text" && ["▶ ", "▼ "].includes(textOf(node)))
+    const detail = headerNodes.find((node) => node.type === "text" && textOf(node) === "stale")
     const summaryNodes = headerNodes.filter((node) => (
-      node.element.type === "text"
+      node.type === "text"
       && node !== marker
       && node !== title
       && node !== detail
       && textOf(node).trim() !== ""
     ))
-    const fallback = nodes.find((node) => ["Loading...", "Usage unavailable"].includes(textOf(node)))
-    const rows = nodes
-      .filter((node) => node.element.type === "text" && LABELS.has(textOf(node)))
+    const fallback = textNodes.find((node) => ["Loading...", "Usage unavailable"].includes(textOf(node)))
+    const rows = textNodes
+      .filter((node) => LABELS.has(textOf(node)))
       .map((label) => {
         const row = label.parent
         if (!row) throw new Error("SesTokens label is missing its row")
-        const value = nodes.find((node) => node.parent === row && node.element.type === "text" && node !== label)
-        const labelText = textOf(label)
-        const valueText = textOf(value)
-        const renderedText = `${labelText}${" ".repeat(Math.max(0, width - labelText.length - valueText.length))}${valueText}`
+        const layout = rowLayout(row, width)
+        const value = layout.cells.find((node) => node !== label && node.type === "text")
         return {
-          label: labelText,
-          value: valueText,
-          renderedText,
-          cells: [...renderedText].length,
-          rowProps: row.element.props,
-          labelProps: label.element.props,
-          valueProps: value?.element.props ?? {},
+          label: textOf(label),
+          value: textOf(value),
+          renderedText: layout.renderedText,
+          cells: layout.childWidths.reduce((total, childWidth) => total + childWidth, 0),
+          cellCount: layout.cells.length,
+          rowWidth: layout.rowWidth,
+          childWidths: layout.childWidths,
+          rowProps: row.props,
+          labelProps: label.props,
+          valueProps: value?.props ?? {},
         }
       })
     const dividers = nodes.filter((node) => (
-      node.element.type === "box"
-      && node.element.props.width === "100%"
-      && node.element.props.height === 1
-      && (node.element.props.border as string[] | undefined)?.[0] === "top"
+      node.type === "box"
+      && node.props.width === "100%"
+      && node.props.height === 1
+      && Array.isArray(node.props.border)
+      && node.props.border[0] === "top"
     ))
     return {
       marker: textOf(marker),
       title: textOf(title),
       detailText: textOf(detail),
-      detailColor: detail?.element.props.fg,
+      detailColor: detail?.props.fg,
       summaryText: summaryNodes.map(textOf).join(""),
-      summarySegments: summaryNodes.map((node) => ({ text: textOf(node), color: node.element.props.fg })),
-      summaryColors: summaryNodes.map((node) => node.element.props.fg),
+      summarySegments: summaryNodes.map((node) => ({ text: textOf(node), color: node.props.fg })),
+      summaryColors: summaryNodes.map((node) => node.props.fg),
       fallbackText: textOf(fallback),
-      fallbackColor: fallback?.element.props.fg,
+      fallbackColor: fallback?.props.fg,
       rows,
-      renderedWidth: Math.max(0, ...rows.map((row) => row.cells)),
+      renderedWidth: Math.max(0, ...rows.map((row) => row.rowWidth)),
       dividerCount: dividers.length,
-      clickHeader() {
-        const onMouseDown = header?.element.props.onMouseDown
+      async clickHeader() {
+        const onMouseDown = header?.props.onMouseDown
         if (typeof onMouseDown !== "function") throw new Error("SesTokens header is not interactive")
         onMouseDown()
+        await flushHost()
       },
     }
   }
@@ -307,19 +345,20 @@ export async function mountSesTokensPanel(options: {
     store,
     listCalls,
     messageCalls,
-    slotMounts: () => slotMounts,
+    panelMounts: () => mountedPanels.size,
+    panelDisposals: () => disposedPanels.size,
+    sourceFactoryCalls: () => sourceFactoryCallCount,
+    slotRenders: () => slotRenderCount,
     lifecycleCleanups: () => cleanups.length,
     lifecycleAborted: () => controller.signal.aborted,
     registeredTypes: () => [...handlers.keys()],
+    registrationCount: (type: string) => registrationCounts.get(type) ?? 0,
     unsubscribeCount: (type: string) => unsubscribeCounts.get(type) ?? 0,
     pendingDelays: () => timers.filter((timer) => !timer.cancelled).map((timer) => timer.delay),
-    setSessionID(sessionID?: string) {
-      const result = slot({}, sessionID ? { session_id: sessionID } : {})
-      if (!mountedTree && result !== null) {
-        tree = mount(result)
-        mountedTree = true
-      }
-      return result
+    async setSessionID(sessionID?: string) {
+      setHostSessionID(sessionID ?? "")
+      await flushHost()
+      return sessionID ? currentPanel() : null
     },
     emit(event: { type: string; properties: Record<string, unknown> }) {
       handlers.get(event.type)?.(event)
@@ -328,7 +367,7 @@ export async function mountSesTokensPanel(options: {
       const resolve = pendingLists.shift()
       if (!resolve) throw new Error("No pending session.list call")
       resolve(result)
-      await settle()
+      await flushHost()
     },
     async resolveMessages(
       sessionID: string,
@@ -338,18 +377,22 @@ export async function mountSesTokensPanel(options: {
       if (index < 0) throw new Error(`No pending session.messages call for ${sessionID}`)
       const [pending] = pendingMessages.splice(index, 1)
       pending.resolve(result)
-      await settle()
+      await flushHost()
     },
     async runTimer(delay: number) {
       const timer = timers.find((candidate) => !candidate.cancelled && candidate.delay === delay)
       if (!timer) throw new Error(`No pending ${delay} ms timer`)
       timer.cancelled = true
       timer.callback()
-      await settle()
+      await flushHost()
     },
     view,
     async dispose() {
-      disposeRoot()
+      disposeHost()
+      for (const mounted of mountedPanels.keys()) {
+        mounted.removed = true
+        disposedPanels.add(mounted)
+      }
       controller.abort()
       const queue = cleanups.reverse()
       cleanups = []

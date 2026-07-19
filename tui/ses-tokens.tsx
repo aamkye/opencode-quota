@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, Show, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, For, Show, type JSX } from "solid-js"
 
 import {
   CompactPanel,
@@ -70,12 +70,12 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
     rootSessionID,
     async listSessions() {
       const result = await api.client.session.list({ directory })
-      if (result.error || !result.data) throw result.error ?? new Error("session list unavailable")
+      if (result.error !== undefined || !result.data) throw result.error ?? new Error("session list unavailable")
       return result.data
     },
     async listMessages(sessionID) {
       const result = await api.client.session.messages({ sessionID, directory })
-      if (result.error || !result.data) throw result.error ?? new Error("session messages unavailable")
+      if (result.error !== undefined || !result.data) throw result.error ?? new Error("session messages unavailable")
       return result.data.map((record) => record.info)
     },
   })
@@ -147,13 +147,21 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
     return render as unknown as JSX.Element
   }
 
+  function SesTokensSlot(props: { sessionID?: string }) {
+    const sessionID = () => props.sessionID ?? ""
+    createEffect(() => source.setSessionID(sessionID()))
+    return (
+      <Show when={sessionID() !== ""}>
+        <SesTokensPanel />
+      </Show>
+    )
+  }
+
   api.slots.register({
     order: descriptor.slotOrder,
     slots: {
       sidebar_content(_ctx, props) {
-        const sessionID = props.session_id ?? ""
-        source.setSessionID(sessionID)
-        return sessionID === "" ? null : <SesTokensPanel />
+        return <SesTokensSlot sessionID={props.session_id} />
       },
     },
   })

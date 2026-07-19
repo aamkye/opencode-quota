@@ -44,9 +44,9 @@ test("registers ID order and one session-scoped sidebar slot", async () => {
     assert.equal(mounted.registrations[0].order, 115)
     assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
     assert.deepEqual(mounted.listCalls, [])
-    assert.equal(mounted.setSessionID(), null)
+    assert.equal(await mounted.setSessionID(), null)
     assert.deepEqual(mounted.listCalls, [])
-    mounted.setSessionID("session-a")
+    await mounted.setSessionID("session-a")
     assert.deepEqual(mounted.listCalls, [{ directory: "/repo" }])
   } finally {
     await mounted.dispose()
@@ -85,7 +85,7 @@ test("collapses to the token-turn summary and persists across remount", async ()
   await resolveReady(first)
   const store = first.store
   assert.deepEqual(first.kvReads, ["aamkye.opencode-tools-ses-tokens.collapsed"])
-  first.view().clickHeader()
+  await first.view().clickHeader()
   assert.equal(first.view().marker, "▶ ")
   assert.equal(first.view().summaryText, "Σ 29.1M / ↻ 97")
   assert.equal(first.view().rows.length, 0)
@@ -99,7 +99,7 @@ test("collapses to the token-turn summary and persists across remount", async ()
     assert.equal(second.view().marker, "▶ ")
     assert.equal(second.view().summaryText, "Σ 29.1M / ↻ 97")
     assert.deepEqual(second.kvWrites, [])
-    second.view().clickHeader()
+    await second.view().clickHeader()
     assert.equal(second.view().marker, "▼ ")
     assert.deepEqual(second.kvWrites, [["aamkye.opencode-tools-ses-tokens.collapsed", false]])
   } finally {
@@ -119,7 +119,7 @@ test("renders stale detail in expanded and collapsed option-A headers", async ()
     assert.equal(mounted.view().detailColor, "#ffaa00")
     assert.equal(mounted.view().summaryText, "")
     assert.equal(mounted.view().rows.at(-1).value, "29.1M")
-    mounted.view().clickHeader()
+    await mounted.view().clickHeader()
     assert.equal(mounted.view().detailText, "stale")
     assert.equal(mounted.view().detailColor, "#ffaa00")
     assert.equal(mounted.view().summaryText, "Σ 29.1M / ↻ 97")
@@ -138,7 +138,7 @@ test("renders muted loading and unavailable states without zero metrics", async 
     assert.equal(mounted.view().fallbackText, "Usage unavailable")
     assert.equal(mounted.view().fallbackColor, "#888888")
     assert.equal(mounted.view().rows.length, 0)
-    mounted.view().clickHeader()
+    await mounted.view().clickHeader()
     assert.equal(mounted.view().summaryText, "Usage unavailable")
     assert.deepEqual(mounted.view().summarySegments, [{ text: "Usage unavailable", color: "#888888" }])
   } finally {
@@ -173,6 +173,9 @@ test("right-aligns values within 37 cells without trailing whitespace", async ()
     const view = mounted.view(37)
     assert.equal(view.renderedWidth, 37)
     for (const row of view.rows) {
+      assert.equal(row.cellCount, 2)
+      assert.equal(row.rowWidth, 37)
+      assert.ok(row.childWidths.reduce((total, width) => total + width, 0) <= row.rowWidth)
       assert.equal(row.rowProps.width, "100%")
       assert.equal(row.rowProps.overflow, "hidden")
       assert.equal(row.labelProps.flexBasis, 0)
@@ -181,6 +184,8 @@ test("right-aligns values within 37 cells without trailing whitespace", async ()
       assert.equal(row.labelProps.minWidth, 0)
       assert.equal(row.valueProps.flexShrink, 0)
       assert.ok(row.cells <= 37)
+      assert.equal(row.label.trimEnd(), row.label)
+      assert.equal(row.value.trimEnd(), row.value)
       assert.equal(row.renderedText.trimEnd(), row.renderedText)
     }
   } finally {
@@ -193,19 +198,52 @@ test("switches slot sessions without remounting or leaking prior metrics", async
   try {
     await resolveReady(mounted)
     assert.equal(mounted.view().rows[1].value, "4.4M")
-    mounted.setSessionID("session-b")
-    assert.equal(mounted.view().fallbackText, "Loading...")
+    await mounted.view().clickHeader()
+    assert.equal(mounted.view().marker, "▶ ")
+    await mounted.setSessionID("session-b")
+    assert.equal(mounted.view().summaryText, "Loading...")
     assert.equal(mounted.view().rows.length, 0)
     await resolveReady(mounted, "session-b", oneMessage("session-b", 12))
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.equal(mounted.view().summaryText, "Σ 12 / ↻ 1")
+    assert.equal(mounted.view().rows.length, 0)
+    await mounted.view().clickHeader()
     assert.deepEqual(mounted.view().rows.map((row) => row.value), ["1", "12", "0", "0", "0", "0.0×", "0", "12"])
-    assert.equal(mounted.slotMounts(), 1)
+    assert.equal(mounted.panelMounts(), 1)
+    assert.equal(mounted.panelDisposals(), 0)
+    assert.equal(mounted.slotRenders(), 1)
+    assert.equal(mounted.sourceFactoryCalls(), 1)
+    for (const type of eventTypes) assert.equal(mounted.registrationCount(type), 1)
     const listCallCount = mounted.listCalls.length
     const messageCallCount = mounted.messageCalls.length
-    mounted.setSessionID()
+    await mounted.setSessionID()
     assert.equal(mounted.listCalls.length, listCallCount)
     assert.equal(mounted.messageCalls.length, messageCallCount)
+    assert.equal(mounted.panelMounts(), 1)
+    assert.equal(mounted.panelDisposals(), 1)
   } finally {
     await mounted.dispose()
+  }
+})
+
+test("rejects defined falsy client errors", async () => {
+  const listFailure = await mountSesTokensPanel({ sessionID: "session-a" })
+  try {
+    await listFailure.resolveList({ data: [{ id: "session-a" }], error: false })
+    assert.deepEqual(listFailure.messageCalls, [])
+    assert.deepEqual(listFailure.pendingDelays(), [2_000])
+  } finally {
+    await listFailure.dispose()
+  }
+
+  const messagesFailure = await mountSesTokensPanel({ sessionID: "session-a" })
+  try {
+    await messagesFailure.resolveList({ data: [{ id: "session-a" }] })
+    await messagesFailure.resolveMessages("session-a", { data: [], error: 0 })
+    assert.deepEqual(messagesFailure.pendingDelays(), [2_000])
+    assert.equal(messagesFailure.view().fallbackText, "Loading...")
+  } finally {
+    await messagesFailure.dispose()
   }
 })
 

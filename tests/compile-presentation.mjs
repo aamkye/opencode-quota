@@ -1,4 +1,8 @@
 import { build } from "esbuild"
+import { transformAsync } from "@babel/core"
+import tsPreset from "@babel/preset-typescript"
+import moduleResolver from "babel-plugin-module-resolver"
+import solidPreset from "babel-preset-solid"
 import { mkdirSync, readFileSync, rmSync } from "node:fs"
 import { resolve } from "node:path"
 
@@ -19,6 +23,30 @@ const sesTokensManifestPlugin = {
     }))
   },
 }
+const openTuiSolidPlugin = {
+  name: "opentui-solid-test-compiler",
+  setup(buildApi) {
+    buildApi.onResolve({ filter: /^@opentui\/solid$/ }, () => ({
+      path: resolve("tests/opentui-solid-host-runtime.fixture.ts"),
+    }))
+    buildApi.onLoad({ filter: /\.tsx$/ }, async ({ path }) => {
+      const result = await transformAsync(readFileSync(path, "utf8"), {
+        babelrc: false,
+        configFile: false,
+        filename: path,
+        plugins: [[moduleResolver, {
+          resolvePath(specifier) {
+            if (specifier === "solid-js") return "solid-js/dist/solid.js"
+            if (specifier === "solid-js/store") return "solid-js/store/dist/store.js"
+            return specifier
+          },
+        }]],
+        presets: [[solidPreset, { moduleName: "@opentui/solid", generate: "universal" }], [tsPreset]],
+      })
+      return { contents: result?.code ?? "", loader: "js" }
+    })
+  },
+}
 
 for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "context-mounted", "lsp-mounted", "todo-mounted", "ses-tokens-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "ses-tokens-model", "session-tree-snapshot", "ses-tokens-source", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
@@ -36,7 +64,12 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
   ["tests/context-mounted.fixture.ts", ".tmp-test/context-mounted.mjs", ["browser"]],
   ["tests/lsp-mounted.fixture.ts", ".tmp-test/lsp-mounted.mjs", ["browser"]],
   ["tests/todo-mounted.fixture.ts", ".tmp-test/todo-mounted.mjs", ["browser"]],
-  ["tests/ses-tokens-mounted.fixture.ts", ".tmp-test/ses-tokens-mounted.mjs", ["browser"], [sesTokensManifestPlugin]],
+  [
+    "tests/ses-tokens-mounted.fixture.ts",
+    ".tmp-test/ses-tokens-mounted.mjs",
+    ["browser"],
+    [sesTokensManifestPlugin, openTuiSolidPlugin],
+  ],
   ["tui/providers/zai.ts", ".tmp-test/provider-zai.mjs", ["browser"]],
   ["tui/providers/openai.ts", ".tmp-test/provider-openai.mjs", ["browser"]],
   ["tui/providers/opencode-go.ts", ".tmp-test/provider-opencode-go.mjs", ["browser"]],
