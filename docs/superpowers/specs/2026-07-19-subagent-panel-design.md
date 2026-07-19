@@ -8,7 +8,7 @@ canonical_spec: openspec
 
 ## Scope
 
-Add a standalone `subagent` TUI plugin that monitors direct child sessions of the viewed session. The plugin shows the newest five children in its primary group, places older children under an independently collapsible Rest group, reconstructs status and identity after remount, preserves terminal failures, and opens a selected child through the built-in session route.
+Add a standalone `subagent` TUI plugin that monitors direct child sessions of the viewed session. The plugin shows the newest five children in its primary group, places older children under an independently collapsible Rest group, reconstructs status and identity after remount, preserves terminal failures, and opens a selected child through the built-in session route. Entry rows omit status bullets, color time by status, and end-truncate titles against their measured terminal-cell width.
 
 The OpenSpec delta at `openspec/changes/add-subagent-panel/specs/subagent-panel/spec.md` defines user-visible behavior. `AGENTS.md` defines the canonical 37-cell layouts. This document defines module boundaries, snapshot and event flow, status derivation, persistence, rendering, cleanup, and tests.
 
@@ -339,15 +339,15 @@ An expanded empty snapshot renders muted `No subagents`.
 
 ### Entry Rows
 
-Each entry row is a full-width horizontal box with these fixed regions:
+Each entry row is a full-width horizontal box with these regions:
 
 ```text
-disclosure + bullet + flexible title + gap + duration
+disclosure + flexible title + gap + duration
 ```
 
-The disclosure and bullet render `▶ • ` or `▼ • `. Only the title flexes. It uses OpenTUI ellipsis truncation and cannot consume the duration region. The duration stays fixed at the right edge. Status colors apply to the bullet: success, warning, or error.
+The disclosure renders `▶ ` or `▼ `. Entry rows have no status bullet. Only the title flexes. OpenTUI 0.4.x truncates text in the middle, so a title-region resize listener supplies its computed width to a grapheme-safe end-truncation helper. Declare the already-installed `string-width` package directly to measure terminal cells. The duration includes its leading one-cell gap in the fixed region, stays at the right edge, and uses the entry status color: success, warning, or error.
 
-Add a pure allocation helper for 37-cell and narrower tests. Do not build padded strings in the component.
+Update the pure allocation helper for disclosure, title, gap, and duration at 37 cells and narrower. Do not build padded rows in the component.
 
 ### Detail Rows
 
@@ -361,7 +361,7 @@ An expanded entry omits duration from its header and renders these rows in order
   Open Session
 ```
 
-Labels and values use clipped flex rows with a two-cell indent. `Open Session` is a clickable row. Activating it calls:
+Labels and values use clipped flex rows with a two-cell indent. The `time` value uses the entry status color. `Open Session` is a clickable row. Activating it calls:
 
 ```ts
 api.route.navigate("session", { sessionID: child.id })
@@ -369,7 +369,7 @@ api.route.navigate("session", { sessionID: child.id })
 
 ### Rest Group
 
-Render no Rest section for five or fewer children. Otherwise render one internal divider after the fifth primary entry, then a full-width `▼ Rest` or `▶ Rest` header. Rest collapse does not change the outer panel or counts.
+Render no Rest section for five or fewer children. Otherwise render one internal divider after the fifth primary entry as muted `---`, flexible space, and `---`, then a full-width muted `▼ Rest` or `▶ Rest` header. Rest collapse does not change the outer panel or counts.
 
 ### Conditional Clock
 
@@ -427,7 +427,7 @@ Inject loader, timer, event, and failure-store dependencies. Cover immediate ini
 
 ### Mounted Panel Tests
 
-Assert every AGENTS layout: expanded, one detail, expanded Rest, semi-collapsed Rest, collapsed counts, stale expanded, and stale collapsed. Also cover no output for loading/unavailable, `No subagents`, exact row order, status colors, ellipsis, 37/36-cell boundaries, no trailing whitespace, parent-scoped persistence, one-entry expansion, invalid ID cleanup, hidden Rest details, conditional clock start/stop/disposal, and route navigation.
+Assert every AGENTS layout: expanded, one detail, expanded Rest, semi-collapsed Rest, collapsed counts, stale expanded, and stale collapsed. Also cover no output for loading/unavailable, `No subagents`, exact row order, status-colored compact/detail time, end ellipsis, 37/36-cell boundaries, a scrollbar-reduced 35-cell row, muted Rest treatment, spaced divider segments, no trailing whitespace, parent-scoped persistence, one-entry expansion, invalid ID cleanup, hidden Rest details, conditional clock start/stop/disposal, and route navigation.
 
 ### Type And Integration Tests
 

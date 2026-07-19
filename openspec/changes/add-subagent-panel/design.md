@@ -26,7 +26,7 @@ OpenCode session records expose `parentID`, title, and timestamps; child message
 
 ### Use a standalone manifest plugin and focused panel primitives
 
-Add a `subagent` manifest key and standalone `tui/subagent.tsx` entry point immediately after SesTokens. The confirmed sidebar order is Home 1, Context 100, SesTokens 110, SubAgent 120, Quota 130, MCP 140, LSP 150, and TODO 160. Transformation and grouping logic will live in `tui/features/subagent.ts` and be exported through `shared/opencode-tools-shared.ts`. The component will reuse `CompactPanel` for the outer header/divider and focused row/detail components for nested expansion and width allocation.
+Add a `subagent` manifest key and standalone `tui/subagent.tsx` entry point immediately after SesTokens. The confirmed sidebar order is Home 1, Context 100, SesTokens 110, SubAgent 120, Quota 130, MCP 140, LSP 150, and TODO 160. Transformation and grouping logic will live in `tui/features/subagent.ts` and be exported through `shared/opencode-tools-shared.ts`. The component will reuse `CompactPanel` for the outer header/divider and focused row/detail components for nested expansion and width allocation. Entry titles use the measured title-region width plus direct `string-width` terminal-cell measurement so truncation places one ellipsis at the end rather than using OpenTUI's middle truncation.
 
 Extending the generic presentation schema was considered, but nested clickable entry headers, a secondary Rest disclosure, and Open Session action are feature-specific interactions. Copying the reference plugin's monolithic component was rejected because it would bypass the repository's pure-model and shared-module pattern.
 
@@ -57,7 +57,7 @@ This avoids the reference plugin's 100 ms clock and token polling. Session times
 
 Feature-specific KV keys store outer panel collapse, Rest collapse, and the expanded child ID for each viewed parent. Expanding one entry collapses the previous entry. If a persisted ID is no longer a direct child, it is cleared. `Open Session` calls `api.route.navigate("session", { sessionID: child.id })`.
 
-The outer collapsed summary renders successful/running/failed counts in that order. Entry bullets and status values use success, warning, and error theme roles. Names truncate with an ellipsis after accounting for disclosure, bullet, duration, and width; all rows avoid trailing cells.
+The outer collapsed summary renders successful/running/failed counts in that order. Entry rows omit status bullets. Compact durations and expanded `time` values use success, warning, and error theme roles. Names truncate with an end ellipsis after accounting for disclosure, duration, the required one-cell gap, and the measured title-region width; all rows avoid trailing cells. The Rest disclosure is muted. Its divider uses two muted three-dash segments with flexible space between them instead of a continuous border.
 
 Before the first complete snapshot, loading and unavailable states produce no panel output. An expanded complete empty result renders muted `No subagents` and a collapsed `0/0/0` summary. Background failure retains complete entries and adds warning `stale` to expanded and collapsed headers until recovery.
 
@@ -73,6 +73,7 @@ Event unsubscribe functions, debounce timers, the conditional duration clock, an
 - **Successful duration uses the last session update** -> Document and test this stable approximation instead of persisting full histories.
 - **Many historical direct children can make Rest long** -> Keep the required newest-five split and collapsible Rest; paging remains explicitly out of scope.
 - **SDK/TUI declarations can drift from the installed runtime** -> Extend only the locally used surface and add compile-time contract fixtures plus build tests.
+- **OpenTUI 0.4.x truncates in the middle and does not export its width helper** -> Declare `string-width` directly, measure the rendered title region, and truncate by grapheme-safe terminal cells.
 
 ## Migration Plan
 

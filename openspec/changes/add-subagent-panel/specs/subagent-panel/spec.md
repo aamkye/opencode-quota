@@ -50,7 +50,7 @@ The system SHALL classify each direct child as successful, running, or failed us
 - **THEN** a completed error-free assistant result classifies the child as successful, while an in-progress assistant or a child without a completed result remains running
 
 ### Requirement: Duration and detail model
-The system SHALL show a child title and compact duration in each entry row. An expanded entry SHALL show agent, status, time, model, and Open Session rows in the AGENTS.md order. Agent and model SHALL use fields from the single newest assistant message, then corresponding fields from the single newest user message, and SHALL fall back independently to `-` without scanning older assistant or user messages.
+The system SHALL show a child title and compact duration in each entry row. Compact durations and expanded `time` values SHALL use the child's semantic status color. An expanded entry SHALL show agent, status, time, model, and Open Session rows in the AGENTS.md order. Agent and model SHALL use fields from the single newest assistant message, then corresponding fields from the single newest user message, and SHALL fall back independently to `-` without scanning older assistant or user messages.
 
 #### Scenario: Running duration
 - **WHEN** a child is running
@@ -63,6 +63,10 @@ The system SHALL show a child title and compact duration in each entry row. An e
 #### Scenario: Failed duration
 - **WHEN** a child fails
 - **THEN** its duration remains fixed at the nonnegative difference between the earliest retained event or assistant-message failure time and creation time
+
+#### Scenario: Status-colored time
+- **WHEN** a child renders a compact duration or expanded `time` value
+- **THEN** successful time is green, running time is yellow, and failed time is red
 
 #### Scenario: One expanded entry
 - **WHEN** the user expands one child and then expands another
@@ -77,11 +81,11 @@ The system SHALL show a child title and compact duration in each entry row. An e
 - **THEN** the corresponding detail value renders `-`
 
 ### Requirement: AGENTS.md SubAgent layout
-The system SHALL render a plain `SubAgent` panel matching the expanded, semi-collapsed, collapsed, Rest, and one-detail layouts, spacing, alignment, symbols, colors, ellipsis, dividers, maximum width, and no-trailing-whitespace rules in `AGENTS.md`.
+The system SHALL render a plain `SubAgent` panel matching the expanded, semi-collapsed, collapsed, Rest, and one-detail layouts, spacing, alignment, symbols, colors, end ellipsis, dividers, maximum width, and no-trailing-whitespace rules in `AGENTS.md`. Entry rows SHALL use only a disclosure marker, title, one-cell gap, and duration, with no status bullet. The Rest disclosure and explicit three-dash divider segments SHALL use the muted theme color.
 
 #### Scenario: Expanded panel
 - **WHEN** the panel and Rest are expanded
-- **THEN** disclosure markers, status bullets, names, durations, optional detail, internal divider, Rest header, and panel divider render in the specified order
+- **THEN** disclosure markers, names, status-colored durations, optional detail, spaced internal divider, muted Rest header, and panel divider render in the specified order without status bullets
 
 #### Scenario: Semi-collapsed panel
 - **WHEN** the panel is expanded and Rest is collapsed
@@ -93,7 +97,11 @@ The system SHALL render a plain `SubAgent` panel matching the expanded, semi-col
 
 #### Scenario: Long child title
 - **WHEN** title plus duration exceeds available width
-- **THEN** the title truncates with an ellipsis while disclosure, bullet, duration, and row width remain intact
+- **THEN** the title truncates with one ellipsis at its end while disclosure, one-cell title/time gap, duration, and row width remain intact
+
+#### Scenario: Scrollbar-reduced row width
+- **WHEN** a visible scrollbar removes one cell from the SubAgent row
+- **THEN** the title remeasures and end-truncates while the one-cell title/time gap and complete duration remain visible
 
 #### Scenario: No direct children
 - **WHEN** the viewed session has no direct children
@@ -114,6 +122,10 @@ The system SHALL render a plain `SubAgent` panel matching the expanded, semi-col
 #### Scenario: Stale collapsed header
 - **WHEN** a background snapshot exhausts its retries after a complete result and the panel is collapsed
 - **THEN** warning `stale` renders before the preserved `<successful>/<running>/<failed>` summary within 37 cells
+
+#### Scenario: Rest visual treatment
+- **WHEN** the Rest group is present in expanded or collapsed form
+- **THEN** its disclosure and title are muted and the preceding divider renders muted `---`, flexible space, and `---`
 
 ### Requirement: Disclosure persistence and state recovery
 The system SHALL persist outer panel collapse, Rest collapse, and at most one expanded child ID per viewed parent. It SHALL rebuild child records from current OpenCode state and persist only failure terminals that cannot be reconstructed reliably.
