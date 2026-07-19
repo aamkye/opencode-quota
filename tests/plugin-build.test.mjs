@@ -85,8 +85,15 @@ function createApi() {
       dialog: { replace() {}, clear() {} },
       DialogPrompt() { return null },
     },
-    client: { session: { async prompt() {} } },
+    client: {
+      session: {
+        async list() { return { data: [] } },
+        async messages() { return { data: [] } },
+        async prompt() {},
+      },
+    },
     state: {
+      path: { directory: "/repo" },
       mcp() { return [] },
       lsp() { return [] },
       provider: [],
@@ -139,9 +146,9 @@ before(async () => {
 test("build:plugins emits the manifest artifact layout and return shape", async () => {
   const pkg = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"))
   assert.equal(pkg.scripts["build:plugins"], "node build-plugins.mjs")
-  assert.equal(expectedArtifacts.length, 8)
+  assert.equal(expectedArtifacts.length, 9)
   assert.deepEqual(Object.keys(buildResults).sort(), ["features", "shared"])
-  assert.equal(Object.keys(buildResults.features).length, 7)
+  assert.equal(Object.keys(buildResults.features).length, 8)
   assert.deepEqual(Object.keys(buildResults.features), pluginManifest.map((entry) => entry.key))
 
   for (const file of expectedArtifacts) {
@@ -187,6 +194,18 @@ test("feature metafiles contain their own source and no sibling feature", () => 
   assert.ok(sharedInputs.some((file) => file.endsWith("tui/providers/openai.ts")))
   assert.ok(sharedInputs.some((file) => file.endsWith("tui/providers/opencode-go.ts")))
   assert.ok(sharedInputs.some((file) => file.endsWith("lib/tokens/token-report-data.ts")))
+  assert.ok(sharedInputs.some((file) => file.endsWith("tui/features/ses-tokens.ts")))
+  assert.ok(sharedInputs.some((file) => file.endsWith("tui/services/session-tree-snapshot.ts")))
+  assert.ok(sharedInputs.some((file) => file.endsWith("tui/services/ses-tokens-source.ts")))
+
+  const sesTokensResult = buildResults.features["ses-tokens"]
+  assert.ok(sesTokensResult, "missing ses-tokens build result")
+  const sesTokensInputs = inputNames(sesTokensResult)
+  assert.equal(includesSource(sesTokensInputs, "tui/ses-tokens.tsx"), true)
+  assert.equal(pluginManifest
+    .filter((entry) => entry.key !== "ses-tokens")
+    .every((entry) => !includesSource(sesTokensInputs, entry.source)), true)
+  assert.match(contents["dist/opencode-tools-ses-tokens.js"], /from["']\.\/opencode-tools-shared\.js["']/)
 })
 
 test("all host and built-in dependencies remain external", () => {
@@ -236,6 +255,7 @@ test("each artifact loads alone, activates only its feature, and cleans up", asy
     context: { slots: ["sidebar_content"], keymaps: 0 },
     lsp: { slots: ["sidebar_content"], keymaps: 0 },
     todo: { slots: ["sidebar_content"], keymaps: 0 },
+    "ses-tokens": { slots: ["sidebar_content"], keymaps: 0 },
   }
   const isolatedRoot = await mkdtemp(resolve(tmpdir(), "opencode-tools-artifacts-"))
   const originalEnvironment = {

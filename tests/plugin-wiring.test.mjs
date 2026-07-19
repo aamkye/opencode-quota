@@ -18,6 +18,7 @@ test("publishes and typechecks the standalone plugins", () => {
     "./context": "./tui/context.tsx",
     "./lsp": "./tui/lsp.tsx",
     "./todo": "./tui/todo.tsx",
+    "./ses-tokens": "./tui/ses-tokens.tsx",
   })
   assert.deepEqual(pkg.files, ["dist", "plugin-manifest.json", "tui", "shared", "README.md"])
   assert.deepEqual(tsconfig.include, [
@@ -65,21 +66,25 @@ test("tracked project files contain no active legacy identifier", () => {
   }
 })
 
-test("documents standalone installation, migration, MCP, Context, LSP, and TODO layouts, and rollback", () => {
+test("documents standalone installation, migration, sidebar layouts, and rollback", () => {
   const readme = readFileSync("README.md", "utf8")
   const agents = readFileSync("AGENTS.md", "utf8")
   const prose = readme.replace(/\s+/gu, " ")
   const introduction = readme.match(/^# opencode-tools\n\n([\s\S]*?)(?=\n## Features)/u)?.[1]
   const contextFeatures = readme.match(/### Context\n\n([\s\S]*?)(?=\n### LSP)/u)?.[1]
+  const sesTokensFeatures = readme.match(/### SesTokens\n\n([\s\S]*?)(?=\n### Shared)/u)?.[1]
   const contextContract = agents.match(/### Context\n\n([\s\S]*?)(?=\n### LSP)/u)?.[1]
+  const sesTokensContract = agents.match(/### SesTokens\n\n([\s\S]*?)$/u)?.[1]
   const configurationSection = readme.match(/### Configuration\n\n([\s\S]*?)(?=\n### MCP sidebar layouts)/u)?.[1]
   const configurationText = readme.match(/### Configuration\n\n[\s\S]*?```json\n([\s\S]*?)\n```/u)?.[1]
   assert.ok(introduction, "missing README introduction")
   assert.ok(contextFeatures, "missing Context feature section")
+  assert.ok(sesTokensFeatures, "missing SesTokens feature section")
   assert.ok(contextContract, "missing AGENTS.md Context contract")
+  assert.ok(sesTokensContract, "missing AGENTS.md SesTokens contract")
   assert.ok(configurationSection, "missing Configuration section")
   assert.ok(configurationText, "missing documented tui.json configuration")
-  assert.match(introduction.replace(/\s+/gu, " "), /MCP server health, active-session context and spend, LSP status/u)
+  assert.match(introduction.replace(/\s+/gu, " "), /MCP server health, active-session context and spend, LSP status, synchronized session TODOs, complete session-tree token totals/u)
 
   const normalizedContextContract = contextContract.replace(/\s+/gu, " ")
   for (const text of [
@@ -107,6 +112,7 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
     "./opencode-tools-context.js",
     "./opencode-tools-lsp.js",
     "./opencode-tools-todo.js",
+    "./opencode-tools-ses-tokens.js",
   ])
   assert.equal(configuration.plugin.includes("./opencode-tools-context.js"), true)
   assert.deepEqual(Object.keys(configuration.plugin[0][1]), ["quota"])
@@ -131,6 +137,7 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
   )
   assert.match(configurationSection, /Context, LSP, and TODO accept no options\./u)
   assert.match(configurationSection, /Context has no built-in panel override\s+to disable\./u)
+  assert.match(configurationSection, /SesTokens accepts no options and has no built-in panel override\./u)
 
   for (const id of [
     "aamkye/opencode-tools-quota",
@@ -140,6 +147,7 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
     "aamkye/opencode-tools-context",
     "aamkye/opencode-tools-lsp",
     "aamkye/opencode-tools-todo",
+    "aamkye/opencode-tools-ses-tokens",
   ]) assert.equal(readme.includes(`\`${id}\``), true, `missing runtime ID: ${id}`)
 
   for (const text of [
@@ -161,6 +169,7 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
     "re-enable `internal:sidebar-lsp`",
     "remove `./opencode-tools-todo.js`",
     "re-enable `internal:sidebar-todo`",
+    "remove `./opencode-tools-ses-tokens.js`",
     "restart OpenCode",
   ]) assert.equal(prose.includes(text), true, `missing README text: ${text}`)
   assert.doesNotMatch(prose, /automatically disables? `?internal:sidebar-mcp`?/iu)
@@ -210,9 +219,15 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
   const mcpLayoutsIndex = readme.indexOf("\n### MCP sidebar layouts")
   const contextLayoutsIndex = readme.indexOf("\n### Context sidebar layouts")
   const lspLayoutsIndex = readme.indexOf("\n### LSP sidebar layouts")
+  const todoLayoutsIndex = readme.indexOf("\n### TODO sidebar layouts")
+  const sesTokensLayoutsIndex = readme.indexOf("\n### SesTokens sidebar layouts")
   assert.ok(
-    mcpLayoutsIndex >= 0 && mcpLayoutsIndex < contextLayoutsIndex && contextLayoutsIndex < lspLayoutsIndex,
-    "README sidebar layout sections must be ordered MCP -> Context -> LSP",
+    mcpLayoutsIndex >= 0
+      && mcpLayoutsIndex < contextLayoutsIndex
+      && contextLayoutsIndex < lspLayoutsIndex
+      && lspLayoutsIndex < todoLayoutsIndex
+      && todoLayoutsIndex < sesTokensLayoutsIndex,
+    "README sidebar layout sections must be ordered MCP -> Context -> LSP -> TODO -> SesTokens",
   )
   const contextLayouts = readme.match(/### Context sidebar layouts\n\n([\s\S]*?)(?=\n### LSP sidebar layouts)/u)?.[1]
   assert.ok(contextLayouts, "missing Context sidebar layouts between MCP and LSP")
@@ -282,8 +297,10 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
     }
   }
 
-  const todoLayouts = readme.match(/### TODO sidebar layouts\n\n([\s\S]*?)(?=\n### Build and deploy)/u)?.[1]
+  const todoLayouts = readme.match(/### TODO sidebar layouts\n\n([\s\S]*?)(?=\n### SesTokens sidebar layouts)/u)?.[1]
+  const sesTokensLayouts = readme.match(/### SesTokens sidebar layouts\n\n([\s\S]*?)(?=\n### Build and deploy)/u)?.[1]
   assert.ok(todoLayouts, "missing TODO sidebar layouts")
+  assert.ok(sesTokensLayouts, "missing SesTokens sidebar layouts")
   const expectedTodoLayouts = new Map([
     ["Expanded", [
       "▼ TODO",
@@ -319,6 +336,43 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
     }
   }
 
+  const approvedSesTokensLayouts = [...sesTokensContract.matchAll(/```\n([\s\S]*?)\n```/gu)]
+    .map((match) => match[1].split("\n").map((line) => line.split(" |")[0].trimEnd()))
+  assert.equal(approvedSesTokensLayouts.length, 4, "AGENTS.md must define four SesTokens reference layouts")
+  const expectedSesTokensLayouts = new Map([
+    ["Expanded", approvedSesTokensLayouts[0]],
+    ["Expanded, stale", approvedSesTokensLayouts[1]],
+    ["Collapsed", approvedSesTokensLayouts[2]],
+    ["Collapsed, stale", approvedSesTokensLayouts[3]],
+  ])
+  for (const [heading, expected] of expectedSesTokensLayouts) {
+    const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")
+    const layout = sesTokensLayouts.match(new RegExp(`#### ${escapedHeading}\\n\\n\`\`\`text\\n([\\s\\S]*?)\\n\`\`\``, "u"))?.[1]
+    assert.ok(layout, `missing ${heading} SesTokens layout`)
+    const lines = layout.split("\n")
+    assert.deepEqual(lines, expected, `${heading} SesTokens layout changed from AGENTS.md semantics`)
+    for (const line of lines) {
+      assert.ok([...line].length <= 37, `${heading} SesTokens layout exceeds 37 cells: ${line}`)
+      assert.equal(line.trimEnd(), line, `${heading} SesTokens layout has trailing whitespace`)
+    }
+  }
+
+  const sesTokensDocumentation = `${sesTokensFeatures} ${sesTokensLayouts}`.replace(/\s+/gu, " ")
+  for (const text of [
+    "assistant messages across the selected root session and its complete descendant tree",
+    "input, output, reasoning, cache read, and cache write",
+    "Total is input + output + reasoning + cache read + cache write",
+    "cache hit ratio is cache read / (input + cache write)",
+    "200 ms event debounce",
+    "2, 4, and 8 second retries",
+    "retains the last successful snapshot as stale and recovers it to ready",
+    "does not poll",
+    "Snapshots are memory-only; only the collapse preference persists",
+    "does not calculate cost",
+    "Loading...",
+    "Usage unavailable",
+  ]) assert.equal(sesTokensDocumentation.includes(text), true, `missing SesTokens documentation: ${text}`)
+
   const buildAndDeploy = readme.match(/### Build and deploy\n\n([\s\S]*?)(?=\n#### Rollback)/u)?.[1]
   const rollback = readme.match(/#### Rollback\n\n([\s\S]*?)(?=\n### Artifact layout)/u)?.[1]
   const artifactLayout = readme.match(/### Artifact layout\n\n([\s\S]*?)(?=\n### Session title plugin)/u)?.[1]
@@ -329,8 +383,8 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
   assert.ok(artifactLayout, "missing Artifact layout section")
   assert.ok(sourceFiles, "missing Source files section")
   assert.ok(editWorkflow, "missing Edit workflow section")
-  assert.match(buildAndDeploy, /Build the seven standalone minified ESM plugins/u)
-  assert.match(buildAndDeploy, /configuration entries to the seven standalone entries in manifest order/u)
+  assert.match(buildAndDeploy, /Build the eight standalone minified ESM plugins/u)
+  assert.match(buildAndDeploy, /configuration entries to the eight standalone entries in manifest order/u)
   assert.match(
     rollback.replace(/\s+/gu, " "),
     /To remove the Context panel, remove `\.\/opencode-tools-context\.js` from the `plugin` array and restart OpenCode\./u,
@@ -341,6 +395,10 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
     "To remove the Context panel, remove `./opencode-tools-context.js` from the `plugin` array and restart OpenCode.",
   )
   assert.doesNotMatch(contextRollback, /plugin_enabled/u)
+  assert.match(
+    rollback.replace(/\s+/gu, " "),
+    /To remove the SesTokens panel, remove `\.\/opencode-tools-ses-tokens\.js` from the `plugin` array and restart OpenCode\./u,
+  )
   assert.match(artifactLayout, /^├── opencode-tools-context\.js$/mu)
   assert.match(
     artifactLayout,
@@ -350,9 +408,18 @@ test("documents standalone installation, migration, MCP, Context, LSP, and TODO 
     sourceFiles,
     /^\| `tui\/context\.tsx`\s+\| Standalone reactive active-session context and spend sidebar adapter\s+\|$/mu,
   )
-  assert.match(sourceFiles, /Builds the shared artifact and seven standalone local ESM plugins/u)
-  assert.match(sourceFiles, /Idempotently migrates seven local\/global plugins and `tui\.json` entries/u)
-  assert.match(editWorkflow, /npm run build:plugins # rebuild all seven standalone plugins plus shared code/u)
+  assert.match(artifactLayout, /^└── opencode-tools-ses-tokens\.js$/mu)
+  assert.match(
+    artifactLayout,
+    /^\| `opencode-tools-ses-tokens\.js` \| `aamkye\/opencode-tools-ses-tokens` \| Complete descendant-session-tree assistant token aggregation panel after TODO\. \|$/mu,
+  )
+  assert.match(sourceFiles, /^\| `tui\/ses-tokens\.tsx`\s+\| Standalone SesTokens sidebar adapter\s+\|$/mu)
+  assert.match(sourceFiles, /^\| `tui\/features\/ses-tokens\.ts`\s+\| Assistant token aggregation and panel model\s+\|$/mu)
+  assert.match(sourceFiles, /^\| `tui\/services\/session-tree-snapshot\.ts`\s+\| Bounded complete descendant-tree snapshot loader\s+\|$/mu)
+  assert.match(sourceFiles, /^\| `tui\/services\/ses-tokens-source\.ts`\s+\| Debounced event refresh, retry, and stale-state source\s+\|$/mu)
+  assert.match(sourceFiles, /Builds the shared artifact and eight standalone local ESM plugins/u)
+  assert.match(sourceFiles, /Idempotently migrates eight local\/global plugins and `tui\.json` entries/u)
+  assert.match(editWorkflow, /npm run build:plugins # rebuild all eight standalone plugins plus shared code/u)
 
   assert.match(prose, /Long IDs truncate with an ellipsis so expanded lines fit within 37 cells and collapsed lines fit within 36 cells\./u)
   assert.match(prose, /TODO continuation lines align under the content column, and only completed records contribute to the collapsed numerator\./u)

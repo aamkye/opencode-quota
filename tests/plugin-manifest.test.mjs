@@ -11,9 +11,10 @@ const expected = [
   ["context", "aamkye/opencode-tools-context", "tui/context.tsx", "opencode-tools-context.js", 112, "none"],
   ["lsp", "aamkye/opencode-tools-lsp", "tui/lsp.tsx", "opencode-tools-lsp.js", 113, "none"],
   ["todo", "aamkye/opencode-tools-todo", "tui/todo.tsx", "opencode-tools-todo.js", 114, "none"],
+  ["ses-tokens", "aamkye/opencode-tools-ses-tokens", "tui/ses-tokens.tsx", "opencode-tools-ses-tokens.js", 115, "none"],
 ]
 
-test("manifest describes the seven standalone plugins in deployment order", () => {
+test("manifest describes the eight standalone plugins in deployment order", () => {
   assert.deepEqual(pluginManifest.map((entry) => [entry.key, entry.id, entry.source, entry.outfile, entry.slotOrder, entry.options]), expected)
   assert.doesNotThrow(() => validatePluginManifest(pluginManifest))
 })
@@ -28,6 +29,7 @@ test("package exports every standalone plugin", async () => {
     "./context": "./tui/context.tsx",
     "./lsp": "./tui/lsp.tsx",
     "./todo": "./tui/todo.tsx",
+    "./ses-tokens": "./tui/ses-tokens.tsx",
   })
 })
 

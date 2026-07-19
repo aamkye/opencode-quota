@@ -7,8 +7,9 @@
 
 OpenCode TUI plugins that show quota usage, reset countdowns, rate-limit
 status, compact homepage summaries, MCP server health, active-session context
-and spend, LSP status, synchronized session TODOs, and `/tokens_*` reports for **Z.AI (GLM)**,
-**OpenAI (ChatGPT Plus/Pro)**, and **OpenCode Go**.
+and spend, LSP status, synchronized session TODOs, complete session-tree token
+totals, and `/tokens_*` reports for **Z.AI (GLM)**, **OpenAI (ChatGPT
+Plus/Pro)**, and **OpenCode Go**.
 
 ![opencode-tools homepage bottom](img/img0.jpg)
 
@@ -105,6 +106,20 @@ and spend, LSP status, synchronized session TODOs, and `/tokens_*` reports for *
 - **Persistent collapse state** — remembers the user's header-click preference
   and summarizes completed records over all session records.
 
+### SesTokens
+
+- **Assistant-only full-tree totals**: aggregates assistant messages across the
+  selected root session and its complete descendant tree.
+- **All detailed token buckets**: reports input, output, reasoning, cache read,
+  and cache write. Total is input + output + reasoning + cache read + cache
+  write; cache hit ratio is cache read / (input + cache write).
+- **Event-driven refresh**: uses a 200 ms event debounce and 2, 4, and 8 second
+  retries. It does not poll or calculate cost.
+- **Stale recovery**: retains the last successful snapshot as stale and
+  recovers it to ready after a successful refresh.
+- **Memory-only data**: Snapshots are memory-only; only the collapse preference
+  persists.
+
 ### Shared
 
 - **Homepage summary** — each provider plugin also registers a compact homepage
@@ -128,7 +143,7 @@ and spend, LSP status, synchronized session TODOs, and `/tokens_*` reports for *
 The plugins are built and loaded only from local files. This package is not
 published to npm, and OpenCode is never configured with an npm package spec.
 OpenCode 1.18.1 or newer is required for the standalone TUI plugin and
-synchronized MCP, Context, LSP, and TODO state APIs.
+synchronized MCP, Context, LSP, TODO, and session-tree state APIs.
 
 ### Configuration
 
@@ -166,7 +181,8 @@ Native TUI options can be supplied with the local plugin entry:
     "./opencode-tools-mcp.js",
     "./opencode-tools-context.js",
     "./opencode-tools-lsp.js",
-    "./opencode-tools-todo.js"
+    "./opencode-tools-todo.js",
+    "./opencode-tools-ses-tokens.js"
   ],
   "plugin_enabled": {
     "internal:sidebar-mcp": false,
@@ -180,10 +196,11 @@ Context ships as a separate opt-in artifact. Enable it by adding
 `./opencode-tools-context.js` to the `plugin` array.
 
 The entries must remain standalone. Only quota accepts the options object;
-home, token-report, MCP, Context, LSP, and TODO use string entries. MCP,
-Context, LSP, and TODO accept no options. Context has no built-in panel override
-to disable. The other external panels do not deactivate their built-in
-counterparts. Users must disable `internal:sidebar-mcp`,
+home, token-report, MCP, Context, LSP, TODO, and SesTokens use string entries.
+MCP, Context, LSP, and TODO accept no options. Context has no built-in panel override
+to disable. SesTokens accepts no options and has no built-in panel override. The
+other external panels do not deactivate their built-in counterparts. Users must
+disable `internal:sidebar-mcp`,
 `internal:sidebar-lsp`, and `internal:sidebar-todo` themselves, as shown by
 `plugin_enabled`, to avoid duplicate panels.
 
@@ -371,9 +388,71 @@ No TODOs for this session
 -------------------------------------
 ```
 
+### SesTokens sidebar layouts
+
+These examples preserve the current SesTokens layout semantics from
+`AGENTS.md`. Fenced lines omit right-padding; OpenTUI flex alignment supplies
+the visual spacing at runtime. Values remain right-aligned within the 37-cell
+sidebar.
+
+#### Expanded
+
+```text
+▼ SesTokens
+------------------------------------
+↻ turns                           97
+↑ in                            4.4M
+↓ out                          18.6K
+▤ cache write                      0
+▤ cache read                   24.7M
+ø cache hit ratio               5.6×
+✦ think                         2.8K
+---                              ---
+Σ total                        29.1M
+------------------------------------
+```
+
+#### Expanded, stale
+
+```text
+▼ SesTokens                    stale
+------------------------------------
+↻ turns                           97
+↑ in                            4.4M
+↓ out                          18.6K
+▤ cache write                      0
+▤ cache read                   24.7M
+ø cache hit ratio               5.6×
+✦ think                         2.8K
+---                              ---
+Σ total                        29.1M
+------------------------------------
+```
+
+#### Collapsed
+
+```text
+▶ SesTokens           Σ 29.1M / ↻ 97
+------------------------------------
+```
+
+#### Collapsed, stale
+
+```text
+▶ SesTokens     stale Σ 29.1M / ↻ 97
+------------------------------------
+```
+
+While the first snapshot loads, the expanded body and collapsed summary show
+`Loading...` without zero metrics. If the initial attempt and all three retries
+fail, they show `Usage unavailable`. A failed refresh after ready data retains
+the last successful snapshot as stale and recovers it to ready when a later
+refresh succeeds. The panel does not poll. Snapshots are memory-only; only the
+collapse preference persists, and the panel does not calculate cost.
+
 ### Build and deploy
 
-Build the seven standalone minified ESM plugins and their imported shared
+Build the eight standalone minified ESM plugins and their imported shared
 artifact:
 
 ```bash
@@ -390,7 +469,7 @@ npm run deploy:global
 ```
 
 Each deploy command rebuilds first and automatically migrates managed
-configuration entries to the seven standalone entries in manifest order. It
+configuration entries to the eight standalone entries in manifest order. It
 preserves unrelated plugin entries and preserves existing quota options;
 quota options remain attached only to the quota entry. Local deployment also
 removes managed source entries from the project-root `tui.json`, because
@@ -408,7 +487,9 @@ migration; the deployer still preserves quota's configuration options.
 #### Rollback
 
 To remove the Context panel, remove `./opencode-tools-context.js` from the
-`plugin` array and restart OpenCode. To return to OpenCode's built-in MCP panel,
+`plugin` array and restart OpenCode. To remove the SesTokens panel, remove
+`./opencode-tools-ses-tokens.js` from the `plugin` array and restart OpenCode.
+To return to OpenCode's built-in MCP panel,
 remove `./opencode-tools-mcp.js`
 from the `plugin` array, then remove the `"internal:sidebar-mcp": false`
 override (or set it to `true`) to re-enable `internal:sidebar-mcp`, then restart
@@ -433,7 +514,8 @@ dist/
 ├── opencode-tools-mcp.js
 ├── opencode-tools-context.js
 ├── opencode-tools-lsp.js
-└── opencode-tools-todo.js
+├── opencode-tools-todo.js
+└── opencode-tools-ses-tokens.js
 ```
 
 | File | Runtime ID | Responsibility |
@@ -446,6 +528,7 @@ dist/
 | `opencode-tools-context.js` | `aamkye/opencode-tools-context` | Reactive active-session context and spend panel between MCP and LSP. |
 | `opencode-tools-lsp.js` | `aamkye/opencode-tools-lsp` | Reactive LSP sidebar status panel immediately after Context. |
 | `opencode-tools-todo.js` | `aamkye/opencode-tools-todo` | Synchronized session TODO sidebar panel immediately after LSP. |
+| `opencode-tools-ses-tokens.js` | `aamkye/opencode-tools-ses-tokens` | Complete descendant-session-tree assistant token aggregation panel after TODO. |
 
 `solid-js`, `@opentui/*`, `@opencode-ai/plugin`, host SDK modules, and
 Node/Bun built-ins remain external and are provided by the OpenCode host.
@@ -470,11 +553,15 @@ change that title.
 | `tui/context.tsx`           | Standalone reactive active-session context and spend sidebar adapter  |
 | `tui/lsp.tsx`               | Standalone reactive LSP sidebar adapter                               |
 | `tui/todo.tsx`              | Standalone synchronized session TODO sidebar adapter                  |
+| `tui/ses-tokens.tsx`        | Standalone SesTokens sidebar adapter                                  |
+| `tui/features/ses-tokens.ts` | Assistant token aggregation and panel model                           |
+| `tui/services/session-tree-snapshot.ts` | Bounded complete descendant-tree snapshot loader              |
+| `tui/services/ses-tokens-source.ts` | Debounced event refresh, retry, and stale-state source              |
 | `tui/providers/`            | Z.AI, OpenAI, and OpenCode Go provider adapters                       |
 | `lib/tokens/`               | Vendored token reporting library ([upstream](https://github.com/slkiser/opencode-quota), MIT) |
 | `plugin-manifest.json`      | Manifest order, runtime IDs, artifacts, slots, and option ownership   |
-| `build-plugins.mjs`         | Builds the shared artifact and seven standalone local ESM plugins     |
-| `deploy-plugins.mjs`        | Idempotently migrates seven local/global plugins and `tui.json` entries |
+| `build-plugins.mjs`         | Builds the shared artifact and eight standalone local ESM plugins     |
+| `deploy-plugins.mjs`        | Idempotently migrates eight local/global plugins and `tui.json` entries |
 
 ### Edit workflow
 
@@ -483,7 +570,7 @@ Edit the relevant source, redeploy, then fully restart OpenCode to reload.
 ```bash
 npm install       # install/refresh deps in node_modules
 npm run typecheck # tsc --noEmit (informational; runtime resolves via Bun)
-npm run build:plugins # rebuild all seven standalone plugins plus shared code
+npm run build:plugins # rebuild all eight standalone plugins plus shared code
 npm run deploy:local # rebuild and deploy into this repository
 npm test          # run tests
 ```

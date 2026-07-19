@@ -54,6 +54,7 @@ const expectedManagedSpecs = [
   "./opencode-tools-context.js",
   "./opencode-tools-lsp.js",
   "./opencode-tools-todo.js",
+  "./opencode-tools-ses-tokens.js",
 ]
 const deployedFiles = [
   "opencode-tools-shared.js",
@@ -74,7 +75,7 @@ const obsoleteArtifacts = [
   "tokens.ts",
   "plugins/tokens.js",
   "plugins/tokens.ts",
-  ...new Set([...pluginManifest.map((entry) => entry.source), "tui/context.tsx", "tui/lsp.tsx"]),
+  ...new Set([...pluginManifest.map((entry) => entry.source), "tui/context.tsx", "tui/lsp.tsx", "tui/ses-tokens.tsx"]),
 ]
 const temporaryRoots = []
 let deployPlugins
@@ -110,12 +111,14 @@ async function fixture() {
       "./opencode-tools-mcp.js",
       "./opencode-tools-context.js",
       "./opencode-tools-todo.js",
+      ["./opencode-tools-ses-tokens.js", { ignored: "ses-tokens options" }],
       ["./tui/quota.tsx", rootOptions],
       "./tui/home.tsx",
       "./tui/token-report.tsx",
       "./tui/mcp.tsx",
       "./tui/context.tsx",
       "./tui/todo.tsx",
+      "./tui/ses-tokens.tsx",
       ["@aamkye/opencode-tools/tui", globalOptions],
       [`./${obsoleteNamespace}-zai.tsx`, { legacy: "lower priority" }],
       `./${obsoleteNamespace}.js`,
@@ -133,6 +136,8 @@ async function fixture() {
   await writeFile(join(root, "tui/context.tsx"), "stale managed Context source")
   await writeFile(join(root, "opencode-tools-todo.js"), "stale managed TODO artifact")
   await writeFile(join(root, "tui/todo.tsx"), "stale managed TODO source")
+  await writeFile(join(root, "opencode-tools-ses-tokens.js"), "stale managed SesTokens artifact")
+  await writeFile(join(root, "tui/ses-tokens.tsx"), "stale managed SesTokens source")
   await writeFile(join(root, "plugins", "unrelated.js"), "preserve")
   await writeFile(join(root, "opencode.json"), JSON.stringify({
     $schema: "https://opencode.ai/config.json",
@@ -202,6 +207,11 @@ function assertPlainTodoEntry(config) {
   assert.deepEqual(entries, ["./opencode-tools-todo.js"])
 }
 
+function assertPlainSesTokensEntry(config) {
+  const entries = config.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-ses-tokens.js")
+  assert.deepEqual(entries, ["./opencode-tools-ses-tokens.js"])
+}
+
 function assertSingleTrailingNewline(contents, label) {
   assert.equal(contents.endsWith("\n"), true, `${label} must end with a newline`)
   assert.equal(contents.endsWith("\n\n"), false, `${label} must end with exactly one newline`)
@@ -249,6 +259,7 @@ test("local deployment removes token artifacts and commands while preserving unr
   assertPlainContextEntry(config)
   assertPlainLspEntry(config)
   assertPlainTodoEntry(config)
+  assertPlainSesTokensEntry(config)
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "used", sortDirection: "asc" },
     quota: {
@@ -305,6 +316,7 @@ test("local deployment preserves project fallback semantics across repeated migr
       "./tui/mcp.tsx",
       "./tui/context.tsx",
       "./tui/todo.tsx",
+      "./tui/ses-tokens.tsx",
       ["@aamkye/opencode-tools/tui", globalOptions],
       "@scope/root-unrelated-last",
       [`./${obsoleteNamespace}-zai.tsx`, localOptions],
@@ -334,6 +346,7 @@ test("local deployment preserves project fallback semantics across repeated migr
       "./opencode-tools-mcp.js",
       "./opencode-tools-context.js",
       "./opencode-tools-todo.js",
+      ["./opencode-tools-ses-tokens.js", { ignored: "ses-tokens options" }],
       "./tui/home.tsx",
       "@aamkye/opencode-tools/tui",
       "file:///tmp/selected-unrelated-last.js",
@@ -350,6 +363,8 @@ test("local deployment preserves project fallback semantics across repeated migr
   await writeFile(join(configRoot, "tui/context.tsx"), "stale managed Context source")
   await writeFile(join(configRoot, "opencode-tools-todo.js"), "stale managed TODO artifact")
   await writeFile(join(configRoot, "tui/todo.tsx"), "stale managed TODO source")
+  await writeFile(join(configRoot, "opencode-tools-ses-tokens.js"), "stale managed SesTokens artifact")
+  await writeFile(join(configRoot, "tui/ses-tokens.tsx"), "stale managed SesTokens source")
 
   const initialSelectedConfig = JSON.parse(await readFile(join(configRoot, "tui.json"), "utf8"))
   assert.equal(JSON.stringify(initialSelectedConfig).includes("opencodego"), false)
@@ -380,6 +395,7 @@ test("local deployment preserves project fallback semantics across repeated migr
   assertPlainContextEntry(selectedConfig)
   assertPlainLspEntry(selectedConfig)
   assertPlainTodoEntry(selectedConfig)
+  assertPlainSesTokensEntry(selectedConfig)
   assert.deepEqual(selectedConfig.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "asc" },
     quota: {
@@ -439,6 +455,7 @@ test("global deployment removes token artifacts and commands while preserving un
       "./opencode-tools-mcp.js",
       "./opencode-tools-context.js",
       "./opencode-tools-todo.js",
+      ["./opencode-tools-ses-tokens.js", { ignored: "ses-tokens options" }],
       ["./opencode-tools-home.js", { ignored: "home options" }],
       "./tui/quota.tsx",
       "./tui/home.tsx",
@@ -446,6 +463,7 @@ test("global deployment removes token artifacts and commands while preserving un
       "./tui/mcp.tsx",
       "./tui/context.tsx",
       "./tui/todo.tsx",
+      "./tui/ses-tokens.tsx",
       [`./${obsoleteNamespace}-openai.tsx`, { legacy: "lower priority" }],
       "./tokens.ts",
     ],
@@ -461,6 +479,8 @@ test("global deployment removes token artifacts and commands while preserving un
   await writeFile(join(root, "tui/context.tsx"), "stale managed Context source")
   await writeFile(join(root, "opencode-tools-todo.js"), "stale managed TODO artifact")
   await writeFile(join(root, "tui/todo.tsx"), "stale managed TODO source")
+  await writeFile(join(root, "opencode-tools-ses-tokens.js"), "stale managed SesTokens artifact")
+  await writeFile(join(root, "tui/ses-tokens.tsx"), "stale managed SesTokens source")
   await writeFile(join(root, "plugins", "unrelated.js"), "preserve")
   await writeFile(join(root, "opencode.json"), JSON.stringify({
     $schema: "https://opencode.ai/config.json",
@@ -497,6 +517,7 @@ test("global deployment removes token artifacts and commands while preserving un
   assertPlainContextEntry(config)
   assertPlainLspEntry(config)
   assertPlainTodoEntry(config)
+  assertPlainSesTokensEntry(config)
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "desc" },
     quota: {

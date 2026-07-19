@@ -11,7 +11,8 @@
     "./mcp": "./tui/mcp.tsx",
     "./context": "./tui/context.tsx",
     "./lsp": "./tui/lsp.tsx",
-    "./todo": "./tui/todo.tsx"
+    "./todo": "./tui/todo.tsx",
+    "./ses-tokens": "./tui/ses-tokens.tsx"
   },
   "files": [
     "dist",

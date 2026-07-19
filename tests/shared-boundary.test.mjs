@@ -106,6 +106,7 @@ test("loadable TUI entries use the shared facade for computation", () => {
   const contextSource = parsedSource("tui/context.tsx")
   const todo = source("tui/todo.tsx")
   const todoSource = parsedSource("tui/todo.tsx")
+  const sesTokensSource = parsedSource("tui/ses-tokens.tsx")
 
   assert.match(quota, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(home, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
@@ -119,6 +120,9 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assert.ok(todoModelImport, "tui/todo.tsx must named-import createTodoPanelModel from the shared facade")
   assert.ok(callsIdentifier(todoSource, todoModelImport), "tui/todo.tsx must call the imported createTodoPanelModel")
   assert.match(todo, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
+  const sesTokensModelImport = namedImportLocalName(sesTokensSource, "../shared/opencode-tools-shared.js", "createSesTokensPanelModel")
+  assert.ok(sesTokensModelImport, "tui/ses-tokens.tsx must named-import createSesTokensPanelModel from the shared facade")
+  assert.ok(callsIdentifier(sesTokensSource, sesTokensModelImport), "tui/ses-tokens.tsx must call the imported createSesTokensPanelModel")
   assertRelativeImports("tui/quota.tsx", [
     "../shared/opencode-tools-shared.js",
     "./presentation/renderer.js",
@@ -135,6 +139,7 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assertRelativeImports("tui/context.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/lsp.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/todo.tsx", ["../shared/opencode-tools-shared.js"])
+  assertRelativeImports("tui/ses-tokens.tsx", ["../shared/opencode-tools-shared.js"])
   assert.doesNotMatch(tokenReport, /\bcomputeTokenReport\b|\brenderTokenReport\b/)
   assert.doesNotMatch(tokenReport, /client\.session\.prompt/)
   assert.doesNotMatch(tokenReport, /\bhistory\b|\bmodel\b/)
@@ -179,6 +184,18 @@ test("shared facade exports computation without plugin registration or JSX", () 
   assert.ok(
     hasNamedReExport(sharedSource, "../tui/features/todo.js", "createTodoPanelModel"),
     "shared facade must re-export createTodoPanelModel from the TODO feature",
+  )
+  assert.ok(
+    hasNamedReExport(sharedSource, "../tui/features/ses-tokens.js", "createSesTokensPanelModel"),
+    "shared facade must re-export createSesTokensPanelModel from the SesTokens feature",
+  )
+  assert.ok(
+    hasNamedReExport(sharedSource, "../tui/services/session-tree-snapshot.js", "loadSessionTreeSnapshot"),
+    "shared facade must re-export loadSessionTreeSnapshot from the session-tree service",
+  )
+  assert.ok(
+    hasNamedReExport(sharedSource, "../tui/services/ses-tokens-source.js", "createSesTokensSource"),
+    "shared facade must re-export createSesTokensSource from the SesTokens source",
   )
   assert.doesNotMatch(shared, /@opentui\/|slots\.register|export\s+default|<[a-z][^>]*>/i)
   assert.match(homeFeature, /export function formatHomeQuotaLine/)
