@@ -327,6 +327,50 @@ test("omits status bullets and colors compact and detail times by status", async
   }
 })
 
+test("clips long detail identities to one row at 37 and 35 cells", async () => {
+  const running = canonicalChildren.find((entry) => entry.session.id === "subagent-9")
+  assert.ok(running)
+  const longAgent = "agent-with-an-arbitrarily-long-custom-identity"
+  const longModel = "provider/model-with-an-arbitrarily-long-custom-identity"
+  const child = {
+    ...running,
+    messages: running.messages.map((entry) => ({
+      ...entry,
+      agent: longAgent,
+      modelID: longModel,
+    })),
+  }
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady([child])
+    await mounted.view().clickEntry("SubAgent9")
+    for (const width of [37, 35]) {
+      await mounted.resize(width)
+      const view = mounted.view()
+      assert.equal(view.lines.length, 9)
+      assert.deepEqual(view.detailRows.map(({ label }) => label), ["agent:", "status:", "time:", "model:"])
+      assert.equal(view.detailRows.find(({ label }) => label === "time:")?.valueColor, "#ffaa00")
+      for (const row of view.detailRows) {
+        assert.equal(row.rowWidth, width)
+        assert.equal(row.childWidths.reduce((total, cells) => total + cells, 0), width)
+        assert.ok(stringWidth(row.renderedText) <= width)
+        assert.equal(row.renderedText.includes("\n"), false)
+      }
+      for (const [label, value] of [["agent:", longAgent], ["model:", longModel]]) {
+        const row = view.detailRows.find((candidate) => candidate.label === label)
+        assert.ok(row)
+        assert.notEqual(row.renderedValue, value)
+        assert.equal(row.valueProps.flexShrink, 1)
+        assert.equal(row.valueProps.minWidth, 0)
+        assert.equal(row.valueProps.overflow, "hidden")
+        assert.equal(row.valueProps.wrapMode, "none")
+      }
+    }
+  } finally {
+    await mounted.dispose()
+  }
+})
+
 test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells", async () => {
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {

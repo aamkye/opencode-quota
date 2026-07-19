@@ -283,12 +283,18 @@ export function createSubagentSource({
 
   const unsubscribers = [
     onEvent("session.created", (event) => {
+      if (parentID !== "" && event.properties.info.parentID === parentID) {
+        knownDirectChildIDs.add(event.properties.info.id)
+      }
       if (
         event.properties.info.parentID === parentID
         || recoverUnknownTopology(event.properties.info.id)
       ) invalidateAndSchedule()
     }),
     onEvent("session.updated", (event) => {
+      if (parentID !== "" && event.properties.info.parentID === parentID) {
+        knownDirectChildIDs.add(event.properties.info.id)
+      }
       if (
         known(event.properties.sessionID)
         || known(event.properties.info.id)

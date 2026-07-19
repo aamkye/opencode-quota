@@ -131,7 +131,15 @@ function DetailRow(props: {
       >
         {props.label}
       </text>
-      <text flexShrink={0} fg={props.status ? props.theme()[props.status] : undefined}>{props.value}</text>
+      <text
+        flexShrink={1}
+        minWidth={0}
+        overflow="hidden"
+        wrapMode="none"
+        fg={props.status ? props.theme()[props.status] : undefined}
+      >
+        {props.value}
+      </text>
     </box>
   )
 }

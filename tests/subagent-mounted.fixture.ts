@@ -147,12 +147,25 @@ function rowLayout(row: HostNode, width: number) {
   const rowWidth = resolvedWidth(row.props.width, width) || width
   const cells = row.children.filter((candidate) => candidate.type !== "#text")
   const configuredWidths = cells.map((cell) => resolvedWidth(cell.props.width, rowWidth))
-  const fixedWidths = cells.map((cell, index) => {
+  const fixedWidths = cells.map<number | undefined>((cell, index) => {
     const configured = configuredWidths[index]
     if (configured > 0) return configured
     return Number(cell.props.flexGrow ?? 0) > 0 ? undefined : cellWidth(textOf(cell))
   })
-  const fixedTotal = fixedWidths.reduce<number>((total, value) => total + (value ?? 0), 0)
+  const growingContentWidth = cells.reduce((total, cell, index) => (
+    total + (fixedWidths[index] === undefined ? cellWidth(textOf(cell)) : 0)
+  ), 0)
+  let fixedTotal = fixedWidths.reduce<number>((total, value) => total + (value ?? 0), 0)
+  let overflow = Math.max(0, fixedTotal + growingContentWidth - rowWidth)
+  for (let index = fixedWidths.length - 1; index >= 0 && overflow > 0; index -= 1) {
+    const fixed = fixedWidths[index]
+    const cell = cells[index]
+    if (fixed === undefined || Number(cell.props.flexShrink ?? 0) <= 0 || cell.props.minWidth !== 0) continue
+    const reduction = Math.min(fixed, overflow)
+    fixedWidths[index] = fixed - reduction
+    fixedTotal -= reduction
+    overflow -= reduction
+  }
   const growTotal = cells.reduce((total, cell, index) => (
     total + (fixedWidths[index] === undefined ? Number(cell.props.flexGrow ?? 0) : 0)
   ), 0)
@@ -513,6 +526,11 @@ export async function mountSubagentPanel(options: {
         label: texts[1],
         value: texts[2],
         valueColor: layout.cells[2]?.props.fg,
+        renderedValue: layout.renderedCells[2],
+        renderedText: layout.renderedText,
+        rowWidth: layout.rowWidth,
+        childWidths: layout.childWidths,
+        valueProps: layout.cells[2]?.props ?? {},
       })),
       async clickHeader() {
         await clickRow(header, "SubAgent header")

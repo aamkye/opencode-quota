@@ -327,6 +327,48 @@ test("records the first known session error immediately and only once", async ()
   assert.deepEqual(scheduler.pendingDelays(), [200])
 })
 
+test("retains immediate errors for event-proven direct children until publication", async () => {
+  for (const directEvent of [created("new-child", "parent"), updated("new-child", "parent")]) {
+    let clock = 100
+    let attempts = 0
+    const { source, scheduler, emit, saves, failures } = createHarness(
+      async (_parentID, context) => {
+        attempts += 1
+        const complete = attempts === 1 ? snapshot("parent") : snapshot("parent", "new-child")
+        context.onChildIDs(complete.childIDs)
+        return complete
+      },
+      { now: () => clock },
+    )
+    source.setParentID("parent")
+    await settle()
+
+    emit(created("stranger", "other"))
+    emit(updated("stranger", "other"))
+    emit(error("stranger"))
+    assert.deepEqual(failures(), {})
+    assert.equal(saves.length, 0)
+
+    emit(directEvent)
+    emit(error("new-child"))
+    assert.deepEqual(source.state().failureTimes, { "new-child": 100 })
+    assert.deepEqual(failures(), { parent: { "new-child": 100 } })
+    assert.equal(saves.length, 1)
+
+    clock = 200
+    emit(error("new-child"))
+    assert.deepEqual(source.state().failureTimes, { "new-child": 100 })
+    assert.equal(saves.length, 1)
+    assert.deepEqual(scheduler.pendingDelays(), [200])
+
+    scheduler.run(200)
+    await settle()
+    assert.equal(source.state().phase, "ready")
+    assert.deepEqual(source.state().snapshot.childIDs, ["new-child"])
+    assert.deepEqual(source.state().failureTimes, { "new-child": 100 })
+  }
+})
+
 test("rejects obsolete topology failure writes and publications", async () => {
   const first = deferred()
   const second = deferred()
