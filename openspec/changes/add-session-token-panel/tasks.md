@@ -11,8 +11,8 @@
 
 ## 3. Sidebar Panel
 
-- [ ] 3.1 Add mounted-panel tests for AGENTS.md expanded, collapsed, loading, unavailable, width-boundary, persistence, session-switch, and disposal scenarios
-- [ ] 3.2 Implement the standalone Solid SesTokens panel with exact row ordering, symbols, alignment, colors, dividers, summary, and KV collapse behavior
+- [x] 3.1 Add mounted-panel tests for AGENTS.md expanded, collapsed, loading, unavailable, width-boundary, persistence, session-switch, and disposal scenarios
+- [x] 3.2 Implement the standalone Solid SesTokens panel with exact row ordering, symbols, alignment, colors, dividers, summary, and KV collapse behavior
 
 ## 4. Plugin Integration
 

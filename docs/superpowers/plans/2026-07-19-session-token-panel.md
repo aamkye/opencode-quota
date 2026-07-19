@@ -674,7 +674,7 @@ git commit -m "feat: support compact panel header detail"
 - Consumes: `CompactPanel`, `createSesTokensPanelModel`, `createSesTokensSource`, `loadSessionTreeSnapshot`, `defineTuiPlugin`, `pluginDescriptor`, source state/types, and SDK-backed client declarations through `shared/opencode-tools-shared.ts`.
 - Produces: the runtime key plus a default plugin module with ID `aamkye/opencode-tools-ses-tokens`, slot order `115`, one `sidebar_content` callback, and persisted collapse behavior. The mounted compiler injects the approved descriptor only for this pre-integration test; Task 7 adds it to production manifest data.
 
-- [ ] **Step 1: Add the mounted compile target and build a controllable host fixture**
+- [x] **Step 1: Add the mounted compile target and build a controllable host fixture**
 
 Import `readFileSync` from `node:fs`, add `ses-tokens-mounted` to cleanup, and define a test-only esbuild plugin that extends the current JSON manifest without changing `plugin-manifest.json`:
 
@@ -717,7 +717,7 @@ The fixture must provide:
 
 Do not duplicate aggregation in the fixture; snapshots contain SDK-like messages and the mounted panel must call the shared pure model.
 
-- [ ] **Step 2: Write the failing mounted acceptance tests**
+- [x] **Step 2: Write the failing mounted acceptance tests**
 
 Create `tests/ses-tokens-mounted.test.mjs` with these named tests:
 
@@ -751,13 +751,13 @@ assert.equal(view.dividerCount, 3)
 
 Assert collapsed text `Σ 29.1M / ↻ 97`; stale detail `stale` has warning color; loading/unavailable have muted color; and each rendered metric line satisfies `cells <= 37` and `line.trimEnd() === line`. Assert no client call occurs for an empty session ID.
 
-- [ ] **Step 3: Run the mounted suite to verify RED**
+- [x] **Step 3: Run the mounted suite to verify RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/ses-tokens-mounted.test.mjs`
 
 Expected: FAIL because `tui/ses-tokens.tsx` does not exist.
 
-- [ ] **Step 4: Add the runtime key and implement the thin Solid adapter**
+- [x] **Step 4: Add the runtime key and implement the thin Solid adapter**
 
 First add `"ses-tokens"` to `PluginKey` in `tui/runtime/manifest.ts`. The test-only esbuild plugin from Step 1 lets the mounted fixture evaluate `pluginDescriptor("ses-tokens")`; do not add the production manifest entry until Task 7's integration RED test exists.
 
@@ -787,17 +787,17 @@ Component behavior:
 - Keep exact labels/order from the test. Render all rows for a complete all-zero snapshot.
 - Import all feature, service, runtime, panel, and type contracts from `../shared/opencode-tools-shared.js`; no sibling plugin or SubAgent import is allowed.
 
-- [ ] **Step 5: Run mounted and source suites to verify GREEN**
+- [x] **Step 5: Run mounted and source suites to verify GREEN**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/ses-tokens-mounted.test.mjs tests/ses-tokens-source.test.mjs tests/session-tree-snapshot.test.mjs tests/ses-tokens-model.test.mjs tests/compact-panel-mounted.test.mjs`
 
 Expected: PASS for all new panel layers and CompactPanel detail behavior.
 
-- [ ] **Step 6: Check off the sidebar boundary**
+- [x] **Step 6: Check off the sidebar boundary**
 
 Change only OpenSpec items `3.1` and `3.2` from `[ ]` to `[x]`.
 
-- [ ] **Step 7: Commit the mounted panel slice during implementation**
+- [x] **Step 7: Commit the mounted panel slice during implementation**
 
 ```bash
 git add tui/ses-tokens.tsx tui/runtime/manifest.ts tests/ses-tokens-mounted.fixture.ts tests/ses-tokens-mounted.test.mjs tests/compile-presentation.mjs openspec/changes/add-session-token-panel/tasks.md
