@@ -48,7 +48,7 @@ const openTuiSolidPlugin = {
   },
 }
 
-for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "context-mounted", "lsp-mounted", "todo-mounted", "ses-tokens-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "ses-tokens-model", "session-tree-snapshot", "ses-tokens-source", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "context-mounted", "lsp-mounted", "todo-mounted", "ses-tokens-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "ses-tokens-model", "subagent-model", "session-tree-snapshot", "ses-tokens-source", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
 }
 mkdirSync(".tmp-test", { recursive: true })
@@ -84,6 +84,7 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
   ["tui/features/lsp.ts", ".tmp-test/lsp-model.mjs", ["browser"]],
   ["tui/features/todo.ts", ".tmp-test/todo-model.mjs", ["browser"]],
   ["tui/features/ses-tokens.ts", ".tmp-test/ses-tokens-model.mjs", ["browser"]],
+  ["tui/features/subagent.ts", ".tmp-test/subagent-model.mjs", ["browser"]],
   ["tui/services/session-tree-snapshot.ts", ".tmp-test/session-tree-snapshot.mjs", ["browser"]],
   ["tui/services/ses-tokens-source.ts", ".tmp-test/ses-tokens-source.mjs", ["browser"]],
   ["tui/features/token-report.ts", ".tmp-test/token-report-feature.mjs", ["browser"]],

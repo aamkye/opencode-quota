@@ -190,6 +190,14 @@ test("shared facade exports computation without plugin registration or JSX", () 
     "shared facade must re-export createSesTokensPanelModel from the SesTokens feature",
   )
   assert.ok(
+    hasNamedReExport(sharedSource, "../tui/features/subagent.js", "createSubagentPanelModel"),
+    "shared facade must re-export createSubagentPanelModel from the SubAgent feature",
+  )
+  assert.ok(
+    hasNamedReExport(sharedSource, "../tui/features/subagent.js", "allocateSubagentEntryRow"),
+    "shared facade must re-export allocateSubagentEntryRow from the SubAgent feature",
+  )
+  assert.ok(
     hasNamedReExport(sharedSource, "../tui/services/session-tree-snapshot.js", "loadSessionTreeSnapshot"),
     "shared facade must re-export loadSessionTreeSnapshot from the session-tree service",
   )
