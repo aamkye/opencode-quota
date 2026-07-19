@@ -829,6 +829,9 @@ Capture the focused test count, typecheck/full-suite/build exit codes, direct bu
 - Modify: `tests/subagent-mounted.test.mjs`
 - Modify: `tests/subagent-mounted.fixture.ts`
 - Modify: `tests/opentui-solid-host-runtime.fixture.ts`
+- Modify: `tests/compile-presentation.mjs`
+- Modify: `tests/plugin-build.test.mjs`
+- Modify: `tests/shared-boundary.test.mjs`
 - Modify: `tui/features/subagent.ts`
 - Modify: `tui/subagent.tsx`
 - Modify: `README.md`
@@ -867,6 +870,8 @@ function MeasuredTitle(props: MeasuredTitleProps): JSX.Element
 - `truncateTerminalCellsEnd` segments with `new Intl.Segmenter(undefined, { granularity: "grapheme" })`, measures each complete grapheme and the `…` with direct `string-width`, returns the original value when it fits, returns `""` for zero available cells, and otherwise trims trailing whitespace from the longest complete grapheme prefix before appending one end ellipsis. Never render whitespace immediately before the ellipsis.
 - `MeasuredTitle` renders the sole flexible title `<text>`, obtains it through `ref={(renderable: Renderable) => ...}`, reads `renderable.width`, and updates its width signal on `LayoutEvents.RESIZED`. It must not pass OpenTUI's `truncate={true}`. Attach one stable listener per mounted title region and remove that same listener with `renderable.off(LayoutEvents.RESIZED, listener)` in `onCleanup`.
 - The installed public contract supports this exact implementation: `@opentui/core` 0.4.3 exports `LayoutEvents.RESIZED` and `Renderable.width`; `@opentui/solid` 0.4.3 types intrinsic refs as the concrete renderable. Do not use a private Yoga node, generated bundle symbol, or untyped event substitute.
+- `tests/shared-boundary.test.mjs` requires a runtime named import of `LayoutEvents` and a type import of `Renderable` from `@opentui/core`; it rejects a local `LayoutEvents` object. `tests/compile-presentation.mjs` externalizes `@opentui/core` for the SubAgent mounted and adapter fixture builds so the harness uses the installed host package instead of traversing its native optional packages.
+- `tests/plugin-build.test.mjs` replaces the blanket no-`node_modules` assertion with an exact policy: shared and every non-SubAgent feature still have zero `node_modules` inputs; SubAgent has only the `ansi-regex`, `strip-ansi`, `get-east-asian-width`, `emoji-regex`, and `string-width` package roots. Keep all host and built-in external assertions unchanged.
 - Extend only the test host's renderable simulation with this exact observable surface so mounted tests exercise the production ref/listener path:
 
 ```ts
@@ -917,6 +922,8 @@ test("allocates disclosure title gap and duration without a status bullet", () =
 Retain the existing NaN, infinity, fractional, and too-narrow invariant loop, but apply it to the four-field allocation.
 
 In `tests/opentui-solid-host-runtime.fixture.ts`, add the typed listener map behind the interface above. `on` inserts the exact function into the event set, `off` removes it, `emit` invokes a copied listener list, and `listenerCount` returns the current set size. Keep every existing host insertion/removal behavior unchanged.
+
+In `tests/shared-boundary.test.mjs`, add RED assertions that `namedImportLocalName(subagentSource, "@opentui/core", "LayoutEvents")` is present and that the source contains no local `const LayoutEvents =`. In `tests/plugin-build.test.mjs`, add the exact SubAgent-only package-input allowlist before changing the production import or build-policy assertion. Against commit `0c8bcf3`, these assertions must fail for the local enum workaround and blanket package-input rejection.
 
 In `tests/subagent-mounted.fixture.ts`, stop identifying entry rows through `texts[1] === "• "`. Identify a row by disclosure in `texts[0]`, a non-`Rest` title in `texts[1]`, and its entry click handler. Track a mutable mounted width, defaulting to 36. During host flush, compute each title child's rendered flex width, assign it to the simulated renderable, emit `"resized"` only when the numeric width changed, settle Solid once more, and expose `resize(width)` for 37, 36, and scrollbar-reduced 35-cell assertions. Replace native-border-only Rest-divider discovery with explicit divider child inspection while retaining outer `CompactPanel` divider discovery.
 
@@ -1009,10 +1016,12 @@ Run:
 node tests/compile-presentation.mjs && node --test \
   tests/subagent-model.test.mjs \
   tests/subagent-mounted.test.mjs \
-  tests/plugin-wiring.test.mjs
+  tests/plugin-wiring.test.mjs \
+  tests/plugin-build.test.mjs \
+  tests/shared-boundary.test.mjs
 ```
 
-Expected RED: the model still returns a `bullet: 2` allocation; current mounted rows still render `• `, leave compact/detail `time` uncolored, use OpenTUI `truncate={true}`, expose no resize listener, render an unmuted Rest header and native border, and fail the AGENTS-derived layouts. README still contains bullet-bearing obsolete SubAgent blocks. Confirm these are assertion failures against old behavior, not fixture compilation or unrelated source/lifecycle failures.
+Expected RED before the original Task 9 implementation: the model returns a `bullet: 2` allocation; mounted rows render `• `, leave compact/detail `time` uncolored, use OpenTUI `truncate={true}`, expose no resize listener, render an unmuted Rest header and native border, and fail the AGENTS-derived layouts. README contains bullet-bearing obsolete SubAgent blocks. The post-`0c8bcf3` correction RED must isolate the local `LayoutEvents` workaround and blanket package-input rejection. Confirm failures are contract assertions, not unrelated source/lifecycle failures.
 
 - [ ] **Step 3: Implement the minimal visual-contract correction**
 
@@ -1036,7 +1045,23 @@ In `package.json`, add only this direct production dependency in lexical/logical
 
 Mirror the same exact entry under `packages[""].dependencies` in `package-lock.json`. Leave `node_modules/string-width` resolved at version `7.2.0` with its existing integrity and transitive records; do not run a dependency upgrade or alter any other package version.
 
-In `tui/subagent.tsx`, import `LayoutEvents` and type `Renderable` from `@opentui/core`, import `stringWidth` from `string-width`, and import type `JSX` from Solid. Implement the helper/component interfaces above. The listener must be stable and symmetrically cleaned up:
+In `tests/compile-presentation.mjs`, pass `external: ["@opentui/core"]` to the SubAgent mounted fixture and standalone adapter fixture entries. Do not externalize `string-width`; focused artifacts must exercise the bundled width helper.
+
+In `tests/plugin-build.test.mjs`, normalize each `node_modules/<package>/...` metafile input to its package root and compare exact sets. The SubAgent-only allowlist is:
+
+```js
+[
+  "ansi-regex",
+  "emoji-regex",
+  "get-east-asian-width",
+  "string-width",
+  "strip-ansi",
+]
+```
+
+Every other feature and the shared artifact must still produce `[]`.
+
+In `tui/subagent.tsx`, import runtime `LayoutEvents` and type `Renderable` from `@opentui/core`, import `stringWidth` from `string-width`, and import type `JSX` from Solid. Implement the helper/component interfaces above. The listener must be stable and symmetrically cleaned up:
 
 ```ts
 let titleRegion: Renderable | undefined
@@ -1086,10 +1111,14 @@ Run:
 node tests/compile-presentation.mjs && node --test \
   tests/subagent-model.test.mjs \
   tests/subagent-mounted.test.mjs \
-  tests/plugin-wiring.test.mjs
+  tests/plugin-wiring.test.mjs \
+  tests/plugin-build.test.mjs \
+  tests/shared-boundary.test.mjs
 ```
 
 Expected GREEN: allocation has no bullet field; every AGENTS-derived layout and 37/36/35-cell assertion passes; wide/combining graphemes end-truncate safely; compact/detail time colors, muted Rest treatment, explicit divider children, fixed gap, listener cleanup, README synchronization, and no-trailing-whitespace assertions all pass. Existing persistence, clock, navigation, source, and stale-layout cases in the mounted suite remain green.
+
+The same GREEN run must prove that `tui/subagent.tsx` uses the public runtime `LayoutEvents` import, the mounted compiler externalizes the host package, SubAgent bundles exactly the approved width-helper dependency chain, and no other artifact bundles a package.
 
 - [ ] **Step 5: Run strict type verification**
 
@@ -1124,6 +1153,8 @@ test "$(shasum -a 256 AGENTS.md | cut -d ' ' -f1)" = "488214c49e9b83b6770e1e0e03
 git diff --exit-code f0220a3 -- AGENTS.md
 git diff --check -- package.json package-lock.json README.md \
   tui/features/subagent.ts tui/subagent.tsx \
+  tests/compile-presentation.mjs tests/plugin-build.test.mjs \
+  tests/shared-boundary.test.mjs \
   tests/opentui-solid-host-runtime.fixture.ts tests/subagent-model.test.mjs \
   tests/subagent-mounted.fixture.ts tests/subagent-mounted.test.mjs
 git check-ignore -v dist/opencode-tools-subagent.js \
@@ -1142,6 +1173,8 @@ Run:
 git diff -- \
   package.json package-lock.json README.md \
   tui/features/subagent.ts tui/subagent.tsx \
+  tests/compile-presentation.mjs tests/plugin-build.test.mjs \
+  tests/shared-boundary.test.mjs \
   tests/opentui-solid-host-runtime.fixture.ts tests/subagent-model.test.mjs \
   tests/subagent-mounted.fixture.ts tests/subagent-mounted.test.mjs
 git diff --cached --name-only
@@ -1156,12 +1189,14 @@ Stage only:
 ```bash
 git add package.json package-lock.json README.md \
   tui/features/subagent.ts tui/subagent.tsx \
+  tests/compile-presentation.mjs tests/plugin-build.test.mjs \
+  tests/shared-boundary.test.mjs \
   tests/opentui-solid-host-runtime.fixture.ts tests/subagent-model.test.mjs \
   tests/subagent-mounted.fixture.ts tests/subagent-mounted.test.mjs
 git diff --cached --name-only
 ```
 
-Expected staged paths are exactly the nine paths listed above. Then, only when the execution workflow calls for the task commit, use:
+Expected staged paths are exactly the twelve paths listed above. Then, only when the execution workflow calls for the task commit, use:
 
 ```bash
 git commit -m "fix(subagent): correct panel visual contract"
