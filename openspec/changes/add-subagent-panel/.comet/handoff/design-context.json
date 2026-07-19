@@ -4,11 +4,11 @@
   "mode": "compact",
   "canonical_spec": "openspec",
   "generated_by": "comet-handoff.sh",
-  "context_hash": "d9d28e341cb93fbf5bba8ef5b375ce6b4152659151468a8f8690ad0c9e598041",
+  "context_hash": "c761d52b64b35bdd306e8f5920394071b05302e6a9ad38a82cab3f96e7106125",
   "files": [
-    { "path": "openspec/changes/add-subagent-panel/proposal.md", "sha256": "0b74c7b8cbff7c4f040a99497eaf98d1b5ba118e2234ee3e7aae2ac6d96259f3" },
-    { "path": "openspec/changes/add-subagent-panel/design.md", "sha256": "85d0151a0c5c351ee1748bb5c076dba554299d8d3a4ba34389ae0977218f9285" },
-    { "path": "openspec/changes/add-subagent-panel/tasks.md", "sha256": "d1fc326e7e2a55d7edeedb09c35d9a41fd0ffa983505b2110daf99808b490e43" },
-    { "path": "openspec/changes/add-subagent-panel/specs/subagent-panel/spec.md", "sha256": "1dda860b59330b1b5351d037ea2e0c65bf270a06d211f5a84ccfd3dbb01b9deb" }
+    { "path": "openspec/changes/add-subagent-panel/proposal.md", "sha256": "6d8f9cc60f33cca35f361eb4bd40b3d79789385b1ccb78fb9017415fffba0a84" },
+    { "path": "openspec/changes/add-subagent-panel/design.md", "sha256": "2fbda59859563a1049f06d6117c6192dab1810bc00d64fb30ce20b86cb8b5696" },
+    { "path": "openspec/changes/add-subagent-panel/tasks.md", "sha256": "97ff66f192d05e24cd7feabf23e43a5739ae7c3e094eeac9c44e99739d189377" },
+    { "path": "openspec/changes/add-subagent-panel/specs/subagent-panel/spec.md", "sha256": "9fb3eb88cd9d982f683dd01aa32c059e1e438e2ed3e2c22de9f655d69cb4d204" }
   ]
 }
