@@ -270,7 +270,7 @@ git commit -m "feat: add session token model"
 - Consumes: SDK `Session` and `Message` types; injected `listSessions()` and `listMessages(sessionID)` request functions.
 - Produces: `SessionTreeRecord`, `SessionTreeSnapshot`, `SessionTreeSnapshotLoader`, `indexSessionsByParent`, `collectSessionTreeIDs`, and `loadSessionTreeSnapshot`.
 
-- [ ] **Step 1: Add the compile entry and write failing traversal/loader tests**
+- [x] **Step 1: Add the compile entry and write failing traversal/loader tests**
 
 Add `session-tree-snapshot` to the cleanup array and this mapping:
 
@@ -304,13 +304,13 @@ assert.deepEqual(messageCalls, ["root", "child-a", "child-b", "grandchild"])
 
 For bounded concurrency, create ten children, increment `active` before each deferred message request, update `maximum = Math.max(maximum, active)`, release requests, and assert `maximum === 4`. For failure tests, assert rejection and that no `SessionTreeSnapshot` value is returned.
 
-- [ ] **Step 2: Run the snapshot test to verify RED**
+- [x] **Step 2: Run the snapshot test to verify RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/session-tree-snapshot.test.mjs`
 
 Expected: FAIL during esbuild with `Could not resolve "tui/services/session-tree-snapshot.ts"`.
 
-- [ ] **Step 3: Implement parent indexing, traversal, and bounded workers**
+- [x] **Step 3: Implement parent indexing, traversal, and bounded workers**
 
 Create the module around these exact signatures:
 
@@ -348,13 +348,13 @@ Use one shared integer cursor for workers and an array indexed by traversal posi
 
 Re-export the loader, pure helpers, and types from `shared/opencode-tools-shared.ts`. Do not import `TuiPluginApi`, SesTokens source state, or UI types into this neutral module.
 
-- [ ] **Step 4: Run the focused snapshot suite to verify GREEN**
+- [x] **Step 4: Run the focused snapshot suite to verify GREEN**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/session-tree-snapshot.test.mjs`
 
 Expected: PASS with all six topology/concurrency/failure tests.
 
-- [ ] **Step 5: Commit the neutral loader slice during implementation**
+- [x] **Step 5: Commit the neutral loader slice during implementation**
 
 ```bash
 git add tui/services/session-tree-snapshot.ts tests/session-tree-snapshot.test.mjs tests/compile-presentation.mjs shared/opencode-tools-shared.ts

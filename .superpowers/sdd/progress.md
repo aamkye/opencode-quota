@@ -77,3 +77,5 @@ add-context-tui-plugin Task 2: complete (commit a6bc8e2, standard risk review ap
 add-context-tui-plugin Task 3: complete (commits 3183fa5..c9a6d26, user-authorized exceptional review fix; final re-review approved with 12/12 focused tests)
 add-context-tui-plugin Task 4: complete (test fix ae1540b; fresh verification passed 12/12 Context, 30/30 integration, 312/312 full suite, typecheck, build, and 8/8 artifacts)
 add-context-tui-plugin final review: READY at 60d11b3 (no Critical/Important findings; accepted Minor numeric-overflow defense and failure-path test cleanup notes)
+add-session-token-panel Task 1: complete (commit c3fd6db plus checkoff commit 7a1aca3, standard risk review clean)
+add-session-token-panel Task 2: complete (commit 4f5f44a, standard risk review approved; accepted Minor explicit out-of-order completion test gap)
