@@ -14,6 +14,7 @@ export type CompactPanelSummary = {
 export type CompactPanelProps = {
   title: string
   collapsed: boolean
+  detail?: CompactPanelSummary
   summary?: CompactPanelSummary
   onToggle: () => void
   children: JSX.Element
@@ -30,6 +31,20 @@ export type CompactStatusRowProps = {
 
 function Divider() {
   return <box width="100%" height={1} border={["top"]} />
+}
+
+function CompactSummary(props: { value: CompactPanelSummary; theme: Accessor<PanelTheme> }) {
+  const color = (status?: PanelStatus) => (status ? props.theme()[status] : undefined)
+
+  return props.value.segments?.length
+    ? (
+        <box flexDirection="row" flexShrink={0}>
+          <For each={props.value.segments}>
+            {(segment) => <text flexShrink={0} fg={color(segment.status)}>{segment.text}</text>}
+          </For>
+        </box>
+      )
+    : <text flexShrink={0} fg={color(props.value.status)}>{props.value.text}</text>
 }
 
 export function CompactStatusRow(props: CompactStatusRowProps) {
@@ -58,23 +73,19 @@ export function CompactStatusRow(props: CompactStatusRowProps) {
 }
 
 export function CompactPanel(props: CompactPanelProps) {
-  const color = (status?: PanelStatus) => (status ? props.theme()[status] : undefined)
-
   return (
     <box flexDirection="column" width="100%">
       <box flexDirection="row" width="100%" onMouseDown={props.onToggle}>
         <text width={2}>{props.collapsed ? "▶ " : "▼ "}</text>
-        <text flexBasis={0} flexGrow={1}>{props.title}</text>
+        <text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0}>{props.title}</text>
+        <Show when={props.detail}>
+          {(detail) => <CompactSummary value={detail()} theme={props.theme} />}
+        </Show>
+        <Show when={props.collapsed && props.detail && props.summary}>
+          <text width={1} flexShrink={0}> </text>
+        </Show>
         <Show when={props.collapsed ? props.summary : undefined}>
-          {(summary) => summary().segments?.length
-            ? (
-                <box flexDirection="row">
-                  <For each={summary().segments}>
-                    {(segment) => <text fg={color(segment.status)}>{segment.text}</text>}
-                  </For>
-                </box>
-              )
-            : <text fg={color(summary().status)}>{summary().text}</text>}
+          {(summary) => <CompactSummary value={summary()} theme={props.theme} />}
         </Show>
       </box>
       <Divider />

@@ -40,6 +40,7 @@ const theme: PanelTheme = {
 
 export function mountCompactPanel(options: {
   collapsed?: boolean
+  detail?: CompactPanelSummary
   summary?: CompactPanelSummary
   footerDivider?: boolean
 } = {}) {
@@ -54,6 +55,7 @@ export function mountCompactPanel(options: {
     tree = CompactPanel({
       title: "Quota",
       collapsed,
+      detail: options.detail,
       summary: options.summary,
       onToggle: () => {
         toggleCalls += 1

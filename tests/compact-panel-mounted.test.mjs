@@ -62,6 +62,19 @@ test("mounts a controlled collapsed header with independently colored summary se
     assert.equal(marker()?.props.width, 2)
     assert.equal(title?.props.flexBasis, 0)
     assert.equal(title?.props.flexGrow, 1)
+    assert.deepEqual(
+      mounted.elements
+        .filter((element) => element.type === "text")
+        .map((element) => [element.props.children, element.props.fg]),
+      [
+        ["▶ ", undefined],
+        ["Quota", undefined],
+        ["stale", "#ffaa00"],
+        [" ", "#888888"],
+        ["46%/80%", "#00ff00"],
+      ],
+      "the no-detail collapsed text and color sequence remains unchanged",
+    )
     assert.deepEqual(summary.map((element) => [element.props.children, element.props.fg]), [
       ["stale", "#ffaa00"],
       [" ", "#888888"],
@@ -82,6 +95,76 @@ test("mounts a controlled collapsed header with independently colored summary se
     mounted.rerender({ collapsed: false })
     assert.equal(mounted.toggleCalls(), 2)
     assert.equal(marker()?.props.children, "▼ ", "the shell owns no collapse state after repeated clicks")
+  } finally {
+    mounted.dispose()
+  }
+})
+
+test("renders optional detail in expanded and collapsed headers", () => {
+  const detail = { text: "stale", status: "warning" }
+  const summary = { text: "Σ 29.1M / ↻ 97", segments: [{ text: "Σ 29.1M / ↻ 97" }] }
+  const mounted = mountCompactPanel({ detail, summary })
+
+  try {
+    const texts = () => mounted.elements.filter((element) => element.type === "text")
+    const title = () => texts().find((element) => element.props.children === "Quota")
+    const stale = () => texts().find((element) => element.props.children === "stale")
+    const metric = () => texts().find((element) => element.props.children === "Σ 29.1M / ↻ 97")
+
+    assert.ok(stale())
+    assert.equal(stale()?.props.fg, "#ffaa00")
+    assert.ok(texts().indexOf(stale()) > texts().indexOf(title()), "detail follows the flexible title")
+    assert.equal(metric(), undefined, "summary remains collapsed-only")
+
+    mounted.rerender({ collapsed: true })
+    const rightSide = texts().filter((element) => ["stale", " ", "Σ 29.1M / ↻ 97"].includes(element.props.children))
+    const separators = rightSide.filter((element) => element.props.children === " ")
+
+    assert.equal(separators.length, 1)
+    assert.equal(separators[0]?.props.width, 1)
+    assert.equal(rightSide.map((element) => element.props.children).join(""), "stale Σ 29.1M / ↻ 97")
+    assert.equal(title()?.props.flexBasis, 0)
+    assert.equal(title()?.props.flexGrow, 1)
+    assert.equal(title()?.props.flexShrink, 1)
+    assert.equal(title()?.props.minWidth, 0)
+    assert.equal(stale()?.props.flexShrink, 0)
+    assert.equal(separators[0]?.props.flexShrink, 0)
+    assert.equal(metric()?.props.flexShrink, 0)
+    assert.equal(mounted.elements.filter((element) => (
+      element.type === "box"
+      && element.props.flexDirection === "row"
+      && element.props.flexShrink === 0
+    )).length, 1, "the segmented summary wrapper does not shrink")
+  } finally {
+    mounted.dispose()
+  }
+})
+
+test("preserves statuses on segmented header detail", () => {
+  const mounted = mountCompactPanel({
+    detail: {
+      text: "stale / limited",
+      segments: [
+        { text: "stale", status: "warning" },
+        { text: "limited", status: "error" },
+      ],
+    },
+  })
+
+  try {
+    const segments = mounted.elements
+      .filter((element) => element.type === "text")
+      .filter((element) => ["stale", "limited"].includes(element.props.children))
+    assert.deepEqual(segments.map((element) => [element.props.children, element.props.fg]), [
+      ["stale", "#ffaa00"],
+      ["limited", "#ff0000"],
+    ])
+    assert.ok(segments.every((element) => element.props.flexShrink === 0))
+    assert.ok(mounted.elements.some((element) => (
+      element.type === "box"
+      && element.props.flexDirection === "row"
+      && element.props.flexShrink === 0
+    )))
   } finally {
     mounted.dispose()
   }
