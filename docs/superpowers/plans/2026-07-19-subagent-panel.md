@@ -864,7 +864,7 @@ function truncateTerminalCellsEnd(value: string, maxCells: number): string
 function MeasuredTitle(props: MeasuredTitleProps): JSX.Element
 ```
 
-- `truncateTerminalCellsEnd` segments with `new Intl.Segmenter(undefined, { granularity: "grapheme" })`, measures each complete grapheme and the `…` with direct `string-width`, returns the original value when it fits, returns `""` for zero available cells, and otherwise returns the longest complete grapheme prefix plus one end ellipsis that fits.
+- `truncateTerminalCellsEnd` segments with `new Intl.Segmenter(undefined, { granularity: "grapheme" })`, measures each complete grapheme and the `…` with direct `string-width`, returns the original value when it fits, returns `""` for zero available cells, and otherwise trims trailing whitespace from the longest complete grapheme prefix before appending one end ellipsis. Never render whitespace immediately before the ellipsis.
 - `MeasuredTitle` renders the sole flexible title `<text>`, obtains it through `ref={(renderable: Renderable) => ...}`, reads `renderable.width`, and updates its width signal on `LayoutEvents.RESIZED`. It must not pass OpenTUI's `truncate={true}`. Attach one stable listener per mounted title region and remove that same listener with `renderable.off(LayoutEvents.RESIZED, listener)` in `onCleanup`.
 - The installed public contract supports this exact implementation: `@opentui/core` 0.4.3 exports `LayoutEvents.RESIZED` and `Renderable.width`; `@opentui/solid` 0.4.3 types intrinsic refs as the concrete renderable. Do not use a private Yoga node, generated bundle symbol, or untyped event substitute.
 - Extend only the test host's renderable simulation with this exact observable surface so mounted tests exercise the production ref/listener path:
@@ -959,7 +959,7 @@ test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells
   try {
     await mounted.resolveReady()
     for (const [width, expectedTitle] of [
-      [37, "SubAgent11 with super long …"],
+      [37, "SubAgent11 with super long…"],
       [36, "SubAgent11 with super long…"],
       [35, "SubAgent11 with super lon…"],
     ]) {
