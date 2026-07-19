@@ -1,8 +1,26 @@
 import { build } from "esbuild"
-import { mkdirSync, rmSync } from "node:fs"
+import { mkdirSync, readFileSync, rmSync } from "node:fs"
 import { resolve } from "node:path"
 
-for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "context-mounted", "lsp-mounted", "todo-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "ses-tokens-model", "session-tree-snapshot", "ses-tokens-source", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
+const sesTokensDescriptor = {
+  key: "ses-tokens",
+  id: "aamkye/opencode-tools-ses-tokens",
+  source: "tui/ses-tokens.tsx",
+  outfile: "opencode-tools-ses-tokens.js",
+  slotOrder: 115,
+  options: "none",
+}
+const sesTokensManifestPlugin = {
+  name: "ses-tokens-test-manifest",
+  setup(buildApi) {
+    buildApi.onLoad({ filter: /plugin-manifest\.json$/ }, () => ({
+      contents: JSON.stringify([...JSON.parse(readFileSync("plugin-manifest.json", "utf8")), sesTokensDescriptor]),
+      loader: "json",
+    }))
+  },
+}
+
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "context-mounted", "lsp-mounted", "todo-mounted", "ses-tokens-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "ses-tokens-model", "session-tree-snapshot", "ses-tokens-source", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
 }
 mkdirSync(".tmp-test", { recursive: true })
@@ -18,6 +36,7 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
   ["tests/context-mounted.fixture.ts", ".tmp-test/context-mounted.mjs", ["browser"]],
   ["tests/lsp-mounted.fixture.ts", ".tmp-test/lsp-mounted.mjs", ["browser"]],
   ["tests/todo-mounted.fixture.ts", ".tmp-test/todo-mounted.mjs", ["browser"]],
+  ["tests/ses-tokens-mounted.fixture.ts", ".tmp-test/ses-tokens-mounted.mjs", ["browser"], [sesTokensManifestPlugin]],
   ["tui/providers/zai.ts", ".tmp-test/provider-zai.mjs", ["browser"]],
   ["tui/providers/openai.ts", ".tmp-test/provider-openai.mjs", ["browser"]],
   ["tui/providers/opencode-go.ts", ".tmp-test/provider-opencode-go.mjs", ["browser"]],
