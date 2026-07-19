@@ -46,6 +46,14 @@ export type {
   SessionTreeSnapshot,
   SessionTreeSnapshotLoader,
 } from "../tui/services/session-tree-snapshot.js";
+export { createSesTokensSource } from "../tui/services/ses-tokens-source.js";
+export type {
+  SesTokensEventRegistrar,
+  SesTokensRefreshEvent,
+  SesTokensSource,
+  SesTokensSourceDependencies,
+  SesTokensSourceState,
+} from "../tui/services/ses-tokens-source.js";
 export { createOpenAiProvider };
 export {
   acquireQuotaProviderHub,
