@@ -578,7 +578,7 @@ aamkye.opencode-tools-subagent.rest-collapsed
 aamkye.opencode-tools-subagent.expanded-child
 ```
 
-- [ ] **Step 1: Add failing interaction/lifecycle tests**
+- [x] **Step 1: Add failing interaction/lifecycle tests**
 
 Add exact tests for:
 
@@ -604,13 +604,13 @@ Assert exact KV map writes such as:
 
 Assert navigation exactly equals `[["session", { sessionID: "child-9" }]]`. Assert no interval for successful/failed-only views, collapsed outer panels, or running children hidden under collapsed Rest; exactly one `1000` ms interval when visible; and one clear when visibility or lifecycle changes.
 
-- [ ] **Step 2: Run the RED command**
+- [x] **Step 2: Run the RED command**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/subagent-mounted.test.mjs`
 
 Expected RED: parent-scoped remount expectations find missing KV maps, route calls remain empty, invalid expanded IDs remain stored, and interval start/stop counts remain zero.
 
-- [ ] **Step 3: Implement parent-scoped persistence and conditional effects**
+- [x] **Step 3: Implement parent-scoped persistence and conditional effects**
 
 Read each KV key once as a map. Derive values by current parent with defaults: outer expanded (`false` collapsed), Rest expanded (`false` collapsed), and no expanded ID. On click, clone only the relevant map, update the current parent key, update the signal, and persist the whole map. Clicking an expanded child removes that parent's ID; clicking another replaces it.
 
@@ -618,13 +618,13 @@ After every ready/stale complete snapshot, clear and persist an expanded child I
 
 Keep one `now` signal. The clock predicate is true only when state is ready/stale, outer is expanded, and either a primary running child is visible or Rest is expanded with a running Rest child. On a false-to-true transition, set `now` from the injected/current clock before starting one 1000 ms interval. Clear the interval when the predicate becomes false, the parent changes, or component/plugin disposal runs.
 
-- [ ] **Step 4: Run focused GREEN verification**
+- [x] **Step 4: Run focused GREEN verification**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/subagent-mounted.test.mjs tests/subagent-source.test.mjs`
 
 Expected GREEN: all parent scoping, one-entry expansion, cleanup, navigation, and visible-running clock tests pass without changing source retry behavior.
 
-- [ ] **Step 5: Commit the task atomically**
+- [x] **Step 5: Commit the task atomically**
 
 Suggested Conventional Commit: `feat(subagent): persist panel interactions`
 
