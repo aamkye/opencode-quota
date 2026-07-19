@@ -381,21 +381,18 @@ test("clips long detail identities to one row at 37 and 35 cells", async () => {
   }
 })
 
-test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells", async () => {
+test("end-truncates allocated title cells without consuming the duration gap", async () => {
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {
     await mounted.resolveReady()
     const initialView = mounted.view()
-    assert.deepEqual(mounted.titleTextBeforeRenderHook(), canonicalChildren.map((entry) => entry.session.title))
-    assert.equal(mounted.renderBeforeCalls(), initialView.entryRows.length)
     assert.deepEqual(initialView.lines, expandedLayout)
     assert.equal(initialView.entryRows[0].renderedTitle, "SubAgent11 with super long…")
     assert.ok(initialView.entryRows.every((row) => row.renderedTitle.length > 0))
-    let expectedRenderBeforeCalls = initialView.entryRows.length
-    for (const [width, expectedTitle] of [
-      [37, "SubAgent11 with super long…"],
-      [36, "SubAgent11 with super long…"],
-      [35, "SubAgent11 with super lon…"],
+    for (const [width, expectedTitle, expectedWidths] of [
+      [37, "SubAgent11 with super long…", [2, 28, 1, 6]],
+      [36, "SubAgent11 with super long…", [2, 27, 1, 6]],
+      [35, "SubAgent11 with super lon…", [2, 26, 1, 6]],
     ]) {
       await mounted.resize(width)
       const view = mounted.view()
@@ -409,16 +406,17 @@ test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells
       assert.equal(row.gapWidth, 1)
       assert.equal(row.duration, "9m 45s")
       assert.equal(row.rowWidth, width)
-      assert.equal(row.childWidths.reduce((total, cells) => total + cells, 0), width)
-      assert.equal(row.titleProps.truncate, undefined)
-      expectedRenderBeforeCalls += view.entryRows.length
-      assert.equal(mounted.renderBeforeCalls(), expectedRenderBeforeCalls)
+      assert.deepEqual(row.childWidths, expectedWidths)
+      assert.equal(row.titleProps.width, 28)
+      assert.equal(row.titleProps.flexShrink, 1)
+      assert.equal(row.titleProps.minWidth, 0)
+      assert.equal(row.titleProps.truncate, true)
+      assert.equal(row.gapProps.width, 1)
+      assert.equal(row.durationProps.width, 6)
+      assert.equal(row.renderedText.includes(`${row.renderedTitle}${row.gap}`), true)
+      assert.equal(row.renderedText.endsWith(row.duration), true)
       for (const line of view.lines) assert.equal(line.trimEnd(), line)
     }
-    await mounted.view().clickHeader()
-    assert.equal(mounted.renderBeforeCalls(), expectedRenderBeforeCalls)
-    await mounted.resize(34)
-    assert.equal(mounted.renderBeforeCalls(), expectedRenderBeforeCalls)
   } finally {
     await mounted.dispose()
   }
@@ -724,13 +722,10 @@ test("collapse parent switch completion and disposal stop the clock", async () =
 
   const disposed = await mountSubagentPanel({ parentID: "parent-a" })
   await disposed.resolveReady()
-  const renderBeforeCalls = disposed.renderBeforeCalls()
-  assert.equal(renderBeforeCalls, disposed.view().entryRows.length)
   await disposed.dispose()
   await disposed.resize(34)
   assert.equal(disposed.intervalClears(), 1)
   assert.deepEqual(disposed.activeIntervalDelays(), [])
-  assert.equal(disposed.renderBeforeCalls(), renderBeforeCalls)
 })
 
 test("documents the corrected SubAgent visual behavior", () => {

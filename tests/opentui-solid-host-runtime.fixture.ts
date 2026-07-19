@@ -6,7 +6,6 @@ export type HostNode = {
   children: HostNode[]
   parent?: HostNode
   removed: boolean
-  width: number
 }
 
 export function createHostNode(type: string): HostNode {
@@ -15,7 +14,6 @@ export function createHostNode(type: string): HostNode {
     props: {},
     children: [],
     removed: false,
-    width: 0,
   }
 }
 

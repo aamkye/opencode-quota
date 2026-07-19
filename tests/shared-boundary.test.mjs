@@ -174,24 +174,21 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assert.match(subagent, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
 })
 
-test("SubAgent renders raw titles before stable render-phase measurement", () => {
+test("SubAgent allocates fixed title, gap, and duration sibling widths", () => {
   const subagent = source("tui/subagent.tsx")
-  const subagentSource = parsedSource("tui/subagent.tsx")
 
-  assert.ok(
-    typeOnlyNamedImportLocalName(subagentSource, "@opentui/core", "Renderable"),
-    "tui/subagent.tsx must type-only import Renderable from @opentui/core",
-  )
-  assert.match(subagent, /\brenderBefore\s*=\s*\{\s*measureBeforeRender\s*\}/)
-  assert.match(subagent, /createSignal<number>\(\)/)
-  assert.match(subagent, /const\s+measureBeforeRender\s*=\s*function\s*\(\s*this:\s*Renderable\s*\)/)
-  assert.match(subagent, /const\s+width\s*=\s*this\.width/)
-  assert.match(subagent, /if\s*\(\s*measuredCells\(\)\s*!==\s*width\s*\)\s*setMeasuredCells\(width\)/)
-  assert.match(subagent, /measuredCells\(\)\s*===\s*undefined\s*\?\s*props\.value/)
+  assert.match(subagent, /const\s+allocation\s*=\s*\(\)\s*=>\s*allocateSubagentEntryRow\(37,\s*stringWidth\(props\.entry\.duration\)\)/)
+  assert.match(subagent, /<MeasuredTitle\s+value=\{props\.entry\.title\}\s+cells=\{allocation\(\)\.title\}/)
+  assert.match(subagent, /width=\{props\.cells\}/)
+  assert.match(subagent, /truncateTerminalCellsEnd\(props\.value,\s*props\.cells\)/)
+  assert.match(subagent, /truncate=\{true\}/)
+  assert.match(subagent, /width=\{allocation\(\)\.beforeDurationGap\}/)
+  assert.match(subagent, /width=\{allocation\(\)\.duration\}/)
   assert.doesNotMatch(subagent, /\bref\s*=/)
   assert.doesNotMatch(subagent, /\bonSizeChange\b/)
+  assert.doesNotMatch(subagent, /\brenderBefore\b/)
   assert.doesNotMatch(subagent, /["']resize["']/)
-  assert.equal(namedImportLocalName(subagentSource, "@opentui/core", "LayoutEvents"), undefined)
+  assert.doesNotMatch(subagent, /\bRenderable\b/)
   assert.doesNotMatch(subagent, /\bLayoutEvents\b/)
   assert.doesNotMatch(subagent, /["']resized["']/)
 })

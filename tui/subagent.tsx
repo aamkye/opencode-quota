@@ -1,9 +1,9 @@
-import type { Renderable } from "@opentui/core"
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
 import type { JSX } from "solid-js"
 import stringWidth from "string-width"
 
 import {
+  allocateSubagentEntryRow,
   CompactPanel,
   createSubagentPanelModel,
   createSubagentSnapshotLoader,
@@ -68,6 +68,7 @@ function statusRole(status: SubagentEntry["status"]): PanelStatus {
 
 type MeasuredTitleProps = {
   value: string
+  cells: number
 }
 
 function truncateTerminalCellsEnd(value: string, maxCells: number): string {
@@ -89,25 +90,16 @@ function truncateTerminalCellsEnd(value: string, maxCells: number): string {
 }
 
 function MeasuredTitle(props: MeasuredTitleProps): JSX.Element {
-  const [measuredCells, setMeasuredCells] = createSignal<number>()
-  const measureBeforeRender = function (this: Renderable) {
-    const width = this.width
-    if (measuredCells() !== width) setMeasuredCells(width)
-  }
-
   return (
     <text
-      renderBefore={measureBeforeRender}
-      flexBasis={0}
-      flexGrow={1}
+      width={props.cells}
       flexShrink={1}
       minWidth={0}
       overflow="hidden"
       wrapMode="none"
+      truncate={true}
     >
-      {measuredCells() === undefined
-        ? props.value
-        : truncateTerminalCellsEnd(props.value, measuredCells()!)}
+      {truncateTerminalCellsEnd(props.value, props.cells)}
     </text>
   )
 }
@@ -151,14 +143,15 @@ function SubagentRow(props: {
   theme: () => PanelTheme
 }) {
   const role = () => statusRole(props.entry.status)
+  const allocation = () => allocateSubagentEntryRow(37, stringWidth(props.entry.duration))
   return (
     <box flexDirection="column" width="100%" overflow="hidden">
       <box flexDirection="row" width="100%" overflow="hidden" onMouseDown={props.onToggle}>
-        <text width={2} flexShrink={0}>{props.expanded ? "▼ " : "▶ "}</text>
-        <MeasuredTitle value={props.entry.title} />
+        <text width={allocation().disclosure} flexShrink={0}>{props.expanded ? "▼ " : "▶ "}</text>
+        <MeasuredTitle value={props.entry.title} cells={allocation().title} />
         <Show when={!props.expanded}>
-          <text width={1} flexShrink={0}> </text>
-          <text flexShrink={0} wrapMode="none" fg={props.theme()[role()]}>{props.entry.duration}</text>
+          <text width={allocation().beforeDurationGap} flexShrink={0}> </text>
+          <text width={allocation().duration} flexShrink={0} wrapMode="none" fg={props.theme()[role()]}>{props.entry.duration}</text>
         </Show>
       </box>
       <Show when={props.expanded}>
