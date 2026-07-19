@@ -148,6 +148,8 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assertRelativeImports("tui/todo.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/ses-tokens.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/subagent.tsx", ["../shared/opencode-tools-shared.js"])
+  assert.deepEqual(relativeImports(subagent), ["../shared/opencode-tools-shared.js"])
+  assert.doesNotMatch(subagent, /(?:^|["'])\.\/?(?:features|services)\//m)
   assert.doesNotMatch(tokenReport, /\bcomputeTokenReport\b|\brenderTokenReport\b/)
   assert.doesNotMatch(tokenReport, /client\.session\.prompt/)
   assert.doesNotMatch(tokenReport, /\bhistory\b|\bmodel\b/)

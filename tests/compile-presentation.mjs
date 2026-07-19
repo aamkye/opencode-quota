@@ -6,35 +6,6 @@ import solidPreset from "babel-preset-solid"
 import { mkdirSync, readFileSync, rmSync } from "node:fs"
 import { resolve } from "node:path"
 
-const sesTokensDescriptor = {
-  key: "ses-tokens",
-  id: "aamkye/opencode-tools-ses-tokens",
-  source: "tui/ses-tokens.tsx",
-  outfile: "opencode-tools-ses-tokens.js",
-  slotOrder: 115,
-  options: "none",
-}
-const subagentDescriptor = {
-  key: "subagent",
-  id: "aamkye/opencode-tools-subagent",
-  source: "tui/subagent.tsx",
-  outfile: "opencode-tools-subagent.js",
-  slotOrder: 120,
-  options: "none",
-}
-const sesTokensManifestPlugin = {
-  name: "ses-tokens-test-manifest",
-  setup(buildApi) {
-    buildApi.onLoad({ filter: /plugin-manifest\.json$/ }, () => ({
-      contents: JSON.stringify([
-        ...JSON.parse(readFileSync("plugin-manifest.json", "utf8")),
-        sesTokensDescriptor,
-        subagentDescriptor,
-      ]),
-      loader: "json",
-    }))
-  },
-}
 const openTuiSolidPlugin = {
   name: "opentui-solid-test-compiler",
   setup(buildApi) {
@@ -60,7 +31,7 @@ const openTuiSolidPlugin = {
   },
 }
 
-for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "context-mounted", "lsp-mounted", "todo-mounted", "ses-tokens-mounted", "subagent-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "ses-tokens-model", "subagent-model", "session-tree-snapshot", "subagent-snapshot", "ses-tokens-source", "subagent-source", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "context-mounted", "lsp-mounted", "todo-mounted", "ses-tokens-mounted", "subagent-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "ses-tokens-model", "subagent-model", "session-tree-snapshot", "subagent-snapshot", "ses-tokens-source", "subagent-source", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-adapters-subagent-fixture", "plugin-runtime"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
 }
 mkdirSync(".tmp-test", { recursive: true })
@@ -80,13 +51,13 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
     "tests/ses-tokens-mounted.fixture.ts",
     ".tmp-test/ses-tokens-mounted.mjs",
     ["browser"],
-    [sesTokensManifestPlugin, openTuiSolidPlugin],
+    [openTuiSolidPlugin],
   ],
   [
     "tests/subagent-mounted.fixture.ts",
     ".tmp-test/subagent-mounted.mjs",
     ["browser"],
-    [sesTokensManifestPlugin, openTuiSolidPlugin],
+    [openTuiSolidPlugin],
   ],
   ["tui/providers/zai.ts", ".tmp-test/provider-zai.mjs", ["browser"]],
   ["tui/providers/openai.ts", ".tmp-test/provider-openai.mjs", ["browser"]],
@@ -119,6 +90,7 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
   ["tui/home.tsx", ".tmp-test/plugin-adapters-home-fixture.mjs", ["browser"]],
   ["tui/token-report.tsx", ".tmp-test/plugin-adapters-token-fixture.mjs", ["browser"], undefined, ["solid-js"]],
   ["tui/mcp.tsx", ".tmp-test/plugin-adapters-mcp-fixture.mjs", ["browser"]],
+  ["tui/subagent.tsx", ".tmp-test/plugin-adapters-subagent-fixture.mjs", ["browser"], [openTuiSolidPlugin]],
   ["tui/runtime/plugin.ts", ".tmp-test/plugin-runtime.mjs"],
 ]) {
   await build({

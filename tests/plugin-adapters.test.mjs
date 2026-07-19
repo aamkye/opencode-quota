@@ -11,6 +11,7 @@ const {
 } = await import("../.tmp-test/plugin-adapters-home-fixture.mjs")
 const { default: tokenPlugin, registerTokenReportTui, tokenReportCommands } = await import("../.tmp-test/plugin-adapters-token-fixture.mjs")
 const { default: mcpPlugin } = await import("../.tmp-test/plugin-adapters-mcp-fixture.mjs")
+const { default: subagentPlugin } = await import("../.tmp-test/plugin-adapters-subagent-fixture.mjs")
 
 const openCodeGoConfig = Object.freeze({
   workspaceId: "wrk_TESTWORKSPACE",
@@ -344,17 +345,27 @@ function createApi({ route = { name: "home" } } = {}) {
     client: {
       prompts: [],
       session: {
+        async list() {
+          return { data: [] }
+        },
+        async messages() {
+          return { data: [] }
+        },
         async prompt(input) {
           api.client.prompts.push(input)
         },
       },
     },
     state: {
+      path: { directory: "/repo" },
       mcp() {
         return []
       },
       provider: [],
       session: {
+        status() {
+          return undefined
+        },
         messages() {
           return []
         },
@@ -434,7 +445,7 @@ test("current feature adapters expose normalized standalone plugin contracts", a
     assert.equal(slotNames(tokenApi.api).length, 0)
     assert.equal(keymapLayers(tokenApi.api).length, 2)
     assert.deepEqual(slotNames(mcpApi.api), ["sidebar_content"])
-    assert.equal(mcpApi.api.slots.registrations[0].order, 111)
+    assert.equal(mcpApi.api.slots.registrations[0].order, 140)
   } finally {
     await quotaApi.lifecycle.dispose()
     await homeApi.lifecycle.dispose()
@@ -451,7 +462,7 @@ test("MCP adapter registers only its standalone sidebar surface", async () => {
     await activate(mcpPlugin, undefined, api)
 
     assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content"]])
-    assert.equal(api.slots.registrations[0].order, 111)
+    assert.equal(api.slots.registrations[0].order, 140)
     assert.deepEqual(api.keymap.registrations, [])
     assert.deepEqual(api.route.registrations, [])
     assert.equal(api.event.listeners.length, 0)
@@ -459,6 +470,27 @@ test("MCP adapter registers only its standalone sidebar surface", async () => {
   } finally {
     await lifecycle.dispose()
   }
+})
+
+test("SubAgent adapter activates alone at slot 120 and cleans up its lifecycle", async () => {
+  const { api, lifecycle } = createApi()
+
+  try {
+    assert.equal(subagentPlugin.id, "aamkye/opencode-tools-subagent")
+    await activate(subagentPlugin, undefined, api)
+
+    assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content"]])
+    assert.equal(api.slots.registrations[0].order, 120)
+    assert.deepEqual(api.keymap.registrations, [])
+    assert.deepEqual(api.route.registrations, [])
+    assert.equal(api.event.listeners.length, 9)
+    assert.ok(lifecycle.count() > 0)
+  } finally {
+    await lifecycle.dispose()
+  }
+
+  assert.equal(api.event.listeners.length, 0)
+  assert.equal(lifecycle.count(), 0)
 })
 
 test("quota adapter registers only the sidebar surface and cleans up selection listeners", async () => {
@@ -469,7 +501,7 @@ test("quota adapter registers only the sidebar surface and cleans up selection l
     await activate(quotaPlugin, undefined, api)
 
     assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content"]])
-    assert.equal(api.slots.registrations[0].order, 110)
+    assert.equal(api.slots.registrations[0].order, 130)
     assert.deepEqual(api.keymap.registrations, [])
     assert.deepEqual(api.route.registrations, [])
     assert.equal(api.event.listeners.length, 1)

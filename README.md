@@ -4,12 +4,14 @@
 > Heavily inspired by:
 > - [the upstream project](https://github.com/slkiser/opencode-quota)
 > - [farrukh2002/opencode-glm-reset](https://github.com/farrukh2002/opencode-glm-reset)
+> - [Hotakus/opencode-subagent-magazine](https://github.com/Hotakus/opencode-subagent-magazine)
+> - [njbraun/opencode-plugin-session-token-summary](https://github.com/njbraun/opencode-plugin-session-token-summary)
 
 OpenCode TUI plugins that show quota usage, reset countdowns, rate-limit
 status, compact homepage summaries, MCP server health, active-session context
 and spend, LSP status, synchronized session TODOs, complete session-tree token
-totals, and `/tokens_*` reports for **Z.AI (GLM)**, **OpenAI (ChatGPT
-Plus/Pro)**, and **OpenCode Go**.
+totals, direct-child SubAgent activity, and `/tokens_*` reports for **Z.AI
+(GLM)**, **OpenAI (ChatGPT Plus/Pro)**, and **OpenCode Go**.
 
 ![opencode-tools homepage bottom](img/img0.jpg)
 
@@ -120,6 +122,24 @@ Plus/Pro)**, and **OpenCode Go**.
 - **Memory-only data**: Snapshots are memory-only; only the collapse preference
   persists.
 
+### SubAgent
+
+- **Direct-child monitoring**: monitors direct child sessions of the selected
+  parent, ordered newest first. The newest five stay in the primary group and
+  older children appear under `Rest`.
+- **Status precedence**: failed takes precedence over running and successful;
+  busy or retry is running; idle or a completed assistant message is
+  successful; otherwise the child remains running.
+- **Duration and details**: each row shows a live duration for running children
+  and a terminal duration for successful or failed children. Expanding a row
+  shows its agent, status, time, model, and `Open Session` action.
+- **Persistent interaction state**: panel collapse, `Rest` collapse, expanded
+  child, and retained failure evidence persist per parent session.
+- **Stale and empty behavior**: a failed refresh after ready data retains the
+  complete entry body and marks the panel stale. Loading, unavailable, and
+  unselected states emit no panel output; a ready parent without direct children
+  shows `No subagents`.
+
 ### Shared
 
 - **Homepage summary** — each provider plugin also registers a compact homepage
@@ -143,7 +163,7 @@ Plus/Pro)**, and **OpenCode Go**.
 The plugins are built and loaded only from local files. This package is not
 published to npm, and OpenCode is never configured with an npm package spec.
 OpenCode 1.18.1 or newer is required for the standalone TUI plugin and
-synchronized MCP, Context, LSP, TODO, and session-tree state APIs.
+synchronized MCP, Context, LSP, TODO, session-tree, and SubAgent state APIs.
 
 ### Configuration
 
@@ -153,6 +173,11 @@ Native TUI options can be supplied with the local plugin entry:
 {
   "$schema": "https://opencode.ai/tui.json",
   "plugin": [
+    "./opencode-tools-home.js",
+    "./opencode-tools-token-report.js",
+    "./opencode-tools-context.js",
+    "./opencode-tools-ses-tokens.js",
+    "./opencode-tools-subagent.js",
     [
       "./opencode-tools-quota.js",
       {
@@ -176,13 +201,9 @@ Native TUI options can be supplied with the local plugin entry:
         }
       }
     ],
-    "./opencode-tools-home.js",
-    "./opencode-tools-token-report.js",
     "./opencode-tools-mcp.js",
-    "./opencode-tools-context.js",
     "./opencode-tools-lsp.js",
-    "./opencode-tools-todo.js",
-    "./opencode-tools-ses-tokens.js"
+    "./opencode-tools-todo.js"
   ],
   "plugin_enabled": {
     "internal:sidebar-mcp": false,
@@ -195,12 +216,14 @@ Native TUI options can be supplied with the local plugin entry:
 Context ships as a separate opt-in artifact. Enable it by adding
 `./opencode-tools-context.js` to the `plugin` array.
 
-The entries must remain standalone. Only quota accepts the options object;
-home, token-report, MCP, Context, LSP, TODO, and SesTokens use string entries.
+The entries must remain standalone and in manifest order. Only quota accepts
+the options object; home, token-report, Context, SesTokens, SubAgent, MCP, LSP,
+and TODO use string entries.
 MCP, Context, LSP, and TODO accept no options. Context has no built-in panel override
 to disable. SesTokens accepts no options and has no built-in panel override. The
-other external panels do not deactivate their built-in counterparts. Users must
-disable `internal:sidebar-mcp`,
+SubAgent accepts no options and has no built-in panel override. The other
+external panels do not deactivate their built-in counterparts. Users must disable
+`internal:sidebar-mcp`,
 `internal:sidebar-lsp`, and `internal:sidebar-todo` themselves, as shown by
 `plugin_enabled`, to avoid duplicate panels.
 
@@ -450,9 +473,127 @@ the last successful snapshot as stale and recovers it to ready when a later
 refresh succeeds. The panel does not poll. Snapshots are memory-only; only the
 collapse preference persists, and the panel does not calculate cost.
 
+### SubAgent sidebar layouts
+
+These examples preserve every canonical SubAgent layout from `AGENTS.md`.
+Rows show the newest five direct children first; older entries appear in the
+separate `Rest` group. Fenced lines omit runtime right-padding and contain no
+trailing whitespace.
+
+#### Expanded
+
+```text
+▼ SubAgent
+------------------------------------
+▶ • SubAgent11 with super lo… 9m 45s
+▶ • SubAgent10                1h 15m
+▶ • SubAgent9                 15m 4s
+▶ • SubAgent8                 2h 18m
+▶ • SubAgent7                 2h 18m
+---                              ---
+▼ Rest
+▶ • SubAgent6                 9m 45s
+▶ • SubAgent5                 1h 15m
+▶ • SubAgent4                    15s
+▶ • SubAgent3                    25s
+▶ • SubAgent2                     5s
+▶ • SubAgent1                  1h 2m
+------------------------------------
+```
+
+#### Expanded, one detail
+
+```text
+▼ SubAgent
+------------------------------------
+▶ • SubAgent11 with super lo… 9m 45s
+▶ • SubAgent10                1h 15m
+▼ • SubAgent9
+  agent:                     general
+  status:                    running
+  time:                       15m 4s
+  model:                 gpt-4o-mini
+  Open Session
+▶ • SubAgent8                 2h 18m
+▶ • SubAgent7                 2h 18m
+---                              ---
+▼ Rest
+▶ • SubAgent6                 9m 45s
+▶ • SubAgent5                 1h 15m
+▶ • SubAgent4                    15s
+▶ • SubAgent3                    25s
+▶ • SubAgent2                     5s
+▶ • SubAgent1                  1h 2m
+------------------------------------
+```
+
+#### Semi-collapsed
+
+```text
+▼ SubAgent
+------------------------------------
+▶ • SubAgent11 with super lo… 9m 45s
+▶ • SubAgent10                1h 15m
+▶ • SubAgent9                 15m 4s
+▶ • SubAgent8                 2h 18m
+▶ • SubAgent7                 2h 18m
+---                              ---
+▶ Rest
+------------------------------------
+```
+
+#### Collapsed
+
+```text
+▶ SubAgent                     7/1/3
+------------------------------------
+```
+
+#### Expanded, stale
+
+```text
+▼ SubAgent                     stale
+------------------------------------
+▶ • SubAgent11 with super lo… 9m 45s
+▶ • SubAgent10                1h 15m
+▶ • SubAgent9                 15m 4s
+▶ • SubAgent8                 2h 18m
+▶ • SubAgent7                 2h 18m
+---                              ---
+▼ Rest
+▶ • SubAgent6                 9m 45s
+▶ • SubAgent5                 1h 15m
+▶ • SubAgent4                    15s
+▶ • SubAgent3                    25s
+▶ • SubAgent2                     5s
+▶ • SubAgent1                  1h 2m
+------------------------------------
+```
+
+#### Collapsed, stale
+
+```text
+▶ SubAgent               stale 7/1/3
+------------------------------------
+```
+
+#### Expanded, empty
+
+```text
+▼ SubAgent
+------------------------------------
+No subagents
+------------------------------------
+```
+
+The collapsed summary reports successful/running/failed counts. A stale refresh
+retains the complete entry body and marks the panel stale; it does not replace
+rows with a loading message. Before a selected parent has ready data, the plugin
+emits no panel output.
+
 ### Build and deploy
 
-Build the eight standalone minified ESM plugins and their imported shared
+Build the nine standalone minified ESM plugins and their imported shared
 artifact:
 
 ```bash
@@ -469,7 +610,7 @@ npm run deploy:global
 ```
 
 Each deploy command rebuilds first and automatically migrates managed
-configuration entries to the eight standalone entries in manifest order. It
+configuration entries to the nine standalone entries in manifest order. It
 preserves unrelated plugin entries and preserves existing quota options;
 quota options remain attached only to the quota entry. Local deployment also
 removes managed source entries from the project-root `tui.json`, because
@@ -480,6 +621,9 @@ the built-in MCP, LSP, or TODO panel. Set the overrides in the configuration
 example yourself when replacing any built-in panel. Fully restart OpenCode after
 deployment.
 
+Deployment replaces stale managed SubAgent artifacts and removes stale managed
+source entries while preserving unrelated files and configuration entries.
+
 The normalized quota runtime ID is now `aamkye/opencode-tools-quota`. This is
 an intentional ID change, so host-managed plugin state may reset during
 migration; the deployer still preserves quota's configuration options.
@@ -489,7 +633,8 @@ migration; the deployer still preserves quota's configuration options.
 To remove the Context panel, remove `./opencode-tools-context.js` from the
 `plugin` array and restart OpenCode. To remove the SesTokens panel, remove
 `./opencode-tools-ses-tokens.js` from the `plugin` array and restart OpenCode.
-To return to OpenCode's built-in MCP panel,
+To remove the SubAgent panel, remove `./opencode-tools-subagent.js` from the
+`plugin` array and restart OpenCode. To return to OpenCode's built-in MCP panel,
 remove `./opencode-tools-mcp.js`
 from the `plugin` array, then remove the `"internal:sidebar-mcp": false`
 override (or set it to `true`) to re-enable `internal:sidebar-mcp`, then restart
@@ -508,27 +653,29 @@ and its configuration before restarting.
 ```text
 dist/
 ├── opencode-tools-shared.js
-├── opencode-tools-quota.js
 ├── opencode-tools-home.js
 ├── opencode-tools-token-report.js
-├── opencode-tools-mcp.js
 ├── opencode-tools-context.js
+├── opencode-tools-ses-tokens.js
+├── opencode-tools-subagent.js
+├── opencode-tools-quota.js
+├── opencode-tools-mcp.js
 ├── opencode-tools-lsp.js
-├── opencode-tools-todo.js
-└── opencode-tools-ses-tokens.js
+└── opencode-tools-todo.js
 ```
 
-| File | Runtime ID | Responsibility |
-| --- | --- | --- |
-| `opencode-tools-shared.js` | Not registered | Imported-only provider, presentation, and token-report logic. |
-| `opencode-tools-quota.js` | `aamkye/opencode-tools-quota` | Quota sidebar panel and provider polling. |
-| `opencode-tools-home.js` | `aamkye/opencode-tools-home` | Compact homepage provider summary. |
-| `opencode-tools-token-report.js` | `aamkye/opencode-tools-token-report` | TUI `/tokens_*` commands and reports. |
-| `opencode-tools-mcp.js` | `aamkye/opencode-tools-mcp` | Reactive MCP sidebar health panel immediately after quota. |
-| `opencode-tools-context.js` | `aamkye/opencode-tools-context` | Reactive active-session context and spend panel between MCP and LSP. |
-| `opencode-tools-lsp.js` | `aamkye/opencode-tools-lsp` | Reactive LSP sidebar status panel immediately after Context. |
-| `opencode-tools-todo.js` | `aamkye/opencode-tools-todo` | Synchronized session TODO sidebar panel immediately after LSP. |
-| `opencode-tools-ses-tokens.js` | `aamkye/opencode-tools-ses-tokens` | Complete descendant-session-tree assistant token aggregation panel after TODO. |
+| File                             | Runtime ID                           | Responsibility                                                                 |
+| -------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
+| `opencode-tools-shared.js`       | Not registered                       | Imported-only provider, presentation, and token-report logic.                  |
+| `opencode-tools-home.js`         | `aamkye/opencode-tools-home`         | Compact homepage provider summary.                                             |
+| `opencode-tools-token-report.js` | `aamkye/opencode-tools-token-report` | TUI `/tokens_*` commands and reports.                                          |
+| `opencode-tools-context.js`      | `aamkye/opencode-tools-context`      | Reactive active-session context and spend panel between MCP and LSP.           |
+| `opencode-tools-ses-tokens.js`   | `aamkye/opencode-tools-ses-tokens`   | Complete descendant-session-tree assistant token aggregation panel after TODO. |
+| `opencode-tools-subagent.js`     | `aamkye/opencode-tools-subagent`     | Direct-child SubAgent activity panel.                                          |
+| `opencode-tools-quota.js`        | `aamkye/opencode-tools-quota`        | Quota sidebar panel and provider polling.                                      |
+| `opencode-tools-mcp.js`          | `aamkye/opencode-tools-mcp`          | Reactive MCP sidebar health panel immediately after quota.                     |
+| `opencode-tools-lsp.js`          | `aamkye/opencode-tools-lsp`          | Reactive LSP sidebar status panel immediately after Context.                   |
+| `opencode-tools-todo.js`         | `aamkye/opencode-tools-todo`         | Synchronized session TODO sidebar panel immediately after LSP.                 |
 
 `solid-js`, `@opentui/*`, `@opencode-ai/plugin`, host SDK modules, and
 Node/Bun built-ins remain external and are provided by the OpenCode host.
@@ -544,24 +691,28 @@ change that title.
 
 ### Source files
 
-| File                        | Purpose                                                               |
-| --------------------------- | --------------------------------------------------------------------- |
-| `tui/quota.tsx`             | Standalone quota sidebar adapter                                      |
-| `tui/home.tsx`              | Standalone compact homepage adapter                                   |
-| `tui/token-report.tsx`      | Standalone TUI token-report command adapter                           |
-| `tui/mcp.tsx`               | Standalone reactive MCP sidebar adapter                               |
-| `tui/context.tsx`           | Standalone reactive active-session context and spend sidebar adapter  |
-| `tui/lsp.tsx`               | Standalone reactive LSP sidebar adapter                               |
-| `tui/todo.tsx`              | Standalone synchronized session TODO sidebar adapter                  |
-| `tui/ses-tokens.tsx`        | Standalone SesTokens sidebar adapter                                  |
-| `tui/features/ses-tokens.ts` | Assistant token aggregation and panel model                           |
-| `tui/services/session-tree-snapshot.ts` | Bounded complete descendant-tree snapshot loader              |
-| `tui/services/ses-tokens-source.ts` | Debounced event refresh, retry, and stale-state source              |
-| `tui/providers/`            | Z.AI, OpenAI, and OpenCode Go provider adapters                       |
-| `lib/tokens/`               | Vendored token reporting library ([upstream](https://github.com/slkiser/opencode-quota), MIT) |
-| `plugin-manifest.json`      | Manifest order, runtime IDs, artifacts, slots, and option ownership   |
-| `build-plugins.mjs`         | Builds the shared artifact and eight standalone local ESM plugins     |
-| `deploy-plugins.mjs`        | Idempotently migrates eight local/global plugins and `tui.json` entries |
+| File                                    | Purpose                                                                                       |
+| --------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `tui/quota.tsx`                         | Standalone quota sidebar adapter                                                              |
+| `tui/home.tsx`                          | Standalone compact homepage adapter                                                           |
+| `tui/token-report.tsx`                  | Standalone TUI token-report command adapter                                                   |
+| `tui/mcp.tsx`                           | Standalone reactive MCP sidebar adapter                                                       |
+| `tui/context.tsx`                       | Standalone reactive active-session context and spend sidebar adapter                          |
+| `tui/lsp.tsx`                           | Standalone reactive LSP sidebar adapter                                                       |
+| `tui/todo.tsx`                          | Standalone synchronized session TODO sidebar adapter                                          |
+| `tui/ses-tokens.tsx`                    | Standalone SesTokens sidebar adapter                                                          |
+| `tui/features/ses-tokens.ts`            | Assistant token aggregation and panel model                                                   |
+| `tui/services/session-tree-snapshot.ts` | Bounded complete descendant-tree snapshot loader                                              |
+| `tui/services/ses-tokens-source.ts`     | Debounced event refresh, retry, and stale-state source                                        |
+| `tui/subagent.tsx`                      | Standalone SubAgent sidebar component and adapter                                             |
+| `tui/features/subagent.ts`              | SubAgent status, duration, grouping, and panel model                                           |
+| `tui/services/subagent-snapshot.ts`     | Bounded direct-child snapshot loader                                                          |
+| `tui/services/subagent-source.ts`       | Event refresh, retry, stale-state, and failure persistence source                              |
+| `tui/providers/`                        | Z.AI, OpenAI, and OpenCode Go provider adapters                                               |
+| `lib/tokens/`                           | Vendored token reporting library ([upstream](https://github.com/slkiser/opencode-quota), MIT) |
+| `plugin-manifest.json`                  | Manifest order, runtime IDs, artifacts, slots, and option ownership                           |
+| `build-plugins.mjs`                     | Builds the shared artifact and nine standalone local ESM plugins                              |
+| `deploy-plugins.mjs`                    | Idempotently migrates nine local/global plugins and `tui.json` entries                        |
 
 ### Edit workflow
 
@@ -570,7 +721,7 @@ Edit the relevant source, redeploy, then fully restart OpenCode to reload.
 ```bash
 npm install       # install/refresh deps in node_modules
 npm run typecheck # tsc --noEmit (informational; runtime resolves via Bun)
-npm run build:plugins # rebuild all eight standalone plugins plus shared code
+npm run build:plugins # rebuild all nine standalone plugins plus shared code
 npm run deploy:local # rebuild and deploy into this repository
 npm test          # run tests
 ```

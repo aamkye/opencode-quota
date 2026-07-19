@@ -11,14 +11,15 @@ test("publishes and typechecks the standalone plugins", () => {
   const tsconfig = JSON.parse(readFileSync("tsconfig.json", "utf8"))
 
   assert.deepEqual(pkg.exports, {
-    "./quota": "./tui/quota.tsx",
     "./home": "./tui/home.tsx",
     "./token-report": "./tui/token-report.tsx",
-    "./mcp": "./tui/mcp.tsx",
     "./context": "./tui/context.tsx",
+    "./ses-tokens": "./tui/ses-tokens.tsx",
+    "./subagent": "./tui/subagent.tsx",
+    "./quota": "./tui/quota.tsx",
+    "./mcp": "./tui/mcp.tsx",
     "./lsp": "./tui/lsp.tsx",
     "./todo": "./tui/todo.tsx",
-    "./ses-tokens": "./tui/ses-tokens.tsx",
   })
   assert.deepEqual(pkg.files, ["dist", "plugin-manifest.json", "tui", "shared", "README.md"])
   assert.deepEqual(tsconfig.include, [
@@ -47,6 +48,8 @@ test("source modules own the TUI slots without root-config activation", () => {
   assert.equal(readFileSync("tui/quota.tsx", "utf8").includes("home_bottom"), false)
   assert.equal(readFileSync("tui/home.tsx", "utf8").includes("home_bottom"), true)
   assert.equal(readFileSync("tui/home.tsx", "utf8").includes("sidebar_content"), false)
+  assert.equal(readFileSync("tui/subagent.tsx", "utf8").includes("sidebar_content"), true)
+  assert.equal(readFileSync("tui/subagent.tsx", "utf8").includes("home_bottom"), false)
   assert.equal(tsconfig.include.some((entry) => entry.includes(legacyIdentifier)), false)
   assert.equal(existsSync(`${legacyIdentifier}-home.tsx`), false)
 })
@@ -72,19 +75,23 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   const prose = readme.replace(/\s+/gu, " ")
   const introduction = readme.match(/^# opencode-tools\n\n([\s\S]*?)(?=\n## Features)/u)?.[1]
   const contextFeatures = readme.match(/### Context\n\n([\s\S]*?)(?=\n### LSP)/u)?.[1]
-  const sesTokensFeatures = readme.match(/### SesTokens\n\n([\s\S]*?)(?=\n### Shared)/u)?.[1]
+  const sesTokensFeatures = readme.match(/### SesTokens\n\n([\s\S]*?)(?=\n### SubAgent)/u)?.[1]
+  const subagentFeatures = readme.match(/### SubAgent\n\n([\s\S]*?)(?=\n### Shared)/u)?.[1]
   const contextContract = agents.match(/### Context\n\n([\s\S]*?)(?=\n### LSP)/u)?.[1]
   const sesTokensContract = agents.match(/### SesTokens\n\n([\s\S]*?)$/u)?.[1]
+  const subagentContract = agents.match(/### SubAgent\n\n([\s\S]*?)(?=\n### SesTokens)/u)?.[1]
   const configurationSection = readme.match(/### Configuration\n\n([\s\S]*?)(?=\n### MCP sidebar layouts)/u)?.[1]
   const configurationText = readme.match(/### Configuration\n\n[\s\S]*?```json\n([\s\S]*?)\n```/u)?.[1]
   assert.ok(introduction, "missing README introduction")
   assert.ok(contextFeatures, "missing Context feature section")
   assert.ok(sesTokensFeatures, "missing SesTokens feature section")
+  assert.ok(subagentFeatures, "missing SubAgent feature section")
   assert.ok(contextContract, "missing AGENTS.md Context contract")
   assert.ok(sesTokensContract, "missing AGENTS.md SesTokens contract")
+  assert.ok(subagentContract, "missing AGENTS.md SubAgent contract")
   assert.ok(configurationSection, "missing Configuration section")
   assert.ok(configurationText, "missing documented tui.json configuration")
-  assert.match(introduction.replace(/\s+/gu, " "), /MCP server health, active-session context and spend, LSP status, synchronized session TODOs, complete session-tree token totals/u)
+  assert.match(introduction.replace(/\s+/gu, " "), /MCP server health, active-session context and spend, LSP status, synchronized session TODOs, complete session-tree token totals, direct-child SubAgent activity/u)
 
   const normalizedContextContract = contextContract.replace(/\s+/gu, " ")
   for (const text of [
@@ -105,18 +112,20 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   const configuration = JSON.parse(configurationText)
   assert.equal(Array.isArray(configuration.plugin), true, "documented tui.json must contain a plugin array")
   assert.deepEqual(configuration.plugin.map((entry) => Array.isArray(entry) ? entry[0] : entry), [
-    "./opencode-tools-quota.js",
     "./opencode-tools-home.js",
     "./opencode-tools-token-report.js",
-    "./opencode-tools-mcp.js",
     "./opencode-tools-context.js",
+    "./opencode-tools-ses-tokens.js",
+    "./opencode-tools-subagent.js",
+    "./opencode-tools-quota.js",
+    "./opencode-tools-mcp.js",
     "./opencode-tools-lsp.js",
     "./opencode-tools-todo.js",
-    "./opencode-tools-ses-tokens.js",
   ])
   assert.equal(configuration.plugin.includes("./opencode-tools-context.js"), true)
-  assert.deepEqual(Object.keys(configuration.plugin[0][1]), ["quota"])
-  assert.equal(configuration.plugin.slice(1).every((entry) => typeof entry === "string"), true)
+  const quotaEntry = configuration.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")
+  assert.deepEqual(Object.keys(quotaEntry[1]), ["quota"])
+  assert.equal(configuration.plugin.filter((entry) => Array.isArray(entry)).length, 1)
   assert.deepEqual(configuration.plugin_enabled, {
     "internal:sidebar-mcp": false,
     "internal:sidebar-lsp": false,
@@ -138,6 +147,7 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.match(configurationSection, /Context, LSP, and TODO accept no options\./u)
   assert.match(configurationSection, /Context has no built-in panel override\s+to disable\./u)
   assert.match(configurationSection, /SesTokens accepts no options and has no built-in panel override\./u)
+  assert.match(configurationSection, /SubAgent accepts no options and has no built-in panel override\./u)
 
   for (const id of [
     "aamkye/opencode-tools-quota",
@@ -148,6 +158,7 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     "aamkye/opencode-tools-lsp",
     "aamkye/opencode-tools-todo",
     "aamkye/opencode-tools-ses-tokens",
+    "aamkye/opencode-tools-subagent",
   ]) assert.equal(readme.includes(`\`${id}\``), true, `missing runtime ID: ${id}`)
 
   for (const text of [
@@ -170,6 +181,7 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     "remove `./opencode-tools-todo.js`",
     "re-enable `internal:sidebar-todo`",
     "remove `./opencode-tools-ses-tokens.js`",
+    "remove `./opencode-tools-subagent.js`",
     "restart OpenCode",
   ]) assert.equal(prose.includes(text), true, `missing README text: ${text}`)
   assert.doesNotMatch(prose, /automatically disables? `?internal:sidebar-mcp`?/iu)
@@ -221,13 +233,15 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   const lspLayoutsIndex = readme.indexOf("\n### LSP sidebar layouts")
   const todoLayoutsIndex = readme.indexOf("\n### TODO sidebar layouts")
   const sesTokensLayoutsIndex = readme.indexOf("\n### SesTokens sidebar layouts")
+  const subagentLayoutsIndex = readme.indexOf("\n### SubAgent sidebar layouts")
   assert.ok(
     mcpLayoutsIndex >= 0
       && mcpLayoutsIndex < contextLayoutsIndex
       && contextLayoutsIndex < lspLayoutsIndex
       && lspLayoutsIndex < todoLayoutsIndex
-      && todoLayoutsIndex < sesTokensLayoutsIndex,
-    "README sidebar layout sections must be ordered MCP -> Context -> LSP -> TODO -> SesTokens",
+      && todoLayoutsIndex < sesTokensLayoutsIndex
+      && sesTokensLayoutsIndex < subagentLayoutsIndex,
+    "README sidebar layout sections must be ordered MCP -> Context -> LSP -> TODO -> SesTokens -> SubAgent",
   )
   const contextLayouts = readme.match(/### Context sidebar layouts\n\n([\s\S]*?)(?=\n### LSP sidebar layouts)/u)?.[1]
   assert.ok(contextLayouts, "missing Context sidebar layouts between MCP and LSP")
@@ -298,9 +312,11 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   }
 
   const todoLayouts = readme.match(/### TODO sidebar layouts\n\n([\s\S]*?)(?=\n### SesTokens sidebar layouts)/u)?.[1]
-  const sesTokensLayouts = readme.match(/### SesTokens sidebar layouts\n\n([\s\S]*?)(?=\n### Build and deploy)/u)?.[1]
+  const sesTokensLayouts = readme.match(/### SesTokens sidebar layouts\n\n([\s\S]*?)(?=\n### SubAgent sidebar layouts)/u)?.[1]
+  const subagentLayouts = readme.match(/### SubAgent sidebar layouts\n\n([\s\S]*?)(?=\n### Build and deploy)/u)?.[1]
   assert.ok(todoLayouts, "missing TODO sidebar layouts")
   assert.ok(sesTokensLayouts, "missing SesTokens sidebar layouts")
+  assert.ok(subagentLayouts, "missing SubAgent sidebar layouts")
   const expectedTodoLayouts = new Map([
     ["Expanded", [
       "▼ TODO",
@@ -373,6 +389,46 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     "Usage unavailable",
   ]) assert.equal(sesTokensDocumentation.includes(text), true, `missing SesTokens documentation: ${text}`)
 
+  const approvedSubagentLayouts = [...subagentContract.matchAll(/```\n([\s\S]*?)\n```/gu)]
+    .map((match) => match[1].split("\n").map((line) => line.split(" |")[0].trimEnd()))
+  assert.equal(approvedSubagentLayouts.length, 6, "AGENTS.md must define six SubAgent reference layouts")
+  const expectedSubagentLayouts = new Map([
+    ["Expanded, one detail", approvedSubagentLayouts[0]],
+    ["Expanded", approvedSubagentLayouts[1]],
+    ["Expanded, stale", approvedSubagentLayouts[2]],
+    ["Semi-collapsed", approvedSubagentLayouts[3]],
+    ["Collapsed", approvedSubagentLayouts[4]],
+    ["Collapsed, stale", approvedSubagentLayouts[5]],
+    ["Expanded, empty", ["▼ SubAgent", "-".repeat(36), "No subagents", "-".repeat(36)]],
+  ])
+  for (const [heading, expected] of expectedSubagentLayouts) {
+    const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")
+    const layout = subagentLayouts.match(new RegExp(`#### ${escapedHeading}\\n\\n\`\`\`text\\n([\\s\\S]*?)\\n\`\`\``, "u"))?.[1]
+    assert.ok(layout, `missing ${heading} SubAgent layout`)
+    const lines = layout.split("\n")
+    assert.deepEqual(lines, expected, `${heading} SubAgent layout changed from AGENTS.md semantics`)
+    for (const line of lines) {
+      assert.ok([...line].length <= 37, `${heading} SubAgent layout exceeds 37 cells: ${line}`)
+      assert.equal(line.trimEnd(), line, `${heading} SubAgent layout has trailing whitespace`)
+    }
+  }
+
+  const subagentDocumentation = `${subagentFeatures} ${subagentLayouts}`.replace(/\s+/gu, " ")
+  for (const text of [
+    "direct child sessions",
+    "newest five",
+    "Rest",
+    "failed takes precedence over running and successful",
+    "busy or retry is running",
+    "idle or a completed assistant message is successful",
+    "live duration",
+    "per parent session",
+    "retains the complete entry body and marks the panel stale",
+    "emits no panel output",
+    "No subagents",
+    "Open Session",
+  ]) assert.equal(subagentDocumentation.includes(text), true, `missing SubAgent documentation: ${text}`)
+
   const buildAndDeploy = readme.match(/### Build and deploy\n\n([\s\S]*?)(?=\n#### Rollback)/u)?.[1]
   const rollback = readme.match(/#### Rollback\n\n([\s\S]*?)(?=\n### Artifact layout)/u)?.[1]
   const artifactLayout = readme.match(/### Artifact layout\n\n([\s\S]*?)(?=\n### Session title plugin)/u)?.[1]
@@ -383,8 +439,8 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.ok(artifactLayout, "missing Artifact layout section")
   assert.ok(sourceFiles, "missing Source files section")
   assert.ok(editWorkflow, "missing Edit workflow section")
-  assert.match(buildAndDeploy, /Build the eight standalone minified ESM plugins/u)
-  assert.match(buildAndDeploy, /configuration entries to the eight standalone entries in manifest order/u)
+  assert.match(buildAndDeploy, /Build the nine standalone minified ESM plugins/u)
+  assert.match(buildAndDeploy, /configuration entries to the nine standalone entries in manifest order/u)
   assert.match(
     rollback.replace(/\s+/gu, " "),
     /To remove the Context panel, remove `\.\/opencode-tools-context\.js` from the `plugin` array and restart OpenCode\./u,
@@ -399,27 +455,40 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     rollback.replace(/\s+/gu, " "),
     /To remove the SesTokens panel, remove `\.\/opencode-tools-ses-tokens\.js` from the `plugin` array and restart OpenCode\./u,
   )
+  assert.match(
+    rollback.replace(/\s+/gu, " "),
+    /To remove the SubAgent panel, remove `\.\/opencode-tools-subagent\.js` from the `plugin` array and restart OpenCode\./u,
+  )
   assert.match(artifactLayout, /^├── opencode-tools-context\.js$/mu)
   assert.match(
     artifactLayout,
-    /^\| `opencode-tools-context\.js` \| `aamkye\/opencode-tools-context` \| Reactive active-session context and spend panel between MCP and LSP\. \|$/mu,
+    /^\| `opencode-tools-context\.js`\s+\| `aamkye\/opencode-tools-context`\s+\| Reactive active-session context and spend panel between MCP and LSP\.\s+\|$/mu,
   )
   assert.match(
     sourceFiles,
     /^\| `tui\/context\.tsx`\s+\| Standalone reactive active-session context and spend sidebar adapter\s+\|$/mu,
   )
-  assert.match(artifactLayout, /^└── opencode-tools-ses-tokens\.js$/mu)
+  assert.match(artifactLayout, /^[├└]── opencode-tools-ses-tokens\.js$/mu)
   assert.match(
     artifactLayout,
-    /^\| `opencode-tools-ses-tokens\.js` \| `aamkye\/opencode-tools-ses-tokens` \| Complete descendant-session-tree assistant token aggregation panel after TODO\. \|$/mu,
+    /^\| `opencode-tools-ses-tokens\.js`\s+\| `aamkye\/opencode-tools-ses-tokens`\s+\| Complete descendant-session-tree assistant token aggregation panel after TODO\.\s+\|$/mu,
   )
   assert.match(sourceFiles, /^\| `tui\/ses-tokens\.tsx`\s+\| Standalone SesTokens sidebar adapter\s+\|$/mu)
   assert.match(sourceFiles, /^\| `tui\/features\/ses-tokens\.ts`\s+\| Assistant token aggregation and panel model\s+\|$/mu)
   assert.match(sourceFiles, /^\| `tui\/services\/session-tree-snapshot\.ts`\s+\| Bounded complete descendant-tree snapshot loader\s+\|$/mu)
   assert.match(sourceFiles, /^\| `tui\/services\/ses-tokens-source\.ts`\s+\| Debounced event refresh, retry, and stale-state source\s+\|$/mu)
-  assert.match(sourceFiles, /Builds the shared artifact and eight standalone local ESM plugins/u)
-  assert.match(sourceFiles, /Idempotently migrates eight local\/global plugins and `tui\.json` entries/u)
-  assert.match(editWorkflow, /npm run build:plugins # rebuild all eight standalone plugins plus shared code/u)
+  assert.match(artifactLayout, /^[├└]── opencode-tools-subagent\.js$/mu)
+  assert.match(
+    artifactLayout,
+    /^\| `opencode-tools-subagent\.js`\s+\| `aamkye\/opencode-tools-subagent`\s+\| Direct-child SubAgent activity panel\.\s+\|$/mu,
+  )
+  assert.match(sourceFiles, /^\| `tui\/subagent\.tsx`\s+\| Standalone SubAgent sidebar component and adapter\s+\|$/mu)
+  assert.match(sourceFiles, /^\| `tui\/features\/subagent\.ts`\s+\| SubAgent status, duration, grouping, and panel model\s+\|$/mu)
+  assert.match(sourceFiles, /^\| `tui\/services\/subagent-snapshot\.ts`\s+\| Bounded direct-child snapshot loader\s+\|$/mu)
+  assert.match(sourceFiles, /^\| `tui\/services\/subagent-source\.ts`\s+\| Event refresh, retry, stale-state, and failure persistence source\s+\|$/mu)
+  assert.match(sourceFiles, /Builds the shared artifact and nine standalone local ESM plugins/u)
+  assert.match(sourceFiles, /Idempotently migrates nine local\/global plugins and `tui\.json` entries/u)
+  assert.match(editWorkflow, /npm run build:plugins # rebuild all nine standalone plugins plus shared code/u)
 
   assert.match(prose, /Long IDs truncate with an ellipsis so expanded lines fit within 37 cells and collapsed lines fit within 36 cells\./u)
   assert.match(prose, /TODO continuation lines align under the content column, and only completed records contribute to the collapsed numerator\./u)
