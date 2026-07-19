@@ -29,7 +29,7 @@
 - [x] 6.1 Add failing pure-allocation, mounted-panel, source-boundary, compiler, and build-policy tests for bullet removal, 37/36/scrollbar-reduced 35-cell end truncation, one fixed title/time gap, grapheme-safe measured `onSizeChange` behavior and removal safety, compact/detail status colors, muted Rest disclosure/title, explicit muted divider children, revised AGENTS-derived layouts, type-only public `Renderable` use, the exact bundled width-helper dependency chain, and no trailing whitespace
 - [x] 6.2 Remove entry bullet rendering/allocation, implement public-OpenTUI `onSizeChange` terminal-cell end truncation, color compact/detail times, render the muted explicit Rest divider/header, directly declare locked `string-width` 7.2.0, synchronize README layouts/docs, and pass focused, typecheck, full-suite, build, diff, hash, dependency, bundle, and artifact checks without changing existing source, lifecycle, navigation, persistence, status, or integration behavior
 
-## 7. Responsive Title Width Correction
+## 7. Reserved Duration And Expanded Title Correction
 
-- [ ] 7.1 Add a failing mounted regression that removes all title measurement callbacks, asserts a flex-derived 28-cell title plus structural right margin at width 37 and 27 cells plus the margin at scrollbar-reduced width 36, and preserves the full duration
-- [ ] 7.2 Implement the `CompactStatusRow` flexible-title/right-margin/fixed-duration pattern plus end truncation and native clipping safety, preserve all approved visual behavior, pass focused/full/typecheck/build/bundle gates, deploy locally, and confirm titles in the live OpenCode sidebar
+- [ ] 7.1 Add a failing mounted regression that reserves a fixed seven-cell `XXm XXs` duration box plus a two-cell title margin, verifies the scrollbar can consume only the spare margin, and verifies expanded titles wrap completely without a duration reservation
+- [ ] 7.2 Implement the fixed-duration/two-gap compact row and wrapping expanded-title pattern, preserve all approved visual behavior, pass focused/full/typecheck/build/bundle gates, deploy locally, and confirm titles in the live OpenCode sidebar

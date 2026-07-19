@@ -32,7 +32,7 @@ base-ref: 5a0b6c3
 - Do not edit `AGENTS.md`, OpenSpec artifacts, or Comet state during implementation. Its current full-file SHA-256 is `488214c49e9b83b6770e1e0e03746ec5bd0c11daf9ea268545568e55bb223387`.
 - Use strict TDD for Tasks 1-7, Task 9, and Task 10: add the specified test first, run the exact RED command and confirm the stated failure, then edit production code and run the focused GREEN command. Tasks 1-9 remain completed and must not be reopened.
 - Task 9 is a visual-contract correction only. Preserve every existing source, lifecycle, navigation, persistence, status derivation, clock, stale-state, manifest, deployment, and integration behavior.
-- Task 10 supersedes Task 9's ref/callback measurement mechanism after live OpenCode showed that `onSizeChange`, child `resize`, and render-phase hooks cannot supply a useful width in this sidebar host. It must follow the existing `CompactStatusRow` flexible-left/fixed-right pattern: `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, and `marginRight={allocation().beforeDurationGap}` for the title beside fixed disclosure and duration siblings. This yields 28 title cells plus the structural gap at width 37 and 27 plus the structural gap at scrollbar-reduced width 36 without changing the approved visual contract.
+- Task 10 supersedes Task 9's ref/callback measurement mechanism after live OpenCode showed that `onSizeChange`, child `resize`, and render-phase hooks cannot supply a useful width in this sidebar host. Compact rows must use `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, and a two-cell title right margin beside fixed disclosure and a seven-cell right-aligned `XXm XXs` duration box. The title has a 26-cell basis at width 37; a scrollbar may consume only the spare margin. Expanded rows must omit duration reservation and wrap the full title after the disclosure.
 - Stage exact paths in each suggested commit. In particular, do not stage the accepted `README.md` or `plugin-manifest.json` changes before Task 7.
 
 ## File Map
@@ -1202,21 +1202,23 @@ git commit -m "fix(subagent): correct panel visual contract"
 **OpenSpec mapping:** 7.1, 7.2; corrective acceptance for initial title rendering and scrollbar scenarios. This task supersedes every failed Task 9/10 measurement hook and fixed title-width basis.
 
 **Files:**
+- Modify: `tui/features/subagent.ts`
 - Modify: `tui/subagent.tsx`
+- Modify: `tests/subagent-model.test.mjs`
 - Modify: `tests/opentui-solid-host-runtime.fixture.ts`
 - Modify: `tests/subagent-mounted.fixture.ts`
 - Modify: `tests/subagent-mounted.test.mjs`
 - Modify: `tests/shared-boundary.test.mjs`
 
 **Interfaces:**
-- `MeasuredTitle` directly renders a grapheme-safe end-truncated title inside the sole flexible `<text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0} marginRight={gap} truncate={true}>` region.
-- `SubagentRow` calls `allocateSubagentEntryRow(37, stringWidth(entry.duration))` for fixed disclosure and duration reservations, passing the allocated gap as the title's right margin. The title has no explicit width: flex assigns 28 cells at row width 37 and 27 when the scrollbar reduces the content row to 36.
+- `MeasuredTitle` directly renders a grapheme-safe end-truncated title inside the sole flexible `<text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0} marginRight={2} truncate={true}>` compact region.
+- `SubagentRow` calls `allocateSubagentEntryRow(37, 7)` for fixed disclosure, two margin cells, and a seven-cell duration box. The compact duration is right-aligned inside its box. Expanded rows render a wrapping title directly after disclosure and omit both margin and duration box.
 - Remove every title `ref`, `onSizeChange`, `renderBefore`, child event listener, `LayoutEvents`, and root-only `"resized"` use. The mounted fixture has no title lifecycle simulation.
-- Preserve direct `string-width` 7.2.0, grapheme-safe end truncation, 37/36-cell responsive title expectations, fixed title/time gap, status colors, Rest treatment, detail clipping, source behavior, and build dependency policy.
+- Preserve direct `string-width` 7.2.0, grapheme-safe end truncation, fixed-duration/two-gap compact-row expectations, full wrapping expanded titles, status colors, Rest treatment, detail clipping, source behavior, and build dependency policy.
 
 - [ ] **Step 1: Add the failing real-event regression**
 
-Change the mounted host and source-boundary tests before production. Assert that the title flex region receives 28 cells plus one right margin at row width 37 and 27 plus one right margin at scrollbar-reduced width 36, while the duration stays intact. Require `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, `marginRight`, direct allocation for fixed siblings, and native `truncate`; reject a separate gap text node, `width` on the title plus `ref`, `onSizeChange`, `renderBefore`, child `resize` registration, `LayoutEvents`, and `"resized"` in `tui/subagent.tsx`.
+Change the pure allocation, mounted host, and source-boundary tests before production. Update `allocateSubagentEntryRow` so its fixed seven-cell duration reservation exposes a two-cell `beforeDurationGap` and a 26-cell title at width 37. Assert that compact rows use this allocation, a fixed seven-cell right-aligned duration box, and a scrollbar-reduced path that preserves title separation and duration. Assert expanded titles wrap all content after the two-cell disclosure without a duration box. Require `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, a two-cell `marginRight`, fixed duration width, direct allocation, and native `truncate`; reject separate gap text nodes, compact title `width`, and every title measurement hook.
 
 - [ ] **Step 2: Run and retain the focused RED**
 
@@ -1228,7 +1230,7 @@ node tests/compile-presentation.mjs && node --test \
   tests/shared-boundary.test.mjs
 ```
 
-Expected RED at `144d250`: source-boundary assertions reject the separate paintable gap node and mounted scrollbar-reduced layout demonstrates no structural margin. Compilation must complete before the behavioral assertions fail.
+Expected RED at `af43ed5`: source-boundary assertions reject its one-cell dynamic duration and margin contract, while mounted compact/expanded layout assertions demonstrate the missing fixed duration reservation and full expanded title. Compilation must complete before the behavioral assertions fail.
 
 - [ ] **Step 3: Implement the responsive flex correction**
 
@@ -1238,7 +1240,7 @@ Use the pure allocation directly:
 const allocation = () => allocateSubagentEntryRow(37, stringWidth(props.entry.duration))
 ```
 
-Pass `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, `marginRight={allocation().beforeDurationGap}`, `overflow="hidden"`, `wrapMode="none"`, and `truncate={true}` to the title `<text>`, with direct end-truncated content. Use the allocation only for disclosure, the title margin, and duration width; remove the separate gap text node. Do not change other rendering or source behavior.
+Update `allocateSubagentEntryRow` so a seven-cell duration reservation receives a two-cell gap without weakening its existing finite-input or too-narrow invariants. For compact rows, pass `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, `marginRight={allocation().beforeDurationGap}`, `overflow="hidden"`, `wrapMode="none"`, and `truncate={true}` to the title `<text>`, with direct end-truncated content. Use `allocateSubagentEntryRow(37, 7)` for disclosure/title/margin/duration values and right-align the duration in its seven-cell box. For expanded rows, render the full wrapping title after disclosure and omit duration/margin. Do not change other rendering or source behavior.
 
 - [ ] **Step 4: Run automated GREEN gates and commit**
 
@@ -1270,4 +1272,4 @@ Run `npm run deploy:local`, restart or reload OpenCode, and confirm every visibl
 
 ## Planning Concern
 
-Task 10 exists because live OpenCode disproved every dynamic title-measurement path: `onSizeChange`, a ref-bound child `resize` listener, and `renderBefore` all left either blank or unbounded title text. It also proved that a fixed 28-cell title basis allows the scrollbar to overlay the final duration cell, while a separate gap text node can be overpainted by native title truncation. The binding architecture now matches `CompactStatusRow`: a zero-basis growing/shrinking title with a structural right margin beside fixed disclosure and duration siblings. The host flex layout selects 28 title cells plus the margin without a scrollbar and 27 plus the margin with one, without callbacks or scrollbar state. The worktree also contains coordinator-owned Comet state and progress files; they remain outside Task 10 staging. Exact-path staging is mandatory, Tasks 1-9 stay completed, and no unrelated source belongs in the Task 10 commit.
+Task 10 exists because live OpenCode disproved every dynamic title-measurement path: `onSizeChange`, a ref-bound child `resize` listener, and `renderBefore` all left either blank or unbounded title text. It also proved that a fixed 28-cell title basis allows the scrollbar to overlay the final duration cell, while one gap cell can be overpainted by native title truncation. The binding architecture reserves a seven-cell right-aligned `XXm XXs` duration box and two title-margin cells, so the scrollbar can consume only the spare gap. Expanded rows no longer reserve compact-row duration space and instead wrap their full title. No callback or scrollbar state is used. The worktree also contains coordinator-owned Comet state and progress files; they remain outside Task 10 staging. Exact-path staging is mandatory, Tasks 1-9 stay completed, and no unrelated source belongs in the Task 10 commit.
