@@ -1209,6 +1209,8 @@ git commit -m "fix(subagent): correct panel visual contract"
 - Modify: `tests/subagent-mounted.fixture.ts`
 - Modify: `tests/subagent-mounted.test.mjs`
 - Modify: `tests/shared-boundary.test.mjs`
+- Modify: `tests/plugin-wiring.test.mjs`
+- Modify: `README.md`
 
 **Interfaces:**
 - `MeasuredTitle` directly renders a grapheme-safe end-truncated title inside the sole flexible `<text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0} marginRight={2} truncate={true}>` compact region.
@@ -1218,7 +1220,7 @@ git commit -m "fix(subagent): correct panel visual contract"
 
 - [ ] **Step 1: Add the failing real-event regression**
 
-Change the pure allocation, mounted host, and source-boundary tests before production. Update `allocateSubagentEntryRow` so its fixed seven-cell duration reservation exposes a two-cell `beforeDurationGap` and a 26-cell title at width 37. Assert that compact rows use this allocation, a fixed seven-cell right-aligned duration box, and a scrollbar-reduced path that preserves title separation and duration. Assert expanded titles wrap all content after the two-cell disclosure without a duration box. Require `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, a two-cell `marginRight`, fixed duration width, direct allocation, and native `truncate`; reject separate gap text nodes, compact title `width`, and every title measurement hook.
+Change the pure allocation, mounted host, source-boundary, and AGENTS-derived README contract tests before production. Update `allocateSubagentEntryRow` so its fixed seven-cell duration reservation exposes a two-cell `beforeDurationGap` and a 26-cell title at width 37. Assert that compact rows use this allocation, a fixed seven-cell right-aligned duration box, and a scrollbar-reduced path that preserves title separation and duration. Assert expanded titles wrap all content after the two-cell disclosure without a duration box. Update the AGENTS parser and README layouts for the new full-detail wrapped-title reference layout. Require `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, a two-cell `marginRight`, fixed duration width, direct allocation, and native `truncate`; reject separate gap text nodes, compact title `width`, and every title measurement hook.
 
 - [ ] **Step 2: Run and retain the focused RED**
 
