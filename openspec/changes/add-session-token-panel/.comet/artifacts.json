@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/add-session-token-panel/proposal.md",
+  "openspec_design": "openspec/changes/add-session-token-panel/design.md",
+  "openspec_tasks": "openspec/changes/add-session-token-panel/tasks.md",
+  "openspec_delta_spec": "openspec/changes/add-session-token-panel/specs/session-token-panel/spec.md",
+  "handoff_context": "openspec/changes/add-session-token-panel/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/add-session-token-panel/.comet/handoff/design-context.md"
+}

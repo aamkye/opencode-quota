@@ -1,0 +1,14 @@
+{
+  "change": "add-session-token-panel",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "7a58705e8ccdeb49d7e334941bff64eb842ce575b7d7279531ddd213491aa87e",
+  "files": [
+    { "path": "openspec/changes/add-session-token-panel/proposal.md", "sha256": "18866e473b1cd1ccaeb8f0c0daafc02faa6e098d926b1516a92bd4d826f63db5" },
+    { "path": "openspec/changes/add-session-token-panel/design.md", "sha256": "f1e8857bae6affd533465bd59752e6e5162388d29dc52041f45e73540be8b69d" },
+    { "path": "openspec/changes/add-session-token-panel/tasks.md", "sha256": "5b167626ec01cf42dbd51258eb2747205986fe27d8e77979c1daea24fd0eca1d" },
+    { "path": "openspec/changes/add-session-token-panel/specs/session-token-panel/spec.md", "sha256": "06135dca47e7eb959991df94d787a6db08f9a5758ecd1da1b0c266747afa617d" }
+  ]
+}

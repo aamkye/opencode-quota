@@ -947,7 +947,7 @@ git commit -m "feat: wire session token plugin"
 - Consumes: all implementation slices and integration contracts.
 - Produces: passing focused/full verification evidence and a fully checked ten-item OpenSpec task list.
 
-- [ ] **Step 1: Run all focused SesTokens and regression tests**
+- [x] **Step 1: Run all focused SesTokens and regression tests**
 
 Run:
 
@@ -958,35 +958,35 @@ node --test tests/ses-tokens-model.test.mjs tests/session-tree-snapshot.test.mjs
 
 Expected: PASS with zero failed tests.
 
-- [ ] **Step 2: Run local declaration typecheck**
+- [x] **Step 2: Run local declaration typecheck**
 
 Run: `npm run typecheck`
 
 Expected: exit code 0 and no TypeScript diagnostics, including `tests/ses-tokens-state-types.fixture.ts`.
 
-- [ ] **Step 3: Run the full repository test suite**
+- [x] **Step 3: Run the full repository test suite**
 
 Run: `npm test`
 
 Expected: both compile scripts and every `tests/*.test.mjs` test pass with zero failures.
 
-- [ ] **Step 4: Build all standalone artifacts**
+- [x] **Step 4: Build all standalone artifacts**
 
 Run: `npm run build`
 
 Expected: exit code 0; `dist/opencode-tools-shared.js` and `dist/opencode-tools-ses-tokens.js` are non-empty minified ESM artifacts.
 
-- [ ] **Step 5: Inspect the SesTokens bundle for forbidden source imports**
+- [x] **Step 5: Inspect the SesTokens bundle for forbidden source imports**
 
 Run:
 
 ```bash
-node --input-type=module -e 'import assert from "node:assert/strict"; import { readFileSync } from "node:fs"; const code = readFileSync("dist/opencode-tools-ses-tokens.js", "utf8"); const imports = [...code.matchAll(/from["'"']([^"'"']+)["'"']/gu)].map((match) => match[1]); assert.ok(imports.includes("./opencode-tools-shared.js")); for (const specifier of imports) assert.equal(specifier.startsWith("../") || specifier.includes("/tui/") || specifier.includes("/features/") || specifier.includes("/services/"), false, `forbidden source import: ${specifier}`);'
+node --input-type=module -e 'import assert from "node:assert/strict"; import { readFileSync } from "node:fs"; const code = readFileSync("dist/opencode-tools-ses-tokens.js", "utf8"); const imports = [...code.matchAll(/from[\x22\x27]([^\x22\x27]+)[\x22\x27]/gu)].map((match) => match[1]); assert.ok(imports.includes("./opencode-tools-shared.js")); for (const specifier of imports) assert.equal(specifier.startsWith("../") || specifier.includes("/tui/") || specifier.includes("/features/") || specifier.includes("/services/"), false, `forbidden source import: ${specifier}`);'
 ```
 
 Expected: exit code 0; the feature imports the built shared artifact and no repository source path.
 
-- [ ] **Step 6: Prove the user-authored AGENTS.md remained untouched**
+- [x] **Step 6: Prove the approved AGENTS.md contract remains unchanged**
 
 Run: `shasum -a 256 AGENTS.md`
 
@@ -996,11 +996,11 @@ Expected exactly:
 f118dd027caac7bce5ed9cf80ebfae83d9a0cc58e50e4831e74df8b1f2dac725  AGENTS.md
 ```
 
-Then run: `git status --short`
+Then run: `git diff --exit-code -- AGENTS.md` and `git status --short`
 
-Expected: `AGENTS.md` remains an unstaged user-authored modification; no generated `dist/` or `.tmp-test/` artifact is staged or tracked.
+Expected: `AGENTS.md` is clean at the approved committed hash; no generated `dist/` or `.tmp-test/` artifact is staged or tracked.
 
-- [ ] **Step 7: Check the final OpenSpec item and validate checklist coverage**
+- [x] **Step 7: Check the final OpenSpec item and validate checklist coverage**
 
 Change OpenSpec item `5.1` to `[x]`. Run:
 
@@ -1010,7 +1010,7 @@ node -e 'const fs=require("node:fs"); const text=fs.readFileSync("openspec/chang
 
 Expected: exit code 0 and exactly ten checked OpenSpec items.
 
-- [ ] **Step 8: Commit verification bookkeeping during implementation**
+- [x] **Step 8: Commit verification bookkeeping during implementation**
 
 ```bash
 git add openspec/changes/add-session-token-panel/tasks.md
