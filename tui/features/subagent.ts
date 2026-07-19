@@ -26,7 +26,6 @@ export type SubagentPanelModel = {
 
 export type SubagentEntryRowAllocation = {
   disclosure: number
-  bullet: number
   title: number
   beforeDurationGap: number
   duration: number
@@ -79,14 +78,12 @@ export function allocateSubagentEntryRow(
   const available = normalizedCells(availableCells)
   const requestedDuration = normalizedCells(durationCells)
   const disclosure = Math.min(2, available)
-  const bullet = Math.min(2, available - disclosure)
-  const prefix = disclosure + bullet
-  const remaining = available - prefix
-  const gap = prefix > 0 && requestedDuration > 0 ? 1 : 0
+  const remaining = available - disclosure
+  const gap = disclosure > 0 && requestedDuration > 0 ? 1 : 0
   const duration = requestedDuration + gap <= remaining ? requestedDuration : 0
   const beforeDurationGap = duration > 0 ? gap : 0
   const title = remaining - beforeDurationGap - duration
-  return { disclosure, bullet, title, beforeDurationGap, duration }
+  return { disclosure, title, beforeDurationGap, duration }
 }
 
 export function createSubagentPanelModel(

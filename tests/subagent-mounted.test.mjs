@@ -45,23 +45,24 @@ const [
   collapsedLayout,
   staleCollapsedLayout,
 ] = agentsSubagentLayouts
+const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8")
 
 const expandedLayout37 = [
   "▼ SubAgent",
   "-------------------------------------",
-  "▶ • SubAgent11 with super lon… 9m 45s",
-  "▶ • SubAgent10                 1h 15m",
-  "▶ • SubAgent9                  15m 4s",
-  "▶ • SubAgent8                  2h 18m",
-  "▶ • SubAgent7                  2h 18m",
+  "▶ SubAgent11 with super long…  9m 45s",
+  "▶ SubAgent10                   1h 15m",
+  "▶ SubAgent9                    15m 4s",
+  "▶ SubAgent8                    2h 18m",
+  "▶ SubAgent7                    2h 18m",
   "---                               ---",
   "▼ Rest",
-  "▶ • SubAgent6                  9m 45s",
-  "▶ • SubAgent5                  1h 15m",
-  "▶ • SubAgent4                     15s",
-  "▶ • SubAgent3                     25s",
-  "▶ • SubAgent2                      5s",
-  "▶ • SubAgent1                   1h 2m",
+  "▶ SubAgent6                    9m 45s",
+  "▶ SubAgent5                    1h 15m",
+  "▶ SubAgent4                       15s",
+  "▶ SubAgent3                       25s",
+  "▶ SubAgent2                        5s",
+  "▶ SubAgent1                     1h 2m",
   "-------------------------------------",
 ]
 
@@ -180,8 +181,13 @@ test("matches every expanded AGENTS layout and exact row order", async () => {
   try {
     await mounted.resolveReady()
     assert.deepEqual(mounted.view().lines, expandedLayout)
-    assert.equal(mounted.view().dividerCount, 3)
-    assert.equal(mounted.view().restDividerColor, "#888888")
+    assert.equal(mounted.view().dividerCount, 2)
+    assert.equal(mounted.view().rest.disclosureColor, "#888888")
+    assert.equal(mounted.view().rest.titleColor, "#888888")
+    assert.equal(mounted.view().restDivider.nativeBorder, false)
+    assert.deepEqual(mounted.view().restDivider.texts, ["---", "", "---"])
+    assert.deepEqual(mounted.view().restDivider.colors, ["#888888", undefined, "#888888"])
+    assert.equal(mounted.view().restDivider.middleFlexGrow, 1)
     assert.deepEqual(mounted.messageCalls.map(({ sessionID }) => sessionID), [
       "subagent-11", "subagent-10", "subagent-9", "subagent-8", "subagent-7",
       "subagent-6", "subagent-5", "subagent-4", "subagent-3", "subagent-2", "subagent-1",
@@ -209,7 +215,14 @@ test("matches semi-collapsed Rest and collapsed count layouts", async () => {
   try {
     await mounted.resolveReady()
     await mounted.view().clickRest()
-    assert.deepEqual(mounted.view().lines, semiCollapsedLayout)
+    const view = mounted.view()
+    assert.deepEqual(view.lines, semiCollapsedLayout)
+    assert.equal(view.rest.disclosureColor, "#888888")
+    assert.equal(view.rest.titleColor, "#888888")
+    assert.equal(view.restDivider.nativeBorder, false)
+    assert.deepEqual(view.restDivider.texts, ["---", "", "---"])
+    assert.deepEqual(view.restDivider.colors, ["#888888", undefined, "#888888"])
+    assert.equal(view.restDivider.middleFlexGrow, 1)
     await mounted.view().clickHeader()
     assert.deepEqual(mounted.view().lines, collapsedLayout)
     assert.deepEqual(mounted.view().summarySegments, [
@@ -283,18 +296,30 @@ test("publishes stale only after background retries are exhausted", async () => 
   }
 })
 
-test("colors bullets and status values by semantic status", async () => {
+test("omits status bullets and colors compact and detail times by status", async () => {
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {
     await mounted.resolveReady()
-    const bulletColors = Object.fromEntries(mounted.view().entryRows.map((row) => [row.title, row.bulletColor]))
-    assert.equal(bulletColors.SubAgent10, "#00ff00")
-    assert.equal(bulletColors.SubAgent9, "#ffaa00")
-    assert.equal(bulletColors.SubAgent8, "#ff0000")
-    for (const title of ["SubAgent10", "SubAgent9", "SubAgent8"]) {
+    assert.equal(mounted.view().bulletCount, 0)
+    assert.deepEqual(
+      Object.fromEntries(mounted.view().entryRows.map((row) => [row.title, row.durationColor])),
+      {
+        "SubAgent11 with super long name": "#00ff00",
+        SubAgent10: "#00ff00",
+        SubAgent9: "#ffaa00",
+        SubAgent8: "#ff0000",
+        SubAgent7: "#ff0000",
+        SubAgent6: "#00ff00",
+        SubAgent5: "#00ff00",
+        SubAgent4: "#ff0000",
+        SubAgent3: "#00ff00",
+        SubAgent2: "#00ff00",
+        SubAgent1: "#00ff00",
+      },
+    )
+    for (const [title, color] of [["SubAgent10", "#00ff00"], ["SubAgent9", "#ffaa00"], ["SubAgent8", "#ff0000"]]) {
       await mounted.view().clickEntry(title)
-      const status = mounted.view().detailRows.find((row) => row.label === "status:")
-      assert.equal(status.valueColor, bulletColors[title])
+      assert.equal(mounted.view().detailRows.find((row) => row.label === "time:")?.valueColor, color)
       await mounted.view().clickEntry(title)
     }
   } finally {
@@ -302,35 +327,34 @@ test("colors bullets and status values by semantic status", async () => {
   }
 })
 
-test("truncates only titles at 37 and 36 cells without trailing whitespace", async () => {
+test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells", async () => {
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {
     await mounted.resolveReady()
-    const view37 = mounted.view(37)
-    const view36 = mounted.view(36)
-    const width37 = view37.entryRows[0]
-    const width36 = view36.entryRows[0]
-    assert.deepEqual(view37.lines, expandedLayout37)
-    assert.deepEqual(view36.lines, expandedLayout)
-    assert.equal(width37.renderedText, "▶ • SubAgent11 with super lon… 9m 45s")
-    assert.equal(width36.renderedText, "▶ • SubAgent11 with super lo… 9m 45s")
-    for (const width of [36, 37]) {
-      const view = mounted.view(width)
+    for (const [width, expectedTitle] of [
+      [37, "SubAgent11 with super long…"],
+      [36, "SubAgent11 with super long…"],
+      [35, "SubAgent11 with super lon…"],
+    ]) {
+      await mounted.resize(width)
+      const view = mounted.view()
+      if (width === 37) assert.deepEqual(view.lines, expandedLayout37)
+      if (width === 36) assert.deepEqual(view.lines, expandedLayout)
+      const row = view.entryRows[0]
+      assert.equal(row.renderedTitle, expectedTitle)
+      assert.equal(row.renderedTitle.endsWith("…"), true)
+      assert.equal(row.renderedTitle.match(/…/gu)?.length, 1)
+      assert.equal(row.gap, " ")
+      assert.equal(row.gapWidth, 1)
+      assert.equal(row.duration, "9m 45s")
+      assert.equal(row.rowWidth, width)
+      assert.equal(row.childWidths.reduce((total, cells) => total + cells, 0), width)
+      assert.equal(row.titleProps.truncate, undefined)
       for (const line of view.lines) assert.equal(line.trimEnd(), line)
-      for (const row of view.entryRows) {
-        assert.equal(row.rowWidth, width)
-        assert.equal(row.rowProps.width, "100%")
-        assert.equal(row.rowProps.overflow, "hidden")
-        assert.equal(row.titleProps.flexBasis, 0)
-        assert.equal(row.titleProps.flexGrow, 1)
-        assert.equal(row.titleProps.flexShrink, 1)
-        assert.equal(row.titleProps.minWidth, 0)
-        assert.equal(row.titleProps.truncate, true)
-        assert.ok(row.childWidths.reduce((total, value) => total + value, 0) <= width)
-        assert.equal(row.renderedText.trimEnd(), row.renderedText)
-        assert.equal(row.duration.trimEnd(), row.duration)
-      }
     }
+    assert.equal(mounted.totalResizeListeners(), mounted.view().entryRows.length)
+    await mounted.view().clickHeader()
+    assert.equal(mounted.totalResizeListeners(), 0)
   } finally {
     await mounted.dispose()
   }
@@ -349,12 +373,15 @@ test("measures wide and combining titles in terminal cells", async () => {
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {
     await mounted.resolveReady(children)
-    const rows = Object.fromEntries(mounted.view(37).entryRows.map((row) => [row.title, row]))
+    await mounted.resize(37)
+    const rows = Object.fromEntries(mounted.view().entryRows.map((row) => [row.title, row]))
 
-    assert.equal(rows[wideTitle].renderedText, `▶ • ${"界".repeat(12)}…  9m 45s`)
-    assert.equal(rows[combiningTitle].renderedText, `▶ • ${"e\u0301".repeat(25)}… 1h 15m`)
-    assert.equal(stringWidth(rows[wideTitle].renderedTitle), rows[wideTitle].childWidths[2])
-    assert.equal(stringWidth(rows[combiningTitle].renderedTitle), rows[combiningTitle].childWidths[2])
+    assert.equal(rows[wideTitle].renderedTitle, `${"界".repeat(13)}…`)
+    assert.equal(rows[combiningTitle].renderedTitle, `${"e\u0301".repeat(27)}…`)
+    assert.equal(rows[wideTitle].renderedTitle.match(/…/gu)?.length, 1)
+    assert.equal(rows[combiningTitle].renderedTitle.match(/…/gu)?.length, 1)
+    assert.equal(stringWidth(rows[wideTitle].renderedTitle), 27)
+    assert.equal(stringWidth(rows[combiningTitle].renderedTitle), 28)
   } finally {
     await mounted.dispose()
   }
@@ -564,7 +591,7 @@ test("does not start a clock for defined non-finite completions", async () => {
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {
     await mounted.resolveReady(children)
-    assert.ok(mounted.view().entryRows.every(({ bulletColor }) => bulletColor === "#00ff00"))
+    assert.ok(mounted.view().entryRows.every(({ durationColor }) => durationColor === "#00ff00"))
     assert.deepEqual(mounted.activeIntervalDelays(), [])
     assert.equal(mounted.intervalStarts(), 0)
     await mounted.view().clickHeader()
@@ -636,4 +663,13 @@ test("collapse parent switch completion and disposal stop the clock", async () =
   await disposed.dispose()
   assert.equal(disposed.intervalClears(), 1)
   assert.deepEqual(disposed.activeIntervalDelays(), [])
+  assert.equal(disposed.totalResizeListeners(), 0)
+})
+
+test("documents the corrected SubAgent visual behavior", () => {
+  for (const statement of [
+    "Compact durations and expanded time values use the child's status color.",
+    "Titles are grapheme-safe, end-truncated to the measured terminal-cell width, including scrollbar width changes.",
+    "The Rest disclosure and title are muted, and its divider is two muted three-dash segments separated by flexible space.",
+  ]) assert.equal(readme.includes(statement), true, `missing README statement: ${statement}`)
 })

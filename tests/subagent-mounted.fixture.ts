@@ -184,6 +184,12 @@ function isDivider(node: HostNode): boolean {
     && node.props.border[0] === "top"
 }
 
+function isExplicitDivider(node: HostNode): boolean {
+  return node.type === "box"
+    && node.props.flexDirection === "row"
+    && directTexts(node).join("\0") === "---\0\0---"
+}
+
 function directTexts(node: HostNode): string[] {
   return node.children.filter((childNode) => childNode.type !== "#text").map(textOf)
 }
@@ -197,7 +203,7 @@ function isRenderableRow(node: HostNode): boolean {
 }
 
 function collectBodyItems(node: HostNode, output: HostNode[] = []): HostNode[] {
-  if (isDivider(node) || isRenderableRow(node)) {
+  if (isDivider(node) || isExplicitDivider(node) || isRenderableRow(node)) {
     output.push(node)
     return output
   }
@@ -242,6 +248,8 @@ export async function mountSubagentPanel(options: {
   let intervalClearCount = 0
   let currentNow = NOW
   let currentParentID = options.parentID ?? ""
+  let currentTitles: string[] = []
+  let mountedWidth = 36
 
   const scheduler = {
     setTimer(callback: () => void, delay: number) {
@@ -371,6 +379,7 @@ export async function mountSubagentPanel(options: {
   }) as never, root)
   const mountedPanels = new Map<HostNode, HostNode>()
   const disposedPanels = new Set<HostNode>()
+  const measuredTitleNodes = new Set<HostNode>()
 
   function currentPanel(): HostNode | undefined {
     const title = textNodes(root).find((node) => textOf(node) === "SubAgent")
@@ -388,11 +397,34 @@ export async function mountSubagentPanel(options: {
   async function flushHost() {
     await settle()
     trackPanelLifecycle()
+    let resized = false
+    const panel = currentPanel()
+    if (panel) {
+      for (const row of descendants(panel)) {
+        const texts = directTexts(row)
+        if (row.type !== "box"
+          || row.props.flexDirection !== "row"
+          || typeof row.props.onMouseDown !== "function"
+          || !["▶ ", "▼ "].includes(texts[0])
+          || texts[1] === "Rest") continue
+        const layout = rowLayout(row, mountedWidth)
+        const titleRegion = layout.cells[1]
+        if (!titleRegion) continue
+        measuredTitleNodes.add(titleRegion)
+        const width = layout.childWidths[1] ?? 0
+        if (titleRegion.width === width) continue
+        titleRegion.width = width
+        titleRegion.emit("resized")
+        resized = true
+      }
+    }
+    if (resized) await settle()
   }
 
   await flushHost()
 
-  function view(width = 36) {
+  function view() {
+    const width = mountedWidth
     const panel = currentPanel()
     const title = textNodes(root).find((node) => textOf(node) === "SubAgent")
     const header = title?.parent
@@ -413,18 +445,20 @@ export async function mountSubagentPanel(options: {
       texts: directTexts(row),
       layout: rowLayout(row, width),
     }))
-    const entryRows = rows.filter(({ texts }) => texts[1] === "• ")
+    const entryRows = rows.filter(({ node, texts }) => (
+      typeof node.props.onMouseDown === "function"
+      && ["▶ ", "▼ "].includes(texts[0])
+      && texts[1] !== "Rest"
+    ))
     const detailRows = rows.filter(({ texts }) => texts[0] === "  " && texts[1]?.endsWith(":"))
     const openSession = rows.find(({ texts }) => texts[0] === "  " && texts[1] === "Open Session")
     const fallback = textNodes(root).find((node) => textOf(node) === "No subagents")
     const dividers = panel ? descendants(panel).filter(isDivider) : []
-    const restDivider = bodyItems.find(isDivider)
+    const restDivider = bodyItems.find((item) => isDivider(item) || isExplicitDivider(item))
     const lines = panel && header ? [
       rowLayout(header, width).renderedText,
       "-".repeat(Math.max(0, width)),
-      ...bodyItems.map((item) => isDivider(item)
-        ? `---${" ".repeat(Math.max(0, width - 6))}---`
-        : rowLayout(item, width).renderedText),
+      ...bodyItems.map((item) => rowLayout(item, width).renderedText),
       ...(fallback && bodyItems.length === 0 ? [textOf(fallback)] : []),
       ...(dividers.length > 1 ? ["-".repeat(Math.max(0, width))] : []),
     ] : []
@@ -447,20 +481,32 @@ export async function mountSubagentPanel(options: {
       fallbackText: textOf(fallback),
       fallbackColor: fallback?.props.fg,
       dividerCount: dividers.length,
-      restDividerColor: restDivider?.props.borderColor,
+      bulletCount: textNodes(root).filter((node) => textOf(node) === "• ").length,
+      rest: {
+        disclosureColor: rows.find(({ texts }) => texts[1] === "Rest")?.layout.cells[0]?.props.fg,
+        titleColor: rows.find(({ texts }) => texts[1] === "Rest")?.layout.cells[1]?.props.fg,
+      },
+      restDivider: {
+        nativeBorder: Boolean(restDivider && isDivider(restDivider)),
+        texts: restDivider ? directTexts(restDivider) : [],
+        colors: restDivider?.children.filter((node) => node.type !== "#text").map((node) => node.props.fg) ?? [],
+        middleFlexGrow: restDivider?.children.filter((node) => node.type !== "#text")[1]?.props.flexGrow,
+      },
       openSessionInteractive: typeof openSession?.node.props.onMouseDown === "function",
       lines,
-      entryRows: entryRows.map(({ texts, layout }) => ({
+      entryRows: entryRows.map(({ node, texts, layout }, index) => ({
         disclosure: texts[0],
-        title: texts[2],
-        duration: texts[4] ?? "",
-        bulletColor: layout.cells[1]?.props.fg,
-        renderedTitle: layout.renderedCells[2] ?? "",
+        title: currentTitles[index] ?? texts[1],
+        gap: texts[2] ?? "",
+        gapWidth: layout.childWidths[2] ?? 0,
+        duration: texts[3] ?? "",
+        durationColor: layout.cells[3]?.props.fg,
+        renderedTitle: textOf(layout.cells[1]),
         renderedText: layout.renderedText,
         rowWidth: layout.rowWidth,
         childWidths: layout.childWidths,
-        rowProps: entryRows.find(({ layout: candidate }) => candidate === layout)?.node.props ?? {},
-        titleProps: layout.cells[2]?.props ?? {},
+        rowProps: node.props,
+        titleProps: layout.cells[1]?.props ?? {},
       })),
       detailRows: detailRows.map(({ texts, layout }) => ({
         label: texts[1],
@@ -471,7 +517,8 @@ export async function mountSubagentPanel(options: {
         await clickRow(header, "SubAgent header")
       },
       async clickEntry(titleText: string) {
-        await clickRow(entryRows.find(({ texts }) => texts[2] === titleText)?.node, titleText)
+        const index = currentTitles.indexOf(titleText)
+        await clickRow(entryRows[index]?.node, titleText)
       },
       async clickRest() {
         await clickRow(rows.find(({ texts }) => texts[1] === "Rest")?.node, "Rest")
@@ -512,6 +559,7 @@ export async function mountSubagentPanel(options: {
     },
     async setParentID(parentID?: string) {
       currentParentID = parentID ?? ""
+      currentTitles = []
       setHostParentID(currentParentID)
       await flushHost()
     },
@@ -536,6 +584,10 @@ export async function mountSubagentPanel(options: {
         ...entry,
         session: { ...entry.session, parentID: currentParentID },
       }))
+      currentTitles = [...resolvedChildren]
+        .sort((left, right) => right.session.time.created - left.session.time.created
+          || left.session.id.localeCompare(right.session.id))
+        .map(({ session }) => session.title)
       statuses.clear()
       for (const entry of resolvedChildren) statuses.set(entry.session.id, entry.status)
       await this.resolveList({ data: [
@@ -561,6 +613,15 @@ export async function mountSubagentPanel(options: {
       interval.callback()
       await flushHost()
     },
+    async resize(width: number) {
+      mountedWidth = width
+      await flushHost()
+    },
+    totalResizeListeners() {
+      let count = 0
+      for (const node of measuredTitleNodes) count += node.listenerCount("resized")
+      return count
+    },
     view,
     async dispose() {
       disposeHost()
@@ -572,6 +633,7 @@ export async function mountSubagentPanel(options: {
       const queue = cleanups.reverse()
       cleanups = []
       for (const cleanup of queue) await cleanup()
+      await settle()
     },
   }
 }

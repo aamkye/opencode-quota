@@ -6,10 +6,40 @@ export type HostNode = {
   children: HostNode[]
   parent?: HostNode
   removed: boolean
+  width: number
+  on(event: string, listener: (...args: unknown[]) => void): HostNode
+  off(event: string, listener: (...args: unknown[]) => void): HostNode
+  emit(event: string, ...args: unknown[]): boolean
+  listenerCount(event: string): number
 }
 
 export function createHostNode(type: string): HostNode {
-  return { type, props: {}, children: [], removed: false }
+  const listeners = new Map<string, Set<(...args: unknown[]) => void>>()
+  return {
+    type,
+    props: {},
+    children: [],
+    removed: false,
+    width: 0,
+    on(event, listener) {
+      const eventListeners = listeners.get(event) ?? new Set()
+      eventListeners.add(listener)
+      listeners.set(event, eventListeners)
+      return this
+    },
+    off(event, listener) {
+      listeners.get(event)?.delete(listener)
+      return this
+    },
+    emit(event, ...args) {
+      const eventListeners = [...(listeners.get(event) ?? [])]
+      for (const listener of eventListeners) listener(...args)
+      return eventListeners.length > 0
+    },
+    listenerCount(event) {
+      return listeners.get(event)?.size ?? 0
+    },
+  }
 }
 
 function removeFromParent(node: HostNode): void {

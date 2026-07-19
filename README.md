@@ -133,6 +133,9 @@ totals, direct-child SubAgent activity, and `/tokens_*` reports for **Z.AI
 - **Duration and details**: each row shows a live duration for running children
   and a terminal duration for successful or failed children. Expanding a row
   shows its agent, status, time, model, and `Open Session` action.
+  Compact durations and expanded time values use the child's status color.
+  Titles are grapheme-safe, end-truncated to the measured terminal-cell width, including scrollbar width changes.
+  The Rest disclosure and title are muted, and its divider is two muted three-dash segments separated by flexible space.
 - **Persistent interaction state**: panel collapse, `Rest` collapse, expanded
   child, and retained failure evidence persist per parent session.
 - **Stale and empty behavior**: a failed refresh after ready data retains the
@@ -424,14 +427,14 @@ sidebar.
 ▼ SesTokens
 ------------------------------------
 ↻ turns                           97
-↑ in                            4.4M
-↓ out                          18.6K
+↑ in                           4.41M
+↓ out                         18.69K
 ▤ cache write                      0
-▤ cache read                   24.7M
-ø cache hit ratio               5.6×
-✦ think                         2.8K
+▤ cache read                  24.77M
+ø cache hit ratio              5.68×
+✦ think                        2.87K
 ---                              ---
-Σ total                        29.1M
+Σ total                       29.11M
 ------------------------------------
 ```
 
@@ -441,28 +444,28 @@ sidebar.
 ▼ SesTokens                    stale
 ------------------------------------
 ↻ turns                           97
-↑ in                            4.4M
-↓ out                          18.6K
+↑ in                           4.41M
+↓ out                         18.69K
 ▤ cache write                      0
-▤ cache read                   24.7M
-ø cache hit ratio               5.6×
-✦ think                         2.8K
+▤ cache read                  24.77M
+ø cache hit ratio              5.68×
+✦ think                        2.87K
 ---                              ---
-Σ total                        29.1M
+Σ total                       29.11M
 ------------------------------------
 ```
 
 #### Collapsed
 
 ```text
-▶ SesTokens           Σ 29.1M / ↻ 97
+▶ SesTokens                   29.11M
 ------------------------------------
 ```
 
 #### Collapsed, stale
 
 ```text
-▶ SesTokens     stale Σ 29.1M / ↻ 97
+▶ SesTokens             stale 29.11M
 ------------------------------------
 ```
 
@@ -485,19 +488,19 @@ trailing whitespace.
 ```text
 ▼ SubAgent
 ------------------------------------
-▶ • SubAgent11 with super lo… 9m 45s
-▶ • SubAgent10                1h 15m
-▶ • SubAgent9                 15m 4s
-▶ • SubAgent8                 2h 18m
-▶ • SubAgent7                 2h 18m
+▶ SubAgent11 with super long… 9m 45s
+▶ SubAgent10                  1h 15m
+▶ SubAgent9                   15m 4s
+▶ SubAgent8                   2h 18m
+▶ SubAgent7                   2h 18m
 ---                              ---
 ▼ Rest
-▶ • SubAgent6                 9m 45s
-▶ • SubAgent5                 1h 15m
-▶ • SubAgent4                    15s
-▶ • SubAgent3                    25s
-▶ • SubAgent2                     5s
-▶ • SubAgent1                  1h 2m
+▶ SubAgent6                   9m 45s
+▶ SubAgent5                   1h 15m
+▶ SubAgent4                      15s
+▶ SubAgent3                      25s
+▶ SubAgent2                       5s
+▶ SubAgent1                    1h 2m
 ------------------------------------
 ```
 
@@ -506,24 +509,24 @@ trailing whitespace.
 ```text
 ▼ SubAgent
 ------------------------------------
-▶ • SubAgent11 with super lo… 9m 45s
-▶ • SubAgent10                1h 15m
-▼ • SubAgent9
+▶ SubAgent11 with super long… 9m 45s
+▶ SubAgent10                  1h 15m
+▼ SubAgent9
   agent:                     general
   status:                    running
   time:                       15m 4s
   model:                 gpt-4o-mini
   Open Session
-▶ • SubAgent8                 2h 18m
-▶ • SubAgent7                 2h 18m
+▶ SubAgent8                   2h 18m
+▶ SubAgent7                   2h 18m
 ---                              ---
 ▼ Rest
-▶ • SubAgent6                 9m 45s
-▶ • SubAgent5                 1h 15m
-▶ • SubAgent4                    15s
-▶ • SubAgent3                    25s
-▶ • SubAgent2                     5s
-▶ • SubAgent1                  1h 2m
+▶ SubAgent6                   9m 45s
+▶ SubAgent5                   1h 15m
+▶ SubAgent4                      15s
+▶ SubAgent3                      25s
+▶ SubAgent2                       5s
+▶ SubAgent1                    1h 2m
 ------------------------------------
 ```
 
@@ -532,11 +535,11 @@ trailing whitespace.
 ```text
 ▼ SubAgent
 ------------------------------------
-▶ • SubAgent11 with super lo… 9m 45s
-▶ • SubAgent10                1h 15m
-▶ • SubAgent9                 15m 4s
-▶ • SubAgent8                 2h 18m
-▶ • SubAgent7                 2h 18m
+▶ SubAgent11 with super long… 9m 45s
+▶ SubAgent10                  1h 15m
+▶ SubAgent9                   15m 4s
+▶ SubAgent8                   2h 18m
+▶ SubAgent7                   2h 18m
 ---                              ---
 ▶ Rest
 ------------------------------------
@@ -554,19 +557,19 @@ trailing whitespace.
 ```text
 ▼ SubAgent                     stale
 ------------------------------------
-▶ • SubAgent11 with super lo… 9m 45s
-▶ • SubAgent10                1h 15m
-▶ • SubAgent9                 15m 4s
-▶ • SubAgent8                 2h 18m
-▶ • SubAgent7                 2h 18m
+▶ SubAgent11 with super long… 9m 45s
+▶ SubAgent10                  1h 15m
+▶ SubAgent9                   15m 4s
+▶ SubAgent8                   2h 18m
+▶ SubAgent7                   2h 18m
 ---                              ---
 ▼ Rest
-▶ • SubAgent6                 9m 45s
-▶ • SubAgent5                 1h 15m
-▶ • SubAgent4                    15s
-▶ • SubAgent3                    25s
-▶ • SubAgent2                     5s
-▶ • SubAgent1                  1h 2m
+▶ SubAgent6                   9m 45s
+▶ SubAgent5                   1h 15m
+▶ SubAgent4                      15s
+▶ SubAgent3                      25s
+▶ SubAgent2                       5s
+▶ SubAgent1                    1h 2m
 ------------------------------------
 ```
 

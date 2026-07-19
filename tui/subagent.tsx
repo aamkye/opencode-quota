@@ -1,4 +1,7 @@
+import type { LayoutEvents as OpenTuiLayoutEvents, Renderable } from "@opentui/core"
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
+import type { JSX } from "solid-js"
+import stringWidth from "string-width"
 
 import {
   CompactPanel,
@@ -23,6 +26,9 @@ const PANEL_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.panel-collapsed"
 const REST_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.rest-collapsed"
 const EXPANDED_CHILD_KEY = "aamkye.opencode-tools-subagent.expanded-child"
 export const subagentRuntimeTestKey = Symbol("subagent-runtime-test")
+const LayoutEvents = {
+  RESIZED: "resized" as OpenTuiLayoutEvents.RESIZED,
+}
 
 type SubagentSourceFactory = (dependencies: SubagentSourceDependencies) => SubagentSource
 type SubagentRuntime = {
@@ -63,6 +69,56 @@ function statusRole(status: SubagentEntry["status"]): PanelStatus {
   return "error"
 }
 
+type MeasuredTitleProps = {
+  value: string
+}
+
+function truncateTerminalCellsEnd(value: string, maxCells: number): string {
+  const available = Number.isFinite(maxCells) ? Math.max(0, Math.floor(maxCells)) : 0
+  if (stringWidth(value) <= available) return value
+  if (available === 0) return ""
+
+  const ellipsis = "…"
+  const ellipsisCells = stringWidth(ellipsis)
+  let prefix = ""
+  let prefixCells = 0
+  for (const { segment } of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(value)) {
+    const segmentCells = stringWidth(segment)
+    if (prefixCells + segmentCells + ellipsisCells > available) break
+    prefix += segment
+    prefixCells += segmentCells
+  }
+  return `${prefix.trimEnd()}${ellipsis}`
+}
+
+function MeasuredTitle(props: MeasuredTitleProps): JSX.Element {
+  let titleRegion: Renderable | undefined
+  const [measuredCells, setMeasuredCells] = createSignal(0)
+  const measure = () => setMeasuredCells(titleRegion?.width ?? 0)
+  const bindTitleRegion = (renderable: Renderable) => {
+    if (titleRegion === renderable) return
+    titleRegion?.off(LayoutEvents.RESIZED, measure)
+    titleRegion = renderable
+    titleRegion.on(LayoutEvents.RESIZED, measure)
+    measure()
+  }
+  onCleanup(() => titleRegion?.off(LayoutEvents.RESIZED, measure))
+
+  return (
+    <text
+      ref={bindTitleRegion}
+      flexBasis={0}
+      flexGrow={1}
+      flexShrink={1}
+      minWidth={0}
+      overflow="hidden"
+      wrapMode="none"
+    >
+      {truncateTerminalCellsEnd(props.value, measuredCells())}
+    </text>
+  )
+}
+
 function DetailRow(props: {
   label: string
   value: string
@@ -100,27 +156,16 @@ function SubagentRow(props: {
     <box flexDirection="column" width="100%" overflow="hidden">
       <box flexDirection="row" width="100%" overflow="hidden" onMouseDown={props.onToggle}>
         <text width={2} flexShrink={0}>{props.expanded ? "▼ " : "▶ "}</text>
-        <text width={2} flexShrink={0} fg={props.theme()[role()]}>• </text>
-        <text
-          flexBasis={0}
-          flexGrow={1}
-          flexShrink={1}
-          minWidth={0}
-          overflow="hidden"
-          wrapMode="none"
-          truncate={true}
-        >
-          {props.entry.title}
-        </text>
+        <MeasuredTitle value={props.entry.title} />
         <Show when={!props.expanded}>
           <text width={1} flexShrink={0}> </text>
-          <text flexShrink={0} wrapMode="none">{props.entry.duration}</text>
+          <text flexShrink={0} wrapMode="none" fg={props.theme()[role()]}>{props.entry.duration}</text>
         </Show>
       </box>
       <Show when={props.expanded}>
         <DetailRow label="agent:" value={props.entry.agent} theme={props.theme} />
         <DetailRow label="status:" value={props.entry.status} status={role()} theme={props.theme} />
-        <DetailRow label="time:" value={props.entry.duration} theme={props.theme} />
+        <DetailRow label="time:" value={props.entry.duration} status={role()} theme={props.theme} />
         <DetailRow label="model:" value={props.entry.model} theme={props.theme} />
         <box flexDirection="row" width="100%" overflow="hidden" onMouseDown={props.onOpenSession}>
           <text width={2} flexShrink={0}>{"  "}</text>
@@ -267,15 +312,19 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
             )}
           </For>
           <Show when={model().rest.length > 0}>
-            <box width="100%" height={1} border={["top"]} borderColor={api.theme.current.textMuted} />
+            <box flexDirection="row" width="100%" overflow="hidden">
+              <text flexShrink={0} fg={api.theme.current.textMuted}>---</text>
+              <text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0} />
+              <text flexShrink={0} fg={api.theme.current.textMuted}>---</text>
+            </box>
             <box
               flexDirection="row"
               width="100%"
               overflow="hidden"
               onMouseDown={toggleRest}
             >
-              <text width={2} flexShrink={0}>{restExpanded() ? "▼ " : "▶ "}</text>
-              <text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0}>Rest</text>
+              <text width={2} flexShrink={0} fg={api.theme.current.textMuted}>{restExpanded() ? "▼ " : "▶ "}</text>
+              <text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0} fg={api.theme.current.textMuted}>Rest</text>
             </box>
             <Show when={restExpanded()}>
               <For each={model().rest}>
