@@ -658,7 +658,7 @@ home(1), token-report(no slot), context(100), ses-tokens(110),
 subagent(120), quota(130), mcp(140), lsp(150), todo(160)
 ```
 
-- [ ] **Step 1: Add failing exact integration expectations**
+- [x] **Step 1: Add failing exact integration expectations**
 
 Update tests before production integration:
 
@@ -669,13 +669,13 @@ Update tests before production integration:
 - `tests/plugin-wiring.test.mjs`: expect nine standalone plugins, the complete configuration order, SubAgent runtime/source/artifact/rollback prose, and README SubAgent layouts derived from the unchanged AGENTS section.
 - `tests/shared-boundary.test.mjs`: require `tui/subagent.tsx` to named-import/call `createSubagentPanelModel` from the facade and allow no relative imports except `../shared/opencode-tools-shared.js`.
 
-- [ ] **Step 2: Run the RED command**
+- [x] **Step 2: Run the RED command**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/plugin-manifest.test.mjs tests/plugin-adapters.test.mjs tests/plugin-build.test.mjs tests/plugin-deploy.test.mjs tests/plugin-wiring.test.mjs tests/shared-boundary.test.mjs`
 
 Expected RED: the accepted partial manifest lacks SubAgent and still uses Quota/MCP/LSP/TODO 120/130/140/150; package export, generated artifact count, deployment entry, and README SubAgent assertions are missing.
 
-- [ ] **Step 3: Complete manifest, package, harness, and deployment wiring**
+- [x] **Step 3: Complete manifest, package, harness, and deployment wiring**
 
 Preserve the current user-authored `plugin-manifest.json` diff. Insert:
 
@@ -694,7 +694,7 @@ between SesTokens and Quota, then change Quota/MCP/LSP/TODO to 130/140/150/160. 
 
 Remove the temporary SesTokens/SubAgent descriptor injection from `tests/compile-presentation.mjs`; both descriptors must now resolve from the real manifest. Add the SubAgent adapter fixture to the normal compile list. Build/deploy production scripts remain manifest-driven and should need no feature-specific branch.
 
-- [ ] **Step 4: Extend README without overwriting accepted edits**
+- [x] **Step 4: Extend README without overwriting accepted edits**
 
 Retain lines 3-8 inspiration links and the currently aligned artifact/source tables. Add:
 
@@ -707,19 +707,19 @@ Retain lines 3-8 inspiration links and the currently aligned artifact/source tab
 
 Do not edit `AGENTS.md`; make documentation tests extract its existing SubAgent fenced layouts as the acceptance source.
 
-- [ ] **Step 5: Run focused GREEN verification**
+- [x] **Step 5: Run focused GREEN verification**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/plugin-manifest.test.mjs tests/plugin-adapters.test.mjs tests/plugin-build.test.mjs tests/plugin-deploy.test.mjs tests/plugin-wiring.test.mjs tests/shared-boundary.test.mjs`
 
 Expected GREEN: exact manifest/package/runtime/build/deploy/docs assertions pass; SubAgent builds and activates alone, imports the managed shared artifact, and deployment preserves unrelated entries and quota options.
 
-- [ ] **Step 6: Review the two accepted files before staging**
+- [x] **Step 6: Review the two accepted files before staging**
 
 Run: `git diff 5a0b6c3 -- README.md plugin-manifest.json`
 
 Expected evidence: README still contains all four inspiration links and aligned tables plus SubAgent additions; manifest retains Home 1 and Context/SesTokens ordering, adds SubAgent 120, shifts later panels by ten, and leaves Token Report non-sidebar.
 
-- [ ] **Step 7: Commit the integration atomically**
+- [x] **Step 7: Commit the integration atomically**
 
 Suggested Conventional Commit: `feat(subagent): wire standalone plugin`
 

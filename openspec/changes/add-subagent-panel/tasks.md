@@ -17,8 +17,8 @@
 
 ## 4. Plugin Integration
 
-- [ ] 4.1 Add failing exact manifest-order, package export, build, deployment, managed-artifact, and shared-contract expectations for SubAgent
-- [ ] 4.2 Wire SubAgent into the plugin manifest, runtime descriptor types, package metadata, build outputs, deployment paths, and user-facing plugin documentation
+- [x] 4.1 Add failing exact manifest-order, package export, build, deployment, managed-artifact, and shared-contract expectations for SubAgent
+- [x] 4.2 Wire SubAgent into the plugin manifest, runtime descriptor types, package metadata, build outputs, deployment paths, and user-facing plugin documentation
 
 ## 5. Verification
 
