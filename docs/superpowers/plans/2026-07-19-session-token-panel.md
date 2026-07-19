@@ -2,6 +2,7 @@
 change: add-session-token-panel
 design-doc: docs/superpowers/specs/2026-07-19-session-token-panel-design.md
 base-ref: fed4b0940733c27d089dbb154c60e6a522f33346
+archived-with: 2026-07-19-add-session-token-panel
 ---
 
 # SesTokens Panel Implementation Plan

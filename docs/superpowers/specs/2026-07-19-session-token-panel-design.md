@@ -2,6 +2,8 @@
 comet_change: add-session-token-panel
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-19-add-session-token-panel
+status: final
 ---
 
 # SesTokens Panel Technical Design

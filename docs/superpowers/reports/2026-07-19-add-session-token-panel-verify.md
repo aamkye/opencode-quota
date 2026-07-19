@@ -127,4 +127,10 @@ The approved design documents describe event filtering through the last complete
 
 ## Conclusion
 
-The implementation is complete, matches the capability specification, satisfies all acceptance scenarios, and is ready for branch handling and archive transition.
+The implementation is complete, matches the capability specification, and satisfies all acceptance scenarios.
+
+## Branch Handling
+
+The feature branch was fast-forward merged into local `main` and deleted. A fresh post-merge `npm test` run passed 357/357 tests.
+
+The change is ready for the archive transition.
