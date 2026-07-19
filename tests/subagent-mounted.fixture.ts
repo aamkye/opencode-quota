@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js/dist/solid.js"
+import stringWidth from "string-width"
 
 import {
   createComponent,
@@ -32,6 +33,7 @@ const PANEL_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.panel-collapsed"
 const REST_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.rest-collapsed"
 const EXPANDED_CHILD_KEY = "aamkye.opencode-tools-subagent.expanded-child"
 const NOW = 20_000_000
+const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" })
 
 function message(
   sessionID: string,
@@ -109,7 +111,28 @@ function textNodes(root: HostNode): HostNode[] {
 }
 
 function cellWidth(text: string): number {
-  return [...text].length
+  return stringWidth(text)
+}
+
+function takeCells(text: string, width: number): string {
+  let result = ""
+  let used = 0
+  for (const { segment } of graphemeSegmenter.segment(text)) {
+    const segmentWidth = cellWidth(segment)
+    if (used + segmentWidth > width) break
+    result += segment
+    used += segmentWidth
+  }
+  return result
+}
+
+function truncateCells(text: string, width: number): string {
+  if (cellWidth(text) <= width) return text
+  if (width <= 0) return ""
+  const ellipsis = "…"
+  const ellipsisWidth = cellWidth(ellipsis)
+  if (ellipsisWidth > width) return takeCells(text, width)
+  return `${takeCells(text, width - ellipsisWidth)}${ellipsis}`
 }
 
 function resolvedWidth(value: unknown, parentWidth: number): number {
@@ -123,8 +146,9 @@ function resolvedWidth(value: unknown, parentWidth: number): number {
 function rowLayout(row: HostNode, width: number) {
   const rowWidth = resolvedWidth(row.props.width, width) || width
   const cells = row.children.filter((candidate) => candidate.type !== "#text")
-  const fixedWidths = cells.map((cell) => {
-    const configured = resolvedWidth(cell.props.width, rowWidth)
+  const configuredWidths = cells.map((cell) => resolvedWidth(cell.props.width, rowWidth))
+  const fixedWidths = cells.map((cell, index) => {
+    const configured = configuredWidths[index]
     if (configured > 0) return configured
     return Number(cell.props.flexGrow ?? 0) > 0 ? undefined : cellWidth(textOf(cell))
   })
@@ -136,19 +160,20 @@ function rowLayout(row: HostNode, width: number) {
   const childWidths = cells.map((cell, index) => fixedWidths[index] ?? (
     growTotal > 0 ? Math.floor(remaining * Number(cell.props.flexGrow ?? 0) / growTotal) : 0
   ))
-  const renderedText = cells.map((cell, index) => {
+  const renderedCells = cells.map((cell, index) => {
     const text = textOf(cell)
     const allocated = childWidths[index]
-    if (cellWidth(text) > allocated) {
-      if (cell.props.truncate && allocated > 0) {
-        return `${[...text].slice(0, Math.max(0, allocated - 1)).join("")}…`
-      }
-      return [...text].slice(0, allocated).join("")
+    let rendered = text
+    if (configuredWidths[index] === 0 && cellWidth(text) > allocated) {
+      rendered = cell.props.truncate ? truncateCells(text, allocated) : takeCells(text, allocated)
     }
     const hasFollowingCell = index < cells.length - 1
-    return hasFollowingCell && Number(cell.props.flexGrow ?? 0) > 0 ? text.padEnd(allocated) : text
-  }).join("")
-  return { cells, childWidths, renderedText, rowWidth }
+    if (hasFollowingCell && Number(cell.props.flexGrow ?? 0) > 0) {
+      rendered += " ".repeat(Math.max(0, allocated - cellWidth(rendered)))
+    }
+    return rendered
+  })
+  return { cells, childWidths, renderedCells, renderedText: renderedCells.join(""), rowWidth }
 }
 
 function isDivider(node: HostNode): boolean {
@@ -430,6 +455,7 @@ export async function mountSubagentPanel(options: {
         title: texts[2],
         duration: texts[4] ?? "",
         bulletColor: layout.cells[1]?.props.fg,
+        renderedTitle: layout.renderedCells[2] ?? "",
         renderedText: layout.renderedText,
         rowWidth: layout.rowWidth,
         childWidths: layout.childWidths,

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
+import stringWidth from "string-width"
 
 globalThis.React = {
   createElement(type, props, ...children) {
@@ -29,24 +31,20 @@ const eventTypes = [
   "tui.session.select",
 ]
 
-const expandedLayout = [
-  "▼ SubAgent",
-  "------------------------------------",
-  "▶ • SubAgent11 with super lo… 9m 45s",
-  "▶ • SubAgent10                1h 15m",
-  "▶ • SubAgent9                 15m 4s",
-  "▶ • SubAgent8                 2h 18m",
-  "▶ • SubAgent7                 2h 18m",
-  "---                              ---",
-  "▼ Rest",
-  "▶ • SubAgent6                 9m 45s",
-  "▶ • SubAgent5                 1h 15m",
-  "▶ • SubAgent4                    15s",
-  "▶ • SubAgent3                    25s",
-  "▶ • SubAgent2                     5s",
-  "▶ • SubAgent1                  1h 2m",
-  "------------------------------------",
-]
+const agentsSubagentSection = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8")
+  .split("### SubAgent\n", 2)[1]
+  .split("\n### ", 1)[0]
+const agentsSubagentLayouts = [...agentsSubagentSection.matchAll(/```\n([\s\S]*?)```/g)]
+  .map(([, body]) => body.trimEnd().split("\n").map((line) => line.split(/\s+\|(?:\s|$)/, 1)[0].trimEnd()))
+assert.equal(agentsSubagentLayouts.length, 6, "AGENTS SubAgent layout count changed")
+const [
+  oneDetailLayout,
+  expandedLayout,
+  staleExpandedLayout,
+  semiCollapsedLayout,
+  collapsedLayout,
+  staleCollapsedLayout,
+] = agentsSubagentLayouts
 
 const expandedLayout37 = [
   "▼ SubAgent",
@@ -65,43 +63,6 @@ const expandedLayout37 = [
   "▶ • SubAgent2                      5s",
   "▶ • SubAgent1                   1h 2m",
   "-------------------------------------",
-]
-
-const oneDetailLayout = [
-  "▼ SubAgent",
-  "------------------------------------",
-  "▶ • SubAgent11 with super lo… 9m 45s",
-  "▶ • SubAgent10                1h 15m",
-  "▼ • SubAgent9",
-  "  agent:                     general",
-  "  status:                    running",
-  "  time:                       15m 4s",
-  "  model:                 gpt-4o-mini",
-  "  Open Session",
-  "▶ • SubAgent8                 2h 18m",
-  "▶ • SubAgent7                 2h 18m",
-  "---                              ---",
-  "▼ Rest",
-  "▶ • SubAgent6                 9m 45s",
-  "▶ • SubAgent5                 1h 15m",
-  "▶ • SubAgent4                    15s",
-  "▶ • SubAgent3                    25s",
-  "▶ • SubAgent2                     5s",
-  "▶ • SubAgent1                  1h 2m",
-  "------------------------------------",
-]
-
-const semiCollapsedLayout = [
-  "▼ SubAgent",
-  "------------------------------------",
-  "▶ • SubAgent11 with super lo… 9m 45s",
-  "▶ • SubAgent10                1h 15m",
-  "▶ • SubAgent9                 15m 4s",
-  "▶ • SubAgent8                 2h 18m",
-  "▶ • SubAgent7                 2h 18m",
-  "---                              ---",
-  "▶ Rest",
-  "------------------------------------",
 ]
 
 const terminalChildren = canonicalChildren.filter((entry) => entry.session.id !== "subagent-9")
@@ -200,12 +161,11 @@ test("renders muted No subagents for a complete empty snapshot", async () => {
         info: { id: "subagent-new", parentID: "parent-a" },
       },
     })
-    assert.equal(mounted.view().detailText, "stale")
-    assert.equal(mounted.view().detailColor, "#ffaa00")
+    assert.equal(mounted.view().detailText, "")
     assert.equal(mounted.view().fallbackText, "No subagents")
     assert.equal(mounted.view().fallbackColor, "#888888")
     assert.deepEqual(mounted.view().lines, [
-      "▼ SubAgent                     stale",
+      "▼ SubAgent",
       "------------------------------------",
       "No subagents",
       "------------------------------------",
@@ -251,10 +211,7 @@ test("matches semi-collapsed Rest and collapsed count layouts", async () => {
     await mounted.view().clickRest()
     assert.deepEqual(mounted.view().lines, semiCollapsedLayout)
     await mounted.view().clickHeader()
-    assert.deepEqual(mounted.view().lines, [
-      "▶ SubAgent                     7/1/3",
-      "------------------------------------",
-    ])
+    assert.deepEqual(mounted.view().lines, collapsedLayout)
     assert.deepEqual(mounted.view().summarySegments, [
       { text: "7", color: "#00ff00" },
       { text: "/", color: "#888888" },
@@ -267,7 +224,7 @@ test("matches semi-collapsed Rest and collapsed count layouts", async () => {
   }
 })
 
-test("retains the body and warning detail in stale layouts", async () => {
+test("keeps the ready body through a successful background refresh", async () => {
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {
     await mounted.resolveReady()
@@ -278,17 +235,47 @@ test("retains the body and warning detail in stale layouts", async () => {
         info: { id: "subagent-9", parentID: "parent-a" },
       },
     })
+    assert.equal(mounted.view().detailText, "")
+    assert.deepEqual(mounted.view().lines, expandedLayout)
+
+    await mounted.runTimer(200)
+    assert.equal(mounted.view().detailText, "")
+    await mounted.resolveReady()
+    assert.equal(mounted.view().detailText, "")
+    assert.deepEqual(mounted.view().lines, expandedLayout)
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("publishes stale only after background retries are exhausted", async () => {
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady()
+    mounted.emit({
+      type: "session.updated",
+      properties: {
+        sessionID: "subagent-9",
+        info: { id: "subagent-9", parentID: "parent-a" },
+      },
+    })
+    assert.equal(mounted.view().detailText, "")
+    await mounted.runTimer(200)
+    await mounted.resolveList({ error: new Error("offline") })
+    for (const delay of [2_000, 4_000]) {
+      assert.equal(mounted.view().detailText, "")
+      await mounted.runTimer(delay)
+      await mounted.resolveList({ error: new Error("offline") })
+    }
+    assert.equal(mounted.view().detailText, "")
+    await mounted.runTimer(8_000)
+    await mounted.resolveList({ error: new Error("offline") })
+
     assert.equal(mounted.view().detailText, "stale")
     assert.equal(mounted.view().detailColor, "#ffaa00")
-    assert.deepEqual(mounted.view().lines, [
-      "▼ SubAgent                     stale",
-      ...expandedLayout.slice(1),
-    ])
+    assert.deepEqual(mounted.view().lines, staleExpandedLayout)
     await mounted.view().clickHeader()
-    assert.deepEqual(mounted.view().lines, [
-      "▶ SubAgent               stale 7/1/3",
-      "------------------------------------",
-    ])
+    assert.deepEqual(mounted.view().lines, staleCollapsedLayout)
     assert.equal(mounted.view().detailColor, "#ffaa00")
     assert.equal(mounted.view().summaryText, "7/1/3")
   } finally {
@@ -344,6 +331,30 @@ test("truncates only titles at 37 and 36 cells without trailing whitespace", asy
         assert.equal(row.duration.trimEnd(), row.duration)
       }
     }
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("measures wide and combining titles in terminal cells", async () => {
+  const wideTitle = "界".repeat(20)
+  const combiningTitle = "e\u0301".repeat(30)
+  const children = canonicalChildren.slice(0, 2).map((entry, index) => ({
+    ...entry,
+    session: {
+      ...entry.session,
+      title: index === 0 ? wideTitle : combiningTitle,
+    },
+  }))
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady(children)
+    const rows = Object.fromEntries(mounted.view(37).entryRows.map((row) => [row.title, row]))
+
+    assert.equal(rows[wideTitle].renderedText, `▶ • ${"界".repeat(12)}…  9m 45s`)
+    assert.equal(rows[combiningTitle].renderedText, `▶ • ${"e\u0301".repeat(25)}… 1h 15m`)
+    assert.equal(stringWidth(rows[wideTitle].renderedTitle), rows[wideTitle].childWidths[2])
+    assert.equal(stringWidth(rows[combiningTitle].renderedTitle), rows[combiningTitle].childWidths[2])
   } finally {
     await mounted.dispose()
   }
@@ -530,6 +541,36 @@ test("starts one clock only for visible running primary entries", async () => {
     assert.equal(collapsed.intervalStarts(), 0)
   } finally {
     await collapsed.dispose()
+  }
+})
+
+test("does not start a clock for defined non-finite completions", async () => {
+  const running = canonicalChildren.find((entry) => entry.session.id === "subagent-9")
+  assert.ok(running)
+  const children = [Number.NaN, Number.POSITIVE_INFINITY].map((completed, index) => {
+    const id = `non-finite-${index}`
+    return {
+      ...running,
+      session: { ...running.session, id, title: id },
+      status: undefined,
+      messages: running.messages.map((entry) => ({
+        ...entry,
+        id: `${id}-message`,
+        sessionID: id,
+        time: { ...entry.time, completed },
+      })),
+    }
+  })
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady(children)
+    assert.ok(mounted.view().entryRows.every(({ bulletColor }) => bulletColor === "#00ff00"))
+    assert.deepEqual(mounted.activeIntervalDelays(), [])
+    assert.equal(mounted.intervalStarts(), 0)
+    await mounted.view().clickHeader()
+    assert.equal(mounted.view().summaryText, "2/0/0")
+  } finally {
+    await mounted.dispose()
   }
 })
 

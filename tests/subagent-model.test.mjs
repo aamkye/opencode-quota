@@ -121,6 +121,27 @@ test("removing an assistant error removes non-retained failure evidence", () => 
   assert.equal(createSubagentPanelModel(snapshot([recovered]), {}, 2_000).primary[0].status, "successful")
 })
 
+test("treats defined non-finite assistant completion values as successful", () => {
+  const model = createSubagentPanelModel(snapshot([
+    child("nan-completion", 0, {
+      messages: [assistant("nan", 100, { time: { created: 100, completed: Number.NaN } })],
+    }),
+    child("infinite-completion", 1, {
+      messages: [assistant("infinite", 100, { time: { created: 100, completed: Number.POSITIVE_INFINITY } })],
+    }),
+  ]), {}, 10_000)
+
+  assert.deepEqual(
+    model.primary.map(({ id, status }) => [id, status]),
+    [["infinite-completion", "successful"], ["nan-completion", "successful"]],
+  )
+  assert.deepEqual(
+    { successful: model.successful, running: model.running, failed: model.failed },
+    { successful: 2, running: 0, failed: 0 },
+  )
+  assert.ok(model.primary.every(({ durationMs }) => Number.isFinite(durationMs) && durationMs >= 0))
+})
+
 test("uses only the newest assistant then newest user identity fields", () => {
   const messages = [
     assistant("old-assistant", 100, { agent: "old-assistant-agent", modelID: "old-assistant-model" }),

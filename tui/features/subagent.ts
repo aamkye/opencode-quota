@@ -122,7 +122,7 @@ export function createSubagentPanelModel(
         ? "running"
         : synchronizedStatus?.type === "idle"
           ? "successful"
-          : finite(assistant?.time.completed) !== undefined ? "successful" : "running"
+          : assistant?.time.completed !== undefined ? "successful" : "running"
     const failureTime = [retainedFailureTime, ...errorTimes]
       .filter((value): value is number => value !== undefined)
       .reduce<number | undefined>((earliest, value) => earliest === undefined ? value : Math.min(earliest, value), undefined)

@@ -80,6 +80,7 @@ export function createSubagentSource({
   let loadController: AbortController | undefined
   let retainedFailures = copyFailures(loadFailures())
   let disposed = false
+  let topologyKnown = false
   const knownDirectChildIDs = new Set<string>()
   const listeners = new Set<() => void>()
   const retryTimers = new Set<unknown>()
@@ -128,6 +129,7 @@ export function createSubagentSource({
   }
 
   function replaceKnownChildIDs(childIDs: readonly string[]): void {
+    topologyKnown = true
     knownDirectChildIDs.clear()
     for (const childID of childIDs) knownDirectChildIDs.add(childID)
   }
@@ -220,12 +222,11 @@ export function createSubagentSource({
     return generation
   }
 
-  function markStale(): void {
+  function publishFailureTimes(): void {
     if (currentState?.parentID !== parentID) return
     if (currentState.phase !== "ready" && currentState.phase !== "stale") return
     currentState = {
-      phase: "stale",
-      parentID,
+      ...currentState,
       snapshot: currentState.snapshot,
       failureTimes: failureTimesFor(parentID),
     }
@@ -247,7 +248,6 @@ export function createSubagentSource({
     if (disposed || parentID === "") return
     const capturedParentID = parentID
     const capturedGeneration = invalidate()
-    markStale()
     scheduleRefresh(capturedParentID, capturedGeneration)
   }
 
@@ -265,8 +265,8 @@ export function createSubagentSource({
       }
       persistFailures()
       if (!isCurrentGeneration(capturedParentID, capturedGeneration)) return
+      publishFailureTimes()
     }
-    markStale()
     scheduleRefresh(capturedParentID, capturedGeneration)
   }
 
@@ -274,35 +274,59 @@ export function createSubagentSource({
     return childID !== undefined && knownDirectChildIDs.has(childID)
   }
 
+  function recoverUnknownTopology(sessionID: string | undefined): boolean {
+    return sessionID !== undefined
+      && !topologyKnown
+      && currentState?.parentID === parentID
+      && currentState.phase === "unavailable"
+  }
+
   const unsubscribers = [
     onEvent("session.created", (event) => {
-      if (event.properties.info.parentID === parentID) invalidateAndSchedule()
+      if (
+        event.properties.info.parentID === parentID
+        || recoverUnknownTopology(event.properties.info.id)
+      ) invalidateAndSchedule()
     }),
     onEvent("session.updated", (event) => {
       if (
         known(event.properties.sessionID)
         || known(event.properties.info.id)
         || event.properties.info.parentID === parentID
+        || recoverUnknownTopology(event.properties.sessionID)
       ) invalidateAndSchedule()
     }),
     onEvent("session.deleted", (event) => {
-      if (known(event.properties.sessionID) || known(event.properties.info.id)) invalidateAndSchedule()
+      if (
+        known(event.properties.sessionID)
+        || known(event.properties.info.id)
+        || recoverUnknownTopology(event.properties.sessionID)
+      ) invalidateAndSchedule()
     }),
     onEvent("session.status", (event) => {
-      if (known(event.properties.sessionID)) invalidateAndSchedule()
+      if (known(event.properties.sessionID) || recoverUnknownTopology(event.properties.sessionID)) {
+        invalidateAndSchedule()
+      }
     }),
     onEvent("session.idle", (event) => {
-      if (known(event.properties.sessionID)) invalidateAndSchedule()
+      if (known(event.properties.sessionID) || recoverUnknownTopology(event.properties.sessionID)) {
+        invalidateAndSchedule()
+      }
     }),
     onEvent("session.error", (event) => {
       const childID = event.properties.sessionID
       if (childID !== undefined && known(childID)) recordFailure(childID)
+      else if (recoverUnknownTopology(childID)) invalidateAndSchedule()
     }),
     onEvent("message.updated", (event) => {
-      if (known(event.properties.sessionID)) invalidateAndSchedule()
+      if (known(event.properties.sessionID) || recoverUnknownTopology(event.properties.sessionID)) {
+        invalidateAndSchedule()
+      }
     }),
     onEvent("message.removed", (event) => {
-      if (known(event.properties.sessionID)) invalidateAndSchedule()
+      if (known(event.properties.sessionID) || recoverUnknownTopology(event.properties.sessionID)) {
+        invalidateAndSchedule()
+      }
     }),
     onEvent("tui.session.select", (event) => {
       if (event.properties.sessionID !== "") setParentID(event.properties.sessionID)
@@ -315,6 +339,7 @@ export function createSubagentSource({
     loadController = undefined
     generation += 1
     clearTimers()
+    topologyKnown = false
     knownDirectChildIDs.clear()
     parentID = nextParentID
     if (nextParentID === "") {

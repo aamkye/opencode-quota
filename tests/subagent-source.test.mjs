@@ -196,7 +196,7 @@ test("loads a non-empty parent immediately and leaves an empty parent silent", a
   assert.equal(calls.length, 1)
 })
 
-test("invalidates immediately then coalesces relevant events for 200 ms", async () => {
+test("keeps ready state while coalescing a successful background refresh", async () => {
   const first = snapshot("parent", "child")
   const second = snapshot("parent", "child")
   const results = [first, second]
@@ -211,7 +211,7 @@ test("invalidates immediately then coalesces relevant events for 200 ms", async 
 
   emit(messageUpdated("child"))
   assert.equal(contexts[0].signal.aborted, true)
-  assert.equal(source.state().phase, "stale")
+  assert.equal(source.state().phase, "ready")
   assert.equal(source.state().snapshot, first)
   assert.deepEqual(scheduler.pendingDelays(), [200])
   assert.equal(contexts.length, 1)
@@ -289,7 +289,7 @@ test("filters every relevant and irrelevant session and message event", async ()
   ]
   for (const event of relevant) {
     emit(event)
-    assert.equal(source.state().phase, "stale")
+    assert.equal(source.state().phase, "ready")
     assert.deepEqual(scheduler.pendingDelays(), [200])
     scheduler.run(200)
     await settle()
@@ -313,7 +313,7 @@ test("records the first known session error immediately and only once", async ()
   const before = source.state().failureTimes
 
   emit(error("child"))
-  assert.equal(source.state().phase, "stale")
+  assert.equal(source.state().phase, "ready")
   assert.deepEqual(source.state().failureTimes, { child: 100 })
   assert.notEqual(source.state().failureTimes, before)
   assert.ok(Object.isFrozen(source.state().failureTimes))
@@ -424,7 +424,34 @@ test("recovers unavailable state after a later relevant event", async () => {
   assert.equal(source.state().snapshot, recovered)
 })
 
-test("retains ready data as stale and recovers with a complete snapshot", async () => {
+test("recovers unknown unavailable topology from a later lifecycle event", async () => {
+  let attempts = 0
+  const recovered = snapshot("parent", "child")
+  const { source, scheduler, emit } = createHarness(async (_parentID, context) => {
+    attempts += 1
+    if (attempts <= 4) throw new Error("unavailable before topology")
+    context.onChildIDs(recovered.childIDs)
+    return recovered
+  })
+  source.setParentID("parent")
+  await settle()
+  for (const delay of [2_000, 4_000, 8_000]) {
+    scheduler.run(delay)
+    await settle()
+  }
+  assert.equal(source.state().phase, "unavailable")
+
+  emit(messageUpdated("child-discovered-after-recovery"))
+  assert.deepEqual(scheduler.pendingDelays(), [200])
+  scheduler.run(200)
+  await settle()
+
+  assert.equal(attempts, 5)
+  assert.equal(source.state().phase, "ready")
+  assert.equal(source.state().snapshot, recovered)
+})
+
+test("marks retained ready data stale only after background retries exhaust", async () => {
   const first = snapshot("parent", "child")
   const recovered = snapshot("parent", "child", "new-child")
   let attempts = 0
@@ -440,12 +467,12 @@ test("retains ready data as stale and recovers with a complete snapshot", async 
   await settle()
 
   emit(status("child"))
-  assert.equal(source.state().phase, "stale")
+  assert.equal(source.state().phase, "ready")
   assert.equal(source.state().snapshot, first)
   scheduler.run(200)
   await settle()
   for (const delay of [2_000, 4_000, 8_000]) {
-    assert.equal(source.state().phase, "stale")
+    assert.equal(source.state().phase, "ready")
     scheduler.run(delay)
     await settle()
   }
