@@ -743,7 +743,7 @@ git commit -m "feat(subagent): wire standalone plugin"
 - Consumes every deliverable from Tasks 1-7.
 - Produces command output demonstrating behavior, typing, full regression safety, standalone build shape, unchanged AGENTS contract, and ignored generated artifacts.
 
-- [ ] **Step 1: Run all focused SubAgent suites**
+- [x] **Step 1: Run all focused SubAgent suites**
 
 Run:
 
@@ -762,25 +762,25 @@ node tests/compile-presentation.mjs && node --test \
 
 Expected evidence: every focused test passes with zero failures/skips caused by missing artifacts.
 
-- [ ] **Step 2: Run strict type verification**
+- [x] **Step 2: Run strict type verification**
 
 Run: `npm run typecheck`
 
 Expected evidence: `tsc --noEmit` exits 0, including `tests/subagent-state-types.fixture.ts`.
 
-- [ ] **Step 3: Run the full regression suite**
+- [x] **Step 3: Run the full regression suite**
 
 Run: `npm test`
 
 Expected evidence: compile harnesses and every `tests/*.test.mjs` suite exit 0; existing SesTokens, CompactPanel, MCP, Context, LSP, TODO, quota, provider, token-report, and runtime tests remain green.
 
-- [ ] **Step 4: Build every standalone artifact**
+- [x] **Step 4: Build every standalone artifact**
 
 Run: `npm run build`
 
 Expected evidence: `dist/opencode-tools-shared.js` and all nine manifest plugin artifacts are non-empty minified ESM files, including `dist/opencode-tools-subagent.js`.
 
-- [ ] **Step 5: Assert the SubAgent bundle import contract directly**
+- [x] **Step 5: Assert the SubAgent bundle import contract directly**
 
 Run:
 
@@ -790,7 +790,7 @@ node --input-type=module -e "import { readFile } from 'node:fs/promises'; const 
 
 Expected evidence: command exits 0; the feature imports `./opencode-tools-shared.js` and contains no repository `tui/` or `shared/` source path.
 
-- [ ] **Step 6: Verify the canonical AGENTS contract is untouched**
+- [x] **Step 6: Verify the canonical AGENTS contract is untouched**
 
 Run:
 
@@ -801,7 +801,7 @@ git diff --exit-code 5a0b6c3 -- AGENTS.md
 
 Expected evidence: both commands exit 0. `tests/subagent-mounted.test.mjs` and `tests/plugin-wiring.test.mjs` have already proven the implementation/README against the unchanged SubAgent fenced layouts.
 
-- [ ] **Step 7: Verify generated artifact safety and final tracked scope**
+- [x] **Step 7: Verify generated artifact safety and final tracked scope**
 
 Run:
 
@@ -815,7 +815,7 @@ git status --short --untracked-files=all
 
 Expected evidence: generated build/test/deploy artifacts are ignored and none are tracked. Status contains only intentional implementation/plan state; no OpenSpec, Comet, AGENTS, secret, or generated artifact appears unexpectedly.
 
-- [ ] **Step 8: Record acceptance evidence without another code commit**
+- [x] **Step 8: Record acceptance evidence without another code commit**
 
 Capture the focused test count, typecheck/full-suite/build exit codes, direct bundle assertion, AGENTS hash check, and generated-artifact check in the Comet verification handoff. Task 8 has no commit suggestion because it changes no source; do not create an empty verification commit.
 
