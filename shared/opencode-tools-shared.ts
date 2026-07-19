@@ -50,6 +50,15 @@ export type {
   SubagentSnapshotLoadContext,
   SubagentSnapshotLoader,
 } from "../tui/services/subagent-snapshot.js";
+export { createSubagentSource } from "../tui/services/subagent-source.js";
+export type {
+  RetainedFailures,
+  SubagentEventRegistrar,
+  SubagentRefreshEvent,
+  SubagentSource,
+  SubagentSourceDependencies,
+  SubagentSourceState,
+} from "../tui/services/subagent-source.js";
 export {
   collectSessionTreeIDs,
   createSessionTreeSnapshotLoader,
