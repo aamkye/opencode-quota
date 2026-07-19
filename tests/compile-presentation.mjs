@@ -14,11 +14,23 @@ const sesTokensDescriptor = {
   slotOrder: 115,
   options: "none",
 }
+const subagentDescriptor = {
+  key: "subagent",
+  id: "aamkye/opencode-tools-subagent",
+  source: "tui/subagent.tsx",
+  outfile: "opencode-tools-subagent.js",
+  slotOrder: 120,
+  options: "none",
+}
 const sesTokensManifestPlugin = {
   name: "ses-tokens-test-manifest",
   setup(buildApi) {
     buildApi.onLoad({ filter: /plugin-manifest\.json$/ }, () => ({
-      contents: JSON.stringify([...JSON.parse(readFileSync("plugin-manifest.json", "utf8")), sesTokensDescriptor]),
+      contents: JSON.stringify([
+        ...JSON.parse(readFileSync("plugin-manifest.json", "utf8")),
+        sesTokensDescriptor,
+        subagentDescriptor,
+      ]),
       loader: "json",
     }))
   },
@@ -48,7 +60,7 @@ const openTuiSolidPlugin = {
   },
 }
 
-for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "context-mounted", "lsp-mounted", "todo-mounted", "ses-tokens-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "ses-tokens-model", "subagent-model", "session-tree-snapshot", "subagent-snapshot", "ses-tokens-source", "subagent-source", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
+for (const name of ["presentation-types", "presentation-format", "presentation-layout", "presentation-renderer", "presentation-mounted", "compact-panel-mounted", "compact-status-row-render", "mcp-mounted", "context-mounted", "lsp-mounted", "todo-mounted", "ses-tokens-mounted", "subagent-mounted", "provider-zai", "provider-openai", "provider-opencode-go", "provider-hub", "provider-lifecycle", "quota-composition", "quota-selection", "home-feature", "home-composition", "context-model", "mcp-model", "lsp-model", "todo-model", "ses-tokens-model", "subagent-model", "session-tree-snapshot", "subagent-snapshot", "ses-tokens-source", "subagent-source", "token-report-feature", "token-tui", "token-tui-controlled", "plugin-adapters-quota-fixture", "plugin-adapters-home-fixture", "plugin-adapters-token-fixture", "plugin-adapters-mcp-fixture", "plugin-runtime"]) {
   rmSync(`.tmp-test/${name}.mjs`, { force: true })
 }
 mkdirSync(".tmp-test", { recursive: true })
@@ -67,6 +79,12 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
   [
     "tests/ses-tokens-mounted.fixture.ts",
     ".tmp-test/ses-tokens-mounted.mjs",
+    ["browser"],
+    [sesTokensManifestPlugin, openTuiSolidPlugin],
+  ],
+  [
+    "tests/subagent-mounted.fixture.ts",
+    ".tmp-test/subagent-mounted.mjs",
     ["browser"],
     [sesTokensManifestPlugin, openTuiSolidPlugin],
   ],

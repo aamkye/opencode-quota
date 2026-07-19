@@ -107,6 +107,8 @@ test("loadable TUI entries use the shared facade for computation", () => {
   const todo = source("tui/todo.tsx")
   const todoSource = parsedSource("tui/todo.tsx")
   const sesTokensSource = parsedSource("tui/ses-tokens.tsx")
+  const subagent = source("tui/subagent.tsx")
+  const subagentSource = parsedSource("tui/subagent.tsx")
 
   assert.match(quota, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(home, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
@@ -123,6 +125,11 @@ test("loadable TUI entries use the shared facade for computation", () => {
   const sesTokensModelImport = namedImportLocalName(sesTokensSource, "../shared/opencode-tools-shared.js", "createSesTokensPanelModel")
   assert.ok(sesTokensModelImport, "tui/ses-tokens.tsx must named-import createSesTokensPanelModel from the shared facade")
   assert.ok(callsIdentifier(sesTokensSource, sesTokensModelImport), "tui/ses-tokens.tsx must call the imported createSesTokensPanelModel")
+  for (const exportName of ["createSubagentPanelModel", "createSubagentSnapshotLoader", "createSubagentSource"]) {
+    const localName = namedImportLocalName(subagentSource, "../shared/opencode-tools-shared.js", exportName)
+    assert.ok(localName, `tui/subagent.tsx must named-import ${exportName} from the shared facade`)
+    assert.ok(callsIdentifier(subagentSource, localName), `tui/subagent.tsx must call the imported ${exportName}`)
+  }
   assertRelativeImports("tui/quota.tsx", [
     "../shared/opencode-tools-shared.js",
     "./presentation/renderer.js",
@@ -140,12 +147,14 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assertRelativeImports("tui/lsp.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/todo.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/ses-tokens.tsx", ["../shared/opencode-tools-shared.js"])
+  assertRelativeImports("tui/subagent.tsx", ["../shared/opencode-tools-shared.js"])
   assert.doesNotMatch(tokenReport, /\bcomputeTokenReport\b|\brenderTokenReport\b/)
   assert.doesNotMatch(tokenReport, /client\.session\.prompt/)
   assert.doesNotMatch(tokenReport, /\bhistory\b|\bmodel\b/)
   assert.doesNotMatch(mcp, /\.sort\(|setInterval|setTimeout/)
   assert.doesNotMatch(context, /message\.updated|setInterval|setTimeout/)
   assert.doesNotMatch(todo, /todo\.updated|setInterval|setTimeout/)
+  assert.match(subagent, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
 })
 
 test("shared facade exports computation without plugin registration or JSX", () => {
