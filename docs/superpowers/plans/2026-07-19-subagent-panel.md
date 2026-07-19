@@ -17,7 +17,7 @@ base-ref: 5a0b6c3
 ## Global Constraints
 
 - Canonical behavior comes from `openspec/changes/add-subagent-panel/specs/subagent-panel/spec.md`; canonical cells and colors come from the SubAgent section of `AGENTS.md`.
-- Maximum rendered width is 37 cells; preserve disclosures, bullets, right-edge durations, ellipsis, divider order, and no trailing whitespace at 37 and 36 cells.
+- Maximum rendered width is 37 cells; preserve disclosures, status-colored right-edge durations, one fixed title/duration gap, end ellipsis, divider order, and no trailing whitespace at 37, 36, and scrollbar-reduced 35 cells. Entry rows have no status bullet or bullet allocation.
 - Show only direct children of the viewed session. Sort by `time.created` descending and then session ID ascending; primary is the newest five and Rest is every older child.
 - Status precedence is retained `session.error` or assistant-message error, synchronized busy/retry, synchronized idle, completed error-free assistant fallback, then running.
 - Running duration uses `now - created`; successful uses `updated - created`; failed uses the earliest retained or assistant-message failure time minus created. Clamp to a finite nonnegative integer and floor to whole seconds.
@@ -26,11 +26,12 @@ base-ref: 5a0b6c3
 - Persist only parent-scoped outer collapse, Rest collapse, expanded child ID, and retained `session.error` timestamps. Do not persist complete entries.
 - No polling. A one-second interval exists only while a running entry is visible, and every subscription, timer, queued request, and callback must stop at disposal.
 - Use the built-in route exactly as `api.route.navigate("session", { sessionID: child.id })`.
-- Keep OpenCode `>=1.18.1`; add no dependency and no compatibility path for older hosts.
+- Keep OpenCode `>=1.18.1`; the only dependency change allowed is declaring the already-resolved `string-width` package directly at exact version `7.2.0`. Do not upgrade it, add another dependency, or add a compatibility path for older hosts.
 - Final sidebar slots are Home 1, Context 100, SesTokens 110, SubAgent 120, Quota 130, MCP 140, LSP 150, and TODO 160. Token Report has no `slotOrder`.
 - Preserve the accepted uncommitted `plugin-manifest.json` reorder and complete it rather than recreating it. Preserve the accepted README inspiration links and table formatting, then extend those sections in place.
-- Do not edit `AGENTS.md`, OpenSpec artifacts, or Comet state during implementation. Its current full-file SHA-256 is `7b16e53db42f596cdb4e28bfc45631c5bba9982b5d4099cc1b3547dbd8174f7d`.
-- Use strict TDD for Tasks 1-7: add the specified test first, run the exact RED command and confirm the stated failure, then edit production code and run the focused GREEN command.
+- Do not edit `AGENTS.md`, OpenSpec artifacts, or Comet state during implementation. Its current full-file SHA-256 is `488214c49e9b83b6770e1e0e03746ec5bd0c11daf9ea268545568e55bb223387`.
+- Use strict TDD for Tasks 1-7 and Task 9: add the specified test first, run the exact RED command and confirm the stated failure, then edit production code and run the focused GREEN command. Tasks 1-8 remain completed and must not be reopened.
+- Task 9 is a visual-contract correction only. Preserve every existing source, lifecycle, navigation, persistence, status derivation, clock, stale-state, manifest, deployment, and integration behavior.
 - Stage exact paths in each suggested commit. In particular, do not stage the accepted `README.md` or `plugin-manifest.json` changes before Task 7.
 
 ## File Map
@@ -795,8 +796,8 @@ Expected evidence: command exits 0; the feature imports `./opencode-tools-shared
 Run:
 
 ```bash
-test "$(shasum -a 256 AGENTS.md | cut -d ' ' -f1)" = "7b16e53db42f596cdb4e28bfc45631c5bba9982b5d4099cc1b3547dbd8174f7d"
-git diff --exit-code 5a0b6c3 -- AGENTS.md
+test "$(shasum -a 256 AGENTS.md | cut -d ' ' -f1)" = "488214c49e9b83b6770e1e0e03746ec5bd0c11daf9ea268545568e55bb223387"
+git diff --exit-code f0220a3 -- AGENTS.md
 ```
 
 Expected evidence: both commands exit 0. `tests/subagent-mounted.test.mjs` and `tests/plugin-wiring.test.mjs` have already proven the implementation/README against the unchanged SubAgent fenced layouts.
@@ -819,6 +820,353 @@ Expected evidence: generated build/test/deploy artifacts are ignored and none ar
 
 Capture the focused test count, typecheck/full-suite/build exit codes, direct bundle assertion, AGENTS hash check, and generated-artifact check in the Comet verification handoff. Task 8 has no commit suggestion because it changes no source; do not create an empty verification commit.
 
+### Task 9: Correct the SubAgent Visual Contract
+
+**OpenSpec mapping:** 6.1, 6.2; corrective acceptance for the duration/detail portions of 3.1 and 3.3. This task supersedes only the completed tasks' obsolete bullet, color, divider, and truncation assumptions; it does not reopen Tasks 1-8.
+
+**Files:**
+- Modify: `tests/subagent-model.test.mjs`
+- Modify: `tests/subagent-mounted.test.mjs`
+- Modify: `tests/subagent-mounted.fixture.ts`
+- Modify: `tests/opentui-solid-host-runtime.fixture.ts`
+- Modify: `tui/features/subagent.ts`
+- Modify: `tui/subagent.tsx`
+- Modify: `README.md`
+- Modify: `package.json`
+- Modify: `package-lock.json`
+
+**Interfaces:**
+- Replace the pure row allocation contract in `tui/features/subagent.ts` with exactly:
+
+```ts
+export type SubagentEntryRowAllocation = {
+  disclosure: number
+  title: number
+  beforeDurationGap: number
+  duration: number
+}
+
+export function allocateSubagentEntryRow(
+  availableCells: number,
+  durationCells: number,
+): SubagentEntryRowAllocation
+```
+
+- Keep normalization to finite nonnegative integer cells. At `(availableCells, durationCells)` values `(37, 6)`, `(36, 6)`, and `(35, 6)`, return title widths `28`, `27`, and `26` respectively, always with disclosure `2`, gap `1`, duration `6`, and no `bullet` property.
+- Add these local rendering interfaces in `tui/subagent.tsx`; they are implementation details and are not exported through the shared facade:
+
+```ts
+type MeasuredTitleProps = {
+  value: string
+}
+
+function truncateTerminalCellsEnd(value: string, maxCells: number): string
+function MeasuredTitle(props: MeasuredTitleProps): JSX.Element
+```
+
+- `truncateTerminalCellsEnd` segments with `new Intl.Segmenter(undefined, { granularity: "grapheme" })`, measures each complete grapheme and the `…` with direct `string-width`, returns the original value when it fits, returns `""` for zero available cells, and otherwise returns the longest complete grapheme prefix plus one end ellipsis that fits.
+- `MeasuredTitle` renders the sole flexible title `<text>`, obtains it through `ref={(renderable: Renderable) => ...}`, reads `renderable.width`, and updates its width signal on `LayoutEvents.RESIZED`. It must not pass OpenTUI's `truncate={true}`. Attach one stable listener per mounted title region and remove that same listener with `renderable.off(LayoutEvents.RESIZED, listener)` in `onCleanup`.
+- The installed public contract supports this exact implementation: `@opentui/core` 0.4.3 exports `LayoutEvents.RESIZED` and `Renderable.width`; `@opentui/solid` 0.4.3 types intrinsic refs as the concrete renderable. Do not use a private Yoga node, generated bundle symbol, or untyped event substitute.
+- Extend only the test host's renderable simulation with this exact observable surface so mounted tests exercise the production ref/listener path:
+
+```ts
+export type HostNode = {
+  type: string
+  props: Record<string, unknown>
+  children: HostNode[]
+  parent?: HostNode
+  removed: boolean
+  width: number
+  on(event: string, listener: (...args: unknown[]) => void): HostNode
+  off(event: string, listener: (...args: unknown[]) => void): HostNode
+  emit(event: string, ...args: unknown[]): boolean
+  listenerCount(event: string): number
+}
+```
+
+- Extend `mountSubagentPanel` with `async resize(width: number): Promise<void>`, `totalResizeListeners(): number`, and a width-stable `view()` that reports each entry's `gap`, `gapWidth`, `durationColor`, measured `renderedTitle`, and `titleProps`; Rest reports separate disclosure/title colors and an explicit divider's child texts, colors, and flex values.
+
+- [ ] **Step 1: Add explicit failing model, mounted-layout, resize, and README contract assertions**
+
+In `tests/subagent-model.test.mjs`, replace the obsolete bullet-allocation test with these exact expectations:
+
+```js
+test("allocates disclosure title gap and duration without a status bullet", () => {
+  assert.deepEqual(allocateSubagentEntryRow(37, 6), {
+    disclosure: 2,
+    title: 28,
+    beforeDurationGap: 1,
+    duration: 6,
+  })
+  assert.deepEqual(allocateSubagentEntryRow(36, 6), {
+    disclosure: 2,
+    title: 27,
+    beforeDurationGap: 1,
+    duration: 6,
+  })
+  assert.deepEqual(allocateSubagentEntryRow(35, 6), {
+    disclosure: 2,
+    title: 26,
+    beforeDurationGap: 1,
+    duration: 6,
+  })
+  assert.equal("bullet" in allocateSubagentEntryRow(37, 6), false)
+})
+```
+
+Retain the existing NaN, infinity, fractional, and too-narrow invariant loop, but apply it to the four-field allocation.
+
+In `tests/opentui-solid-host-runtime.fixture.ts`, add the typed listener map behind the interface above. `on` inserts the exact function into the event set, `off` removes it, `emit` invokes a copied listener list, and `listenerCount` returns the current set size. Keep every existing host insertion/removal behavior unchanged.
+
+In `tests/subagent-mounted.fixture.ts`, stop identifying entry rows through `texts[1] === "• "`. Identify a row by disclosure in `texts[0]`, a non-`Rest` title in `texts[1]`, and its entry click handler. Track a mutable mounted width, defaulting to 36. During host flush, compute each title child's rendered flex width, assign it to the simulated renderable, emit `"resized"` only when the numeric width changed, settle Solid once more, and expose `resize(width)` for 37, 36, and scrollbar-reduced 35-cell assertions. Replace native-border-only Rest-divider discovery with explicit divider child inspection while retaining outer `CompactPanel` divider discovery.
+
+Replace the obsolete mounted tests `colors bullets and status values by semantic status`, `truncates only titles at 37 and 36 cells without trailing whitespace`, and the bullet-dependent non-finite completion assertion. Add these explicit RED assertions:
+
+```js
+test("omits status bullets and colors compact and detail times by status", async () => {
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady()
+    assert.equal(mounted.view().bulletCount, 0)
+    assert.deepEqual(
+      Object.fromEntries(mounted.view().entryRows.map((row) => [row.title, row.durationColor])),
+      {
+        "SubAgent11 with super long name": "#00ff00",
+        SubAgent10: "#00ff00",
+        SubAgent9: "#ffaa00",
+        SubAgent8: "#ff0000",
+        SubAgent7: "#ff0000",
+        SubAgent6: "#00ff00",
+        SubAgent5: "#00ff00",
+        SubAgent4: "#ff0000",
+        SubAgent3: "#00ff00",
+        SubAgent2: "#00ff00",
+        SubAgent1: "#00ff00",
+      },
+    )
+    for (const [title, color] of [["SubAgent10", "#00ff00"], ["SubAgent9", "#ffaa00"], ["SubAgent8", "#ff0000"]]) {
+      await mounted.view().clickEntry(title)
+      assert.equal(mounted.view().detailRows.find((row) => row.label === "time:")?.valueColor, color)
+      await mounted.view().clickEntry(title)
+    }
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells", async () => {
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady()
+    for (const [width, expectedTitle] of [
+      [37, "SubAgent11 with super long …"],
+      [36, "SubAgent11 with super long…"],
+      [35, "SubAgent11 with super lon…"],
+    ]) {
+      await mounted.resize(width)
+      const view = mounted.view()
+      const row = view.entryRows[0]
+      assert.equal(row.renderedTitle, expectedTitle)
+      assert.equal(row.renderedTitle.endsWith("…"), true)
+      assert.equal(row.renderedTitle.match(/…/gu)?.length, 1)
+      assert.equal(row.gap, " ")
+      assert.equal(row.gapWidth, 1)
+      assert.equal(row.duration, "9m 45s")
+      assert.equal(row.rowWidth, width)
+      assert.equal(row.childWidths.reduce((total, cells) => total + cells, 0), width)
+      assert.equal(row.titleProps.truncate, undefined)
+      for (const line of view.lines) assert.equal(line.trimEnd(), line)
+    }
+    assert.equal(mounted.totalResizeListeners(), mounted.view().entryRows.length)
+    await mounted.view().clickHeader()
+    assert.equal(mounted.totalResizeListeners(), 0)
+  } finally {
+    await mounted.dispose()
+  }
+})
+```
+
+Keep and adapt the existing wide/combining test so `界` and `e\u0301` are never split and each rendered title ends in exactly one ellipsis. Add a disposal assertion that all resize listener counts are zero after panel disposal.
+
+Add Rest structure assertions to the expanded and semi-collapsed layout tests:
+
+```js
+assert.equal(view.rest.disclosureColor, "#888888")
+assert.equal(view.rest.titleColor, "#888888")
+assert.equal(view.restDivider.nativeBorder, false)
+assert.deepEqual(view.restDivider.texts, ["---", "", "---"])
+assert.deepEqual(view.restDivider.colors, ["#888888", undefined, "#888888"])
+assert.equal(view.restDivider.middleFlexGrow, 1)
+```
+
+Keep `agentsSubagentLayouts` as the canonical source. Update the one explicit 37-cell expected layout to remove every bullet, preserve full durations and one fixed gap region, and assert all rows and divider lines have no trailing whitespace. `tests/plugin-wiring.test.mjs` already derives the README layouts from `AGENTS.md`; do not weaken or bypass that assertion.
+
+- [ ] **Step 2: Run the focused RED command and retain the failure evidence**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test \
+  tests/subagent-model.test.mjs \
+  tests/subagent-mounted.test.mjs \
+  tests/plugin-wiring.test.mjs
+```
+
+Expected RED: the model still returns a `bullet: 2` allocation; current mounted rows still render `• `, leave compact/detail `time` uncolored, use OpenTUI `truncate={true}`, expose no resize listener, render an unmuted Rest header and native border, and fail the AGENTS-derived layouts. README still contains bullet-bearing obsolete SubAgent blocks. Confirm these are assertion failures against old behavior, not fixture compilation or unrelated source/lifecycle failures.
+
+- [ ] **Step 3: Implement the minimal visual-contract correction**
+
+In `tui/features/subagent.ts`, remove `bullet` from the type and allocation. Preserve the existing input normalization and too-narrow behavior, but calculate the normal case as:
+
+```ts
+const disclosure = Math.min(2, available)
+const remaining = available - disclosure
+const gap = disclosure > 0 && requestedDuration > 0 ? 1 : 0
+const duration = requestedDuration + gap <= remaining ? requestedDuration : 0
+const beforeDurationGap = duration > 0 ? gap : 0
+const title = remaining - beforeDurationGap - duration
+return { disclosure, title, beforeDurationGap, duration }
+```
+
+In `package.json`, add only this direct production dependency in lexical/logical dependency order:
+
+```json
+"string-width": "7.2.0"
+```
+
+Mirror the same exact entry under `packages[""].dependencies` in `package-lock.json`. Leave `node_modules/string-width` resolved at version `7.2.0` with its existing integrity and transitive records; do not run a dependency upgrade or alter any other package version.
+
+In `tui/subagent.tsx`, import `LayoutEvents` and type `Renderable` from `@opentui/core`, import `stringWidth` from `string-width`, and import type `JSX` from Solid. Implement the helper/component interfaces above. The listener must be stable and symmetrically cleaned up:
+
+```ts
+let titleRegion: Renderable | undefined
+const [measuredCells, setMeasuredCells] = createSignal(0)
+const measure = () => setMeasuredCells(titleRegion?.width ?? 0)
+const bindTitleRegion = (renderable: Renderable) => {
+  if (titleRegion === renderable) return
+  titleRegion?.off(LayoutEvents.RESIZED, measure)
+  titleRegion = renderable
+  titleRegion.on(LayoutEvents.RESIZED, measure)
+  measure()
+}
+onCleanup(() => titleRegion?.off(LayoutEvents.RESIZED, measure))
+```
+
+Render the title with `MeasuredTitle`, remove the status bullet node completely, retain a separate fixed `<text width={1} flexShrink={0}> </text>` before every collapsed duration, and set the duration foreground to `props.theme()[role()]`. Pass `status={role()}` to the detail `time:` row while preserving the existing status-row color and all row click handlers.
+
+Replace the Rest native border with exactly three horizontal children and mute both Rest header cells:
+
+```tsx
+<box flexDirection="row" width="100%" overflow="hidden">
+  <text flexShrink={0} fg={api.theme.current.textMuted}>---</text>
+  <text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0} />
+  <text flexShrink={0} fg={api.theme.current.textMuted}>---</text>
+</box>
+<box flexDirection="row" width="100%" overflow="hidden" onMouseDown={toggleRest}>
+  <text width={2} flexShrink={0} fg={api.theme.current.textMuted}>{restExpanded() ? "▼ " : "▶ "}</text>
+  <text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0} fg={api.theme.current.textMuted}>Rest</text>
+</box>
+```
+
+Update `README.md` in place: remove `• ` from every SubAgent entry row; use the exact six current AGENTS left-column layouts plus the existing synthesized empty layout; change the long 36-cell title to `SubAgent11 with super long…`; retain one cell between the measured long title and time; and keep all fenced lines free of trailing whitespace. Extend the SubAgent duration/details prose with these exact statements:
+
+```text
+Compact durations and expanded time values use the child's status color.
+Titles are grapheme-safe, end-truncated to the measured terminal-cell width, including scrollbar width changes.
+The Rest disclosure and title are muted, and its divider is two muted three-dash segments separated by flexible space.
+```
+
+Do not change data loading, source construction, event registration, clock predicates, KV keys/writes, route navigation, manifest order, plugin ID, or stale/empty behavior.
+
+- [ ] **Step 4: Run the focused GREEN command**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test \
+  tests/subagent-model.test.mjs \
+  tests/subagent-mounted.test.mjs \
+  tests/plugin-wiring.test.mjs
+```
+
+Expected GREEN: allocation has no bullet field; every AGENTS-derived layout and 37/36/35-cell assertion passes; wide/combining graphemes end-truncate safely; compact/detail time colors, muted Rest treatment, explicit divider children, fixed gap, listener cleanup, README synchronization, and no-trailing-whitespace assertions all pass. Existing persistence, clock, navigation, source, and stale-layout cases in the mounted suite remain green.
+
+- [ ] **Step 5: Run strict type verification**
+
+Run: `npm run typecheck`
+
+Expected GREEN: TypeScript exits 0 with the public `Renderable` ref, `LayoutEvents.RESIZED` listener, JSX return type, exact four-field allocation, and extended host fixture types.
+
+- [ ] **Step 6: Run the full regression suite**
+
+Run: `npm test`
+
+Expected GREEN: every compile harness and `tests/*.test.mjs` suite exits 0. In particular, source/lifecycle, persistence, navigation, manifest, deployment, shared-boundary, CompactPanel, and unrelated panel tests remain unchanged and green.
+
+- [ ] **Step 7: Build and inspect standalone artifacts**
+
+Run:
+
+```bash
+npm run build
+node --input-type=module -e "import { readFile } from 'node:fs/promises'; const source = await readFile('dist/opencode-tools-subagent.js', 'utf8'); if (!/from['\"]\.\/opencode-tools-shared\.js['\"]/.test(source)) throw new Error('missing managed shared import'); if (/(?:\.\.\/|\/)(?:tui|shared)\//.test(source)) throw new Error('bundle references repository source'); if (/from['\"]string-width['\"]/.test(source)) throw new Error('string-width was left as an undeployed runtime import')"
+```
+
+Expected GREEN: build exits 0; `dist/opencode-tools-subagent.js` remains a non-empty minified ESM artifact, imports the managed shared artifact, bundles the directly declared width helper, and references no repository source path.
+
+- [ ] **Step 8: Verify dependency, diff, hash, and generated-artifact scope**
+
+Run:
+
+```bash
+node --input-type=module -e "import { readFile } from 'node:fs/promises'; const pkg = JSON.parse(await readFile('package.json', 'utf8')); const lock = JSON.parse(await readFile('package-lock.json', 'utf8')); if (pkg.dependencies['string-width'] !== '7.2.0') throw new Error('package direct dependency drift'); if (lock.packages[''].dependencies['string-width'] !== '7.2.0') throw new Error('lock root dependency drift'); if (lock.packages['node_modules/string-width'].version !== '7.2.0') throw new Error('locked string-width upgraded')"
+test "$(shasum -a 256 AGENTS.md | cut -d ' ' -f1)" = "488214c49e9b83b6770e1e0e03746ec5bd0c11daf9ea268545568e55bb223387"
+git diff --exit-code f0220a3 -- AGENTS.md
+git diff --check -- package.json package-lock.json README.md \
+  tui/features/subagent.ts tui/subagent.tsx \
+  tests/opentui-solid-host-runtime.fixture.ts tests/subagent-model.test.mjs \
+  tests/subagent-mounted.fixture.ts tests/subagent-mounted.test.mjs
+git check-ignore -v dist/opencode-tools-subagent.js \
+  .tmp-test/subagent-model.mjs .tmp-test/subagent-mounted.mjs
+test -z "$(git ls-files dist .tmp-test .opencode)"
+git status --short --untracked-files=all
+```
+
+Expected evidence: the package and root lock declare exactly `string-width` 7.2.0 while the resolved record remains 7.2.0; AGENTS matches the approved hash and commit `f0220a3`; no task file has whitespace errors; generated files remain ignored/untracked; and status lets the executor attribute Task 9 only to the exact listed paths without staging AGENTS, design, proposal, delta spec, Comet state, reports, or unrelated source.
+
+- [ ] **Step 9: Review and stage the correction exactly**
+
+Run:
+
+```bash
+git diff -- \
+  package.json package-lock.json README.md \
+  tui/features/subagent.ts tui/subagent.tsx \
+  tests/opentui-solid-host-runtime.fixture.ts tests/subagent-model.test.mjs \
+  tests/subagent-mounted.fixture.ts tests/subagent-mounted.test.mjs
+git diff --cached --name-only
+```
+
+Expected review: the unstaged diff contains only the approved visual contract, direct existing dependency declaration, test-host resize simulation, revised tests, and README synchronization. The cached list is empty before staging.
+
+Suggested Conventional Commit: `fix(subagent): correct panel visual contract`
+
+Stage only:
+
+```bash
+git add package.json package-lock.json README.md \
+  tui/features/subagent.ts tui/subagent.tsx \
+  tests/opentui-solid-host-runtime.fixture.ts tests/subagent-model.test.mjs \
+  tests/subagent-mounted.fixture.ts tests/subagent-mounted.test.mjs
+git diff --cached --name-only
+```
+
+Expected staged paths are exactly the nine paths listed above. Then, only when the execution workflow calls for the task commit, use:
+
+```bash
+git commit -m "fix(subagent): correct panel visual contract"
+```
+
 ## OpenSpec Coverage Matrix
 
 | OpenSpec item | Plan task(s) | Acceptance evidence |
@@ -834,7 +1182,9 @@ Capture the focused test count, typecheck/full-suite/build exit codes, direct bu
 | 4.1 integration tests | Tasks 1, 7 | facade plus manifest/build/deploy/wiring tests |
 | 4.2 integration/docs | Tasks 5, 7 | runtime key, exact manifest/package order, standalone build/deploy, README |
 | 5.1 final verification | Task 8 | focused, typecheck, full suite, build, bundle, AGENTS, artifact gates |
+| 6.1 corrective visual tests | Task 9 | strict RED/GREEN model, mounted 37/36/35-cell, color, divider, resize, cleanup, and README assertions |
+| 6.2 corrected implementation/docs | Task 9 | focused/full/type/build gates, exact dependency lock, bundle, hash, diff, and artifact checks |
 
 ## Planning Concern
 
-The only non-blocking execution concern is worktree attribution: `README.md` and `plugin-manifest.json` already contain accepted user changes for this Comet change, while this plan is intentionally uncommitted. Exact-path staging is therefore mandatory so Tasks 1-6 do not absorb or overwrite those files; Task 7 is the sole integration commit that completes and stages them. No design ambiguity or missing OpenSpec requirement remains.
+The only Task 9-specific planning concern is test fidelity: the lightweight Solid host currently has no Renderable resize/event surface, so Task 9 must extend that shared fixture narrowly to prove measured-width updates and listener cleanup. This is not a production API change. The installed OpenTUI 0.4.3 public declarations support the planned `Renderable.width`/`LayoutEvents.RESIZED` path, and the lock already resolves `string-width` 7.2.0, so there is no dependency or API ambiguity. The worktree currently also reports separate modified Comet-state files; they are outside this planning edit and Task 9 staging scope. Exact-path staging remains mandatory, Tasks 1-8 stay completed, and no unrelated accepted work or Comet state belongs in the Task 9 commit.

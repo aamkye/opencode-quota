@@ -23,3 +23,8 @@
 ## 5. Verification
 
 - [x] 5.1 Run focused tests, typecheck, the full test suite, and plugin build; inspect generated output for forbidden imports and confirm no AGENTS.md layout regression
+
+## 6. Visual Contract Corrections
+
+- [ ] 6.1 Add failing pure-allocation and mounted-panel tests for bullet removal, 37/36/scrollbar-reduced 35-cell end truncation, one fixed title/time gap, grapheme-safe measured resize behavior and listener cleanup, compact/detail status colors, muted Rest disclosure/title, explicit muted divider children, revised AGENTS-derived layouts, and no trailing whitespace
+- [ ] 6.2 Remove entry bullet rendering/allocation, implement public-OpenTUI measured terminal-cell end truncation with cleanup, color compact/detail times, render the muted explicit Rest divider/header, directly declare locked `string-width` 7.2.0, synchronize README layouts/docs, and pass focused, typecheck, full-suite, build, diff, hash, dependency, bundle, and artifact checks without changing existing source, lifecycle, navigation, persistence, status, or integration behavior
