@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
 
 import {
   CompactPanel,
@@ -19,6 +19,9 @@ import {
 
 const descriptor = pluginDescriptor("subagent")
 const FAILURE_KEY = "aamkye.opencode-tools-subagent.failures"
+const PANEL_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.panel-collapsed"
+const REST_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.rest-collapsed"
+const EXPANDED_CHILD_KEY = "aamkye.opencode-tools-subagent.expanded-child"
 export const subagentRuntimeTestKey = Symbol("subagent-runtime-test")
 
 type SubagentSourceFactory = (dependencies: SubagentSourceDependencies) => SubagentSource
@@ -27,6 +30,8 @@ type SubagentRuntime = {
   now(): number
   setTimer(callback: () => void, delayMs: number): unknown
   clearTimer(timer: unknown): void
+  setInterval(callback: () => void, delayMs: number): unknown
+  clearInterval(interval: unknown): void
 }
 
 function runtime(meta: unknown): SubagentRuntime {
@@ -35,6 +40,8 @@ function runtime(meta: unknown): SubagentRuntime {
     now: () => Date.now(),
     setTimer: (callback, delayMs) => globalThis.setTimeout(callback, delayMs),
     clearTimer: (timer) => globalThis.clearTimeout(timer as ReturnType<typeof globalThis.setTimeout>),
+    setInterval: (callback, delayMs) => globalThis.setInterval(callback, delayMs),
+    clearInterval: (interval) => globalThis.clearInterval(interval as ReturnType<typeof globalThis.setInterval>),
   }
   if (typeof meta !== "object" || meta === null) return defaults
   const candidate = (meta as Record<PropertyKey, unknown>)[subagentRuntimeTestKey]
@@ -45,6 +52,8 @@ function runtime(meta: unknown): SubagentRuntime {
     now: typeof injected.now === "function" ? injected.now : defaults.now,
     setTimer: typeof injected.setTimer === "function" ? injected.setTimer : defaults.setTimer,
     clearTimer: typeof injected.clearTimer === "function" ? injected.clearTimer : defaults.clearTimer,
+    setInterval: typeof injected.setInterval === "function" ? injected.setInterval : defaults.setInterval,
+    clearInterval: typeof injected.clearInterval === "function" ? injected.clearInterval : defaults.clearInterval,
   }
 }
 
@@ -83,6 +92,7 @@ function SubagentRow(props: {
   entry: SubagentEntry
   expanded: boolean
   onToggle(): void
+  onOpenSession(): void
   theme: () => PanelTheme
 }) {
   const role = () => statusRole(props.entry.status)
@@ -112,7 +122,7 @@ function SubagentRow(props: {
         <DetailRow label="status:" value={props.entry.status} status={role()} theme={props.theme} />
         <DetailRow label="time:" value={props.entry.duration} theme={props.theme} />
         <DetailRow label="model:" value={props.entry.model} theme={props.theme} />
-        <box flexDirection="row" width="100%" overflow="hidden">
+        <box flexDirection="row" width="100%" overflow="hidden" onMouseDown={props.onOpenSession}>
           <text width={2} flexShrink={0}>{"  "}</text>
           <text>Open Session</text>
         </box>
@@ -151,26 +161,86 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
     clearTimer: injected.clearTimer,
   })
   const [state, setState] = createSignal<SubagentSourceState | undefined>(source.state())
+  let panelCollapsedByParent = api.kv.get<Record<string, boolean>>(PANEL_COLLAPSED_KEY, {})
+  let restCollapsedByParent = api.kv.get<Record<string, boolean>>(REST_COLLAPSED_KEY, {})
+  let expandedChildByParent = api.kv.get<Record<string, string>>(EXPANDED_CHILD_KEY, {})
+  const clockStops = new Set<() => void>()
   context.onCleanup(source.dispose)
   context.onCleanup(source.subscribe(() => setState(source.state())))
+  context.onCleanup(() => {
+    for (const stop of clockStops) stop()
+    clockStops.clear()
+  })
 
   function SubagentPanel(props: { panelState: Extract<SubagentSourceState, { phase: "ready" | "stale" }> }) {
-    const [collapsed, setCollapsed] = createSignal(false)
-    const [expandedIDs, setExpandedIDs] = createSignal<ReadonlySet<string>>(new Set())
-    const [restExpanded, setRestExpanded] = createSignal(true)
+    const parentID = props.panelState.parentID
+    const [collapsed, setCollapsed] = createSignal(panelCollapsedByParent[parentID] ?? false)
+    const [expandedID, setExpandedID] = createSignal<string | undefined>(expandedChildByParent[parentID])
+    const [restExpanded, setRestExpanded] = createSignal(!(restCollapsedByParent[parentID] ?? false))
+    const [now, setNow] = createSignal(injected.now())
     const model = createMemo<SubagentPanelModel>(() => createSubagentPanelModel(
       props.panelState.snapshot,
       props.panelState.failureTimes,
-      injected.now(),
+      now(),
     ))
     const summaryText = () => model().summary.map((segment) => segment.text).join("")
-    const togglePanel = () => setCollapsed((value) => !value)
-    const toggleEntry = (entryID: string) => setExpandedIDs((current) => {
-      const next = new Set(current)
-      if (next.has(entryID)) next.delete(entryID)
-      else next.add(entryID)
-      return next
+    const togglePanel = () => {
+      const next = !collapsed()
+      panelCollapsedByParent = { ...panelCollapsedByParent, [parentID]: next }
+      setCollapsed(next)
+      api.kv.set(PANEL_COLLAPSED_KEY, panelCollapsedByParent)
+    }
+    const toggleRest = () => {
+      const next = !restExpanded()
+      restCollapsedByParent = { ...restCollapsedByParent, [parentID]: !next }
+      setRestExpanded(next)
+      api.kv.set(REST_COLLAPSED_KEY, restCollapsedByParent)
+    }
+    const toggleEntry = (entryID: string) => {
+      const next = expandedID() === entryID ? undefined : entryID
+      expandedChildByParent = { ...expandedChildByParent }
+      if (next === undefined) delete expandedChildByParent[parentID]
+      else expandedChildByParent[parentID] = next
+      setExpandedID(next)
+      api.kv.set(EXPANDED_CHILD_KEY, expandedChildByParent)
+    }
+
+    createEffect(() => {
+      const selected = expandedID()
+      if (!selected || props.panelState.snapshot.childIDs.includes(selected)) return
+      expandedChildByParent = { ...expandedChildByParent }
+      delete expandedChildByParent[parentID]
+      setExpandedID(undefined)
+      api.kv.set(EXPANDED_CHILD_KEY, expandedChildByParent)
     })
+
+    let clock: unknown
+    let clockActive = false
+    const stopClock = () => {
+      if (clock === undefined) return
+      injected.clearInterval(clock)
+      clock = undefined
+    }
+    clockStops.add(stopClock)
+    onCleanup(() => {
+      clockStops.delete(stopClock)
+      stopClock()
+    })
+    createEffect(() => {
+      const active = !collapsed() && (
+        model().primary.some((entry) => entry.status === "running")
+        || (restExpanded() && model().rest.some((entry) => entry.status === "running"))
+      )
+      if (active === clockActive) return
+      clockActive = active
+      if (!active) {
+        stopClock()
+        return
+      }
+      setNow(injected.now())
+      clock = injected.setInterval(() => setNow(injected.now()), 1_000)
+    })
+
     return (
       <CompactPanel
         title="SubAgent"
@@ -189,8 +259,9 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
             {(entry) => (
               <SubagentRow
                 entry={entry}
-                expanded={expandedIDs().has(entry.id)}
+                expanded={expandedID() === entry.id}
                 onToggle={() => toggleEntry(entry.id)}
+                onOpenSession={() => api.route.navigate("session", { sessionID: entry.id })}
                 theme={() => api.theme.current}
               />
             )}
@@ -201,7 +272,7 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
               flexDirection="row"
               width="100%"
               overflow="hidden"
-              onMouseDown={() => setRestExpanded((value) => !value)}
+              onMouseDown={toggleRest}
             >
               <text width={2} flexShrink={0}>{restExpanded() ? "▼ " : "▶ "}</text>
               <text flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0}>Rest</text>
@@ -211,8 +282,9 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
                 {(entry) => (
                   <SubagentRow
                     entry={entry}
-                    expanded={expandedIDs().has(entry.id)}
+                    expanded={expandedID() === entry.id}
                     onToggle={() => toggleEntry(entry.id)}
+                    onOpenSession={() => api.route.navigate("session", { sessionID: entry.id })}
                     theme={() => api.theme.current}
                   />
                 )}

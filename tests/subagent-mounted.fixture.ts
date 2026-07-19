@@ -15,6 +15,7 @@ import subagentPlugin, { subagentRuntimeTestKey } from "../tui/subagent.js"
 
 type ClientResult<Data> = { data?: Data; error?: unknown }
 type Timer = { callback: () => void; cancelled: boolean; delay: number }
+type Interval = { callback: () => void; cancelled: boolean; delay: number }
 type Child = {
   session: {
     id: string
@@ -27,6 +28,9 @@ type Child = {
 }
 
 const FAILURE_KEY = "aamkye.opencode-tools-subagent.failures"
+const PANEL_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.panel-collapsed"
+const REST_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.rest-collapsed"
+const EXPANDED_CHILD_KEY = "aamkye.opencode-tools-subagent.expanded-child"
 const NOW = 20_000_000
 
 function message(
@@ -201,6 +205,7 @@ export async function mountSubagentPanel(options: {
   const registrationCounts = new Map<string, number>()
   const unsubscribeCounts = new Map<string, number>()
   const timers: Timer[] = []
+  const intervals: Interval[] = []
   const registrations: Array<{
     order?: number
     slots: Record<string, (ctx: unknown, props: { session_id?: string }) => unknown>
@@ -209,6 +214,9 @@ export async function mountSubagentPanel(options: {
   let cleanups: Array<() => void | Promise<void>> = []
   let sourceFactoryCallCount = 0
   let slotRenderCount = 0
+  let intervalClearCount = 0
+  let currentNow = NOW
+  let currentParentID = options.parentID ?? ""
 
   const scheduler = {
     setTimer(callback: () => void, delay: number) {
@@ -220,6 +228,18 @@ export async function mountSubagentPanel(options: {
       if (typeof timer === "object" && timer !== null && "cancelled" in timer) {
         ;(timer as Timer).cancelled = true
       }
+    },
+    setInterval(callback: () => void, delay: number) {
+      const interval = { callback, cancelled: false, delay }
+      intervals.push(interval)
+      return interval
+    },
+    clearInterval(interval: unknown) {
+      if (typeof interval !== "object" || interval === null || !("cancelled" in interval)) return
+      const candidate = interval as Interval
+      if (candidate.cancelled) return
+      candidate.cancelled = true
+      intervalClearCount += 1
     },
   }
   const api = {
@@ -300,9 +320,11 @@ export async function mountSubagentPanel(options: {
         sourceFactoryCallCount += 1
         return createSubagentSource(dependencies)
       },
-      now: () => NOW,
+      now: () => currentNow,
       setTimer: scheduler.setTimer,
       clearTimer: scheduler.clearTimer,
+      setInterval: scheduler.setInterval,
+      clearInterval: scheduler.clearInterval,
     },
   }
 
@@ -456,8 +478,15 @@ export async function mountSubagentPanel(options: {
     registrationCount: (type: string) => registrationCounts.get(type) ?? 0,
     unsubscribeCount: (type: string) => unsubscribeCounts.get(type) ?? 0,
     pendingDelays: () => timers.filter((timer) => !timer.cancelled).map((timer) => timer.delay),
+    activeIntervalDelays: () => intervals.filter((interval) => !interval.cancelled).map((interval) => interval.delay),
+    intervalStarts: () => intervals.length,
+    intervalClears: () => intervalClearCount,
+    setNow(value: number) {
+      currentNow = value
+    },
     async setParentID(parentID?: string) {
-      setHostParentID(parentID ?? "")
+      currentParentID = parentID ?? ""
+      setHostParentID(currentParentID)
       await flushHost()
     },
     emit(event: { type: string; properties: Record<string, unknown> }) {
@@ -477,13 +506,17 @@ export async function mountSubagentPanel(options: {
       await flushHost()
     },
     async resolveReady(children: readonly Child[] = canonicalChildren) {
+      const resolvedChildren = children.map((entry) => ({
+        ...entry,
+        session: { ...entry.session, parentID: currentParentID },
+      }))
       statuses.clear()
-      for (const entry of children) statuses.set(entry.session.id, entry.status)
+      for (const entry of resolvedChildren) statuses.set(entry.session.id, entry.status)
       await this.resolveList({ data: [
-        { id: options.parentID ?? "parent-a", parentID: undefined, title: "Parent", time: { created: 0, updated: 0 } },
-        ...children.map(({ session }) => session),
+        { id: currentParentID, parentID: undefined, title: "Parent", time: { created: 0, updated: 0 } },
+        ...resolvedChildren.map(({ session }) => session),
       ] })
-      const messages = new Map(children.map((entry) => [entry.session.id, entry.messages]))
+      const messages = new Map(resolvedChildren.map((entry) => [entry.session.id, entry.messages]))
       while (pendingMessages.length > 0) {
         const sessionID = pendingMessages[0].sessionID
         await this.resolveMessages(sessionID, { data: (messages.get(sessionID) ?? []).map((info) => ({ info })) })
@@ -494,6 +527,12 @@ export async function mountSubagentPanel(options: {
       if (!timer) throw new Error(`No pending ${delay} ms timer`)
       timer.cancelled = true
       timer.callback()
+      await flushHost()
+    },
+    async runInterval(delay = 1_000) {
+      const interval = intervals.find((candidate) => !candidate.cancelled && candidate.delay === delay)
+      if (!interval) throw new Error(`No active ${delay} ms interval`)
+      interval.callback()
       await flushHost()
     },
     view,
@@ -512,3 +551,6 @@ export async function mountSubagentPanel(options: {
 }
 
 export const subagentFailureKey = FAILURE_KEY
+export const subagentPanelCollapsedKey = PANEL_COLLAPSED_KEY
+export const subagentRestCollapsedKey = REST_COLLAPSED_KEY
+export const subagentExpandedChildKey = EXPANDED_CHILD_KEY

@@ -9,8 +9,12 @@ globalThis.React = {
 }
 
 const {
+  canonicalChildren,
+  subagentExpandedChildKey,
   mountSubagentPanel,
   subagentFailureKey,
+  subagentPanelCollapsedKey,
+  subagentRestCollapsedKey,
 } = await import("../.tmp-test/subagent-mounted.mjs")
 
 const eventTypes = [
@@ -100,6 +104,19 @@ const semiCollapsedLayout = [
   "------------------------------------",
 ]
 
+const terminalChildren = canonicalChildren.filter((entry) => entry.session.id !== "subagent-9")
+const restRunningChildren = canonicalChildren.map((entry) => (
+  ["subagent-8", "subagent-7", "subagent-6"].includes(entry.session.id)
+    ? {
+        ...entry,
+        session: {
+          ...entry.session,
+          time: { created: 20_000_000 + Number(entry.session.id.slice(9)), updated: 20_000_100 },
+        },
+      }
+    : entry
+))
+
 async function exhaustFailedLoad(mounted) {
   await mounted.resolveList({})
   for (const delay of [2_000, 4_000, 8_000]) {
@@ -116,7 +133,12 @@ test("registers the SubAgent ID and session-scoped slot 120", async () => {
   assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
   assert.equal(mounted.sourceFactoryCalls(), 1)
   assert.deepEqual(mounted.registeredTypes(), eventTypes)
-  assert.deepEqual(mounted.kvReads, [subagentFailureKey])
+  assert.deepEqual(mounted.kvReads, [
+    subagentFailureKey,
+    subagentPanelCollapsedKey,
+    subagentRestCollapsedKey,
+    subagentExpandedChildKey,
+  ])
   assert.deepEqual(mounted.listCalls, [])
   await mounted.setParentID("parent-a")
   assert.deepEqual(mounted.listCalls, [{ directory: "/repo" }])
@@ -216,9 +238,7 @@ test("matches one-detail and expanded-Rest AGENTS layouts", async () => {
     await mounted.resolveReady()
     await mounted.view().clickEntry("SubAgent9")
     assert.deepEqual(mounted.view().lines, oneDetailLayout)
-    assert.equal(mounted.view().openSessionInteractive, false)
-    await mounted.view().activateOpenSession()
-    assert.deepEqual(mounted.routeCalls, [])
+    assert.equal(mounted.view().openSessionInteractive, true)
   } finally {
     await mounted.dispose()
   }
@@ -242,7 +262,6 @@ test("matches semi-collapsed Rest and collapsed count layouts", async () => {
       { text: "/", color: "#888888" },
       { text: "3", color: "#ff0000" },
     ])
-    assert.deepEqual(mounted.kvWrites, [])
   } finally {
     await mounted.dispose()
   }
@@ -352,4 +371,228 @@ test("rejects defined falsy list and message envelope errors", async () => {
   } finally {
     await messageFailure.dispose()
   }
+})
+
+test("persists panel and Rest collapse independently per parent", async () => {
+  const store = new Map([
+    [subagentPanelCollapsedKey, { "parent-z": true }],
+    [subagentRestCollapsedKey, { "parent-z": true }],
+  ])
+  const mounted = await mountSubagentPanel({ parentID: "parent-a", store })
+  try {
+    await mounted.resolveReady(terminalChildren)
+    await mounted.view().clickRest()
+    await mounted.view().clickHeader()
+    assert.deepEqual(mounted.kvWrites, [
+      [subagentRestCollapsedKey, { "parent-z": true, "parent-a": true }],
+      [subagentPanelCollapsedKey, { "parent-z": true, "parent-a": true }],
+    ])
+
+    await mounted.setParentID("parent-b")
+    await mounted.resolveReady(terminalChildren)
+    assert.equal(mounted.view().marker, "▼ ")
+    assert.equal(mounted.view().lines.includes("▼ Rest"), true)
+    await mounted.view().clickRest()
+    await mounted.view().clickHeader()
+    assert.deepEqual(mounted.kvWrites.slice(-2), [
+      [subagentRestCollapsedKey, { "parent-z": true, "parent-a": true, "parent-b": true }],
+      [subagentPanelCollapsedKey, { "parent-z": true, "parent-a": true, "parent-b": true }],
+    ])
+  } finally {
+    await mounted.dispose()
+  }
+
+  const restored = await mountSubagentPanel({ parentID: "parent-a", store })
+  try {
+    await restored.resolveReady(terminalChildren)
+    assert.equal(restored.view().marker, "▶ ")
+    await restored.view().clickHeader()
+    assert.equal(restored.view().lines.includes("▶ Rest"), true)
+  } finally {
+    await restored.dispose()
+  }
+})
+
+test("restores one expanded child and replaces it when another opens", async () => {
+  const store = new Map([
+    [subagentExpandedChildKey, { "parent-a": "subagent-9", "parent-b": "subagent-2" }],
+  ])
+  const mounted = await mountSubagentPanel({ parentID: "parent-a", store })
+  try {
+    await mounted.resolveReady()
+    assert.equal(mounted.view().entryRows.find((row) => row.title === "SubAgent9")?.disclosure, "▼ ")
+    await mounted.view().clickEntry("SubAgent10")
+    assert.equal(mounted.view().entryRows.find((row) => row.title === "SubAgent9")?.disclosure, "▶ ")
+    assert.equal(mounted.view().entryRows.find((row) => row.title === "SubAgent10")?.disclosure, "▼ ")
+    assert.deepEqual(mounted.kvWrites, [
+      [subagentExpandedChildKey, { "parent-a": "subagent-10", "parent-b": "subagent-2" }],
+    ])
+    await mounted.view().clickEntry("SubAgent10")
+    assert.deepEqual(mounted.kvWrites.at(-1), [
+      subagentExpandedChildKey,
+      { "parent-b": "subagent-2" },
+    ])
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("clears a persisted child absent from a complete snapshot", async () => {
+  const store = new Map([
+    [subagentExpandedChildKey, { "parent-a": "missing", "parent-b": "subagent-2" }],
+  ])
+  const mounted = await mountSubagentPanel({ parentID: "parent-a", store })
+  try {
+    assert.deepEqual(mounted.kvWrites, [])
+    await mounted.resolveReady(terminalChildren)
+    assert.deepEqual(mounted.kvWrites, [[
+      subagentExpandedChildKey,
+      { "parent-b": "subagent-2" },
+    ]])
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("keeps a selected Rest child hidden while Rest is collapsed", async () => {
+  const store = new Map([
+    [subagentRestCollapsedKey, { "parent-a": true }],
+    [subagentExpandedChildKey, { "parent-a": "subagent-5" }],
+  ])
+  const mounted = await mountSubagentPanel({ parentID: "parent-a", store })
+  try {
+    await mounted.resolveReady(terminalChildren)
+    assert.equal(mounted.view().lines.includes("▶ Rest"), true)
+    assert.equal(mounted.view().entryRows.some((row) => row.title === "SubAgent5"), false)
+    assert.deepEqual(store.get(subagentExpandedChildKey), { "parent-a": "subagent-5" })
+    assert.deepEqual(mounted.kvWrites, [])
+    await mounted.view().clickRest()
+    assert.equal(mounted.view().entryRows.find((row) => row.title === "SubAgent5")?.disclosure, "▼ ")
+    assert.equal(mounted.view().detailRows.some((row) => row.label === "agent:"), true)
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("Open Session navigates to the selected child route", async () => {
+  const running = canonicalChildren.find((entry) => entry.session.id === "subagent-9")
+  assert.ok(running)
+  const navigationChild = {
+    ...running,
+    session: { ...running.session, id: "child-9" },
+    messages: running.messages.map((entry) => ({
+      ...entry,
+      id: "child-9-message",
+      sessionID: "child-9",
+    })),
+  }
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady([navigationChild])
+    await mounted.view().clickEntry("SubAgent9")
+    await mounted.view().activateOpenSession()
+    assert.deepEqual(mounted.routeCalls, [["session", { sessionID: "child-9" }]])
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("starts one clock only for visible running primary entries", async () => {
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady()
+    assert.deepEqual(mounted.activeIntervalDelays(), [1_000])
+    assert.equal(mounted.intervalStarts(), 1)
+    mounted.setNow(20_001_000)
+    await mounted.runInterval()
+    assert.equal(mounted.view().entryRows.find((row) => row.title === "SubAgent9")?.duration, "15m 5s")
+    assert.equal(mounted.intervalStarts(), 1)
+  } finally {
+    await mounted.dispose()
+  }
+
+  const terminal = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await terminal.resolveReady(terminalChildren)
+    assert.deepEqual(terminal.activeIntervalDelays(), [])
+    assert.equal(terminal.intervalStarts(), 0)
+  } finally {
+    await terminal.dispose()
+  }
+
+  const collapsed = await mountSubagentPanel({
+    parentID: "parent-a",
+    store: new Map([[subagentPanelCollapsedKey, { "parent-a": true }]]),
+  })
+  try {
+    await collapsed.resolveReady()
+    assert.deepEqual(collapsed.activeIntervalDelays(), [])
+    assert.equal(collapsed.intervalStarts(), 0)
+  } finally {
+    await collapsed.dispose()
+  }
+})
+
+test("Rest visibility controls its running clock and refreshes immediately", async () => {
+  const mounted = await mountSubagentPanel({
+    parentID: "parent-a",
+    store: new Map([[subagentRestCollapsedKey, { "parent-a": true }]]),
+  })
+  try {
+    await mounted.resolveReady(restRunningChildren)
+    assert.equal(mounted.intervalStarts(), 0)
+    mounted.setNow(20_060_000)
+    await mounted.view().clickRest()
+    assert.equal(mounted.view().entryRows.find((row) => row.title === "SubAgent9")?.duration, "16m 4s")
+    assert.deepEqual(mounted.activeIntervalDelays(), [1_000])
+    assert.equal(mounted.intervalStarts(), 1)
+    await mounted.view().clickRest()
+    assert.deepEqual(mounted.activeIntervalDelays(), [])
+    assert.equal(mounted.intervalClears(), 1)
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("collapse parent switch completion and disposal stop the clock", async () => {
+  const collapsed = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await collapsed.resolveReady()
+    await collapsed.view().clickHeader()
+    assert.equal(collapsed.intervalClears(), 1)
+    assert.deepEqual(collapsed.activeIntervalDelays(), [])
+  } finally {
+    await collapsed.dispose()
+  }
+
+  const switched = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await switched.resolveReady()
+    await switched.setParentID("parent-b")
+    assert.equal(switched.intervalClears(), 1)
+    assert.deepEqual(switched.activeIntervalDelays(), [])
+  } finally {
+    await switched.dispose()
+  }
+
+  const completed = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await completed.resolveReady()
+    completed.emit({
+      type: "session.updated",
+      properties: { sessionID: "subagent-9", info: { id: "subagent-9", parentID: "parent-a" } },
+    })
+    await completed.runTimer(200)
+    await completed.resolveReady(terminalChildren)
+    assert.equal(completed.intervalClears(), 1)
+    assert.deepEqual(completed.activeIntervalDelays(), [])
+  } finally {
+    await completed.dispose()
+  }
+
+  const disposed = await mountSubagentPanel({ parentID: "parent-a" })
+  await disposed.resolveReady()
+  await disposed.dispose()
+  assert.equal(disposed.intervalClears(), 1)
+  assert.deepEqual(disposed.activeIntervalDelays(), [])
 })
