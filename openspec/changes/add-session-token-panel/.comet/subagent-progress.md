@@ -4,15 +4,15 @@
 - Plan: docs/superpowers/plans/2026-07-19-session-token-panel.md
 - Review mode: standard
 - TDD mode: tdd
-- Current task: Task 8: Full Verification And Acceptance Closeout
-- Mapped OpenSpec tasks: 5.1 Run focused tests, typecheck, the full test suite, and plugin build; inspect generated output for forbidden imports and confirm no AGENTS.md layout regression
-- Stage: done
-- Implementation commit: none (verification-only task)
-- Changed files: none expected
-- RED evidence: not applicable unless verification exposes a defect
-- GREEN evidence: fresh focused 70/70; `npm run typecheck`; `npm test` 350/350; build 9 artifacts; exact corrected bundle assertion; committed AGENTS SHA/four layouts; clean generated-artifact safety; checklist 9/10 before coordinator checkoff
+- Current task: Final whole-change review
+- Mapped OpenSpec tasks: all tasks complete; reviewed `fed4b0940733c27d089dbb154c60e6a522f33346..12ae24b351737ecb75266453b7b5f3eb1ee5260b`
+- Stage: final-review-approved
+- Implementation commit: 12ae24b351737ecb75266453b7b5f3eb1ee5260b
+- Changed files: shared facade, SesTokens panel/source/session-tree loader, and three focused test files
+- RED evidence: initial descendant refresh expected 200 ms debounce but got no refresh; loader context was missing on supersession/disposal; topology callback and shared loader factory were absent; failed attempts settled before active workers
+- GREEN evidence: fix-agent focused 32/32; final reviewer fresh source/loader 25/25; `npm run typecheck`; `git diff --check`; final re-review READY
 - Risk review triggered: no
 - Risk signals: verification-only; no repository behavior failure
-- Review stages passed: verification-only non-risk task; no per-task review required under standard mode
-- Unresolved feedback: accepted Task 2 explicit out-of-order completion test note and Task 5 exact stale-host count assertion note remain for final review triage; incidental malformed ambient probe was outside required gates and corrected
-- Review-fix round: 0/1
+- Review stages passed: all task-level reviews passed; final whole-change review passed after one fix round
+- Unresolved feedback: none
+- Review-fix round: 1/1
