@@ -1,0 +1,14 @@
+{
+  "change": "add-subagent-panel",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "d9d28e341cb93fbf5bba8ef5b375ce6b4152659151468a8f8690ad0c9e598041",
+  "files": [
+    { "path": "openspec/changes/add-subagent-panel/proposal.md", "sha256": "0b74c7b8cbff7c4f040a99497eaf98d1b5ba118e2234ee3e7aae2ac6d96259f3" },
+    { "path": "openspec/changes/add-subagent-panel/design.md", "sha256": "85d0151a0c5c351ee1748bb5c076dba554299d8d3a4ba34389ae0977218f9285" },
+    { "path": "openspec/changes/add-subagent-panel/tasks.md", "sha256": "d1fc326e7e2a55d7edeedb09c35d9a41fd0ffa983505b2110daf99808b490e43" },
+    { "path": "openspec/changes/add-subagent-panel/specs/subagent-panel/spec.md", "sha256": "1dda860b59330b1b5351d037ea2e0c65bf270a06d211f5a84ccfd3dbb01b9deb" }
+  ]
+}

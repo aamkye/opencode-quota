@@ -288,6 +288,27 @@ LSPs will activate as files are read | 6. should be grayed out
 ------------------------------------ |
 ```
 
+or after a background refresh fails:
+
+```
+▼ SubAgent                     stale | 1. `stale` should be yellow; 2. retain the complete entry body
+------------------------------------ |
+▶ • SubAgent11 with super lo… 9m 45s |
+▶ • SubAgent10                1h 15m |
+▶ • SubAgent9                 15m 4s |
+▶ • SubAgent8                 2h 18m |
+▶ • SubAgent7                 2h 18m |
+---                              --- |
+▼ Rest                               |
+▶ • SubAgent6                 9m 45s |
+▶ • SubAgent5                 1h 15m |
+▶ • SubAgent4                    15s |
+▶ • SubAgent3                    25s |
+▶ • SubAgent2                     5s |
+▶ • SubAgent1                  1h 2m |
+------------------------------------ |
+```
+
 #### Semi-collapsed
 
 ```
@@ -307,6 +328,13 @@ LSPs will activate as files are read | 6. should be grayed out
 
 ```
 ▶ SubAgent                     7/1/3 | 1. plain name; 2. succesful/running/failed; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+```
+
+or
+
+```
+▶ SubAgent               stale 7/1/3 | 1. `stale` should be yellow; 2. preserve successful/running/failed counts
 ------------------------------------ |
 ```
 
