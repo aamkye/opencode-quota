@@ -378,7 +378,7 @@ git commit -m "feat: load complete session tree snapshots"
 - Consumes: `SessionTreeSnapshot`, `SessionTreeSnapshotLoader`, SDK lifecycle event shapes, injected event registration, and injected timer functions.
 - Produces: `SesTokensSourceState`, `SesTokensSource`, `SesTokensSourceDependencies`, and `createSesTokensSource(dependencies): SesTokensSource`.
 
-- [ ] **Step 1: Add the compile entry and deterministic source test harness**
+- [x] **Step 1: Add the compile entry and deterministic source test harness**
 
 Add `ses-tokens-source` to cleanup and compile:
 
@@ -416,13 +416,13 @@ assert.deepEqual(scheduler.pendingDelays(), [2_000, 4_000, 8_000])
 
 Cover every registered type: `message.updated`, `message.removed`, `session.created`, `session.updated`, `session.deleted`, and `tui.session.select`. For session events, assert refresh when either `info.id`/`sessionID` or `info.parentID` is known; for select, assert an empty or unchanged ID does nothing.
 
-- [ ] **Step 2: Run the source suite to verify RED**
+- [x] **Step 2: Run the source suite to verify RED**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/ses-tokens-source.test.mjs`
 
 Expected: FAIL during esbuild with `Could not resolve "tui/services/ses-tokens-source.ts"`.
 
-- [ ] **Step 3: Implement the source state machine**
+- [x] **Step 3: Implement the source state machine**
 
 Use these public types so the panel and fixture share one contract:
 
@@ -480,17 +480,17 @@ Implementation sequence:
 
 Use global `setTimeout`/`clearTimeout` only as default dependency values at the factory boundary; all state-machine tests use injected fakes. Re-export the factory and source types from `shared/opencode-tools-shared.ts`.
 
-- [ ] **Step 4: Run source and neutral-loader tests to verify GREEN**
+- [x] **Step 4: Run source and neutral-loader tests to verify GREEN**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/session-tree-snapshot.test.mjs tests/ses-tokens-source.test.mjs`
 
 Expected: PASS for all snapshot and source tests; no real retry delay is incurred.
 
-- [ ] **Step 5: Check off the data-source boundary**
+- [x] **Step 5: Check off the data-source boundary**
 
 Change only OpenSpec items `2.1` and `2.2` from `[ ]` to `[x]`.
 
-- [ ] **Step 6: Commit the refresh source slice during implementation**
+- [x] **Step 6: Commit the refresh source slice during implementation**
 
 ```bash
 git add tui/services/ses-tokens-source.ts tests/ses-tokens-source.test.mjs tests/compile-presentation.mjs shared/opencode-tools-shared.ts openspec/changes/add-session-token-panel/tasks.md

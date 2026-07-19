@@ -5,8 +5,8 @@
 
 ## 2. Session-Tree Data Source
 
-- [ ] 2.1 Add failing tests for descendant traversal, cycle protection, bounded concurrency, session switching, stale generations, retry, and last-complete-snapshot retention
-- [ ] 2.2 Implement the client-backed session-tree loader and event-driven refresh coordinator with lifecycle cleanup
+- [x] 2.1 Add failing tests for descendant traversal, cycle protection, bounded concurrency, session switching, stale generations, retry, and last-complete-snapshot retention
+- [x] 2.2 Implement the client-backed session-tree loader and event-driven refresh coordinator with lifecycle cleanup
 - [ ] 2.3 Extend local OpenCode TUI API declarations and compile fixtures for the session, client, event, and state surface used by SesTokens
 
 ## 3. Sidebar Panel
