@@ -35,6 +35,17 @@ export { createTodoPanelModel } from "../tui/features/todo.js";
 export type { TodoPanelModel, TodoStatusRole, TodoStatusRow } from "../tui/features/todo.js";
 export { createSesTokensPanelModel } from "../tui/features/ses-tokens.js";
 export type { SesTokenTotals, SesTokensMessage, SesTokensPanelModel } from "../tui/features/ses-tokens.js";
+export {
+  collectSessionTreeIDs,
+  indexSessionsByParent,
+  loadSessionTreeSnapshot,
+} from "../tui/services/session-tree-snapshot.js";
+export type {
+  LoadSessionTreeSnapshotOptions,
+  SessionTreeRecord,
+  SessionTreeSnapshot,
+  SessionTreeSnapshotLoader,
+} from "../tui/services/session-tree-snapshot.js";
 export { createOpenAiProvider };
 export {
   acquireQuotaProviderHub,
