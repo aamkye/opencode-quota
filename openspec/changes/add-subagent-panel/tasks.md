@@ -7,7 +7,7 @@
 
 - [ ] 2.1 Add failing tests for initial reconstruction, client envelopes, direct-only requests, bounded cross-generation concurrency, immediate event invalidation, assistant error removal, repeated failure timestamps, retries, loading-to-unavailable and unavailable-to-ready recovery, stale retention/recovery, session switching, stale generations, and deleted-child pruning
 - [x] 2.2 Implement the direct-child loader and debounced event coordinator with discovered-topology publication, 2/4/8 retries, minimal failure persistence, complete-snapshot retention, and lifecycle cleanup
-- [ ] 2.3 Extend local OpenCode TUI API declarations and compile fixtures for session records, status, messages, events, client listing, and route navigation used by SubAgent
+- [x] 2.3 Extend local OpenCode TUI API declarations and compile fixtures for session records, status, messages, events, client listing, and route navigation used by SubAgent
 
 ## 3. Sidebar Panel
 

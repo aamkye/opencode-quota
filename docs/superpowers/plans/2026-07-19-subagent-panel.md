@@ -411,7 +411,7 @@ git commit -m "feat(subagent): coordinate child session refreshes"
 - Consumes: installed SDK types `Session`, `SessionStatus`, `Message`, and event unions.
 - Produces: `TuiPluginApi["state"]["session"]["status"]` with exact signature `(sessionID: string) => SessionStatus | undefined`. Existing list/messages envelopes remain `Promise<{ data?: Data; error?: unknown }>`.
 
-- [ ] **Step 1: Add the failing compile fixture**
+- [x] **Step 1: Add the failing compile fixture**
 
 Create `inspectSubagentApi(api, sessionID)` that type-checks:
 
@@ -429,13 +429,13 @@ api.lifecycle.onDispose(() => undefined)
 
 Register handlers for all nine SubAgent event types and access the exact relevant properties (`info.parentID`, `info.id`, `sessionID`, `status`, and optional error session ID). Reuse the exact optional `{ session_id?: string }` sidebar prop equality check from `tests/ses-tokens-state-types.fixture.ts`.
 
-- [ ] **Step 2: Run the RED command**
+- [x] **Step 2: Run the RED command**
 
 Run: `npm run typecheck`
 
 Expected RED: TypeScript reports that `status` does not exist on `api.state.session`; no production declaration has been changed yet.
 
-- [ ] **Step 3: Add only the missing host declaration**
+- [x] **Step 3: Add only the missing host declaration**
 
 Import `SessionStatus` from `@opencode-ai/sdk/v2` in `opencode-plugin-tui.d.ts` and add:
 
@@ -445,13 +445,13 @@ status(sessionID: string): SessionStatus | undefined
 
 Do not widen slot props, event payloads, route params, client envelopes, KV values, or lifecycle types to `any`.
 
-- [ ] **Step 4: Run focused GREEN verification**
+- [x] **Step 4: Run focused GREEN verification**
 
 Run: `npm run typecheck`
 
 Expected GREEN: all local fixtures compile under strict/no-unused settings, including the new status/event/route contract.
 
-- [ ] **Step 5: Commit the task atomically**
+- [x] **Step 5: Commit the task atomically**
 
 Suggested Conventional Commit: `feat(subagent): declare host session APIs`
 
