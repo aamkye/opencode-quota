@@ -174,7 +174,7 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assert.match(subagent, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
 })
 
-test("SubAgent uses intrinsic onSizeChange with a type-only Renderable import", () => {
+test("SubAgent binds the child resize event with a type-only Renderable import", () => {
   const subagent = source("tui/subagent.tsx")
   const subagentSource = parsedSource("tui/subagent.tsx")
 
@@ -182,9 +182,14 @@ test("SubAgent uses intrinsic onSizeChange with a type-only Renderable import", 
     typeOnlyNamedImportLocalName(subagentSource, "@opentui/core", "Renderable"),
     "tui/subagent.tsx must type-only import Renderable from @opentui/core",
   )
-  assert.match(subagent, /\bonSizeChange\s*=/)
+  assert.match(subagent, /\bref\s*=\s*\{\s*bindTitleRegion\s*\}/)
+  assert.match(subagent, /\bif\s*\(\s*titleRegion\s*===\s*renderable\s*\)\s*return/)
+  assert.match(subagent, /\btitleRegion\?\.off\(\s*["']resize["']\s*,\s*measure\s*\)/)
+  assert.match(subagent, /\btitleRegion\.on\(\s*["']resize["']\s*,\s*measure\s*\)[\s\S]{0,80}\bmeasure\(\)/)
+  assert.doesNotMatch(subagent, /\bonSizeChange\b/)
   assert.equal(namedImportLocalName(subagentSource, "@opentui/core", "LayoutEvents"), undefined)
   assert.doesNotMatch(subagent, /\bLayoutEvents\b/)
+  assert.doesNotMatch(subagent, /["']resized["']/)
 })
 
 test("shared facade exports computation without plugin registration or JSX", () => {

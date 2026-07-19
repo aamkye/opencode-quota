@@ -1,5 +1,7 @@
 import { createRenderer } from "solid-js/universal"
 
+type HostEventListener = (...args: unknown[]) => void
+
 export type HostNode = {
   type: string
   props: Record<string, unknown>
@@ -7,15 +9,40 @@ export type HostNode = {
   parent?: HostNode
   removed: boolean
   width: number
+  on(event: string, listener: HostEventListener): HostNode
+  off(event: string, listener: HostEventListener): HostNode
+  emit(event: string, ...args: unknown[]): boolean
+  listenerCount(event: string): number
 }
 
 export function createHostNode(type: string): HostNode {
+  const listeners = new Map<string, Set<HostEventListener>>()
   return {
     type,
     props: {},
     children: [],
     removed: false,
     width: 0,
+    on(event, listener) {
+      const eventListeners = listeners.get(event) ?? new Set<HostEventListener>()
+      eventListeners.add(listener)
+      listeners.set(event, eventListeners)
+      return this
+    },
+    off(event, listener) {
+      const eventListeners = listeners.get(event)
+      eventListeners?.delete(listener)
+      if (eventListeners?.size === 0) listeners.delete(event)
+      return this
+    },
+    emit(event, ...args) {
+      const eventListeners = [...(listeners.get(event) ?? [])]
+      for (const listener of eventListeners) listener(...args)
+      return eventListeners.length > 0
+    },
+    listenerCount(event) {
+      return listeners.get(event)?.size ?? 0
+    },
   }
 }
 

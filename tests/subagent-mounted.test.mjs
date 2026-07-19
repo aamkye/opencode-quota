@@ -385,6 +385,11 @@ test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {
     await mounted.resolveReady()
+    const initialView = mounted.view()
+    assert.deepEqual(initialView.lines, expandedLayout)
+    assert.equal(initialView.entryRows[0].renderedTitle, "SubAgent11 with super long…")
+    assert.ok(initialView.entryRows.every((row) => row.renderedTitle.length > 0))
+    assert.equal(mounted.resizeListenerCount(), initialView.entryRows.length)
     for (const [width, expectedTitle] of [
       [37, "SubAgent11 with super long…"],
       [36, "SubAgent11 with super long…"],
@@ -404,13 +409,13 @@ test("end-truncates measured title cells at 37 36 and scrollbar-reduced 35 cells
       assert.equal(row.rowWidth, width)
       assert.equal(row.childWidths.reduce((total, cells) => total + cells, 0), width)
       assert.equal(row.titleProps.truncate, undefined)
+      assert.equal(mounted.resizeListenerCount(), view.entryRows.length)
       for (const line of view.lines) assert.equal(line.trimEnd(), line)
     }
-    const callbackCalls = mounted.sizeChangeCalls()
-    assert.ok(callbackCalls >= mounted.view().entryRows.length)
     await mounted.view().clickHeader()
+    assert.equal(mounted.resizeListenerCount(), 0)
     await mounted.resize(34)
-    assert.equal(mounted.sizeChangeCalls(), callbackCalls)
+    assert.equal(mounted.resizeListenerCount(), 0)
   } finally {
     await mounted.dispose()
   }
@@ -716,12 +721,12 @@ test("collapse parent switch completion and disposal stop the clock", async () =
 
   const disposed = await mountSubagentPanel({ parentID: "parent-a" })
   await disposed.resolveReady()
-  const callbackCalls = disposed.sizeChangeCalls()
+  assert.equal(disposed.resizeListenerCount(), disposed.view().entryRows.length)
   await disposed.dispose()
   await disposed.resize(34)
   assert.equal(disposed.intervalClears(), 1)
   assert.deepEqual(disposed.activeIntervalDelays(), [])
-  assert.equal(disposed.sizeChangeCalls(), callbackCalls)
+  assert.equal(disposed.resizeListenerCount(), 0)
 })
 
 test("documents the corrected SubAgent visual behavior", () => {

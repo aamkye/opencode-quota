@@ -264,7 +264,6 @@ export async function mountSubagentPanel(options: {
   let currentParentID = options.parentID ?? ""
   let currentTitles: string[] = []
   let mountedWidth = 36
-  let sizeChangeCallCount = 0
 
   const scheduler = {
     setTimer(callback: () => void, delay: number) {
@@ -394,6 +393,7 @@ export async function mountSubagentPanel(options: {
   }) as never, root)
   const mountedPanels = new Map<HostNode, HostNode>()
   const disposedPanels = new Set<HostNode>()
+  const titleRegions = new Set<HostNode>()
 
   function currentPanel(): HostNode | undefined {
     const title = textNodes(root).find((node) => textOf(node) === "SubAgent")
@@ -424,12 +424,11 @@ export async function mountSubagentPanel(options: {
         const layout = rowLayout(row, mountedWidth)
         const titleRegion = layout.cells[1]
         if (!titleRegion) continue
+        titleRegions.add(titleRegion)
         const width = layout.childWidths[1] ?? 0
         if (titleRegion.width === width) continue
         titleRegion.width = width
-        if (typeof titleRegion.props.onSizeChange !== "function") continue
-        titleRegion.props.onSizeChange.call(titleRegion)
-        sizeChangeCallCount += 1
+        titleRegion.emit("resize")
         resized = true
       }
     }
@@ -576,6 +575,8 @@ export async function mountSubagentPanel(options: {
     activeIntervalDelays: () => intervals.filter((interval) => !interval.cancelled).map((interval) => interval.delay),
     intervalStarts: () => intervals.length,
     intervalClears: () => intervalClearCount,
+    resizeListenerCount: () => [...titleRegions]
+      .reduce((total, titleRegion) => total + titleRegion.listenerCount("resize"), 0),
     setNow(value: number) {
       currentNow = value
     },
@@ -639,7 +640,6 @@ export async function mountSubagentPanel(options: {
       mountedWidth = width
       await flushHost()
     },
-    sizeChangeCalls: () => sizeChangeCallCount,
     view,
     async dispose() {
       disposeHost()
