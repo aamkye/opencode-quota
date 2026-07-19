@@ -80,3 +80,4 @@ add-context-tui-plugin final review: READY at 60d11b3 (no Critical/Important fin
 add-session-token-panel Task 1: complete (commit c3fd6db plus checkoff commit 7a1aca3, standard risk review clean)
 add-session-token-panel Task 2: complete (commit 4f5f44a, standard risk review approved; accepted Minor explicit out-of-order completion test gap)
 add-session-token-panel Task 3: complete (commits 641b8e2..58436ab, standard risk re-review approved after subscriber isolation fix)
+add-session-token-panel Task 4: complete (commits 409fbaa..83c3745, standard risk re-review approved after exact type-proof fix)

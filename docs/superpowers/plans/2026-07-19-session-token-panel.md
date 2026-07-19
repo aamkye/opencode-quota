@@ -512,7 +512,7 @@ git commit -m "feat: refresh session token snapshots"
 - Consumes: SDK `Event`, `Message`, and `Session`.
 - Produces: compile-time declarations for `api.state.path.directory`, session list/messages client responses, six typed events, and `sidebar_content`'s optional `session_id`.
 
-- [ ] **Step 1: Write the compile-only fixture first**
+- [x] **Step 1: Write the compile-only fixture first**
 
 Create `tests/ses-tokens-state-types.fixture.ts`; it is already included by `tests/*-state-types.fixture.ts` in `tsconfig.json`.
 
@@ -548,13 +548,13 @@ export async function inspectSesTokensApi(api: TuiPluginApi, sessionID: string) 
 }
 ```
 
-- [ ] **Step 2: Run typecheck to verify RED**
+- [x] **Step 2: Run typecheck to verify RED**
 
 Run: `npm run typecheck`
 
 Expected: FAIL in `tests/ses-tokens-state-types.fixture.ts` because `state.path`, `client.session.list`, `client.session.messages`, and typed sidebar props are not declared.
 
-- [ ] **Step 3: Add the narrow local declarations**
+- [x] **Step 3: Add the narrow local declarations**
 
 In `opencode-plugin-tui.d.ts` import `Message` and `Session` alongside existing SDK types, retain the existing `message.updated` compatibility alias, and add only:
 
@@ -574,13 +574,13 @@ slots: Record<string, (ctx: any, props: { session_id?: string }) => JSX.Element 
 
 Keep `prompt` and all existing state/client methods unchanged. The SDK `Event` union already supplies all six event property shapes through the generic `event.on` declaration.
 
-- [ ] **Step 4: Run typecheck to verify GREEN**
+- [x] **Step 4: Run typecheck to verify GREEN**
 
 Run: `npm run typecheck`
 
 Expected: PASS with no diagnostics.
 
-- [ ] **Step 5: Check off and commit the declaration boundary during implementation**
+- [x] **Step 5: Check off and commit the declaration boundary during implementation**
 
 Change OpenSpec item `2.3` to `[x]`, then:
 
