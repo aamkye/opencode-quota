@@ -31,5 +31,5 @@
 
 ## 7. Responsive Title Width Correction
 
-- [ ] 7.1 Add a failing mounted regression that removes all title measurement callbacks, asserts a flex-derived 28-cell title at width 37 and 27 cells at scrollbar-reduced width 36, and preserves the one-cell gap and full duration
-- [ ] 7.2 Implement the `CompactStatusRow` flexible-title/fixed-right pattern plus end truncation and native clipping safety, preserve all approved visual behavior, pass focused/full/typecheck/build/bundle gates, deploy locally, and confirm titles in the live OpenCode sidebar
+- [ ] 7.1 Add a failing mounted regression that removes all title measurement callbacks, asserts a flex-derived 28-cell title plus structural right margin at width 37 and 27 cells plus the margin at scrollbar-reduced width 36, and preserves the full duration
+- [ ] 7.2 Implement the `CompactStatusRow` flexible-title/right-margin/fixed-duration pattern plus end truncation and native clipping safety, preserve all approved visual behavior, pass focused/full/typecheck/build/bundle gates, deploy locally, and confirm titles in the live OpenCode sidebar
