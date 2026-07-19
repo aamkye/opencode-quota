@@ -30,8 +30,9 @@ base-ref: 5a0b6c3
 - Final sidebar slots are Home 1, Context 100, SesTokens 110, SubAgent 120, Quota 130, MCP 140, LSP 150, and TODO 160. Token Report has no `slotOrder`.
 - Preserve the accepted uncommitted `plugin-manifest.json` reorder and complete it rather than recreating it. Preserve the accepted README inspiration links and table formatting, then extend those sections in place.
 - Do not edit `AGENTS.md`, OpenSpec artifacts, or Comet state during implementation. Its current full-file SHA-256 is `488214c49e9b83b6770e1e0e03746ec5bd0c11daf9ea268545568e55bb223387`.
-- Use strict TDD for Tasks 1-7 and Task 9: add the specified test first, run the exact RED command and confirm the stated failure, then edit production code and run the focused GREEN command. Tasks 1-8 remain completed and must not be reopened.
+- Use strict TDD for Tasks 1-7, Task 9, and Task 10: add the specified test first, run the exact RED command and confirm the stated failure, then edit production code and run the focused GREEN command. Tasks 1-9 remain completed and must not be reopened.
 - Task 9 is a visual-contract correction only. Preserve every existing source, lifecycle, navigation, persistence, status derivation, clock, stale-state, manifest, deployment, and integration behavior.
+- Task 10 supersedes only Task 9's `onSizeChange` measurement mechanism after live OpenCode showed that the initial title width remained zero. It must use the child renderable's actual `resize` event without changing the approved visual contract.
 - Stage exact paths in each suggested commit. In particular, do not stage the accepted `README.md` or `plugin-manifest.json` changes before Task 7.
 
 ## File Map
@@ -1196,6 +1197,67 @@ Expected staged paths are exactly the twelve paths listed above. Then, only when
 git commit -m "fix(subagent): correct panel visual contract"
 ```
 
+### Task 10: Restore Initial Titles in Live OpenTUI
+
+**OpenSpec mapping:** 7.1, 7.2; corrective acceptance for the initial title measurement and scrollbar scenarios. This task supersedes only Task 9's `onSizeChange` hook.
+
+**Files:**
+- Modify: `tui/subagent.tsx`
+- Modify: `tests/opentui-solid-host-runtime.fixture.ts`
+- Modify: `tests/subagent-mounted.fixture.ts`
+- Modify: `tests/subagent-mounted.test.mjs`
+- Modify: `tests/shared-boundary.test.mjs`
+
+**Interfaces:**
+- `MeasuredTitle` keeps a concrete `Renderable` from `ref`, attaches one stable listener with `renderable.on("resize", listener)`, measures `renderable.width` immediately, detaches from a replaced ref, and removes the same listener with `renderable.off("resize", listener)` in `onCleanup`.
+- Remove the intrinsic `onSizeChange` prop. Keep `Renderable` type-only and do not import `LayoutEvents` or use the root-only `"resized"` event.
+- Restore the test host's typed `on`, `off`, `emit`, and `listenerCount` surface. `mountSubagentPanel` emits exactly `"resize"` when a title width changes and exposes listener counts for lifecycle assertions.
+- Preserve direct `string-width` 7.2.0, grapheme-safe end truncation, all 37/36/35-cell expectations, fixed title/time gap, status colors, Rest treatment, detail clipping, source behavior, and build dependency policy.
+
+- [ ] **Step 1: Add the failing real-event regression**
+
+Change the mounted host and source-boundary tests before production. The mounted fixture must stop invoking `props.onSizeChange`, emit the child `"resize"` event after assigning a changed width, and count live `"resize"` listeners. Assert that initial ready rows render their titles before any explicit resize, subsequent 37/36/35-cell layouts retain the approved end ellipsis, and listener counts fall to zero after collapse and disposal. Require a ref-bound `"resize"` listener and reject `onSizeChange`, `LayoutEvents`, and `"resized"` in `tui/subagent.tsx`.
+
+- [ ] **Step 2: Run and retain the focused RED**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test \
+  tests/subagent-mounted.test.mjs \
+  tests/shared-boundary.test.mjs
+```
+
+Expected RED at `29d87f2`: titles remain empty because production still depends on the intrinsic callback that the corrected host no longer invokes, and the source-boundary contract rejects the old hook. Compilation must complete before the behavioral assertions fail.
+
+- [ ] **Step 3: Implement the minimal listener correction**
+
+Use a stable closure and symmetric lifecycle:
+
+```ts
+let titleRegion: Renderable | undefined
+const [measuredCells, setMeasuredCells] = createSignal(0)
+const measure = () => setMeasuredCells(titleRegion?.width ?? 0)
+const bindTitleRegion = (renderable: Renderable) => {
+  if (titleRegion === renderable) return
+  titleRegion?.off("resize", measure)
+  titleRegion = renderable
+  titleRegion.on("resize", measure)
+  measure()
+}
+onCleanup(() => titleRegion?.off("resize", measure))
+```
+
+Pass only `ref={bindTitleRegion}` to the title `<text>`. Do not change other rendering or source behavior.
+
+- [ ] **Step 4: Run automated GREEN gates and commit**
+
+Run the focused command from Step 2, then `npm run typecheck`, `npm test`, `npm run build`, the existing SubAgent bundle/dependency/AGENTS/artifact gates, and scoped `git diff --check`. Commit only the five listed tracked files.
+
+- [ ] **Step 5: Deploy and validate the live panel**
+
+Run `npm run deploy:local`, restart or reload OpenCode, and confirm every visible SubAgent row contains its title plus complete duration at normal and scrollbar-reduced widths. Record the live result before checking off OpenSpec 7.1/7.2.
+
 ## OpenSpec Coverage Matrix
 
 | OpenSpec item | Plan task(s) | Acceptance evidence |
@@ -1213,7 +1275,9 @@ git commit -m "fix(subagent): correct panel visual contract"
 | 5.1 final verification | Task 8 | focused, typecheck, full suite, build, bundle, AGENTS, artifact gates |
 | 6.1 corrective visual tests | Task 9 | strict RED/GREEN model, mounted 37/36/35-cell, color, divider, `onSizeChange`, removal-safety, and README assertions |
 | 6.2 corrected implementation/docs | Task 9 | focused/full/type/build gates, exact dependency lock, bundle, hash, diff, and artifact checks |
+| 7.1 live title regression | Task 10 | mounted initial/resize title assertions, real child `resize` event, and listener cleanup |
+| 7.2 live title correction | Task 10 | focused/full/type/build/bundle gates, local deploy, and live OpenCode confirmation |
 
 ## Planning Concern
 
-The only Task 9-specific planning concern is test fidelity: the lightweight Solid host must invoke the intrinsic callback exactly as OpenTUI does so Task 9 proves measured-width updates without fabricating a root-only event on a child. This is not a production API change. The installed OpenTUI 0.4.3 public declarations support `Renderable.width` and `onSizeChange?: (this: T) => void`; `LayoutEvents.RESIZED` is not the child contract. The lock already resolves `string-width` 7.2.0, so there is no dependency ambiguity. The worktree currently also reports separate modified Comet-state files; they are outside this planning edit and Task 9 staging scope. Exact-path staging remains mandatory, Tasks 1-8 stay completed, and no unrelated accepted work or Comet state belongs in the Task 9 commit.
+Task 10 exists because live OpenCode disproved the Task 9 fixture's initial `onSizeChange` assumption: deployed titles stayed empty with `measuredCells === 0`. OpenTUI 0.4.3 calls the child renderable's `onResize` path and emits `"resize"`; the root-only event remains `"resized"`. The ref-bound listener is therefore the binding production and test contract. The worktree also contains coordinator-owned Comet state and progress files; they remain outside Task 10 staging. Exact-path staging is mandatory, Tasks 1-9 stay completed, and no unrelated source belongs in the Task 10 commit.

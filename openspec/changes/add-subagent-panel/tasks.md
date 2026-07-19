@@ -28,3 +28,8 @@
 
 - [x] 6.1 Add failing pure-allocation, mounted-panel, source-boundary, compiler, and build-policy tests for bullet removal, 37/36/scrollbar-reduced 35-cell end truncation, one fixed title/time gap, grapheme-safe measured `onSizeChange` behavior and removal safety, compact/detail status colors, muted Rest disclosure/title, explicit muted divider children, revised AGENTS-derived layouts, type-only public `Renderable` use, the exact bundled width-helper dependency chain, and no trailing whitespace
 - [x] 6.2 Remove entry bullet rendering/allocation, implement public-OpenTUI `onSizeChange` terminal-cell end truncation, color compact/detail times, render the muted explicit Rest divider/header, directly declare locked `string-width` 7.2.0, synchronize README layouts/docs, and pass focused, typecheck, full-suite, build, diff, hash, dependency, bundle, and artifact checks without changing existing source, lifecycle, navigation, persistence, status, or integration behavior
+
+## 7. Live Title Measurement Correction
+
+- [ ] 7.1 Add a failing mounted regression that replaces the missed intrinsic callback with the child renderable's actual `resize` event, proves titles are visible on initial layout and after 37/36/35-cell changes, and proves exact listener cleanup after collapse and disposal
+- [ ] 7.2 Attach one stable child `resize` listener through the title ref, remove the same listener on cleanup, preserve all approved truncation and layout behavior, pass focused/full/typecheck/build/bundle gates, deploy locally, and confirm titles in the live OpenCode sidebar

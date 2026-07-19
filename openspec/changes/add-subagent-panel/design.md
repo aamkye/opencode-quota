@@ -26,7 +26,7 @@ OpenCode session records expose `parentID`, title, and timestamps; child message
 
 ### Use a standalone manifest plugin and focused panel primitives
 
-Add a `subagent` manifest key and standalone `tui/subagent.tsx` entry point immediately after SesTokens. The confirmed sidebar order is Home 1, Context 100, SesTokens 110, SubAgent 120, Quota 130, MCP 140, LSP 150, and TODO 160. Transformation and grouping logic will live in `tui/features/subagent.ts` and be exported through `shared/opencode-tools-shared.ts`. The component will reuse `CompactPanel` for the outer header/divider and focused row/detail components for nested expansion and width allocation. Entry titles use the title renderable's public `onSizeChange` callback plus direct `string-width` terminal-cell measurement so truncation places one ellipsis at the end rather than using OpenTUI's middle truncation.
+Add a `subagent` manifest key and standalone `tui/subagent.tsx` entry point immediately after SesTokens. The confirmed sidebar order is Home 1, Context 100, SesTokens 110, SubAgent 120, Quota 130, MCP 140, LSP 150, and TODO 160. Transformation and grouping logic will live in `tui/features/subagent.ts` and be exported through `shared/opencode-tools-shared.ts`. The component will reuse `CompactPanel` for the outer header/divider and focused row/detail components for nested expansion and width allocation. Entry titles measure the title renderable through its child `resize` event plus direct `string-width` terminal-cell measurement so truncation places one ellipsis at the end rather than using OpenTUI's middle truncation. The listener attaches through the renderable ref before initial layout and is removed on cleanup.
 
 Extending the generic presentation schema was considered, but nested clickable entry headers, a secondary Rest disclosure, and Open Session action are feature-specific interactions. Copying the reference plugin's monolithic component was rejected because it would bypass the repository's pure-model and shared-module pattern.
 
@@ -73,7 +73,7 @@ Event unsubscribe functions, debounce timers, the conditional duration clock, an
 - **Successful duration uses the last session update** -> Document and test this stable approximation instead of persisting full histories.
 - **Many historical direct children can make Rest long** -> Keep the required newest-five split and collapsible Rest; paging remains explicitly out of scope.
 - **SDK/TUI declarations can drift from the installed runtime** -> Extend only the locally used surface and add compile-time contract fixtures plus build tests.
-- **OpenTUI 0.4.x truncates in the middle and does not export its width helper** -> Declare `string-width` directly, measure the rendered title region through `onSizeChange`, and truncate by grapheme-safe terminal cells.
+- **OpenTUI 0.4.x truncates in the middle and does not export its width helper** -> Declare `string-width` directly, measure the rendered title region from the child `resize` event, and truncate by grapheme-safe terminal cells.
 
 ## Migration Plan
 

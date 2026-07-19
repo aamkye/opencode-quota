@@ -99,6 +99,10 @@ The system SHALL render a plain `SubAgent` panel matching the expanded, semi-col
 - **WHEN** title plus duration exceeds available width
 - **THEN** the title truncates with one ellipsis at its end while disclosure, one-cell title/time gap, duration, and row width remain intact
 
+#### Scenario: Initial title measurement
+- **WHEN** an entry row first mounts before any later viewport resize
+- **THEN** the child title is visible and end-truncated to its initial rendered width
+
 #### Scenario: Scrollbar-reduced row width
 - **WHEN** a visible scrollbar removes one cell from the SubAgent row
 - **THEN** the title remeasures and end-truncates while the one-cell title/time gap and complete duration remain visible
