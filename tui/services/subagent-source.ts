@@ -252,6 +252,7 @@ export function createSubagentSource({
   }
 
   function recordFailure(childID: string): void {
+    if (disposed || parentID === "") return
     const capturedParentID = parentID
     const capturedGeneration = invalidate()
     const existing = retainedFailures[capturedParentID] ?? {}

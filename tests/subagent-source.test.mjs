@@ -547,7 +547,7 @@ test("isolates throwing subscribers and disposes every resource once", async () 
     contexts.push(context)
     context.onChildIDs(["child"])
     return pending.promise
-  })
+  }, { failures: { parent: { child: 100 } } })
   const { source, scheduler, registrations, unsubscribeCounts, saves } = harness
   let notifications = 0
   source.subscribe(() => {
