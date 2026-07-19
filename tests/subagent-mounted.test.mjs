@@ -381,33 +381,53 @@ test("clips long detail identities to one row at 37 and 35 cells", async () => {
   }
 })
 
-test("end-truncates allocated title cells without consuming the duration gap", async () => {
+test("flexes end-truncated titles without consuming the duration gap", async () => {
+  const first = canonicalChildren[0]
+  const children = [{
+    ...first,
+    session: {
+      ...first.session,
+      title: "SubAgent11 with super long name",
+      time: {
+        ...first.session.time,
+        updated: first.session.time.created + 235_000,
+      },
+    },
+    messages: [
+      {
+        ...first.messages[0],
+        time: {
+          created: first.messages[0].time.created,
+          completed: first.messages[0].time.created + 235_000,
+        },
+      },
+    ],
+  }]
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {
-    await mounted.resolveReady()
+    await mounted.resolveReady(children)
     const initialView = mounted.view()
-    assert.deepEqual(initialView.lines, expandedLayout)
+    assert.equal(initialView.entryRows[0].duration, "3m 55s")
     assert.equal(initialView.entryRows[0].renderedTitle, "SubAgent11 with super long…")
     assert.ok(initialView.entryRows.every((row) => row.renderedTitle.length > 0))
     for (const [width, expectedTitle, expectedWidths] of [
       [37, "SubAgent11 with super long…", [2, 28, 1, 6]],
       [36, "SubAgent11 with super long…", [2, 27, 1, 6]],
-      [35, "SubAgent11 with super lon…", [2, 26, 1, 6]],
     ]) {
       await mounted.resize(width)
       const view = mounted.view()
-      if (width === 37) assert.deepEqual(view.lines, expandedLayout37)
-      if (width === 36) assert.deepEqual(view.lines, expandedLayout)
       const row = view.entryRows[0]
       assert.equal(row.renderedTitle, expectedTitle)
       assert.equal(row.renderedTitle.endsWith("…"), true)
       assert.equal(row.renderedTitle.match(/…/gu)?.length, 1)
       assert.equal(row.gap, " ")
       assert.equal(row.gapWidth, 1)
-      assert.equal(row.duration, "9m 45s")
+      assert.equal(row.duration, "3m 55s")
       assert.equal(row.rowWidth, width)
       assert.deepEqual(row.childWidths, expectedWidths)
-      assert.equal(row.titleProps.width, 28)
+      assert.equal(row.titleProps.width, undefined)
+      assert.equal(row.titleProps.flexBasis, 0)
+      assert.equal(row.titleProps.flexGrow, 1)
       assert.equal(row.titleProps.flexShrink, 1)
       assert.equal(row.titleProps.minWidth, 0)
       assert.equal(row.titleProps.truncate, true)

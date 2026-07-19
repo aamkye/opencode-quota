@@ -92,7 +92,8 @@ function truncateTerminalCellsEnd(value: string, maxCells: number): string {
 function MeasuredTitle(props: MeasuredTitleProps): JSX.Element {
   return (
     <text
-      width={props.cells}
+      flexBasis={0}
+      flexGrow={1}
       flexShrink={1}
       minWidth={0}
       overflow="hidden"

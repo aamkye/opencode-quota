@@ -168,7 +168,7 @@ function rowLayout(row: HostNode, width: number) {
     let overflow = basisTotal - rowWidth
     for (let index = cells.length - 1; index >= 0 && overflow > 0; index -= 1) {
       const cell = cells[index]
-      if (Number(cell.props.flexShrink ?? 0) <= 0 || cell.props.minWidth !== 0) continue
+      if (configuredWidths[index] > 0 || Number(cell.props.flexShrink ?? 0) <= 0 || cell.props.minWidth !== 0) continue
       const reduction = Math.min(childWidths[index], overflow)
       childWidths[index] -= reduction
       overflow -= reduction
