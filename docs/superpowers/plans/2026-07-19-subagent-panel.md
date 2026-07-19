@@ -887,7 +887,7 @@ export type HostNode = {
 
 - Extend `mountSubagentPanel` with `async resize(width: number): Promise<void>`, `sizeChangeCalls(): number`, and a width-stable `view()` that reports each entry's `gap`, `gapWidth`, `durationColor`, measured `renderedTitle`, and `titleProps`; Rest reports separate disclosure/title colors and an explicit divider's child texts, colors, and flex values.
 
-- [ ] **Step 1: Add explicit failing model, mounted-layout, resize, and README contract assertions**
+- [x] **Step 1: Add explicit failing model, mounted-layout, resize, and README contract assertions**
 
 In `tests/subagent-model.test.mjs`, replace the obsolete bullet-allocation test with these exact expectations:
 
@@ -1006,7 +1006,7 @@ assert.equal(view.restDivider.middleFlexGrow, 1)
 
 Keep `agentsSubagentLayouts` as the canonical source. Update the one explicit 37-cell expected layout to remove every bullet, preserve full durations and one fixed gap region, and assert all rows and divider lines have no trailing whitespace. `tests/plugin-wiring.test.mjs` already derives the README layouts from `AGENTS.md`; do not weaken or bypass that assertion.
 
-- [ ] **Step 2: Run the focused RED command and retain the failure evidence**
+- [x] **Step 2: Run the focused RED command and retain the failure evidence**
 
 Run:
 
@@ -1021,7 +1021,7 @@ node tests/compile-presentation.mjs && node --test \
 
 Expected RED before the original Task 9 implementation: the model returns a `bullet: 2` allocation; mounted rows render `• `, leave compact/detail `time` uncolored, use OpenTUI `truncate={true}`, expose no measured resize callback, render an unmuted Rest header and native border, and fail the AGENTS-derived layouts. README contains bullet-bearing obsolete SubAgent blocks. The post-`9f73246` correction RED must isolate the invalid child `LayoutEvents.RESIZED` listener and fabricated event-host path. Confirm failures are contract assertions, not unrelated source/lifecycle failures.
 
-- [ ] **Step 3: Implement the minimal visual-contract correction**
+- [x] **Step 3: Implement the minimal visual-contract correction**
 
 In `tui/features/subagent.ts`, remove `bullet` from the type and allocation. Preserve the existing input normalization and too-narrow behavior, but calculate the normal case as:
 
@@ -1097,7 +1097,7 @@ The Rest disclosure and title are muted, and its divider is two muted three-dash
 
 Do not change data loading, source construction, event registration, clock predicates, KV keys/writes, route navigation, manifest order, plugin ID, or stale/empty behavior.
 
-- [ ] **Step 4: Run the focused GREEN command**
+- [x] **Step 4: Run the focused GREEN command**
 
 Run:
 
@@ -1114,19 +1114,19 @@ Expected GREEN: allocation has no bullet field; every AGENTS-derived layout and 
 
 The same GREEN run must prove that `tui/subagent.tsx` uses a type-only public `Renderable` import and intrinsic `onSizeChange`, does not retain `LayoutEvents`, SubAgent bundles exactly the approved width-helper dependency chain, and no other artifact bundles a package.
 
-- [ ] **Step 5: Run strict type verification**
+- [x] **Step 5: Run strict type verification**
 
 Run: `npm run typecheck`
 
 Expected GREEN: TypeScript exits 0 with the public `Renderable` ref and `onSizeChange` callback, JSX return type, exact four-field allocation, and extended host fixture types.
 
-- [ ] **Step 6: Run the full regression suite**
+- [x] **Step 6: Run the full regression suite**
 
 Run: `npm test`
 
 Expected GREEN: every compile harness and `tests/*.test.mjs` suite exits 0. In particular, source/lifecycle, persistence, navigation, manifest, deployment, shared-boundary, CompactPanel, and unrelated panel tests remain unchanged and green.
 
-- [ ] **Step 7: Build and inspect standalone artifacts**
+- [x] **Step 7: Build and inspect standalone artifacts**
 
 Run:
 
@@ -1137,7 +1137,7 @@ node --input-type=module -e "import { readFile } from 'node:fs/promises'; const 
 
 Expected GREEN: build exits 0; `dist/opencode-tools-subagent.js` remains a non-empty minified ESM artifact, imports the managed shared artifact, bundles the directly declared width helper, and references no repository source path.
 
-- [ ] **Step 8: Verify dependency, diff, hash, and generated-artifact scope**
+- [x] **Step 8: Verify dependency, diff, hash, and generated-artifact scope**
 
 Run:
 
@@ -1159,7 +1159,7 @@ git status --short --untracked-files=all
 
 Expected evidence: the package and root lock declare exactly `string-width` 7.2.0 while the resolved record remains 7.2.0; AGENTS matches the approved hash and commit `f0220a3`; no task file has whitespace errors; generated files remain ignored/untracked; and status lets the executor attribute Task 9 only to the exact listed paths without staging AGENTS, design, proposal, delta spec, Comet state, reports, or unrelated source.
 
-- [ ] **Step 9: Review and stage the correction exactly**
+- [x] **Step 9: Review and stage the correction exactly**
 
 Run:
 
