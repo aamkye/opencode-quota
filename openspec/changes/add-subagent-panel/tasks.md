@@ -1,7 +1,7 @@
 ## 1. SubAgent Model
 
-- [ ] 1.1 Add failing model tests for direct-child filtering, deterministic newest-first ordering, newest-five/Rest grouping, completed-result status precedence, newest-message identity fallback, counts, failure-evidence durations, and truncation allocation
-- [ ] 1.2 Implement the pure SubAgent entry, grouping, status, duration, and collapsed-summary model and export it through the shared module
+- [x] 1.1 Add failing model tests for direct-child filtering, deterministic newest-first ordering, newest-five/Rest grouping, completed-result status precedence, newest-message identity fallback, counts, failure-evidence durations, and truncation allocation
+- [x] 1.2 Implement the pure SubAgent entry, grouping, status, duration, and collapsed-summary model and export it through the shared module
 
 ## 2. Child-Session Data Source
 

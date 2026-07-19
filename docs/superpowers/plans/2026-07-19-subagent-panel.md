@@ -138,7 +138,7 @@ export function createSubagentPanelModel(
 
 - `SubagentSnapshot` is imported with `import type` from `../services/subagent-snapshot.js`; this is a type-only dependency and does not couple the model to source state.
 
-- [ ] **Step 1: Add the failing model and facade tests**
+- [x] **Step 1: Add the failing model and facade tests**
 
 Add `subagent-model` to the cleanup/build table in `tests/compile-presentation.mjs`, targeting `tui/features/subagent.ts`. Create table-driven tests with these exact behavior groups:
 
@@ -168,13 +168,13 @@ Use snapshots containing a direct child, grandchild, reparented child, equal-tim
 
 Extend `tests/shared-boundary.test.mjs` to require named re-exports for `createSubagentPanelModel` and `allocateSubagentEntryRow` from `../tui/features/subagent.js`.
 
-- [ ] **Step 2: Run the RED command**
+- [x] **Step 2: Run the RED command**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/subagent-model.test.mjs tests/shared-boundary.test.mjs`
 
 Expected RED: esbuild reports that `tui/features/subagent.ts` cannot be resolved, or the facade assertions report the missing named SubAgent exports. Do not add production files before observing this failure.
 
-- [ ] **Step 3: Implement the minimal pure model**
+- [x] **Step 3: Implement the minimal pure model**
 
 First create `tui/services/subagent-snapshot.ts` with only the two neutral record types shown under **Interfaces**. This keeps Task 1 type-correct without pre-implementing Task 2's loader. Then implement `createSubagentPanelModel` with this exact pipeline:
 
@@ -192,13 +192,13 @@ Implement `allocateSubagentEntryRow` by normalizing both inputs to finite nonneg
 
 Export all model values and types through `shared/opencode-tools-shared.ts`.
 
-- [ ] **Step 4: Run focused GREEN verification**
+- [x] **Step 4: Run focused GREEN verification**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/subagent-model.test.mjs tests/shared-boundary.test.mjs`
 
 Expected GREEN: all SubAgent model/allocation tests pass; shared facade tests find the named exports and still reject JSX/plugin registration in the shared artifact.
 
-- [ ] **Step 5: Commit the task atomically**
+- [x] **Step 5: Commit the task atomically**
 
 Suggested Conventional Commit: `feat(subagent): add pure panel model`
 
