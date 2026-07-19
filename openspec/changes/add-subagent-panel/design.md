@@ -26,7 +26,7 @@ OpenCode session records expose `parentID`, title, and timestamps; child message
 
 ### Use a standalone manifest plugin and focused panel primitives
 
-Add a `subagent` manifest key and standalone `tui/subagent.tsx` entry point immediately after SesTokens. The confirmed sidebar order is Home 1, Context 100, SesTokens 110, SubAgent 120, Quota 130, MCP 140, LSP 150, and TODO 160. Transformation and grouping logic will live in `tui/features/subagent.ts` and be exported through `shared/opencode-tools-shared.ts`. The component will reuse `CompactPanel` for the outer header/divider and focused row/detail components for nested expansion and width allocation. Entry titles render their raw no-wrap value immediately, then use the title renderable's guaranteed `renderBefore` phase plus direct `string-width` terminal-cell measurement to place one ellipsis at the end rather than using OpenTUI's middle truncation. Width state updates only when the rendered width changes.
+Add a `subagent` manifest key and standalone `tui/subagent.tsx` entry point immediately after SesTokens. The confirmed sidebar order is Home 1, Context 100, SesTokens 110, SubAgent 120, Quota 130, MCP 140, LSP 150, and TODO 160. Transformation and grouping logic will live in `tui/features/subagent.ts` and be exported through `shared/opencode-tools-shared.ts`. The component will reuse `CompactPanel` for the outer header/divider and focused row/detail components for nested expansion and width allocation. Entry titles use the existing 37-cell row allocator as an explicit shrinkable basis plus direct `string-width` terminal-cell end truncation. OpenTUI's native truncation is a narrower-viewport safety net that prevents title drawing from consuming the dedicated gap or duration cells.
 
 Extending the generic presentation schema was considered, but nested clickable entry headers, a secondary Rest disclosure, and Open Session action are feature-specific interactions. Copying the reference plugin's monolithic component was rejected because it would bypass the repository's pure-model and shared-module pattern.
 
@@ -73,7 +73,7 @@ Event unsubscribe functions, debounce timers, the conditional duration clock, an
 - **Successful duration uses the last session update** -> Document and test this stable approximation instead of persisting full histories.
 - **Many historical direct children can make Rest long** -> Keep the required newest-five split and collapsible Rest; paging remains explicitly out of scope.
 - **SDK/TUI declarations can drift from the installed runtime** -> Extend only the locally used surface and add compile-time contract fixtures plus build tests.
-- **OpenTUI 0.4.x truncates in the middle and does not export its width helper** -> Declare `string-width` directly, render the title immediately, measure its region during `renderBefore`, and truncate by grapheme-safe terminal cells.
+- **OpenTUI 0.4.x truncates in the middle and does not export its width helper** -> Declare `string-width` directly, use the pure 37-cell allocation as the title's explicit shrinkable basis, end-truncate by grapheme-safe terminal cells, and retain native truncation only if the viewport forces a narrower basis.
 
 ## Migration Plan
 

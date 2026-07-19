@@ -32,7 +32,7 @@ base-ref: 5a0b6c3
 - Do not edit `AGENTS.md`, OpenSpec artifacts, or Comet state during implementation. Its current full-file SHA-256 is `488214c49e9b83b6770e1e0e03746ec5bd0c11daf9ea268545568e55bb223387`.
 - Use strict TDD for Tasks 1-7, Task 9, and Task 10: add the specified test first, run the exact RED command and confirm the stated failure, then edit production code and run the focused GREEN command. Tasks 1-9 remain completed and must not be reopened.
 - Task 9 is a visual-contract correction only. Preserve every existing source, lifecycle, navigation, persistence, status derivation, clock, stale-state, manifest, deployment, and integration behavior.
-- Task 10 supersedes Task 9's ref/callback measurement mechanism after live OpenCode showed that both `onSizeChange` and child `resize` left the initial title width at zero. It must render titles immediately and measure in `renderBefore` without changing the approved visual contract.
+- Task 10 supersedes Task 9's ref/callback measurement mechanism after live OpenCode showed that `onSizeChange`, child `resize`, and render-phase hooks cannot supply a useful width in this sidebar host. It must use the existing pure 37-cell allocation as an explicit shrinkable title basis without changing the approved visual contract.
 - Stage exact paths in each suggested commit. In particular, do not stage the accepted `README.md` or `plugin-manifest.json` changes before Task 7.
 
 ## File Map
@@ -1199,7 +1199,7 @@ git commit -m "fix(subagent): correct panel visual contract"
 
 ### Task 10: Restore Initial Titles in Live OpenTUI
 
-**OpenSpec mapping:** 7.1, 7.2; corrective acceptance for the initial title measurement and scrollbar scenarios. This task supersedes Task 9's `onSizeChange` hook and the failed first Task 10 ref-bound `resize` attempt.
+**OpenSpec mapping:** 7.1, 7.2; corrective acceptance for the initial title measurement and scrollbar scenarios. This task supersedes every failed Task 9/10 measurement hook.
 
 **Files:**
 - Modify: `tui/subagent.tsx`
@@ -1209,14 +1209,14 @@ git commit -m "fix(subagent): correct panel visual contract"
 - Modify: `tests/shared-boundary.test.mjs`
 
 **Interfaces:**
-- `MeasuredTitle` starts with `measuredCells` undefined and renders `props.value` unchanged until a width is known. It passes one stable normal function to `renderBefore`; that function reads `this.width` and updates measured state only when the numeric width differs.
-- Keep `Renderable` type-only. Remove title `ref`, `onSizeChange`, child `resize` listeners, `LayoutEvents`, and root-only `"resized"` use.
-- Remove the test host event-emitter surface added only for title measurement. `mountSubagentPanel` assigns computed widths, invokes each current title node's `props.renderBefore` with that node as `this`, settles Solid after any changed measurement, and counts render-hook calls for removal assertions.
+- `MeasuredTitle` accepts its allocated title cells and directly renders `truncateTerminalCellsEnd(value, cells)` inside a `<text width={cells} flexShrink={1} minWidth={0} truncate={true}>` region.
+- `SubagentRow` calls `allocateSubagentEntryRow(37, stringWidth(entry.duration))` and uses the allocation's title, gap, and duration values as explicit sibling widths.
+- Remove every title `ref`, `onSizeChange`, `renderBefore`, child event listener, `LayoutEvents`, and root-only `"resized"` use. The mounted fixture has no title lifecycle simulation.
 - Preserve direct `string-width` 7.2.0, grapheme-safe end truncation, all 37/36/35-cell expectations, fixed title/time gap, status colors, Rest treatment, detail clipping, source behavior, and build dependency policy.
 
 - [ ] **Step 1: Add the failing real-event regression**
 
-Change the mounted host and source-boundary tests before production. Remove the title event-emitter simulation, invoke the `renderBefore` prop on current title nodes after assigning layout width, and count those calls. Assert raw titles are nonempty before the first render hook, subsequent 37/36/35-cell layouts retain the approved end ellipsis, and resize/flush after collapse or disposal makes no calls for removed title nodes. Require `renderBefore` and reject title `ref`, `onSizeChange`, child `resize` registration, `LayoutEvents`, and `"resized"` in `tui/subagent.tsx`.
+Change the mounted host and source-boundary tests before production. Remove all title lifecycle simulation. Assert that the model-derived 37-cell allocation creates explicit sibling title/gap/duration widths, the title renders one end ellipsis at that allocation, and 36/35-cell fixture layout shrinks only the title while preserving a one-cell gap and full duration. Require direct allocation and native `truncate`, and reject `ref`, `onSizeChange`, `renderBefore`, child `resize` registration, `LayoutEvents`, and `"resized"` in `tui/subagent.tsx`.
 
 - [ ] **Step 2: Run and retain the focused RED**
 
@@ -1228,21 +1228,17 @@ node tests/compile-presentation.mjs && node --test \
   tests/shared-boundary.test.mjs
 ```
 
-Expected RED at `866b3b2`: source-boundary assertions reject the ref-bound listener and raw titles remain empty before the first render hook because production initializes measured width to zero. Compilation must complete before the behavioral assertions fail.
+Expected RED at `b1f9dcb`: source-boundary assertions reject the render hook and mounted narrow layouts demonstrate that the title consumes the dedicated gap before timing. Compilation must complete before the behavioral assertions fail.
 
 - [ ] **Step 3: Implement the minimal listener correction**
 
-Use a stable render-phase callback and raw fallback:
+Use the pure allocation directly:
 
 ```ts
-const [measuredCells, setMeasuredCells] = createSignal<number>()
-const measureBeforeRender = function (this: Renderable) {
-  const width = this.width
-  if (measuredCells() !== width) setMeasuredCells(width)
-}
+const allocation = () => allocateSubagentEntryRow(37, stringWidth(props.entry.duration))
 ```
 
-Pass `renderBefore={measureBeforeRender}` to the title `<text>`. Render `props.value` while `measuredCells()` is undefined; otherwise render `truncateTerminalCellsEnd(props.value, measuredCells())`. Keep hidden overflow and no-wrap behavior. Do not change other rendering or source behavior.
+Pass `width={allocation().title}`, `flexShrink={1}`, `minWidth={0}`, `overflow="hidden"`, `wrapMode="none"`, and `truncate={true}` to the title `<text>`, with direct end-truncated content. Use `allocation().beforeDurationGap` and `allocation().duration` as the gap and duration widths. Do not change other rendering or source behavior.
 
 - [ ] **Step 4: Run automated GREEN gates and commit**
 
@@ -1269,9 +1265,9 @@ Run `npm run deploy:local`, restart or reload OpenCode, and confirm every visibl
 | 5.1 final verification | Task 8 | focused, typecheck, full suite, build, bundle, AGENTS, artifact gates |
 | 6.1 corrective visual tests | Task 9 | strict RED/GREEN model, mounted 37/36/35-cell, color, divider, `onSizeChange`, removal-safety, and README assertions |
 | 6.2 corrected implementation/docs | Task 9 | focused/full/type/build gates, exact dependency lock, bundle, hash, diff, and artifact checks |
-| 7.1 live title regression | Task 10 | immediate raw-title assertion, render-phase 37/36/35-cell measurement, and removed-node hook checks |
+| 7.1 live title regression | Task 10 | allocation-derived title/gap/duration assertions and narrow-width gap preservation |
 | 7.2 live title correction | Task 10 | focused/full/type/build/bundle gates, local deploy, and live OpenCode confirmation |
 
 ## Planning Concern
 
-Task 10 exists because live OpenCode disproved both callback-based approaches: deployed titles stayed empty through `onSizeChange` and a ref-bound child `resize` listener. The binding architecture no longer waits for any layout callback before rendering text. OpenTUI's `renderBefore` hook is part of every visible render path, runs with the concrete renderable after layout, and only schedules a corrective frame when width changes. The worktree also contains coordinator-owned Comet state and progress files; they remain outside Task 10 staging. Exact-path staging is mandatory, Tasks 1-9 stay completed, and no unrelated source belongs in the Task 10 commit.
+Task 10 exists because live OpenCode disproved every dynamic title-measurement path: `onSizeChange`, a ref-bound child `resize` listener, and `renderBefore` all left either blank or unbounded title text. The binding architecture uses the already-tested pure allocator as the explicit title basis. It preserves the separate gap and duration independently of host callback timing, with native truncation as a safety net only under narrower viewport pressure. The worktree also contains coordinator-owned Comet state and progress files; they remain outside Task 10 staging. Exact-path staging is mandatory, Tasks 1-9 stay completed, and no unrelated source belongs in the Task 10 commit.

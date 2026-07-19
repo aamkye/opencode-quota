@@ -31,5 +31,5 @@
 
 ## 7. Live Title Measurement Correction
 
-- [ ] 7.1 Add a failing mounted regression that removes ref/resize measurement, proves titles render immediately before measurement, exercises render-phase width updates at 37/36/35 cells, and proves removed rows receive no later render hook calls
-- [ ] 7.2 Implement raw-title fallback plus idempotent `renderBefore` width measurement, preserve all approved truncation and layout behavior, pass focused/full/typecheck/build/bundle gates, deploy locally, and confirm titles in the live OpenCode sidebar
+- [ ] 7.1 Add a failing mounted regression that removes all title measurement callbacks, asserts a 37-cell allocation-derived title basis, and exercises 36/35-cell shrink behavior that preserves the one-cell gap and full duration
+- [ ] 7.2 Implement explicit shrinkable title basis plus end truncation and native narrow-viewport safety truncation, preserve all approved visual behavior, pass focused/full/typecheck/build/bundle gates, deploy locally, and confirm titles in the live OpenCode sidebar
