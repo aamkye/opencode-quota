@@ -248,7 +248,7 @@ export function createSubagentSnapshotLoader(
 ): SubagentSnapshotLoader
 ```
 
-- [ ] **Step 1: Add failing snapshot tests**
+- [x] **Step 1: Add failing snapshot tests**
 
 Add the snapshot module to `tests/compile-presentation.mjs`. Cover these exact cases:
 
@@ -265,13 +265,13 @@ test("list status or message failure rejects without a partial snapshot", async 
 
 Use deferred promises and an `active`/`maximum` counter as in `tests/session-tree-snapshot.test.mjs`. Assert that `onChildIDs` receives IDs sorted by creation descending then ID ascending before the first `sessionStatus` or `listMessages` call, that maximum active message calls is four across two overlapping loader calls, and that no grandchild ID appears in message calls.
 
-- [ ] **Step 2: Run the RED command**
+- [x] **Step 2: Run the RED command**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/subagent-snapshot.test.mjs`
 
 Expected RED: esbuild reports that `createSubagentSnapshotLoader` is not exported by the type-only `tui/services/subagent-snapshot.ts` boundary created in Task 1.
 
-- [ ] **Step 3: Implement the bounded loader**
+- [x] **Step 3: Implement the bounded loader**
 
 Create one limiter inside `createSubagentSnapshotLoader`, outside the returned function, so overlapping generations share its four slots. Follow this order on every call:
 
@@ -287,13 +287,13 @@ Then run at most four workers. A worker reads `sessionStatus(child.id)` and awai
 
 Re-export loader values/types through the shared facade. Do not export or reuse SesTokens source/model state.
 
-- [ ] **Step 4: Run focused GREEN verification**
+- [x] **Step 4: Run focused GREEN verification**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/subagent-snapshot.test.mjs tests/session-tree-snapshot.test.mjs`
 
 Expected GREEN: SubAgent direct-only tests pass and the existing neutral parent-index/SesTokens tree loader tests remain unchanged.
 
-- [ ] **Step 5: Commit the task atomically**
+- [x] **Step 5: Commit the task atomically**
 
 Suggested Conventional Commit: `feat(subagent): load direct child snapshots`
 

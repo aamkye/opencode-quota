@@ -87,3 +87,4 @@ add-session-token-panel Task 7: complete (commits 9262385..33df478, clean-checko
 add-session-token-panel Task 8: complete (verification-only; focused 70/70, full 350/350, typecheck, 9-artifact build, bundle and AGENTS gates passed; incidental non-gate probe corrected)
 add-session-token-panel final review: READY at 12ae24b (one fix round; initial topology event race, cross-generation concurrency, cancellation, and both accepted test gaps resolved)
 add-subagent-panel Task 1: complete (commits 75da170..c3502eb, thorough review clean after one fix round)
+add-subagent-panel Task 2: complete (commit 6b73ef6, thorough review clean)
