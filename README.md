@@ -669,12 +669,12 @@ dist/
 | `opencode-tools-shared.js`       | Not registered                       | Imported-only provider, presentation, and token-report logic.                  |
 | `opencode-tools-home.js`         | `aamkye/opencode-tools-home`         | Compact homepage provider summary.                                             |
 | `opencode-tools-token-report.js` | `aamkye/opencode-tools-token-report` | TUI `/tokens_*` commands and reports.                                          |
-| `opencode-tools-context.js`      | `aamkye/opencode-tools-context`      | Reactive active-session context and spend panel between MCP and LSP.           |
-| `opencode-tools-ses-tokens.js`   | `aamkye/opencode-tools-ses-tokens`   | Complete descendant-session-tree assistant token aggregation panel after TODO. |
+| `opencode-tools-context.js`      | `aamkye/opencode-tools-context`      | Reactive active-session context and spend panel.                               |
+| `opencode-tools-ses-tokens.js`   | `aamkye/opencode-tools-ses-tokens`   | Complete descendant-session-tree assistant token aggregation panel.            |
 | `opencode-tools-subagent.js`     | `aamkye/opencode-tools-subagent`     | Direct-child SubAgent activity panel.                                          |
 | `opencode-tools-quota.js`        | `aamkye/opencode-tools-quota`        | Quota sidebar panel and provider polling.                                      |
 | `opencode-tools-mcp.js`          | `aamkye/opencode-tools-mcp`          | Reactive MCP sidebar health panel immediately after quota.                     |
-| `opencode-tools-lsp.js`          | `aamkye/opencode-tools-lsp`          | Reactive LSP sidebar status panel immediately after Context.                   |
+| `opencode-tools-lsp.js`          | `aamkye/opencode-tools-lsp`          | Reactive LSP sidebar status panel.                                             |
 | `opencode-tools-todo.js`         | `aamkye/opencode-tools-todo`         | Synchronized session TODO sidebar panel immediately after LSP.                 |
 
 `solid-js`, `@opentui/*`, `@opencode-ai/plugin`, host SDK modules, and

@@ -17,13 +17,13 @@ const records = [
   { content: "future", status: "blocked", priority: "high" },
 ]
 
-test("registers after LSP and renders ordered TODO status rows", async () => {
+test("registers TODO at slot 160 and renders ordered status rows", async () => {
   const mounted = await mountTodoPanel({ sessionID: "session-a", records })
   try {
     const view = mounted.view()
     assert.equal(mounted.pluginID, "aamkye/opencode-tools-todo")
     assert.equal(mounted.registrations.length, 1)
-    assert.equal(mounted.registrations[0].order, 114)
+    assert.equal(mounted.registrations[0].order, 160)
     assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
     assert.equal(view.marker, "▼ ")
     assert.equal(view.title, "TODO")

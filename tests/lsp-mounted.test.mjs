@@ -15,13 +15,13 @@ const entries = [
   { id: "yaml-ls", name: "YAML", root: "/workspace/yaml", status: "error" },
 ]
 
-test("registers after MCP and renders ordered IDs with semantic bullets", async () => {
+test("registers LSP at slot 150 and renders ordered IDs with semantic bullets", async () => {
   const mounted = await mountLspPanel({ entries })
   try {
     const view = mounted.view()
     assert.equal(mounted.pluginID, "aamkye/opencode-tools-lsp")
     assert.equal(mounted.registrations.length, 1)
-    assert.equal(mounted.registrations[0].order, 113)
+    assert.equal(mounted.registrations[0].order, 150)
     assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
     assert.equal(view.marker, "▼ ")
     assert.equal(view.summaryText, "")

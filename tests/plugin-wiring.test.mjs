@@ -462,7 +462,7 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.match(artifactLayout, /^├── opencode-tools-context\.js$/mu)
   assert.match(
     artifactLayout,
-    /^\| `opencode-tools-context\.js`\s+\| `aamkye\/opencode-tools-context`\s+\| Reactive active-session context and spend panel between MCP and LSP\.\s+\|$/mu,
+    /^\| `opencode-tools-context\.js`\s+\| `aamkye\/opencode-tools-context`\s+\| Reactive active-session context and spend panel\.\s+\|$/mu,
   )
   assert.match(
     sourceFiles,
@@ -471,12 +471,16 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.match(artifactLayout, /^[├└]── opencode-tools-ses-tokens\.js$/mu)
   assert.match(
     artifactLayout,
-    /^\| `opencode-tools-ses-tokens\.js`\s+\| `aamkye\/opencode-tools-ses-tokens`\s+\| Complete descendant-session-tree assistant token aggregation panel after TODO\.\s+\|$/mu,
+    /^\| `opencode-tools-ses-tokens\.js`\s+\| `aamkye\/opencode-tools-ses-tokens`\s+\| Complete descendant-session-tree assistant token aggregation panel\.\s+\|$/mu,
   )
   assert.match(sourceFiles, /^\| `tui\/ses-tokens\.tsx`\s+\| Standalone SesTokens sidebar adapter\s+\|$/mu)
   assert.match(sourceFiles, /^\| `tui\/features\/ses-tokens\.ts`\s+\| Assistant token aggregation and panel model\s+\|$/mu)
   assert.match(sourceFiles, /^\| `tui\/services\/session-tree-snapshot\.ts`\s+\| Bounded complete descendant-tree snapshot loader\s+\|$/mu)
   assert.match(sourceFiles, /^\| `tui\/services\/ses-tokens-source\.ts`\s+\| Debounced event refresh, retry, and stale-state source\s+\|$/mu)
+  assert.match(
+    artifactLayout,
+    /^\| `opencode-tools-lsp\.js`\s+\| `aamkye\/opencode-tools-lsp`\s+\| Reactive LSP sidebar status panel\.\s+\|$/mu,
+  )
   assert.match(artifactLayout, /^[├└]── opencode-tools-subagent\.js$/mu)
   assert.match(
     artifactLayout,

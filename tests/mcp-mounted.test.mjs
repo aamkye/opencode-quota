@@ -19,14 +19,14 @@ const statuses = [
   { name: "future", status: "future_status", label: "Unknown", color: "#888888" },
 ]
 
-test("renders expanded MCP rows in source order with shared colors and 37-cell separators", async () => {
+test("registers MCP at slot 140 and renders rows in source order", async () => {
   const mounted = await mountMcpPanel({ entries: statuses })
 
   try {
     const view = mounted.view()
     assert.equal(mounted.pluginID, "aamkye/opencode-tools-mcp")
     assert.equal(mounted.registrations.length, 1)
-    assert.equal(mounted.registrations[0].order, 111)
+    assert.equal(mounted.registrations[0].order, 140)
     assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
     assert.equal(view.marker, "▼ ")
     assert.equal(view.summaryText, "")
