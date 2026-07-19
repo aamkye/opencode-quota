@@ -4,15 +4,15 @@
 - Plan: docs/superpowers/plans/2026-07-19-session-token-panel.md
 - Review mode: standard
 - TDD mode: tdd
-- Current task: Task 6: Mounted Standalone SesTokens Panel
-- Mapped OpenSpec tasks: 3.1 Add mounted-panel tests for AGENTS.md expanded, collapsed, loading, unavailable, width-boundary, persistence, session-switch, and disposal scenarios; 3.2 Implement the standalone Solid SesTokens panel with exact row ordering, symbols, alignment, colors, dividers, summary, and KV collapse behavior
+- Current task: Task 7: Manifest, Package, Build, Deploy, And Documentation Wiring
+- Mapped OpenSpec tasks: 4.1 Add failing manifest, package export, build, deployment, managed-artifact, and shared-contract expectations for SesTokens; 4.2 Wire SesTokens into the plugin manifest, runtime descriptor types, package metadata, build outputs, deployment paths, and user-facing plugin documentation
 - Stage: done
-- Implementation commit: e272328 plus fix c2530a2
-- Changed files: tui/ses-tokens.tsx; tui/runtime/manifest.ts; tests/ses-tokens-mounted.fixture.ts; tests/ses-tokens-mounted.test.mjs; tests/opentui-solid-host-runtime.fixture.ts; tests/compile-presentation.mjs; implementation report
-- RED evidence: focused mounted suite failed because `tui/ses-tokens.tsx` did not exist
-- GREEN evidence: mounted panel 10/10; panel dependencies 39/39; `npm run typecheck` passed; `npm test` 350/350
+- Implementation commit: 9262385 plus authorized acceptance commit 33df478
+- Changed files: plugin-manifest.json; package.json; README.md; AGENTS.md; tests/plugin-manifest.test.mjs; tests/shared-boundary.test.mjs; tests/plugin-build.test.mjs; tests/plugin-deploy.test.mjs; tests/plugin-wiring.test.mjs
+- RED evidence: production integration tests passed 21/31 with 10 expected missing manifest/package/build/deploy/README failures
+- GREEN evidence: focused integration 31/31 from clean tracked acceptance input; detached clean checkout reproduced four layouts; `npm run typecheck` passed; `npm test` 350/350; `npm run build` emitted 9 artifacts
 - Risk review triggered: yes
-- Risk signals: cross-module adapter integration; async source and lifecycle use; public standalone plugin contract; 830-line diff
-- Review stages passed: initial standard risk review; one host-fidelity fix round; re-review spec compliant and quality approved
-- Unresolved feedback: none; coordinator owns non-blocking OpenSpec 3.1/3.2 checkoffs
+- Risk signals: cross-module packaging/deployment/docs coordination; public plugin/package interface; 285-line diff
+- Review stages passed: initial standard risk review; one user-resolved acceptance-source fix round; re-review confirmed production integration and clean-checkout compliance
+- Unresolved feedback: none; coordinator directly resolved and verified the re-review's mandatory administrative 4.1/4.2 checkoff
 - Review-fix round: 1/1

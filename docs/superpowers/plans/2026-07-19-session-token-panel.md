@@ -828,7 +828,7 @@ git commit -m "feat: add session token sidebar panel"
 - Consumes: completed standalone `tui/ses-tokens.tsx`, shared facade exports, manifest-driven build/deploy loops.
 - Produces: production plugin descriptor, package export `./ses-tokens`, artifact/build/deploy coverage for `opencode-tools-ses-tokens.js`, and user documentation.
 
-- [ ] **Step 1: Add failing integration expectations before wiring**
+- [x] **Step 1: Add failing integration expectations before wiring**
 
 Update the expected descriptor in `tests/plugin-manifest.test.mjs` after TODO:
 
@@ -866,7 +866,7 @@ In `tests/plugin-wiring.test.mjs`:
 - Assert README expanded/stale/collapsed/stale-collapsed examples match the approved SesTokens lines, each line is at most 37 cells, and no line has trailing whitespace.
 - Assert docs state assistant-only full-tree aggregation, all five buckets, formulae, 200 ms event debounce, 2/4/8 retry, stale retention/recovery, no polling, memory-only snapshots, and persisted collapse only.
 
-- [ ] **Step 2: Run integration tests to verify RED**
+- [x] **Step 2: Run integration tests to verify RED**
 
 Run:
 
@@ -877,7 +877,7 @@ node --test tests/plugin-manifest.test.mjs tests/shared-boundary.test.mjs tests/
 
 Expected: FAIL because the production manifest/package/README do not yet expose SesTokens and build/deploy expectations still see seven features. Task 6 mounted tests used only a test-injected descriptor.
 
-- [ ] **Step 3: Add the production descriptor and package export**
+- [x] **Step 3: Add the production descriptor and package export**
 
 Append after TODO in `plugin-manifest.json`:
 
@@ -894,7 +894,7 @@ Append after TODO in `plugin-manifest.json`:
 
 Verify `PluginKey` still includes `"ses-tokens"`, then add `"./ses-tokens": "./tui/ses-tokens.tsx"` after `./todo` in `package.json`. Do not edit `build-plugins.mjs` or `deploy-plugins.mjs`; their manifest loops must pick up the descriptor.
 
-- [ ] **Step 4: Document the exact standalone behavior and layouts**
+- [x] **Step 4: Document the exact standalone behavior and layouts**
 
 Update `README.md` consistently:
 
@@ -909,7 +909,7 @@ Update `README.md` consistently:
 
 Do not alter `AGENTS.md`; the current user-authored layouts are canonical input to these README tests.
 
-- [ ] **Step 5: Run focused integration tests to verify GREEN**
+- [x] **Step 5: Run focused integration tests to verify GREEN**
 
 Run:
 
@@ -920,11 +920,11 @@ node --test tests/plugin-manifest.test.mjs tests/shared-boundary.test.mjs tests/
 
 Expected: PASS; build emits nine total artifacts (shared plus eight plugins), deployment is idempotent, and docs/layout assertions pass.
 
-- [ ] **Step 6: Check off the integration boundary**
+- [x] **Step 6: Check off the integration boundary**
 
 Change only OpenSpec items `4.1` and `4.2` from `[ ]` to `[x]`.
 
-- [ ] **Step 7: Commit integration wiring during implementation**
+- [x] **Step 7: Commit integration wiring during implementation**
 
 ```bash
 git add plugin-manifest.json package.json README.md tests/plugin-manifest.test.mjs tests/shared-boundary.test.mjs tests/plugin-build.test.mjs tests/plugin-deploy.test.mjs tests/plugin-wiring.test.mjs openspec/changes/add-session-token-panel/tasks.md
