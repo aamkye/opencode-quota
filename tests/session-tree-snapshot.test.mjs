@@ -3,6 +3,7 @@ import test from "node:test"
 
 const {
   collectSessionTreeIDs,
+  createSessionTreeSnapshotLoader,
   indexSessionsByParent,
   loadSessionTreeSnapshot,
 } = await import("../.tmp-test/session-tree-snapshot.mjs")
@@ -12,6 +13,16 @@ const message = (sessionID, input = 1) => ({
   sessionID,
   tokens: { input, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
 })
+
+function deferred() {
+  let resolve
+  let reject
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, reject, resolve }
+}
 
 test("keeps an omitted root and returns a root-only complete snapshot", async () => {
   const messageCalls = []
@@ -49,6 +60,47 @@ test("traverses deep descendants in deterministic breadth-first order and exclud
   assert.deepEqual(snapshot.sessionIDs, ["root", "child-a", "child-b", "grandchild"])
   assert.deepEqual(messageCalls, ["root", "child-a", "child-b", "grandchild"])
   assert.deepEqual(snapshot.messages.map(({ sessionID }) => sessionID), snapshot.sessionIDs)
+})
+
+test("reports discovered topology before starting message requests", async () => {
+  let discovered
+  await loadSessionTreeSnapshot({
+    rootSessionID: "root",
+    async listSessions() { return [{ id: "child", parentID: "root" }] },
+    onSessionIDs(sessionIDs) {
+      discovered = sessionIDs
+    },
+    async listMessages(sessionID) {
+      assert.deepEqual(discovered, ["root", "child"])
+      return [message(sessionID)]
+    },
+  })
+})
+
+test("keeps traversal-ordered output when message requests complete in reverse order", async () => {
+  const completions = new Map()
+  const pending = loadSessionTreeSnapshot({
+    rootSessionID: "root",
+    async listSessions() {
+      return [
+        { id: "child-a", parentID: "root" },
+        { id: "child-b", parentID: "root" },
+      ]
+    },
+    listMessages(sessionID) {
+      const result = deferred()
+      completions.set(sessionID, result)
+      return result.promise
+    },
+  })
+
+  await new Promise((resolve) => setImmediate(resolve))
+  for (const sessionID of ["child-b", "child-a", "root"]) {
+    completions.get(sessionID).resolve([message(sessionID)])
+  }
+
+  const snapshot = await pending
+  assert.deepEqual(snapshot.messages.map(({ sessionID }) => sessionID), ["root", "child-a", "child-b"])
 })
 
 test("visits duplicate IDs and malformed parent cycles only once", async () => {
@@ -112,6 +164,89 @@ test("never runs more than four message requests concurrently", async () => {
   assert.equal(snapshot.messages.length, 11)
 })
 
+test("shares four message slots across overlapping loads and drops cancelled queued work", async () => {
+  const requests = []
+  let active = 0
+  let maximum = 0
+  const loader = createSessionTreeSnapshotLoader({
+    async listSessions() {
+      return [
+        ...Array.from({ length: 6 }, (_, index) => ({ id: `old-${index}`, parentID: "old" })),
+        ...Array.from({ length: 6 }, (_, index) => ({ id: `new-${index}`, parentID: "new" })),
+      ]
+    },
+    listMessages(sessionID) {
+      const result = deferred()
+      active += 1
+      maximum = Math.max(maximum, active)
+      requests.push({
+        sessionID,
+        release() {
+          active -= 1
+          result.resolve([message(sessionID)])
+        },
+      })
+      return result.promise
+    },
+  })
+  const oldController = new AbortController()
+  const newController = new AbortController()
+  const oldResult = loader("old", { signal: oldController.signal }).then(
+    () => undefined,
+    (error) => error,
+  )
+
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(requests.map(({ sessionID }) => sessionID), ["old", "old-0", "old-1", "old-2"])
+  const newResult = loader("new", { signal: newController.signal })
+  oldController.abort()
+  requests[0].release()
+  await new Promise((resolve) => setImmediate(resolve))
+
+  assert.equal(maximum, 4)
+  assert.equal(requests[4]?.sessionID, "new", "the current load takes a shared slot as soon as one is free")
+  assert.equal(requests.some(({ sessionID }) => sessionID === "old-3"), false)
+
+  for (let cursor = 1; cursor < requests.length; cursor += 1) {
+    requests[cursor].release()
+    await new Promise((resolve) => setImmediate(resolve))
+  }
+  assert.match(String(await oldResult), /abort/i)
+  assert.deepEqual((await newResult).sessionIDs, ["new", "new-0", "new-1", "new-2", "new-3", "new-4", "new-5"])
+  assert.equal(maximum, 4)
+  assert.equal(requests.some(({ sessionID }) => sessionID.startsWith("old-") && Number(sessionID.slice(4)) >= 3), false)
+})
+
+test("stops claiming work after one message failure and settles active workers before rejecting", async () => {
+  const child = deferred()
+  const calls = []
+  let settled = false
+  const pending = loadSessionTreeSnapshot({
+    rootSessionID: "root",
+    async listSessions() {
+      return [
+        { id: "child-a", parentID: "root" },
+        { id: "child-b", parentID: "root" },
+      ]
+    },
+    async listMessages(sessionID) {
+      calls.push(sessionID)
+      if (sessionID === "root") throw new Error("message request failed")
+      if (sessionID === "child-a") return child.promise
+      return [message(sessionID)]
+    },
+    concurrency: 2,
+  }).finally(() => { settled = true })
+  const rejection = assert.rejects(pending, /message request failed/)
+
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(settled, false, "the failed attempt waits for its already-active worker")
+  assert.deepEqual(calls, ["root", "child-a"])
+  child.resolve([message("child-a")])
+  await rejection
+  assert.deepEqual(calls, ["root", "child-a"])
+})
+
 test("rejects the whole snapshot when one message request fails", async () => {
   let snapshot
   await assert.rejects(async () => {
@@ -126,6 +261,14 @@ test("rejects the whole snapshot when one message request fails", async () => {
   }, /message request failed/)
 
   assert.equal(snapshot, undefined)
+})
+
+test("rejects the whole snapshot when a message request rejects without a reason", async () => {
+  await assert.rejects(loadSessionTreeSnapshot({
+    rootSessionID: "root",
+    async listSessions() { return [] },
+    async listMessages() { return Promise.reject() },
+  }))
 })
 
 test("rejects before message requests when the directory list fails", async () => {

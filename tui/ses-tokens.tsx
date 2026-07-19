@@ -2,10 +2,10 @@ import { createEffect, createMemo, createSignal, For, Show, type JSX } from "sol
 
 import {
   CompactPanel,
+  createSessionTreeSnapshotLoader,
   createSesTokensPanelModel,
   createSesTokensSource,
   defineTuiPlugin,
-  loadSessionTreeSnapshot,
   pluginDescriptor,
   type PanelTheme,
   type SesTokensPanelModel,
@@ -66,8 +66,7 @@ function SesTokensMetricRow(props: { row: MetricRow; theme: () => PanelTheme }) 
 
 const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
   const directory = api.state.path.directory
-  const loadSnapshot = (rootSessionID: string) => loadSessionTreeSnapshot({
-    rootSessionID,
+  const loadSnapshot = createSessionTreeSnapshotLoader({
     async listSessions() {
       const result = await api.client.session.list({ directory })
       if (result.error !== undefined || !result.data) throw result.error ?? new Error("session list unavailable")

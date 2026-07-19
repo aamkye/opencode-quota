@@ -7,13 +7,106 @@ export type SessionTreeSnapshot = {
   messages: readonly Message[]
 }
 
-export type SessionTreeSnapshotLoader = (rootSessionID: string) => Promise<SessionTreeSnapshot>
+export type SessionTreeSnapshotLoadContext = {
+  signal: AbortSignal
+  onSessionIDs(sessionIDs: readonly string[]): void
+}
+
+export type SessionTreeSnapshotLoader = (
+  rootSessionID: string,
+  context: SessionTreeSnapshotLoadContext,
+) => Promise<SessionTreeSnapshot>
 
 export type LoadSessionTreeSnapshotOptions = {
   rootSessionID: string
   listSessions(): Promise<readonly SessionTreeRecord[]>
   listMessages(sessionID: string): Promise<readonly Message[]>
   concurrency?: number
+  signal?: AbortSignal
+  onSessionIDs?(sessionIDs: readonly string[]): void
+}
+
+export type CreateSessionTreeSnapshotLoaderOptions = Omit<
+  LoadSessionTreeSnapshotOptions,
+  "rootSessionID" | "signal" | "onSessionIDs"
+>
+
+type MessageRequestLimiter = <Value>(
+  signal: AbortSignal | undefined,
+  request: () => Promise<Value>,
+) => Promise<Value>
+
+type QueuedRequest = {
+  signal: AbortSignal | undefined
+  start(): Promise<void>
+  abort(): void
+  onAbort?: () => void
+}
+
+function normalizedConcurrency(requestedConcurrency = 4): number {
+  return Number.isFinite(requestedConcurrency) && requestedConcurrency > 0
+    ? Math.min(4, Math.max(1, Math.floor(requestedConcurrency)))
+    : 4
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new DOMException("Session tree snapshot aborted", "AbortError")
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw abortReason(signal)
+}
+
+function createMessageRequestLimiter(concurrency: number): MessageRequestLimiter {
+  const queue: QueuedRequest[] = []
+  let active = 0
+
+  function drain(): void {
+    while (active < concurrency && queue.length > 0) {
+      const queued = queue.shift()
+      if (!queued) return
+      if (queued.onAbort) queued.signal?.removeEventListener("abort", queued.onAbort)
+      if (queued.signal?.aborted) {
+        queued.abort()
+        continue
+      }
+      active += 1
+      void queued.start().finally(() => {
+        active -= 1
+        drain()
+      })
+    }
+  }
+
+  return <Value>(signal: AbortSignal | undefined, request: () => Promise<Value>) => {
+    if (signal?.aborted) return Promise.reject(abortReason(signal))
+    return new Promise<Value>((resolve, reject) => {
+      const queued: QueuedRequest = {
+        signal,
+        async start() {
+          try {
+            resolve(await request())
+          } catch (error) {
+            reject(error)
+          }
+        },
+        abort() {
+          reject(signal ? abortReason(signal) : new DOMException("Session tree snapshot aborted", "AbortError"))
+        },
+      }
+      if (signal) {
+        queued.onAbort = () => {
+          const index = queue.indexOf(queued)
+          if (index < 0) return
+          queue.splice(index, 1)
+          queued.abort()
+        }
+        signal.addEventListener("abort", queued.onAbort, { once: true })
+      }
+      queue.push(queued)
+      drain()
+    })
+  }
 }
 
 export function indexSessionsByParent(
@@ -48,27 +141,71 @@ export function collectSessionTreeIDs(
 export async function loadSessionTreeSnapshot(
   options: LoadSessionTreeSnapshotOptions,
 ): Promise<SessionTreeSnapshot> {
+  return loadSessionTreeSnapshotWithLimiter(
+    options,
+    createMessageRequestLimiter(normalizedConcurrency(options.concurrency)),
+  )
+}
+
+async function loadSessionTreeSnapshotWithLimiter(
+  options: LoadSessionTreeSnapshotOptions,
+  limitMessageRequest: MessageRequestLimiter,
+): Promise<SessionTreeSnapshot> {
+  throwIfAborted(options.signal)
   const sessions = await options.listSessions()
+  throwIfAborted(options.signal)
   const sessionIDs = collectSessionTreeIDs(options.rootSessionID, indexSessionsByParent(sessions))
-  const requestedConcurrency = options.concurrency ?? 4
-  const concurrency = Number.isFinite(requestedConcurrency) && requestedConcurrency > 0
-    ? Math.min(4, Math.max(1, Math.floor(requestedConcurrency)))
-    : 4
+  options.onSessionIDs?.(sessionIDs)
+  throwIfAborted(options.signal)
   const messagesBySession: (readonly Message[])[] = new Array(sessionIDs.length)
+  const attemptController = new AbortController()
+  const abortFromParent = () => attemptController.abort(
+    options.signal ? abortReason(options.signal) : undefined,
+  )
+  if (options.signal) options.signal.addEventListener("abort", abortFromParent, { once: true })
+  const signal = attemptController.signal
   let cursor = 0
+  let failed = false
+  let firstError: unknown
 
   async function worker(): Promise<void> {
-    while (cursor < sessionIDs.length) {
+    while (!signal.aborted && cursor < sessionIDs.length) {
       const index = cursor
       cursor += 1
-      messagesBySession[index] = await options.listMessages(sessionIDs[index])
+      try {
+        messagesBySession[index] = await limitMessageRequest(
+          signal,
+          () => options.listMessages(sessionIDs[index]),
+        )
+      } catch (error) {
+        if (!failed && !options.signal?.aborted) {
+          failed = true
+          firstError = error
+        }
+        if (!signal.aborted) attemptController.abort(error)
+      }
     }
   }
 
   const workers = Array.from(
-    { length: Math.min(concurrency, sessionIDs.length) },
+    { length: Math.min(normalizedConcurrency(options.concurrency), sessionIDs.length) },
     () => worker(),
   )
-  await Promise.all(workers)
+  await Promise.allSettled(workers)
+  if (options.signal) options.signal.removeEventListener("abort", abortFromParent)
+  if (failed) throw firstError
+  throwIfAborted(options.signal)
   return { sessionIDs, messages: messagesBySession.flat() }
+}
+
+export function createSessionTreeSnapshotLoader(
+  options: CreateSessionTreeSnapshotLoaderOptions,
+): SessionTreeSnapshotLoader {
+  const limitMessageRequest = createMessageRequestLimiter(normalizedConcurrency(options.concurrency))
+  return (rootSessionID, context) => loadSessionTreeSnapshotWithLimiter({
+    ...options,
+    rootSessionID,
+    signal: context.signal,
+    onSessionIDs: context.onSessionIDs,
+  }, limitMessageRequest)
 }

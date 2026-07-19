@@ -222,13 +222,13 @@ test("preserves statuses on segmented header detail", () => {
 
 test("reactively switches header detail from text to segments and back", async () => {
   const mounted = await mountReactiveCompactPanel({ text: "stale", status: "warning" })
-  const coloredText = () => mounted.textElements()
-    .filter((element) => element.text.trim())
-    .map((element) => [element.text.trim(), element.fg])
+  const detailText = () => mounted.textElements()
+    .filter((element) => ["stale", " / ", "limited"].includes(element.text))
+    .map((element) => [element.text, element.fg])
 
   try {
     assert.equal(mounted.panelMounts(), 1)
-    assert.deepEqual(coloredText().slice(-1), [["stale", "#ffaa00"]])
+    assert.deepEqual(detailText(), [["stale", "#ffaa00"]])
 
     await mounted.setDetail({
       text: "stale / limited",
@@ -239,15 +239,15 @@ test("reactively switches header detail from text to segments and back", async (
       ],
     })
     assert.equal(mounted.panelMounts(), 1, "CompactPanel remains mounted across the representation update")
-    assert.deepEqual(coloredText().slice(-3), [
+    assert.deepEqual(detailText(), [
       ["stale", "#ffaa00"],
-      ["/", "#888888"],
+      [" / ", "#888888"],
       ["limited", "#ff0000"],
     ])
 
     await mounted.setDetail({ text: "limited", status: "error" })
     assert.equal(mounted.panelMounts(), 1)
-    assert.deepEqual(coloredText().slice(-1), [["limited", "#ff0000"]])
+    assert.deepEqual(detailText(), [["limited", "#ff0000"]])
   } finally {
     mounted.dispose()
   }

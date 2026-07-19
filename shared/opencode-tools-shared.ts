@@ -37,13 +37,16 @@ export { createSesTokensPanelModel } from "../tui/features/ses-tokens.js";
 export type { SesTokenTotals, SesTokensMessage, SesTokensPanelModel } from "../tui/features/ses-tokens.js";
 export {
   collectSessionTreeIDs,
+  createSessionTreeSnapshotLoader,
   indexSessionsByParent,
   loadSessionTreeSnapshot,
 } from "../tui/services/session-tree-snapshot.js";
 export type {
+  CreateSessionTreeSnapshotLoaderOptions,
   LoadSessionTreeSnapshotOptions,
   SessionTreeRecord,
   SessionTreeSnapshot,
+  SessionTreeSnapshotLoadContext,
   SessionTreeSnapshotLoader,
 } from "../tui/services/session-tree-snapshot.js";
 export { createSesTokensSource } from "../tui/services/ses-tokens-source.js";

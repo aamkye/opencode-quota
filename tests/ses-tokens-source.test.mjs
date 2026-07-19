@@ -172,6 +172,27 @@ test("coalesces relevant message events into one 200 ms refresh", async () => {
   source.dispose()
 })
 
+test("refreshes when a descendant changes after discovery but before initial publication", async () => {
+  const initial = deferred()
+  const refreshed = snapshot("root", "child")
+  const contexts = []
+  const { events, scheduler, source } = createHarness((sessionID, context) => {
+    contexts.push(context)
+    context.onSessionIDs([sessionID, "child"])
+    return contexts.length === 1 ? initial.promise : Promise.resolve(refreshed)
+  })
+
+  source.setSessionID("root")
+  events.emit({ type: "message.updated", properties: { sessionID: "child" } })
+  assert.deepEqual(scheduler.pendingDelays(), [200])
+  await scheduler.runNext(200)
+
+  assert.equal(contexts[0].signal.aborted, true)
+  assert.equal(contexts.length, 2)
+  assert.deepEqual(source.state(), { phase: "ready", sessionID: "root", snapshot: refreshed })
+  source.dispose()
+})
+
 test("ignores message events outside the last complete subtree", async () => {
   const complete = snapshot("root", "child")
   const calls = []
@@ -271,6 +292,28 @@ test("does not publish an old generation after a session switch", async () => {
   await settle()
   assert.deepEqual(source.state(), { phase: "ready", sessionID: "new", snapshot: current })
   source.dispose()
+})
+
+test("aborts superseded empty-target and disposed generations", async () => {
+  const contexts = []
+  const { events, scheduler, source } = createHarness((_sessionID, context) => {
+    contexts.push(context)
+    return new Promise(() => {})
+  })
+
+  source.setSessionID("old")
+  source.setSessionID("new")
+  assert.equal(contexts[0].signal.aborted, true)
+  assert.equal(contexts[1].signal.aborted, false)
+  contexts[0].onSessionIDs(["old", "leaked-child"])
+  events.emit({ type: "message.updated", properties: { sessionID: "leaked-child" } })
+  assert.deepEqual(scheduler.pendingDelays(), [], "obsolete topology cannot change event filtering")
+
+  source.setSessionID("")
+  assert.equal(contexts[1].signal.aborted, true)
+  source.setSessionID("final")
+  source.dispose()
+  assert.equal(contexts[2].signal.aborted, true)
 })
 
 test("does not let an event-superseded request replace a newer snapshot", async () => {

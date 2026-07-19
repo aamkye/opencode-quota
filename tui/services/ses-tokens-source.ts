@@ -49,6 +49,7 @@ export function createSesTokensSource({
   let generation = 0
   let currentState: SesTokensSourceState | undefined
   let debounceTimer: unknown
+  let loadController: AbortController | undefined
   let disposed = false
   const knownSessionIDs = new Set<string>()
   const listeners = new Set<() => void>()
@@ -77,32 +78,48 @@ export function createSesTokensSource({
     clearRetryTimers()
   }
 
-  function isCurrent(capturedSessionID: string, capturedGeneration: number): boolean {
-    return !disposed && sessionID === capturedSessionID && generation === capturedGeneration
+  function isCurrent(
+    capturedSessionID: string,
+    capturedGeneration: number,
+    controller: AbortController,
+  ): boolean {
+    return !disposed
+      && !controller.signal.aborted
+      && sessionID === capturedSessionID
+      && generation === capturedGeneration
+      && loadController === controller
   }
 
   async function attemptLoad(
     capturedSessionID: string,
     capturedGeneration: number,
     attempt: number,
+    controller: AbortController,
   ): Promise<void> {
-    if (!isCurrent(capturedSessionID, capturedGeneration)) return
+    if (!isCurrent(capturedSessionID, capturedGeneration, controller)) return
     try {
-      const snapshot = await loadSnapshot(capturedSessionID)
-      if (!isCurrent(capturedSessionID, capturedGeneration)) return
+      const snapshot = await loadSnapshot(capturedSessionID, {
+        signal: controller.signal,
+        onSessionIDs(sessionIDs) {
+          if (!isCurrent(capturedSessionID, capturedGeneration, controller)) return
+          knownSessionIDs.clear()
+          for (const id of sessionIDs) knownSessionIDs.add(id)
+        },
+      })
+      if (!isCurrent(capturedSessionID, capturedGeneration, controller)) return
       knownSessionIDs.clear()
       for (const id of snapshot.sessionIDs) knownSessionIDs.add(id)
       currentState = { phase: "ready", sessionID: capturedSessionID, snapshot }
       notify()
     } catch {
-      if (!isCurrent(capturedSessionID, capturedGeneration)) return
+      if (!isCurrent(capturedSessionID, capturedGeneration, controller)) return
       const retryDelay = RETRY_DELAYS_MS[attempt]
       if (retryDelay !== undefined) {
         let timer: unknown
         timer = setTimer(() => {
           retryTimers.delete(timer)
-          if (!isCurrent(capturedSessionID, capturedGeneration)) return
-          void attemptLoad(capturedSessionID, capturedGeneration, attempt + 1)
+          if (!isCurrent(capturedSessionID, capturedGeneration, controller)) return
+          void attemptLoad(capturedSessionID, capturedGeneration, attempt + 1, controller)
         }, retryDelay)
         retryTimers.add(timer)
         return
@@ -123,9 +140,11 @@ export function createSesTokensSource({
   }
 
   function startRefresh(): void {
+    loadController?.abort()
     generation += 1
     clearRetryTimers()
-    void attemptLoad(sessionID, generation, 0)
+    loadController = new AbortController()
+    void attemptLoad(sessionID, generation, 0, loadController)
   }
 
   function scheduleRefresh(): void {
@@ -175,6 +194,8 @@ export function createSesTokensSource({
 
   function setSessionID(nextSessionID: string): void {
     if (disposed || nextSessionID === sessionID) return
+    loadController?.abort()
+    loadController = undefined
     generation += 1
     clearTimers()
     sessionID = nextSessionID
@@ -188,7 +209,8 @@ export function createSesTokensSource({
     knownSessionIDs.add(nextSessionID)
     currentState = { phase: "loading", sessionID: nextSessionID }
     notify()
-    void attemptLoad(nextSessionID, generation, 0)
+    loadController = new AbortController()
+    void attemptLoad(nextSessionID, generation, 0, loadController)
   }
 
   return {
@@ -202,6 +224,8 @@ export function createSesTokensSource({
     dispose() {
       if (disposed) return
       disposed = true
+      loadController?.abort()
+      loadController = undefined
       generation += 1
       clearTimers()
       for (const unsubscribe of unsubscribers) unsubscribe()
