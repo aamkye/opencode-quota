@@ -121,10 +121,8 @@ function DetailRow(props: {
     <box flexDirection="row" width="100%" overflow="hidden">
       <text width={2} flexShrink={0}>{"  "}</text>
       <text
-        flexBasis={0}
         flexGrow={1}
-        flexShrink={1}
-        minWidth={0}
+        flexShrink={0}
         overflow="hidden"
         wrapMode="none"
         fg={props.theme().textMuted}

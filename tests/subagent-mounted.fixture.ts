@@ -147,32 +147,33 @@ function rowLayout(row: HostNode, width: number) {
   const rowWidth = resolvedWidth(row.props.width, width) || width
   const cells = row.children.filter((candidate) => candidate.type !== "#text")
   const configuredWidths = cells.map((cell) => resolvedWidth(cell.props.width, rowWidth))
-  const fixedWidths = cells.map<number | undefined>((cell, index) => {
+  const childWidths = cells.map((cell, index) => {
     const configured = configuredWidths[index]
     if (configured > 0) return configured
-    return Number(cell.props.flexGrow ?? 0) > 0 ? undefined : cellWidth(textOf(cell))
+    if (typeof cell.props.flexBasis === "number") return cell.props.flexBasis
+    return cellWidth(textOf(cell))
   })
-  const growingContentWidth = cells.reduce((total, cell, index) => (
-    total + (fixedWidths[index] === undefined ? cellWidth(textOf(cell)) : 0)
-  ), 0)
-  let fixedTotal = fixedWidths.reduce<number>((total, value) => total + (value ?? 0), 0)
-  let overflow = Math.max(0, fixedTotal + growingContentWidth - rowWidth)
-  for (let index = fixedWidths.length - 1; index >= 0 && overflow > 0; index -= 1) {
-    const fixed = fixedWidths[index]
-    const cell = cells[index]
-    if (fixed === undefined || Number(cell.props.flexShrink ?? 0) <= 0 || cell.props.minWidth !== 0) continue
-    const reduction = Math.min(fixed, overflow)
-    fixedWidths[index] = fixed - reduction
-    fixedTotal -= reduction
-    overflow -= reduction
+  const basisTotal = childWidths.reduce((total, value) => total + value, 0)
+  if (basisTotal < rowWidth) {
+    const growTotal = cells.reduce((total, cell) => total + Number(cell.props.flexGrow ?? 0), 0)
+    let remaining = rowWidth - basisTotal
+    for (let index = 0; index < cells.length && remaining > 0; index += 1) {
+      const grow = Number(cells[index].props.flexGrow ?? 0)
+      if (growTotal <= 0 || grow <= 0) continue
+      const growth = index === cells.length - 1 ? remaining : Math.floor((rowWidth - basisTotal) * grow / growTotal)
+      childWidths[index] += growth
+      remaining -= growth
+    }
+  } else if (basisTotal > rowWidth) {
+    let overflow = basisTotal - rowWidth
+    for (let index = cells.length - 1; index >= 0 && overflow > 0; index -= 1) {
+      const cell = cells[index]
+      if (Number(cell.props.flexShrink ?? 0) <= 0 || cell.props.minWidth !== 0) continue
+      const reduction = Math.min(childWidths[index], overflow)
+      childWidths[index] -= reduction
+      overflow -= reduction
+    }
   }
-  const growTotal = cells.reduce((total, cell, index) => (
-    total + (fixedWidths[index] === undefined ? Number(cell.props.flexGrow ?? 0) : 0)
-  ), 0)
-  const remaining = Math.max(0, rowWidth - fixedTotal)
-  const childWidths = cells.map((cell, index) => fixedWidths[index] ?? (
-    growTotal > 0 ? Math.floor(remaining * Number(cell.props.flexGrow ?? 0) / growTotal) : 0
-  ))
   const renderedCells = cells.map((cell, index) => {
     const text = textOf(cell)
     const allocated = childWidths[index]
@@ -526,10 +527,12 @@ export async function mountSubagentPanel(options: {
         label: texts[1],
         value: texts[2],
         valueColor: layout.cells[2]?.props.fg,
+        renderedLabel: layout.renderedCells[1],
         renderedValue: layout.renderedCells[2],
         renderedText: layout.renderedText,
         rowWidth: layout.rowWidth,
         childWidths: layout.childWidths,
+        labelProps: layout.cells[1]?.props ?? {},
         valueProps: layout.cells[2]?.props ?? {},
       })),
       async clickHeader() {
