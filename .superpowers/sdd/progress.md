@@ -88,3 +88,4 @@ add-session-token-panel Task 8: complete (verification-only; focused 70/70, full
 add-session-token-panel final review: READY at 12ae24b (one fix round; initial topology event race, cross-generation concurrency, cancellation, and both accepted test gaps resolved)
 add-subagent-panel Task 1: complete (commits 75da170..c3502eb, thorough review clean after one fix round)
 add-subagent-panel Task 2: complete (commit 6b73ef6, thorough review clean)
+add-subagent-panel Task 3: complete (commits 6a47e7d..60b1fda, thorough review clean after one fix round)

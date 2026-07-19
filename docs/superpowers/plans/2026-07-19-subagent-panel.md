@@ -346,7 +346,7 @@ export type SubagentSource = {
 export function createSubagentSource(dependencies: SubagentSourceDependencies): SubagentSource
 ```
 
-- [ ] **Step 1: Add failing source state-machine tests**
+- [x] **Step 1: Add failing source state-machine tests**
 
 Use injected deferred loaders, event registrar, scheduler, clock, and in-memory failure store. Cover:
 
@@ -367,13 +367,13 @@ test("isolates throwing subscribers and disposes every resource once", async () 
 
 Assert all nine event registrations: `session.created`, `session.updated`, `session.deleted`, `session.status`, `session.idle`, `session.error`, `message.updated`, `message.removed`, and `tui.session.select`. Assert immediate controller abortion before the 200 ms timer fires, exact retry delays `[2000, 4000, 8000]`, and no state/store mutation from old generations or post-disposal callbacks.
 
-- [ ] **Step 2: Run the RED command**
+- [x] **Step 2: Run the RED command**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/subagent-source.test.mjs`
 
 Expected RED: esbuild cannot resolve `tui/services/subagent-source.ts`.
 
-- [ ] **Step 3: Implement generation, retry, failure, and cleanup logic**
+- [x] **Step 3: Implement generation, retry, failure, and cleanup logic**
 
 Implement one generation counter, one active `AbortController`, one debounce timer, a retry timer set, a known-direct-child ID set, and subscriber/unsubscriber sets. On parent change: abort, increment, clear timers/IDs, publish loading for non-empty IDs, and start immediately. Empty IDs clear state and issue no load.
 
@@ -383,13 +383,13 @@ On the first known `session.error`, persist `now()` under `[parentID][childID]`,
 
 After a complete snapshot, replace known IDs, prune retained records not present in `snapshot.childIDs`, persist only when the record changed, and publish ready with a copied parent failure map. After four failed attempts, publish unavailable without prior complete data or stale with the prior complete snapshot. Disposal aborts, clears all timers, invokes all nine unsubscribers once, clears listeners, and prevents later state or KV writes.
 
-- [ ] **Step 4: Run focused GREEN verification**
+- [x] **Step 4: Run focused GREEN verification**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/subagent-source.test.mjs tests/subagent-snapshot.test.mjs`
 
 Expected GREEN: every event/race/retry/persistence test passes with no partial publication and all loader tests remain green.
 
-- [ ] **Step 5: Commit the task atomically**
+- [x] **Step 5: Commit the task atomically**
 
 Suggested Conventional Commit: `feat(subagent): coordinate child session refreshes`
 
