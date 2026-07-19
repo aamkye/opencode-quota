@@ -5,13 +5,13 @@
 
 ## 2. Child-Session Data Source
 
-- [ ] 2.1 Add failing tests for initial reconstruction, client envelopes, direct-only requests, bounded cross-generation concurrency, immediate event invalidation, assistant error removal, repeated failure timestamps, retries, loading-to-unavailable and unavailable-to-ready recovery, stale retention/recovery, session switching, stale generations, and deleted-child pruning
+- [x] 2.1 Add failing tests for initial reconstruction, client envelopes, direct-only requests, bounded cross-generation concurrency, immediate event invalidation, assistant error removal, repeated failure timestamps, retries, loading-to-unavailable and unavailable-to-ready recovery, stale retention/recovery, session switching, stale generations, and deleted-child pruning
 - [x] 2.2 Implement the direct-child loader and debounced event coordinator with discovered-topology publication, 2/4/8 retries, minimal failure persistence, complete-snapshot retention, and lifecycle cleanup
 - [x] 2.3 Extend local OpenCode TUI API declarations and compile fixtures for session records, status, messages, events, client listing, and route navigation used by SubAgent
 
 ## 3. Sidebar Panel
 
-- [ ] 3.1 Add mounted-panel tests for every AGENTS.md expanded, semi-collapsed, collapsed, Rest, one-detail, empty, stale, and width-boundary layout plus loading/unavailable no-output behavior
+- [x] 3.1 Add mounted-panel tests for every AGENTS.md expanded, semi-collapsed, collapsed, Rest, one-detail, empty, stale, and width-boundary layout plus loading/unavailable no-output behavior
 - [ ] 3.2 Add mounted interaction tests for independent panel/Rest persistence, one-entry expansion, stale expansion cleanup, duration clock disposal, and Open Session navigation
 - [ ] 3.3 Implement the standalone Solid SubAgent panel with exact disclosures, bullets, rows, colors, ellipsis, dividers, detail alignment, and conditional one-second clock
 

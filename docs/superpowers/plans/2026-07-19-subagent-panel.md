@@ -476,7 +476,7 @@ git commit -m "feat(subagent): declare host session APIs"
 - Consumes: all Task 1-3 exports through `../shared/opencode-tools-shared.js`; `CompactPanel`; TUI APIs compiled in Task 4.
 - Produces: default `defineTuiPlugin(pluginDescriptor("subagent"), activate)` module, sidebar slot 120, and test-only `subagentRuntimeTestKey` symbol for injected source factory/clock primitives.
 
-- [ ] **Step 1: Add failing mounted layout tests and harness**
+- [x] **Step 1: Add failing mounted layout tests and harness**
 
 Use the real Solid host fixture pattern from `tests/ses-tokens-mounted.fixture.ts`, not padded strings in production. Add a temporary test manifest loader that appends this descriptor until Task 7 installs the real entry:
 
@@ -508,13 +508,13 @@ test("rejects defined falsy list and message envelope errors", async () => {})
 
 Derive expected SubAgent text lines from the seven fenced AGENTS layouts rather than duplicating a silently divergent contract. Initial loading and unavailable assertions must check that no `SubAgent` title or panel node exists.
 
-- [ ] **Step 2: Run the RED command**
+- [x] **Step 2: Run the RED command**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/subagent-mounted.test.mjs tests/shared-boundary.test.mjs`
 
 Expected RED: esbuild cannot resolve `tui/subagent.tsx`, or the shared boundary reports the missing standalone adapter.
 
-- [ ] **Step 3: Implement the adapter and static/nested rendering**
+- [x] **Step 3: Implement the adapter and static/nested rendering**
 
 Add `"subagent"` to `PluginKey`. In `tui/subagent.tsx`, capture `api.state.path.directory`, construct one snapshot loader, and unwrap both client methods with the strict rule:
 
@@ -542,13 +542,13 @@ Render the outer shell with:
 
 Use full-width flex rows for `▶ • ` / `▼ • `, title, optional one-cell gap, and fixed duration. Expanded rows omit duration and render `agent`, `status`, `time`, `model`, `Open Session` in that order with two-cell indentation. Render an internal divider and `▼ Rest`/`▶ Rest` only when `model.rest.length > 0`. For this task, local reactive disclosure state is sufficient; Task 6 makes it parent-scoped and persistent.
 
-- [ ] **Step 4: Run focused GREEN verification**
+- [x] **Step 4: Run focused GREEN verification**
 
 Run: `node tests/compile-presentation.mjs && node --test tests/subagent-mounted.test.mjs tests/compact-panel-mounted.test.mjs tests/shared-boundary.test.mjs`
 
 Expected GREEN: canonical layouts, colors, strict envelopes, and no-output states pass; existing CompactPanel detail/summary spacing remains green.
 
-- [ ] **Step 5: Commit the task atomically**
+- [x] **Step 5: Commit the task atomically**
 
 Suggested Conventional Commit: `feat(subagent): render sidebar panel`
 
