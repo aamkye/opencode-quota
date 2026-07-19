@@ -410,9 +410,9 @@ test("flexes end-truncated titles without consuming the duration gap", async () 
     assert.equal(initialView.entryRows[0].duration, "3m 55s")
     assert.equal(initialView.entryRows[0].renderedTitle, "SubAgent11 with super long…")
     assert.ok(initialView.entryRows.every((row) => row.renderedTitle.length > 0))
-    for (const [width, expectedTitle, expectedWidths] of [
-      [37, "SubAgent11 with super long…", [2, 28, 1, 6]],
-      [36, "SubAgent11 with super long…", [2, 27, 1, 6]],
+    for (const [width, expectedTitle, expectedTitleAllocation] of [
+      [37, "SubAgent11 with super long…", [28, 1]],
+      [36, "SubAgent11 with super long…", [27, 1]],
     ]) {
       await mounted.resize(width)
       const view = mounted.view()
@@ -420,20 +420,19 @@ test("flexes end-truncated titles without consuming the duration gap", async () 
       assert.equal(row.renderedTitle, expectedTitle)
       assert.equal(row.renderedTitle.endsWith("…"), true)
       assert.equal(row.renderedTitle.match(/…/gu)?.length, 1)
-      assert.equal(row.gap, " ")
-      assert.equal(row.gapWidth, 1)
       assert.equal(row.duration, "3m 55s")
       assert.equal(row.rowWidth, width)
-      assert.deepEqual(row.childWidths, expectedWidths)
+      assert.deepEqual([row.childWidths[1], row.titleMarginRight], expectedTitleAllocation)
+      assert.deepEqual(row.childWidths, [2, expectedTitleAllocation[0], 6])
       assert.equal(row.titleProps.width, undefined)
       assert.equal(row.titleProps.flexBasis, 0)
       assert.equal(row.titleProps.flexGrow, 1)
       assert.equal(row.titleProps.flexShrink, 1)
       assert.equal(row.titleProps.minWidth, 0)
+      assert.equal(row.titleProps.marginRight, 1)
       assert.equal(row.titleProps.truncate, true)
-      assert.equal(row.gapProps.width, 1)
       assert.equal(row.durationProps.width, 6)
-      assert.equal(row.renderedText.includes(`${row.renderedTitle}${row.gap}`), true)
+      assert.equal(row.childWidths.reduce((total, cells) => total + cells, 0) + row.titleMarginRight, width)
       assert.equal(row.renderedText.endsWith(row.duration), true)
       for (const line of view.lines) assert.equal(line.trimEnd(), line)
     }

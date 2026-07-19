@@ -147,6 +147,7 @@ function rowLayout(row: HostNode, width: number) {
   const rowWidth = resolvedWidth(row.props.width, width) || width
   const cells = row.children.filter((candidate) => candidate.type !== "#text")
   const configuredWidths = cells.map((cell) => resolvedWidth(cell.props.width, rowWidth))
+  const marginsRight = cells.map((cell) => resolvedWidth(cell.props.marginRight, rowWidth))
   const childWidths = cells.map((cell, index) => {
     const configured = configuredWidths[index]
     if (configured > 0) return configured
@@ -154,6 +155,7 @@ function rowLayout(row: HostNode, width: number) {
     return cellWidth(textOf(cell))
   })
   const basisTotal = childWidths.reduce((total, value) => total + value, 0)
+    + marginsRight.reduce((total, value) => total + value, 0)
   if (basisTotal < rowWidth) {
     const growTotal = cells.reduce((total, cell) => total + Number(cell.props.flexGrow ?? 0), 0)
     let remaining = rowWidth - basisTotal
@@ -187,7 +189,16 @@ function rowLayout(row: HostNode, width: number) {
     }
     return rendered
   })
-  return { cells, childWidths, renderedCells, renderedText: renderedCells.join(""), rowWidth }
+  return {
+    cells,
+    childWidths,
+    marginsRight,
+    renderedCells,
+    renderedText: renderedCells.map((rendered, index) => (
+      `${rendered}${index < renderedCells.length - 1 ? " ".repeat(marginsRight[index]) : ""}`
+    )).join(""),
+    rowWidth,
+  }
 }
 
 function isDivider(node: HostNode): boolean {
@@ -488,18 +499,16 @@ export async function mountSubagentPanel(options: {
       entryRows: entryRows.map(({ node, texts, layout }, index) => ({
         disclosure: texts[0],
         title: currentTitles[index] ?? texts[1],
-        gap: texts[2] ?? "",
-        gapWidth: layout.childWidths[2] ?? 0,
-        duration: texts[3] ?? "",
-        durationColor: layout.cells[3]?.props.fg,
+        duration: texts.at(-1) ?? "",
+        durationColor: layout.cells.at(-1)?.props.fg,
         renderedTitle: layout.renderedCells[1]?.trimEnd() ?? "",
         renderedText: layout.renderedText,
         rowWidth: layout.rowWidth,
         childWidths: layout.childWidths,
+        titleMarginRight: layout.marginsRight[1] ?? 0,
         rowProps: node.props,
         titleProps: layout.cells[1]?.props ?? {},
-        gapProps: layout.cells[2]?.props ?? {},
-        durationProps: layout.cells[3]?.props ?? {},
+        durationProps: layout.cells.at(-1)?.props ?? {},
       })),
       detailRows: detailRows.map(({ texts, layout }) => ({
         label: texts[1],

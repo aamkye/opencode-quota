@@ -174,21 +174,22 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assert.match(subagent, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
 })
 
-test("SubAgent flexes its title beside fixed gap and duration siblings", () => {
+test("SubAgent flexes its title with a structural margin beside its fixed duration", () => {
   const subagent = source("tui/subagent.tsx")
   const measuredTitle = subagent.split("function MeasuredTitle", 2)[1].split("function DetailRow", 1)[0]
 
   assert.match(subagent, /const\s+allocation\s*=\s*\(\)\s*=>\s*allocateSubagentEntryRow\(37,\s*stringWidth\(props\.entry\.duration\)\)/)
-  assert.match(subagent, /<MeasuredTitle\s+value=\{props\.entry\.title\}\s+cells=\{allocation\(\)\.title\}/)
+  assert.match(subagent, /<MeasuredTitle\s+value=\{props\.entry\.title\}\s+cells=\{allocation\(\)\.title\}\s+marginRight=\{allocation\(\)\.beforeDurationGap\}/)
   assert.match(measuredTitle, /flexBasis=\{0\}/)
   assert.match(measuredTitle, /flexGrow=\{1\}/)
   assert.match(measuredTitle, /flexShrink=\{1\}/)
   assert.match(measuredTitle, /minWidth=\{0\}/)
+  assert.match(measuredTitle, /marginRight=\{props\.marginRight\}/)
   assert.doesNotMatch(measuredTitle, /\bwidth\s*=/)
   assert.match(subagent, /truncateTerminalCellsEnd\(props\.value,\s*props\.cells\)/)
   assert.match(subagent, /truncate=\{true\}/)
-  assert.match(subagent, /width=\{allocation\(\)\.beforeDurationGap\}/)
   assert.match(subagent, /width=\{allocation\(\)\.duration\}/)
+  assert.doesNotMatch(subagent, /<text\s+width=\{allocation\(\)\.beforeDurationGap\}[^>]*>\s*<\/text>/)
   assert.doesNotMatch(subagent, /\bref\s*=/)
   assert.doesNotMatch(subagent, /\bonSizeChange\b/)
   assert.doesNotMatch(subagent, /\brenderBefore\b/)
