@@ -8,7 +8,7 @@ canonical_spec: openspec
 
 ## Scope
 
-Add a standalone `subagent` TUI plugin that monitors direct child sessions of the viewed session. The plugin shows the newest five children in its primary group, places older children under an independently collapsible Rest group, reconstructs status and identity after remount, preserves terminal failures, and opens a selected child through the built-in session route. Entry rows omit status bullets, color time by status, and end-truncate titles against their measured terminal-cell width from the child renderable's `resize` event.
+Add a standalone `subagent` TUI plugin that monitors direct child sessions of the viewed session. The plugin shows the newest five children in its primary group, places older children under an independently collapsible Rest group, reconstructs status and identity after remount, preserves terminal failures, and opens a selected child through the built-in session route. Entry rows omit status bullets, color time by status, render titles immediately, and end-truncate them against terminal-cell width measured during rendering.
 
 The OpenSpec delta at `openspec/changes/add-subagent-panel/specs/subagent-panel/spec.md` defines user-visible behavior. `AGENTS.md` defines the canonical 37-cell layouts. This document defines module boundaries, snapshot and event flow, status derivation, persistence, rendering, cleanup, and tests.
 
@@ -345,7 +345,7 @@ Each entry row is a full-width horizontal box with these regions:
 disclosure + flexible title + gap + duration
 ```
 
-The disclosure renders `▶ ` or `▼ `. Entry rows have no status bullet. Only the title flexes. OpenTUI 0.4.x truncates text in the middle, so a stable listener on the child renderable's `resize` event supplies its computed width to a grapheme-safe end-truncation helper. Attach the listener through `ref` before initial layout, measure immediately as a fallback, and remove that exact listener on cleanup. Declare the already-installed `string-width` package directly to measure terminal cells. The duration includes its leading one-cell gap in the fixed region, stays at the right edge, and uses the entry status color: success, warning, or error.
+The disclosure renders `▶ ` or `▼ `. Entry rows have no status bullet. Only the title flexes. OpenTUI 0.4.x truncates text in the middle, so the title first renders its raw no-wrap value under hidden overflow, then a stable `renderBefore` callback reads the concrete renderable width and supplies it to a grapheme-safe end-truncation helper. The callback updates Solid width state only when the value changes, causing at most one corrective frame per layout width. Declare the already-installed `string-width` package directly to measure terminal cells. The duration includes its leading one-cell gap in the fixed region, stays at the right edge, and uses the entry status color: success, warning, or error.
 
 Update the pure allocation helper for disclosure, title, gap, and duration at 37 cells and narrower. Do not build padded rows in the component.
 
@@ -427,7 +427,7 @@ Inject loader, timer, event, and failure-store dependencies. Cover immediate ini
 
 ### Mounted Panel Tests
 
-Assert every AGENTS layout: expanded, one detail, expanded Rest, semi-collapsed Rest, collapsed counts, stale expanded, and stale collapsed. Also cover no output for loading/unavailable, `No subagents`, exact row order, status-colored compact/detail time, end ellipsis, initial title visibility, 37/36-cell boundaries, a scrollbar-reduced 35-cell row, real child `resize` measurement and listener cleanup, muted Rest treatment, spaced divider segments, no trailing whitespace, parent-scoped persistence, one-entry expansion, invalid ID cleanup, hidden Rest details, conditional clock start/stop/disposal, and route navigation.
+Assert every AGENTS layout: expanded, one detail, expanded Rest, semi-collapsed Rest, collapsed counts, stale expanded, and stale collapsed. Also cover no output for loading/unavailable, `No subagents`, exact row order, status-colored compact/detail time, end ellipsis, immediate raw title visibility, 37/36-cell boundaries, a scrollbar-reduced 35-cell row, render-phase width updates, no render hook calls after removal, muted Rest treatment, spaced divider segments, no trailing whitespace, parent-scoped persistence, one-entry expansion, invalid ID cleanup, hidden Rest details, conditional clock start/stop/disposal, and route navigation.
 
 ### Type And Integration Tests
 

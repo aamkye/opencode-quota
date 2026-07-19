@@ -31,5 +31,5 @@
 
 ## 7. Live Title Measurement Correction
 
-- [ ] 7.1 Add a failing mounted regression that replaces the missed intrinsic callback with the child renderable's actual `resize` event, proves titles are visible on initial layout and after 37/36/35-cell changes, and proves exact listener cleanup after collapse and disposal
-- [ ] 7.2 Attach one stable child `resize` listener through the title ref, remove the same listener on cleanup, preserve all approved truncation and layout behavior, pass focused/full/typecheck/build/bundle gates, deploy locally, and confirm titles in the live OpenCode sidebar
+- [ ] 7.1 Add a failing mounted regression that removes ref/resize measurement, proves titles render immediately before measurement, exercises render-phase width updates at 37/36/35 cells, and proves removed rows receive no later render hook calls
+- [ ] 7.2 Implement raw-title fallback plus idempotent `renderBefore` width measurement, preserve all approved truncation and layout behavior, pass focused/full/typecheck/build/bundle gates, deploy locally, and confirm titles in the live OpenCode sidebar
