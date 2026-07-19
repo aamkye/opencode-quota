@@ -112,9 +112,10 @@ export function createSubagentPanelModel(
         ? finite(message.time.completed ?? message.time.created)
         : undefined)
       .filter((value): value is number => value !== undefined)
+    const hasRetainedFailure = Object.hasOwn(failureTimes, session.id)
     const retainedFailureTime = finite(failureTimes[session.id])
     const hasAssistantError = messages.some((message) => message.role === "assistant" && Boolean(message.error))
-    const hasFailure = retainedFailureTime !== undefined || hasAssistantError
+    const hasFailure = hasRetainedFailure || hasAssistantError
     const status: SubagentStatus = hasFailure
       ? "failed"
       : synchronizedStatus?.type === "busy" || synchronizedStatus?.type === "retry"

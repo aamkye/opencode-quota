@@ -170,6 +170,32 @@ test("uses the earliest retained or message failure time", () => {
   assert.equal(entry.duration, "3s")
 })
 
+test("preserves retained failure precedence with non-finite timestamps", () => {
+  const model = createSubagentPanelModel(snapshot([
+    child("nan-retained", 1_000, { status: { type: "idle" } }),
+    child("infinite-retained", 1_000, {
+      status: { type: "busy" },
+      messages: [assistant("errored", 3_000, {
+        error: { name: "UnknownError" },
+        time: { created: 3_000 },
+      })],
+    }),
+  ]), {
+    "nan-retained": Number.NaN,
+    "infinite-retained": Number.POSITIVE_INFINITY,
+  }, 10_000)
+  const entries = Object.fromEntries(model.primary.map((entry) => [entry.id, entry]))
+
+  assert.deepEqual(
+    [entries["nan-retained"].status, entries["nan-retained"].durationMs],
+    ["failed", 0],
+  )
+  assert.deepEqual(
+    [entries["infinite-retained"].status, entries["infinite-retained"].durationMs],
+    ["failed", 2_000],
+  )
+})
+
 test("clamps invalid timestamps and formats duration boundaries", () => {
   const now = 3_600_000
   const boundaries = [0, 59_000, 60_000, 3_599_000, 3_600_000]
