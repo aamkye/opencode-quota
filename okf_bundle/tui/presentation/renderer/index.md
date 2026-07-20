@@ -1,0 +1,26 @@
+# renderer
+
+## Functions
+
+- [color](color.md)
+- [formatDisplayCell](formatDisplayCell.md)
+- [formatDisplayValue](formatDisplayValue.md)
+- [formatItemQuantity](formatItemQuantity.md)
+- [groupCollapsed](groupCollapsed.md)
+- [GroupDivider](GroupDivider.md)
+- [isLastGroup](isLastGroup.md)
+- [metadataColor](metadataColor.md)
+- [MountedItem](MountedItem.md)
+- [normalized](normalized.md)
+- [normalizeGroup](normalizeGroup.md)
+- [normalizeItem](normalizeItem.md)
+- [normalizePanelModel](normalizePanelModel.md)
+- [panelCollapsed](panelCollapsed.md)
+- [PanelRenderer](PanelRenderer.md)
+- [renderCell](renderCell.md)
+- [renderItemLayout](renderItemLayout.md)
+- [renderPanelLayout](renderPanelLayout.md)
+- [renderRow](renderRow.md)
+- [renderSegmentCells](renderSegmentCells.md)
+- [toggle](toggle.md)
+- [toggleCollapsed](toggleCollapsed.md)

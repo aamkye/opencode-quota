@@ -29,7 +29,7 @@ test("aggregates every assistant turn and all five detailed buckets", () => {
     cacheWrite: "300",
     cacheRatio: "3.3×",
     total: "8K",
-    summary: [{ text: "Σ 8K / ↻ 2" }],
+    summary: [{ text: "8K" }],
   })
 })
 
@@ -53,5 +53,12 @@ test("uses compact uppercase boundaries without trailing decimal zeroes", () => 
   assert.equal(createSesTokensPanelModel([assistant({ input: 1_000 })]).input, "1K")
   assert.equal(createSesTokensPanelModel([assistant({ input: 1_500_000 })]).input, "1.5M")
   assert.equal(createSesTokensPanelModel([assistant({ input: 1_000_000_000 })]).input, "1B")
-  assert.deepEqual(createSesTokensPanelModel([]).summary, [{ text: "Σ 0 / ↻ 0" }])
+  assert.deepEqual(createSesTokensPanelModel([]).summary, [{ text: "0" }])
+})
+
+test("uses the shared two-decimal formatter for model metrics and the collapsed total", () => {
+  const model = createSesTokensPanelModel([assistant({ input: 388_820_000 })])
+  assert.equal(model.input, "388.82M")
+  assert.equal(model.total, "388.82M")
+  assert.deepEqual(model.summary, [{ text: "388.82M" }])
 })

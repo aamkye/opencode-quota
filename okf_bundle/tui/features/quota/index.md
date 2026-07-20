@@ -1,0 +1,27 @@
+# quota
+
+## Functions
+
+- [composeQuotaPanel](composeQuotaPanel.md)
+- [compositionOptions](compositionOptions.md)
+- [createQuotaSelection](createQuotaSelection.md)
+- [dispose](dispose.md)
+- [effectiveHideInactive](effectiveHideInactive.md)
+- [hideInactive](hideInactive.md)
+- [metric](metric.md)
+- [normalizeProgressColors](normalizeProgressColors.md)
+- [normalizeQuotaOptions](normalizeQuotaOptions.md)
+- [orderedProviderItems](orderedProviderItems.md)
+- [percentStatus](percentStatus.md)
+- [providerItemGroups](providerItemGroups.md)
+- [providerItems](providerItems.md)
+- [providerName](providerName.md)
+- [providerPrimaryPct](providerPrimaryPct.md)
+- [quotaProviderDemand](quotaProviderDemand.md)
+- [resolveSupportedProvider](resolveSupportedProvider.md)
+- [selectedQuotaProviderID](selectedQuotaProviderID.md)
+- [selectedSessionQuotaProviderID](selectedSessionQuotaProviderID.md)
+- [setSessionID](setSessionID.md)
+- [summary](summary.md)
+- [threshold](threshold.md)
+- [windowDuration](windowDuration.md)

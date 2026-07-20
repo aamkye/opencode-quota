@@ -1,0 +1,26 @@
+---
+okf_version: "0.2"
+type: Module
+title: atomic-json
+resource: lib/tokens/atomic-json.ts
+tags:
+  - "lang:typescript"
+  - "type:Module"
+  - "module:lib"
+  - "domain:tokens"
+  - "git:branch:feature/20260720/polish-tui-session-rename"
+  - "git:repo:opencode-quota"
+timestamp: "2026-07-01T14:04:09Z"
+concept_id: lib/tokens/atomic-json
+language: typescript
+---
+
+# atomic-json
+
+## Relationships
+
+| Type | Target |
+|------|--------|
+| related | [WriteJsonAtomicOptions](/lib/tokens/atomic-json/WriteJsonAtomicOptions.md) |
+| related | [safeRm](/lib/tokens/atomic-json/safeRm.md) |
+| related | [writeJsonAtomic](/lib/tokens/atomic-json/writeJsonAtomic.md) |

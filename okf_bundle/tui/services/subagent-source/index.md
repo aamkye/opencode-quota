@@ -1,0 +1,28 @@
+# subagent-source
+
+## Functions
+
+- [attemptLoad](attemptLoad.md)
+- [clearRetryTimers](clearRetryTimers.md)
+- [clearTimers](clearTimers.md)
+- [copyFailures](copyFailures.md)
+- [createSubagentSource](createSubagentSource.md)
+- [dispose](dispose.md)
+- [failureTimesFor](failureTimesFor.md)
+- [invalidate](invalidate.md)
+- [invalidateAndSchedule](invalidateAndSchedule.md)
+- [isCurrent](isCurrent.md)
+- [isCurrentGeneration](isCurrentGeneration.md)
+- [known](known.md)
+- [notify](notify.md)
+- [onChildIDs](onChildIDs.md)
+- [persistFailures](persistFailures.md)
+- [pruneFailures](pruneFailures.md)
+- [publishFailureTimes](publishFailureTimes.md)
+- [recordFailure](recordFailure.md)
+- [recoverUnknownTopology](recoverUnknownTopology.md)
+- [replaceKnownChildIDs](replaceKnownChildIDs.md)
+- [scheduleRefresh](scheduleRefresh.md)
+- [setParentID](setParentID.md)
+- [startRefresh](startRefresh.md)
+- [subscribe](subscribe.md)

@@ -23,14 +23,14 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node tests/compile-session-title.mjs && node tests/compile-presentation.mjs && node --test tests/*.test.mjs",
+    "test": "node tests/compile-session-rename.mjs && node tests/compile-presentation.mjs && node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "build": "npm run build:plugins",
     "build:plugins": "node build-plugins.mjs",
     "deploy:local": "node deploy-plugins.mjs local",
     "deploy:global": "node deploy-plugins.mjs global",
-    "build:session-title": "node build-session-title.mjs",
-    "deploy:session-title": "node deploy-session-title.mjs"
+    "build:session-rename": "node build-session-rename.mjs",
+    "deploy:session-rename": "node deploy-session-rename.mjs"
   },
   "keywords": [
     "opencode",

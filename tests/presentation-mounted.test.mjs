@@ -271,12 +271,14 @@ test("mounts collapsed stale and quota summary segments with independent colors"
   try {
     const summary = mounted.elements
       .filter((element) => element.type === "text")
-      .filter((element) => ["stale", " ", "46%/80%"].includes(element.props.children))
+      .filter((element) => ["stale", " ", "46%", "/", "80%"].includes(element.props.children))
 
     assert.deepEqual(summary.map((element) => [element.props.children, element.props.fg]), [
       ["stale", "#ffaa00"],
       [" ", "#888888"],
-      ["46%/80%", "#00ff00"],
+      ["46%", "#00ff00"],
+      ["/", "#888888"],
+      ["80%", "#00ff00"],
     ])
   } finally {
     mounted.dispose()

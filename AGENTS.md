@@ -11,6 +11,13 @@ In this repository, before starting work that may need code changes or investiga
 - Never attach unrelated work to an active Comet change only because `.comet.yaml` exists.
 </comet-ambient-resume>
 
+<okf>
+This project has an OKF knowledge bundle at ./okf_bundle/.
+- Use `okf lookup <Name>` for full concept context.
+- Use `okf lookup --type <Type>` to filter by type.
+- Read `SUMMARY.md` for the full knowledge map.
+</okf>
+
 ## Tui Layout rules
 
 Max width: **37 columns**

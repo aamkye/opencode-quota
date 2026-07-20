@@ -107,7 +107,7 @@ test("mounts a controlled collapsed header with independently colored summary se
     const title = mounted.elements.find((element) => element.type === "text" && element.props.children === "Quota")
     const summary = mounted.elements
       .filter((element) => element.type === "text")
-      .filter((element) => ["stale", " ", "46%/80%"].includes(element.props.children))
+      .filter((element) => ["stale", " ", "46%", "/", "80%"].includes(element.props.children))
 
     assert.equal(marker()?.props.width, 2)
     assert.equal(title?.props.flexBasis, 0)
@@ -121,14 +121,18 @@ test("mounts a controlled collapsed header with independently colored summary se
         ["Quota", undefined],
         ["stale", "#ffaa00"],
         [" ", "#888888"],
-        ["46%/80%", "#00ff00"],
+        ["46%", "#00ff00"],
+        ["/", "#888888"],
+        ["80%", "#00ff00"],
       ],
-      "the no-detail collapsed text and color sequence remains unchanged",
+      "the no-detail collapsed text and color sequence mutes numeric slashes",
     )
     assert.deepEqual(summary.map((element) => [element.props.children, element.props.fg]), [
       ["stale", "#ffaa00"],
       [" ", "#888888"],
-      ["46%/80%", "#00ff00"],
+      ["46%", "#00ff00"],
+      ["/", "#888888"],
+      ["80%", "#00ff00"],
     ])
     assert.equal(mounted.elements.some((element) => element.props.children === "Expanded content beyond the parent width"), false)
     assert.equal(dividers(mounted.elements).length, 1, "the header divider always renders but the expanded footer does not")
@@ -147,6 +151,70 @@ test("mounts a controlled collapsed header with independently colored summary se
     assert.equal(marker()?.props.children, "▼ ", "the shell owns no collapse state after repeated clicks")
   } finally {
     mounted.dispose()
+  }
+})
+
+test("mutes only numeric slash separators across plain and segmented summaries", () => {
+  const cases = [
+    {
+      summary: { text: "2/5" },
+      expected: [["2", undefined], ["/", "#888888"], ["5", undefined]],
+    },
+    {
+      summary: { text: "46%/80%", status: "success" },
+      expected: [["46%", "#00ff00"], ["/", "#888888"], ["80%", "#00ff00"]],
+    },
+    {
+      summary: { text: "7/1/3", status: "error" },
+      expected: [["7", "#ff0000"], ["/", "#888888"], ["1", "#ff0000"], ["/", "#888888"], ["3", "#ff0000"]],
+    },
+    {
+      summary: { text: "1.2K/-5", status: "warning" },
+      expected: [["1.2K", "#ffaa00"], ["/", "#888888"], ["-5", "#ffaa00"]],
+    },
+    {
+      summary: {
+        text: "2/5",
+        segments: [{ text: "2", status: "success" }, { text: "/5", status: "error" }],
+      },
+      expected: [["2", "#00ff00"], ["/", "#888888"], ["5", "#ff0000"]],
+    },
+    {
+      summary: { text: "docs/api", status: "warning" },
+      expected: [["docs/api", "#ffaa00"]],
+    },
+    {
+      summary: { text: "SDK/5", status: "warning" },
+      expected: [["SDK/5", "#ffaa00"]],
+    },
+    {
+      summary: { text: "5/5SDK", status: "warning" },
+      expected: [["5/5SDK", "#ffaa00"]],
+    },
+  ]
+
+  for (const { summary, expected } of cases) {
+    const mounted = mountCompactPanel({ collapsed: true, summary })
+    try {
+      const rendered = mounted.elements
+        .filter((element) => element.type === "text")
+        .filter((element) => !["▶ ", "Quota"].includes(element.props.children))
+        .map((element) => [element.props.children, element.props.fg])
+      assert.deepEqual(rendered, expected)
+    } finally {
+      mounted.dispose()
+    }
+  }
+
+  const detailMounted = mountCompactPanel({ collapsed: false, detail: { text: "2/5" } })
+  try {
+    const detail = detailMounted.elements
+      .filter((element) => element.type === "text")
+      .filter((element) => ["2", "/", "5"].includes(element.props.children))
+      .map((element) => [element.props.children, element.props.fg])
+    assert.deepEqual(detail, [["2", undefined], ["/", "#888888"], ["5", undefined]])
+  } finally {
+    detailMounted.dispose()
   }
 })
 
@@ -184,7 +252,7 @@ test("renders optional detail in expanded and collapsed headers", () => {
       element.type === "box"
       && element.props.flexDirection === "row"
       && element.props.flexShrink === 0
-    )).length, 1, "the segmented summary wrapper does not shrink")
+    )).length, 2, "the detail and summary wrappers do not shrink")
   } finally {
     mounted.dispose()
   }
