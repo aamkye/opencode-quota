@@ -1,8 +1,5 @@
 import { readFileSync } from "fs";
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
+import { asRecord } from "./json-utils";
 
 function sortRecordByKeys<T>(obj: Record<string, T>): Record<string, T> {
   const out: Record<string, T> = {};
