@@ -102,3 +102,4 @@ polish-tui-session-rename Task 5: complete (commit 7d5b253, standard deployment 
 polish-tui-session-rename Task 6: complete (commits 1ed9121..36f53f4, standard documentation risk review clean after one contract-strengthening fix round)
 polish-tui-session-rename Task 7: complete (commits c7067d9..98c3e26, standard risk review clean after mounted segmented-summary repair)
 polish-tui-session-rename Task 8: complete (commit 2be5b2a, standard generated-bundle risk review clean)
+polish-tui-session-rename Task 9: complete (commit e72d673, standard risk review clean; focused 43/43 and 27/27, full 425/425, typecheck and 11-artifact build passed)
