@@ -213,24 +213,28 @@ test("matches one-detail and expanded-Rest AGENTS layouts", async () => {
 
 test("matches the full wrapping expanded-title AGENTS layout without a duration box", async () => {
   const title = "SubAgent11 with super long name that would normally wrap but is too long to fit."
-  const first = canonicalChildren[0]
+  const children = canonicalChildren.map((entry) => entry.session.id === "subagent-11"
+    ? {
+        ...entry,
+        session: {
+          ...entry.session,
+          title,
+          time: { ...entry.session.time, created: 20_000_000 - (9 * 60_000 + 45_000) },
+        },
+        status: { type: "busy" },
+      }
+    : entry)
+  const expectedLayout = oneDetailWrappingLayout.map((line, index) => {
+    if (index === 2) return line.replace("▶ ", "▼ ")
+    if (index === 11) return line.replace("▼ ", "▶ ")
+    return line
+  })
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {
-    await mounted.resolveReady([{
-      ...first,
-      session: { ...first.session, title },
-    }])
+    await mounted.resolveReady(children)
     await mounted.view().clickEntry(title)
     const row = mounted.view().entryRows[0]
-    assert.equal(
-      `${oneDetailWrappingLayout[2].slice(2)}${oneDetailWrappingLayout[3].slice(2)} ${oneDetailWrappingLayout[4].slice(2)}`,
-      title,
-    )
-    assert.deepEqual(mounted.view().lines.slice(2, 5), [
-      oneDetailWrappingLayout[2].replace("▶ ", "▼ "),
-      oneDetailWrappingLayout[3],
-      oneDetailWrappingLayout[4],
-    ])
+    assert.deepEqual(mounted.view().lines, expectedLayout)
     assert.equal(row.titleProps.marginRight, undefined)
     assert.equal(row.durationProps.width, undefined)
     assert.equal(mounted.view().lines.slice(2, 5).join("").includes("9m 45s"), false)
