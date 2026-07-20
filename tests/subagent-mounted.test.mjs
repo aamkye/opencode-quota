@@ -243,6 +243,30 @@ test("matches the full wrapping expanded-title AGENTS layout without a duration 
   }
 })
 
+test("makes compact and expanded titles unselectable without disabling title rows", async () => {
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady()
+    const title = "SubAgent11 with super long name"
+    const compact = mounted.view().entryRows.find((row) => row.title === title)
+    assert.ok(compact)
+    assert.equal(compact.titleProps.selectable, false)
+    assert.equal(typeof compact.rowProps.onMouseDown, "function")
+
+    await mounted.view().clickEntry(title)
+    const expanded = mounted.view().entryRows.find((row) => row.title === title)
+    assert.ok(expanded)
+    assert.equal(expanded.disclosure, "▼ ")
+    assert.equal(expanded.titleProps.selectable, false)
+    assert.equal(typeof expanded.rowProps.onMouseDown, "function")
+
+    await mounted.view().clickEntry(title)
+    assert.equal(mounted.view().entryRows.find((row) => row.title === title)?.disclosure, "▶ ")
+  } finally {
+    await mounted.dispose()
+  }
+})
+
 test("matches semi-collapsed Rest and collapsed count layouts", async () => {
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {
