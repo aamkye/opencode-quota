@@ -2,6 +2,7 @@
 change: add-subagent-panel
 design-doc: docs/superpowers/specs/2026-07-19-subagent-panel-design.md
 base-ref: 5a0b6c3
+archived-with: 2026-07-20-add-subagent-panel
 ---
 
 # SubAgent Panel Implementation Plan

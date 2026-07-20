@@ -2,6 +2,8 @@
 comet_change: add-subagent-panel
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-20-add-subagent-panel
+status: final
 ---
 
 # SubAgent Panel Technical Design

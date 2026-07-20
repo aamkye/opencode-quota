@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/add-subagent-panel/tasks.md",
   "openspec_delta_spec": "openspec/changes/add-subagent-panel/specs/subagent-panel/spec.md",
   "handoff_context": "openspec/changes/add-subagent-panel/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/add-subagent-panel/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/add-subagent-panel/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-20-add-subagent-panel"
 }
