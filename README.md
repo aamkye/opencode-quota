@@ -26,6 +26,19 @@ totals, direct-child SubAgent activity, and `/tokens_*` reports for **Z.AI
   </tr>
 </table>
 
+## Quick Install
+
+Requires OpenCode 1.18.1 or newer, Git, and Node.js with npm.
+
+```bash
+git clone https://github.com/aamkye/opencode-quota.git
+cd opencode-quota
+npm ci
+npm run deploy:global
+```
+
+Fully restart OpenCode after deployment.
+
 ## Features
 
 ### Z.AI (`zai-coding-plan`)
