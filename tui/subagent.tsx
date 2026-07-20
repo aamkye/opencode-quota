@@ -9,6 +9,7 @@ import {
   createSubagentSnapshotLoader,
   createSubagentSource,
   defineTuiPlugin,
+  PANEL_MAX_CELLS,
   pluginDescriptor,
   type PanelStatus,
   type PanelTheme,
@@ -147,7 +148,7 @@ function SubagentRow(props: {
   theme: () => PanelTheme
 }) {
   const role = () => statusRole(props.entry.status)
-  const allocation = () => allocateSubagentEntryRow(37, 7)
+  const allocation = () => allocateSubagentEntryRow(PANEL_MAX_CELLS, 7)
   return (
     <box flexDirection="column" width="100%" overflow="hidden">
       <box flexDirection="row" width="100%" overflow="hidden" onMouseDown={props.onToggle}>

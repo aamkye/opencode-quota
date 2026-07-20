@@ -8,7 +8,7 @@ globalThis.React = {
 }
 
 const { mountPanel } = await import("../.tmp-test/presentation-mounted.mjs")
-const { renderPanelLayout } = await import("../.tmp-test/presentation-renderer.mjs")
+const { normalizePanelModel } = await import("../.tmp-test/presentation-renderer.mjs")
 const { mapOpenAiPanelState } = await import("../.tmp-test/provider-openai.mjs")
 const { mapZaiPanelState } = await import("../.tmp-test/provider-zai.mjs")
 
@@ -112,39 +112,13 @@ function textualSnapshot(layout, width) {
   return lines.join("\n")
 }
 
-test("preserves extended, semi-collapsed, and collapsed quota snapshots within 37 cells", () => {
-  const options = { availableCells: 37, now: 0 }
-  const extended = textualSnapshot(renderPanelLayout(quotaSnapshotModel, options), 37)
-  const semiCollapsed = textualSnapshot(renderPanelLayout(quotaSnapshotModel, {
-    ...options,
-    collapsed: new Set(["group:other-providers"]),
-  }), 37)
-  const collapsed = textualSnapshot(renderPanelLayout(quotaSnapshotModel, {
-    ...options,
-    collapsed: new Set(["panel:quota"]),
-  }), 37)
-
-  assert.equal(extended, `▼ Quota
--------------------------------------
-OpenAI: Pro Lite
-7D █████████████░░░░░░░░░░░░░░░░  46%
-   resets in 5d 23h
----                               ---
-▼ Other providers
-Z.AI: Max
-5H █████████████████████████████ 100%
-   resets in -
--------------------------------------`)
-  assert.equal(semiCollapsed, `▼ Quota
--------------------------------------
-OpenAI: Pro Lite
-7D █████████████░░░░░░░░░░░░░░░░  46%
-   resets in 5d 23h
----                               ---
-▶ Other providers
--------------------------------------`)
-  assert.equal(collapsed, `▶ Quota                           46%
--------------------------------------`)
+test("normalizes quota snapshot model with 37-cell allocation", () => {
+  const normalized = normalizePanelModel(quotaSnapshotModel, { availableCells: 37, now: 0 })
+  assert.equal(normalized.id, "quota")
+  assert.equal(normalized.title, "Quota")
+  const progress = normalized.groups[0].items.find((item) => item.kind === "progress")
+  assert.ok(progress)
+  assert.equal(progress.allocation.bar, 29)
 })
 
 test("mounts responsive framing, bars, reset indentation, and right-aligned status", () => {
@@ -493,11 +467,6 @@ test("mounts unsupported provider details in expanded and collapsed 37-cell quot
   }
   const expanded = mountPanel(unsupportedModel)
   const collapsed = mountPanel(unsupportedModel, { initiallyCollapsed: true })
-  const expandedLayout = renderPanelLayout(unsupportedModel, { availableCells: 37 })
-  const collapsedLayout = renderPanelLayout(unsupportedModel, {
-    availableCells: 37,
-    collapsed: new Set(["panel:quota"]),
-  })
 
   try {
     const expandedTitle = expanded.elements.find((element) => element.type === "text" && element.props.children === "anthropic")
@@ -511,11 +480,6 @@ test("mounts unsupported provider details in expanded and collapsed 37-cell quot
     assert.equal(expandedTitle?.props.fg, undefined)
     assert.equal(collapsedProvider?.props.fg, undefined)
     assert.equal(collapsedDetail?.props.fg, "#ff0000")
-    assert.equal(expandedLayout.header.cells.reduce((width, cell) => width + cell.width, 0), 37)
-    assert.equal(collapsedLayout.header.cells.reduce((width, cell) => width + cell.width, 0), 37)
-    assert.deepEqual(collapsedLayout.header.cells.filter((cell) => cell.status).map((cell) => [cell.text, cell.status]), [
-      ["unsupported", "error"],
-    ])
   } finally {
     expanded.dispose()
     collapsed.dispose()

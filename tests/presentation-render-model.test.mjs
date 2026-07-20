@@ -1,7 +1,7 @@
-import assert from "node:assert/strict"
+import assert from "assert/strict"
 import test from "node:test"
 
-import { normalizePanelModel, renderPanelLayout, toggleCollapsed } from "../.tmp-test/presentation-renderer.mjs"
+import { normalizePanelModel, toggleCollapsed } from "../.tmp-test/presentation-renderer.mjs"
 
 test("normalizes a generic panel into stable, compact render rows", () => {
   const model = {
@@ -89,115 +89,18 @@ test("normalizes a generic panel into stable, compact render rows", () => {
   })
 })
 
-test("renders allocation-derived header, progress, compact table, and parent-fill divider", () => {
-  const model = {
-    id: "usage",
-    order: 10,
-    title: "Usage overview",
-    collapsedSummary: { kind: "text", text: "51%/80%" },
-    groups: [
-      {
-        id: "accounts",
-        order: 10,
-        items: [
-          { id: "weekly", order: 10, kind: "progress", label: "Weekly", value: 51, total: 100 },
-          { id: "reset", order: 15, kind: "timer", label: "5H reset", state: "countdown", epoch: 3_600_000 },
-          {
-            id: "limits",
-            order: 20,
-            kind: "table",
-            columns: [
-              { id: "remaining", order: 20, title: "Remaining", align: "end" },
-              { id: "model", order: 10, title: "Model" },
-            ],
-            rows: [
-              {
-                id: "gpt",
-                order: 10,
-                cells: [
-                  { kind: "quantity", value: 80, unit: "count" },
-                  { kind: "text", text: "GPT" },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  }
-
-  const layout = renderPanelLayout(model, { availableCells: 16, now: 0 })
-
-  assert.deepEqual(layout.header.cells, [
-    { text: "▼ ", width: 2, align: "start" },
-    { text: "Usage overview", width: 14, align: "start" },
-  ])
-  assert.deepEqual(layout.groups[0].items[0], {
-    kind: "progress",
-    cells: [
-      { text: "We…", width: 3, align: "start" },
-      { text: "████░░░░", width: 8, align: "start" },
-      { text: " ", width: 1, align: "start" },
-      { text: " 51%", width: 4, align: "end" },
-    ],
-  })
-  assert.equal(layout.groups[0].items[1].text, "resets in 1h 0m")
-  assert.deepEqual(layout.groups[0].items[2], {
-    kind: "table",
-    rows: [
-      [
-        { text: "Model", width: 5, align: "start" },
-        { text: " ", width: 1, align: "start" },
-        { text: "Remaining", width: 9, align: "end" },
-      ],
-      [
-        { text: "GPT  ", width: 5, align: "start" },
-        { text: " ", width: 1, align: "start" },
-        { text: "       80", width: 9, align: "end" },
-      ],
-    ],
-  })
-  assert.deepEqual(layout.divider, { width: "100%", border: ["top"] })
-})
-
-test("shows the colored end-aligned summary only while the panel is collapsed", () => {
-  const model = {
-    id: "quota",
-    order: 10,
-    title: "Quota",
-    collapsedSummary: { kind: "text", text: "12%", status: "warning" },
-    groups: [],
-  }
-
-  const expanded = renderPanelLayout(model, { availableCells: 16 })
-  const collapsed = renderPanelLayout(model, { availableCells: 16, collapsed: new Set(["panel:quota"]) })
-  const summary = collapsed.header.cells.find((cell) => cell.text.trim() === "12%")
-
-  assert.equal(expanded.header.cells.some((cell) => cell.text.trim() === "12%"), false)
-  assert.deepEqual(summary, { text: "12%", width: 3, align: "end", status: "warning" })
-})
-
 test("keeps panel and group collapse state independent", () => {
-  const model = {
-    id: "usage",
-    order: 10,
-    title: "Usage",
-    groups: [
-      {
-        id: "other-providers",
-        order: 10,
-        header: { title: "Other providers", collapsible: true },
-        items: [{ id: "detail", order: 10, kind: "text", text: "Visible only when expanded" }],
-      },
-    ],
-  }
   const groupCollapsed = toggleCollapsed(new Set(), "group:other-providers")
   const panelAndGroupCollapsed = toggleCollapsed(groupCollapsed, "panel:usage")
 
-  assert.equal(renderPanelLayout(model, { collapsed: groupCollapsed }).groups[0].collapsed, true)
-  assert.equal(renderPanelLayout(model, { collapsed: groupCollapsed }).collapsed, false)
-  assert.equal(renderPanelLayout(model, { collapsed: panelAndGroupCollapsed }).groups.length, 0)
-  assert.equal(renderPanelLayout(model, { collapsed: toggleCollapsed(panelAndGroupCollapsed, "panel:usage") }).groups[0].collapsed, true)
+  assert.equal(groupCollapsed.has("group:other-providers"), true)
+  assert.equal(groupCollapsed.has("panel:usage"), false)
+  assert.equal(panelAndGroupCollapsed.has("panel:usage"), true)
+  assert.equal(panelAndGroupCollapsed.has("group:other-providers"), true)
+
+  const uncollapsed = toggleCollapsed(panelAndGroupCollapsed, "panel:usage")
+  assert.equal(uncollapsed.has("panel:usage"), false)
+  assert.equal(uncollapsed.has("group:other-providers"), true)
 })
 
 test("normalizes ordered header detail segments and keeps pure text readable", () => {
@@ -238,8 +141,4 @@ test("normalizes ordered header detail segments and keeps pure text readable", (
     { text: " / ", status: "textMuted" },
     { text: "stale", status: "warning" },
   ])
-  assert.deepEqual(
-    renderPanelLayout(model).groups[0].items.map((entry) => entry.text),
-    ["Ordinary: Limited", "OpenAI: Pro: stale", "Z.AI: Max: Off-Peak (1x) / stale"],
-  )
 })

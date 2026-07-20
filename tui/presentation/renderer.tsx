@@ -1,7 +1,7 @@
 import { For, Show, createSignal, onCleanup, type Accessor } from "solid-js"
 
 import { CompactPanel, type PanelTheme } from "./compact-panel.js"
-import { alignText, formatBytes, formatCount, formatCurrency, formatDuration, formatPercent, formatTimer, truncateText } from "./format.js"
+import { formatBytes, formatCount, formatCurrency, formatDuration, formatPercent, formatTimer, truncateText } from "./format.js"
 import { allocateCompactTable, allocateHeader, allocateProgressRow, type CompactTableAllocation, type HeaderAllocation, type ProgressRowAllocation } from "./layout.js"
 import { sortByOrderThenId, type DisplayValue, type PanelAlignment, type PanelGroup, type PanelItem, type PanelModel, type PanelStatus, type PanelTextSegment } from "./types.js"
 
@@ -69,32 +69,7 @@ export type RendererNormalizationOptions = {
   now?: number
 }
 
-type RenderedCell = {
-  text: string
-  width: number
-  align: PanelAlignment
-  status?: PanelStatus
-}
-
-type RenderedItem =
-  | { kind: "divider" }
-  | { kind: "header" | "text" | "quantity"; text: string; status?: PanelStatus }
-  | { kind: "progress"; cells: RenderedCell[] }
-  | { kind: "timer"; text: string; detail?: string; status?: PanelStatus }
-  | { kind: "table"; rows: RenderedCell[][] }
-
 export type { PanelTheme } from "./compact-panel.js"
-
-export type RenderedPanelLayout = {
-  collapsed: boolean
-  header: { cells: RenderedCell[] }
-  groups: { id: string; header?: { title: string; collapsible: boolean }; collapsed: boolean; items: RenderedItem[] }[]
-  divider: { width: "100%"; border: ["top"] }
-}
-
-export type RendererLayoutOptions = RendererNormalizationOptions & {
-  collapsed?: ReadonlySet<string>
-}
 
 function formatDisplayValue(value: DisplayValue): string {
   if (value.kind === "text") return value.text
@@ -242,131 +217,11 @@ export function normalizePanelModel(model: PanelModel, options: RendererNormaliz
   }
 }
 
-function renderCell(text: string, width: number, align: PanelAlignment, status?: PanelStatus): RenderedCell {
-  const cell = { text: alignText(truncateText(text, width), width, align), width, align }
-  return status ? { ...cell, status } : cell
-}
-
-function renderSegmentCells(segments: readonly PanelTextSegment[], width: number): RenderedCell[] {
-  const cells: RenderedCell[] = []
-  let remaining = width
-  for (let index = segments.length - 1; index >= 0 && remaining > 0; index -= 1) {
-    const segment = segments[index]!
-    const text = segment.text.slice(-remaining)
-    cells.unshift(renderCell(text, text.length, "start", segment.status))
-    remaining -= text.length
-  }
-  return cells
-}
-
-function renderItemLayout(item: NormalizedItem): RenderedItem {
-  switch (item.kind) {
-    case "divider":
-      return { kind: item.kind }
-    case "header": {
-      const detail = item.detailSegments?.length
-        ? item.detailSegments.map((segment) => segment.text).join("")
-        : item.detail
-      return {
-        kind: item.kind,
-        text: detail ? `${item.title}: ${detail}` : item.title,
-        status: item.status,
-      }
-    }
-    case "text":
-      return { kind: item.kind, text: item.text, status: item.status }
-    case "progress": {
-      const filled = Math.round((Number.parseInt(item.percent, 10) / 100) * item.allocation.bar)
-      const bar = "█".repeat(filled) + "░".repeat(item.allocation.bar - filled)
-      return {
-        kind: item.kind,
-        cells: [
-          renderCell(item.label, item.allocation.marker, "start", item.status),
-          ...(item.allocation.beforeBarGap > 0 ? [renderCell("", item.allocation.beforeBarGap, "start", item.status)] : []),
-          renderCell(bar, item.allocation.bar, "start", item.status),
-          renderCell("", item.allocation.beforePercentGap, "start", item.status),
-          renderCell(item.percent, item.allocation.percent, "end", item.status),
-        ],
-      }
-    }
-    case "timer":
-      return { kind: item.kind, text: item.text, detail: item.detail, status: item.status }
-    case "quantity":
-      return { kind: item.kind, text: `${item.label}: ${item.value}`, status: item.status }
-    case "table": {
-      const [identityColumn, keyColumn, valueColumn] = item.columns.length === 3 ? item.columns : [undefined, item.columns[0], item.columns[1]]
-      const renderRow = (cells: { text: string; status?: PanelStatus }[]) => {
-        const identityOffset = identityColumn ? 1 : 0
-        return [
-          ...(identityColumn && item.allocation.identity > 0
-            ? [
-                renderCell(cells[0]?.text ?? "", item.allocation.identity, identityColumn.align, cells[0]?.status ?? item.status),
-                renderCell("", item.allocation.beforeKeyGap, "start", item.status),
-              ]
-            : []),
-          renderCell(cells[identityOffset]?.text ?? "", item.allocation.key, keyColumn?.align ?? "start", cells[identityOffset]?.status ?? item.status),
-          renderCell("", item.allocation.beforeValueGap, "start", item.status),
-          renderCell(cells[identityOffset + 1]?.text ?? "", item.allocation.value, item.allocation.valueAlign === "right" ? "end" : "start", cells[identityOffset + 1]?.status ?? item.status),
-        ]
-      }
-
-      return {
-        kind: item.kind,
-        rows: [
-          renderRow(
-            identityColumn
-              ? [{ text: identityColumn.title }, { text: keyColumn?.title ?? "" }, { text: valueColumn?.title ?? "" }]
-              : [{ text: keyColumn?.title ?? "" }, { text: valueColumn?.title ?? "" }],
-          ),
-          ...item.rows.map((row) => renderRow(row.cells)),
-        ],
-      }
-    }
-  }
-}
-
 export function toggleCollapsed(collapsed: ReadonlySet<string>, id: string): Set<string> {
   const next = new Set(collapsed)
   if (next.has(id)) next.delete(id)
   else next.add(id)
   return next
-}
-
-export function renderPanelLayout(model: PanelModel, options: RendererLayoutOptions = {}): RenderedPanelLayout {
-  const normalized = normalizePanelModel(model, options)
-  const collapsed = options.collapsed ?? new Set<string>()
-  const panelCollapsed = collapsed.has(`panel:${normalized.id}`)
-  const title = normalized.header.cells[1]?.text ?? ""
-  const summary = panelCollapsed ? normalized.header.summary : undefined
-  const allocation = allocateHeader(options.availableCells ?? 80, title, summary?.text)
-
-  return {
-    collapsed: panelCollapsed,
-    header: {
-      cells: [
-        renderCell(panelCollapsed ? "▶ " : "▼ ", allocation.marker, "start"),
-        renderCell(title, allocation.label, "start"),
-        ...(allocation.beforeSummaryGap > 0 ? [renderCell("", allocation.beforeSummaryGap, "start")] : []),
-        ...(summary && allocation.summary > 0
-          ? summary.segments?.length
-            ? renderSegmentCells(summary.segments, allocation.summary)
-            : [renderCell(summary.text, allocation.summary, "end", summary.status)]
-          : []),
-      ],
-    },
-    groups: panelCollapsed
-      ? []
-      : normalized.groups.map((group) => {
-          const groupCollapsed = group.header?.collapsible === true && collapsed.has(`group:${group.id}`)
-          return {
-            id: group.id,
-            header: group.header,
-            collapsed: groupCollapsed,
-            items: groupCollapsed ? [] : group.items.map(renderItemLayout),
-          }
-        }),
-    divider: { width: "100%", border: ["top"] },
-  }
 }
 
 function GroupDivider(props: { theme: Accessor<PanelTheme> }) {

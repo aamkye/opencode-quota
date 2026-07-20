@@ -1,3 +1,5 @@
+export const PANEL_MAX_CELLS = 37
+
 export type HeaderAllocation = {
   marker: number
   label: number
