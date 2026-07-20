@@ -7,17 +7,28 @@ type TimerDisplay = {
   epoch?: number
 }
 
-function formatCompact(value: number, divisor: number, suffix: string, precision: number): string {
-  const compact = value / divisor
-  return `${compact.toFixed(precision).replace(/\.0+$/, "")}${suffix}`
+const COMPACT_UNITS = [
+  { divisor: 1_000, suffix: "K" },
+  { divisor: 1_000_000, suffix: "M" },
+  { divisor: 1_000_000_000, suffix: "B" },
+] as const
+
+function formatCompact(value: number, unitIndex: number, precision: number): string {
+  let index = unitIndex
+  let rounded = Number((value / COMPACT_UNITS[index].divisor).toFixed(precision))
+  while (Math.abs(rounded) >= 1_000 && index < COMPACT_UNITS.length - 1) {
+    index += 1
+    rounded = Number((value / COMPACT_UNITS[index].divisor).toFixed(precision))
+  }
+  return `${rounded}${COMPACT_UNITS[index].suffix}`
 }
 
-export function formatCount(value: number, precision = 1): string {
+export function formatCount(value: number, precision = 2): string {
   if (!Number.isFinite(value)) return "0"
   const absolute = Math.abs(value)
-  if (absolute >= 1_000_000_000) return formatCompact(value, 1_000_000_000, "B", precision)
-  if (absolute >= 1_000_000) return formatCompact(value, 1_000_000, "M", precision)
-  if (absolute >= 1_000) return formatCompact(value, 1_000, "K", precision)
+  if (absolute >= 1_000_000_000) return formatCompact(value, 2, precision)
+  if (absolute >= 1_000_000) return formatCompact(value, 1, precision)
+  if (absolute >= 1_000) return formatCompact(value, 0, precision)
   return String(Math.round(value))
 }
 
