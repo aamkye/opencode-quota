@@ -435,12 +435,14 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
 
   const buildAndDeploy = readme.match(/### Build and deploy\n\n([\s\S]*?)(?=\n#### Rollback)/u)?.[1]
   const rollback = readme.match(/#### Rollback\n\n([\s\S]*?)(?=\n### Artifact layout)/u)?.[1]
-  const artifactLayout = readme.match(/### Artifact layout\n\n([\s\S]*?)(?=\n### Session title plugin)/u)?.[1]
+  const artifactLayout = readme.match(/### Artifact layout\n\n([\s\S]*?)(?=\n### Session rename plugin)/u)?.[1]
+  const sessionRenameSection = readme.match(/### Session rename plugin\n\n([\s\S]*?)(?=\n### Source files)/u)?.[1]
   const sourceFiles = readme.match(/### Source files\n\n([\s\S]*?)(?=\n### Edit workflow)/u)?.[1]
   const editWorkflow = readme.match(/### Edit workflow\n\n([\s\S]*?)(?=\n## Breaking migration)/u)?.[1]
   assert.ok(buildAndDeploy, "missing Build and deploy section")
   assert.ok(rollback, "missing Rollback section")
   assert.ok(artifactLayout, "missing Artifact layout section")
+  assert.ok(sessionRenameSection, "missing Session rename plugin section")
   assert.ok(sourceFiles, "missing Source files section")
   assert.ok(editWorkflow, "missing Edit workflow section")
   assert.match(buildAndDeploy, /Build the nine standalone minified ESM plugins/u)
@@ -497,6 +499,19 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.match(sourceFiles, /Builds the shared artifact and nine standalone local ESM plugins/u)
   assert.match(sourceFiles, /Idempotently migrates nine local\/global plugins and `tui\.json` entries/u)
   assert.match(editWorkflow, /npm run build:plugins # rebuild all nine standalone plugins plus shared code/u)
+
+  assert.match(sesTokensFeatures, /up to two decimal places/u)
+  assert.match(sesTokensFeatures, /collapsed summary shows only the aggregate total/u)
+  assert.match(sessionRenameSection, /`\/session-rename`/u)
+  assert.match(sessionRenameSection, /`npm run build:session-rename`/u)
+  assert.match(sessionRenameSection, /`npm run deploy:session-rename`/u)
+  assert.match(sessionRenameSection, /`dist\/session-rename\.ts`/u)
+  assert.match(sessionRenameSection, /removes the previously managed legacy artifact/u)
+  assert.match(sessionRenameSection, /only when the command is invoked/u)
+  assert.doesNotMatch(sessionRenameSection, /first message|idle event|automatic rename/iu)
+  assert.match(artifactLayout, /^└── session-rename\.ts$/mu)
+  assert.match(sourceFiles, /^\| `lib\/session-rename\.ts`\s+\| Manual session rename command behavior\s+\|$/mu)
+  assert.match(sourceFiles, /^\| `session-rename\.ts`\s+\| Global manual session rename plugin entry point\s+\|$/mu)
 
   assert.match(prose, /Long IDs truncate with an ellipsis so expanded lines fit within 37 cells and collapsed lines fit within 36 cells\./u)
   assert.match(prose, /TODO continuation lines align under the content column, and only completed records contribute to the collapsed numerator\./u)
