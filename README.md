@@ -18,15 +18,11 @@ totals, direct-child SubAgent activity, and `/tokens_*` reports for **Z.AI
 <table>
   <tr>
     <td width="50%">
-      <img src="img/img1.jpg" alt="OpenCode Tools TUI sidebar panel" />
+      <img src="img/new-img1.jpg" alt="Old TUI sidebar panel" />
     </td>
     <td width="50%">
-      <img src="img/img2.jpg" alt="OpenCode Tools TUI sidebar panel extended" />
+      <img src="img/new-img2.jpg" alt="New TUI sidebar panel" />
     </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center">OpenCode Tools TUI sidebar panel</td>
-    <td width="50%" align="center">OpenCode Tools TUI sidebar panel extended</td>
   </tr>
 </table>
 
@@ -172,7 +168,7 @@ published to npm, and OpenCode is never configured with an npm package spec.
 OpenCode 1.18.1 or newer is required for the standalone TUI plugin and
 synchronized MCP, Context, LSP, TODO, session-tree, and SubAgent state APIs.
 
-### Configuration
+### Configuration in `tui.json`
 
 Native TUI options can be supplied with the local plugin entry:
 
@@ -213,6 +209,7 @@ Native TUI options can be supplied with the local plugin entry:
     "./opencode-tools-todo.js"
   ],
   "plugin_enabled": {
+    "internal:sidebar-context": false,
     "internal:sidebar-mcp": false,
     "internal:sidebar-lsp": false,
     "internal:sidebar-todo": false
@@ -701,19 +698,19 @@ dist/
 └── session-rename.ts
 ```
 
-| File                             | Runtime ID                           | Responsibility                                                                 |
-| -------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
-| `opencode-tools-shared.js`       | Not registered                       | Imported-only provider, presentation, and token-report logic.                  |
-| `opencode-tools-home.js`         | `aamkye/opencode-tools-home`         | Compact homepage provider summary.                                             |
-| `opencode-tools-token-report.js` | `aamkye/opencode-tools-token-report` | TUI `/tokens_*` commands and reports.                                          |
-| `opencode-tools-context.js`      | `aamkye/opencode-tools-context`      | Reactive active-session context and spend panel.                               |
-| `opencode-tools-ses-tokens.js`   | `aamkye/opencode-tools-ses-tokens`   | Complete descendant-session-tree assistant token aggregation panel.            |
-| `opencode-tools-subagent.js`     | `aamkye/opencode-tools-subagent`     | Direct-child SubAgent activity panel.                                          |
-| `opencode-tools-quota.js`        | `aamkye/opencode-tools-quota`        | Quota sidebar panel and provider polling.                                      |
-| `opencode-tools-mcp.js`          | `aamkye/opencode-tools-mcp`          | Reactive MCP sidebar health panel immediately after quota.                     |
-| `opencode-tools-lsp.js`          | `aamkye/opencode-tools-lsp`          | Reactive LSP sidebar status panel.                                             |
-| `opencode-tools-todo.js`         | `aamkye/opencode-tools-todo`         | Synchronized session TODO sidebar panel immediately after LSP.                 |
-| `session-rename.ts`              | `aamkye/session-rename`               | Manual global session rename command.                                          |
+| File                             | Runtime ID                           | Responsibility                                                      |
+| -------------------------------- | ------------------------------------ | ------------------------------------------------------------------- |
+| `opencode-tools-shared.js`       | Not registered                       | Imported-only provider, presentation, and token-report logic.       |
+| `opencode-tools-home.js`         | `aamkye/opencode-tools-home`         | Compact homepage provider summary.                                  |
+| `opencode-tools-token-report.js` | `aamkye/opencode-tools-token-report` | TUI `/tokens_*` commands and reports.                               |
+| `opencode-tools-context.js`      | `aamkye/opencode-tools-context`      | Reactive active-session context and spend panel.                    |
+| `opencode-tools-ses-tokens.js`   | `aamkye/opencode-tools-ses-tokens`   | Complete descendant-session-tree assistant token aggregation panel. |
+| `opencode-tools-subagent.js`     | `aamkye/opencode-tools-subagent`     | Direct-child SubAgent activity panel.                               |
+| `opencode-tools-quota.js`        | `aamkye/opencode-tools-quota`        | Quota sidebar panel and provider polling.                           |
+| `opencode-tools-mcp.js`          | `aamkye/opencode-tools-mcp`          | Reactive MCP sidebar health panel immediately after quota.          |
+| `opencode-tools-lsp.js`          | `aamkye/opencode-tools-lsp`          | Reactive LSP sidebar status panel.                                  |
+| `opencode-tools-todo.js`         | `aamkye/opencode-tools-todo`         | Synchronized session TODO sidebar panel immediately after LSP.      |
+| `session-rename.ts`              | `aamkye/session-rename`              | Manual global session rename command.                               |
 
 `solid-js`, `@opentui/*`, `@opencode-ai/plugin`, host SDK modules, and
 Node/Bun built-ins remain external and are provided by the OpenCode host.
@@ -749,16 +746,16 @@ after deployment.
 | `tui/services/session-tree-snapshot.ts` | Bounded complete descendant-tree snapshot loader                                              |
 | `tui/services/ses-tokens-source.ts`     | Debounced event refresh, retry, and stale-state source                                        |
 | `tui/subagent.tsx`                      | Standalone SubAgent sidebar component and adapter                                             |
-| `tui/features/subagent.ts`              | SubAgent status, duration, grouping, and panel model                                           |
+| `tui/features/subagent.ts`              | SubAgent status, duration, grouping, and panel model                                          |
 | `tui/services/subagent-snapshot.ts`     | Bounded direct-child snapshot loader                                                          |
-| `tui/services/subagent-source.ts`       | Event refresh, retry, stale-state, and failure persistence source                              |
+| `tui/services/subagent-source.ts`       | Event refresh, retry, stale-state, and failure persistence source                             |
 | `tui/providers/`                        | Z.AI, OpenAI, and OpenCode Go provider adapters                                               |
 | `lib/tokens/`                           | Vendored token reporting library ([upstream](https://github.com/slkiser/opencode-quota), MIT) |
-| `lib/session-rename.ts`                  | Manual session rename command behavior                                                        |
-| `session-rename.ts`                      | Global manual session rename plugin entry point                                               |
+| `lib/session-rename.ts`                 | Manual session rename command behavior                                                        |
+| `session-rename.ts`                     | Global manual session rename plugin entry point                                               |
 | `plugin-manifest.json`                  | Manifest order, runtime IDs, artifacts, slots, and option ownership                           |
-| `build-session-rename.mjs`               | Builds the bundled global session rename plugin                                               |
-| `deploy-session-rename.mjs`              | Installs the global session rename plugin and removes the legacy artifact                     |
+| `build-session-rename.mjs`              | Builds the bundled global session rename plugin                                               |
+| `deploy-session-rename.mjs`             | Installs the global session rename plugin and removes the legacy artifact                     |
 | `build-plugins.mjs`                     | Builds the shared artifact and nine standalone local ESM plugins                              |
 | `deploy-plugins.mjs`                    | Idempotently migrates nine local/global plugins and `tui.json` entries                        |
 
