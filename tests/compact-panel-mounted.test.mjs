@@ -183,6 +183,14 @@ test("mutes only numeric slash separators across plain and segmented summaries",
       summary: { text: "docs/api", status: "warning" },
       expected: [["docs/api", "#ffaa00"]],
     },
+    {
+      summary: { text: "SDK/5", status: "warning" },
+      expected: [["SDK/5", "#ffaa00"]],
+    },
+    {
+      summary: { text: "5/5SDK", status: "warning" },
+      expected: [["5/5SDK", "#ffaa00"]],
+    },
   ]
 
   for (const { summary, expected } of cases) {

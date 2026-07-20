@@ -29,6 +29,10 @@ export type CompactStatusRowProps = {
   theme: Accessor<PanelTheme>
 }
 
+const NUMERIC_TOKEN = String.raw`[+-]?\d+(?:\.\d+)?(?:%|[KMB])?`
+const LEFT_NUMERIC_TOKEN = new RegExp(String.raw`(?:^|[\s/])${NUMERIC_TOKEN}$`, "iu")
+const RIGHT_NUMERIC_TOKEN = new RegExp(String.raw`^${NUMERIC_TOKEN}(?=$|[\s/])`, "iu")
+
 function Divider() {
   return <box width="100%" height={1} border={["top"]} />
 }
@@ -43,8 +47,8 @@ function summarySegments(value: CompactPanelSummary): readonly PanelTextSegment[
   for (let index = 0; index < text.length; index += 1) {
     if (
       text[index] === "/"
-      && /[\d%KMB]$/iu.test(text.slice(0, index))
-      && /^[+-]?\d/u.test(text.slice(index + 1))
+      && LEFT_NUMERIC_TOKEN.test(text.slice(0, index))
+      && RIGHT_NUMERIC_TOKEN.test(text.slice(index + 1))
     ) mutedOffsets.add(index)
   }
 
