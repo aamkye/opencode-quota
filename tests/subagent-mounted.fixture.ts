@@ -196,7 +196,7 @@ function rowLayout(row: HostNode, width: number) {
     if ((configuredWidths[index] === 0 || cell.props.truncate) && cellWidth(text) > allocated) {
       rendered = cell.props.truncate ? truncateCells(text, allocated) : takeCells(text, allocated)
     }
-    if (cell.props.justifyContent === "flex-end") {
+    if (cell.props.flexDirection === "row" && cell.props.justifyContent === "flex-end") {
       rendered = `${" ".repeat(Math.max(0, allocated - cellWidth(rendered)))}${rendered}`
     }
     const hasFollowingCell = index < cells.length - 1

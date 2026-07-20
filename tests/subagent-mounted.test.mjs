@@ -476,6 +476,23 @@ test("reserves the fixed duration box while flexing end-truncated titles", async
   }
 })
 
+test("right-aligns a shorter compact duration inside its seven-cell wrapper", async () => {
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady()
+    const row = mounted.view().entryRows.find((entry) => entry.title === "SubAgent11 with super long name")
+    assert.ok(row)
+    assert.equal(row.duration, "9m 45s")
+    assert.equal(row.durationProps.width, 7)
+    assert.equal(row.durationProps.flexShrink, 0)
+    assert.equal(row.durationProps.justifyContent, "flex-end")
+    assert.equal(row.durationProps.flexDirection, "row")
+    assert.equal(row.renderedText.endsWith("   9m 45s"), true)
+  } finally {
+    await mounted.dispose()
+  }
+})
+
 test("measures wide and combining titles in terminal cells", async () => {
   const wideTitle = "界".repeat(20)
   const combiningTitle = "e\u0301".repeat(30)

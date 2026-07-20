@@ -164,7 +164,7 @@ function SubagentRow(props: {
           <text flexGrow={1} flexShrink={1} minWidth={0} wrapMode="char">{props.entry.title}</text>
         </Show>
         <Show when={!props.expanded}>
-          <box width={allocation().duration} flexShrink={0} justifyContent="flex-end">
+          <box width={allocation().duration} flexShrink={0} justifyContent="flex-end" flexDirection="row">
             <text wrapMode="none" fg={props.theme()[role()]}>{props.entry.duration}</text>
           </box>
         </Show>

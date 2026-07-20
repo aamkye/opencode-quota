@@ -190,6 +190,7 @@ test("SubAgent flexes its title with a structural margin beside its fixed durati
   assert.match(subagent, /truncate=\{true\}/)
   assert.match(subagent, /width=\{allocation\(\)\.duration\}/)
   assert.match(subagent, /justifyContent=["']flex-end["']/)
+  assert.match(subagent, /<box\s+width=\{allocation\(\)\.duration\}\s+flexShrink=\{0\}\s+justifyContent=["']flex-end["']\s+flexDirection=["']row["']/)
   assert.match(subagent, /when=\{props\.expanded\}[\s\S]*?<text[^>]*wrapMode=["']char["'][^>]*>\s*\{props\.entry\.title\}/)
   assert.doesNotMatch(subagent, /<text\s+width=\{allocation\(\)\.beforeDurationGap\}[^>]*>\s*<\/text>/)
   assert.doesNotMatch(subagent, /\bref\s*=/)
