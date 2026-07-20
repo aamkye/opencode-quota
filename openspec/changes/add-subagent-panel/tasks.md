@@ -36,5 +36,10 @@
 
 ## 8. Interactive Title Selection Correction
 
-- [ ] 8.1 Add a failing mounted/source-boundary regression that requires compact and expanded interactive SubAgent titles to disable text selection while retaining row click expansion
-- [ ] 8.2 Set `selectable={false}` on those title text nodes, preserve all compact/expanded layout and interaction behavior, pass focused/full/typecheck/build gates, deploy locally, and confirm no title selection in live OpenCode
+- [x] 8.1 Add a failing mounted/source-boundary regression that requires compact and expanded interactive SubAgent titles to disable text selection while retaining row click expansion
+- [x] 8.2 Set `selectable={false}` on those title text nodes, preserve all compact/expanded layout and interaction behavior, pass focused/full/typecheck/build gates, deploy locally, and confirm no title selection in live OpenCode
+
+## 9. Expanded Title Character Preservation
+
+- [ ] 9.1 Add a failing mounted regression that forces an expanded title across a character-wrap boundary and proves concatenated continuation text retains every title grapheme
+- [ ] 9.2 Render expanded title text at the flex-computed remaining width without dropping boundary characters, preserve character-wrap layout and row interactions, pass focused/full/typecheck/build gates, deploy locally, and confirm complete expanded titles in live OpenCode

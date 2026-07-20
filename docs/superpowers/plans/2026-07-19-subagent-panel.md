@@ -1313,3 +1313,41 @@ Run the focused command, `npm run typecheck`, `npm test`, `npm run build`, scope
 - [ ] **Step 5: Confirm live behavior**
 
 Restart or reload OpenCode, click compact and expanded SubAgent titles, confirm expansion/collapse still works, and confirm no title selection highlight appears. Record the result before checking OpenSpec 8.1/8.2.
+
+### Task 12: Preserve Expanded Title Characters
+
+**OpenSpec mapping:** 9.1, 9.2; corrective acceptance for wrapped expanded titles.
+
+**Files:**
+- Modify: `tui/subagent.tsx`
+- Modify: `tests/subagent-mounted.fixture.ts`
+- Modify: `tests/subagent-mounted.test.mjs`
+- Modify: `tests/shared-boundary.test.mjs`
+
+- [ ] **Step 1: Add the failing character-retention regression**
+
+Mount an expanded title that crosses a character-wrap boundary, extract its title continuation lines, and assert they concatenate to the exact original title with no missing or reordered graphemes. Require the expanded title wrapper to be flexible and its nested wrapping text to use `width="100%"`; preserve `selectable={false}` and the parent row click contract.
+
+- [ ] **Step 2: Run focused RED**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test \
+  tests/subagent-mounted.test.mjs \
+  tests/shared-boundary.test.mjs
+```
+
+Expected RED: expanded title source lacks the full-width child wrapper and the mounted regression exposes the character-boundary loss.
+
+- [ ] **Step 3: Apply the minimal wrapping correction**
+
+Replace the expanded title flex-item text with a `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}` wrapper containing one `width="100%"`, `wrapMode="char"`, `selectable={false}` text child. Do not alter compact title allocation/truncation, duration, details, disclosures, mouse handlers, or selection outside the expanded title.
+
+- [ ] **Step 4: Run GREEN gates and commit**
+
+Run the focused command, `npm run typecheck`, `npm test`, `npm run build`, scoped `git diff --check`, and `npm run deploy:local`. Confirm user-owned `AGENTS.md` remains unstaged. Commit only the four listed tracked files.
+
+- [ ] **Step 5: Confirm live behavior**
+
+Reload OpenCode, expand a title that wraps, and confirm continuation lines retain every character without selection highlighting. Record the result before checking OpenSpec 9.1/9.2.
