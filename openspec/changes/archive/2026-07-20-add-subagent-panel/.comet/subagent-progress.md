@@ -1,0 +1,21 @@
+# Subagent Progress
+
+- Change: add-subagent-panel
+- Plan: docs/superpowers/plans/2026-07-19-subagent-panel.md
+- Review mode: thorough
+- TDD mode: tdd
+- Current task: Task 12: Preserve Expanded Title Characters
+- Mapped OpenSpec tasks: 9.1 character-retention regression; 9.2 character-retention correction
+- Stage: implementing
+- Task base: 5cf5c82
+- Implementation commits: 0c8bcf3, 9f73246, 7f5e17a, d4e0938, 29d87f2, 866b3b2, b1f9dcb, ed05290, 144d250, af43ed5, 3e2801d, 81ea48a, c80df44, 9736199
+- Allowed files: tui/features/subagent.ts, tui/subagent.tsx, tests/subagent-model.test.mjs, tests/shared-boundary.test.mjs, tests/opentui-solid-host-runtime.fixture.ts, tests/subagent-mounted.fixture.ts, tests/subagent-mounted.test.mjs, tests/plugin-wiring.test.mjs, README.md
+- User-owned worktree input: unstaged `AGENTS.md` SubAgent layouts define the fixed seven-cell duration, two-gap compact row, and full wrapping expanded-title acceptance contract; preserve it without staging.
+- RED evidence: focused suite failed at `752a784` because allocation retained a one-cell/dynamic duration contract, compact rows lacked the fixed `2/26/2/7` reservation, and expanded titles remained compact-truncated
+- GREEN evidence: focused 31/31; full 422/422; typecheck/build/diff gates pass; local deploy SHA-256 parity `f771c13f…aa29` recorded in the Task 10 report
+- Risk signals: child renderable lifecycle integration; live visual acceptance; shared mounted-host event simulation
+- Review stages passed: Tasks 1-9, prior final whole-branch review, Task 10 review, and render-phase fix re-review approved with no findings
+- Fresh allocation review: no critical findings; one important gap remains because the 35/36-cell terminal ellipsis assertion models native truncation rather than the actual OpenTUI host.
+- Unresolved feedback: fresh review and live validation of `9736199` pending. It sets `selectable={false}` on compact and expanded interactive title text while retaining row click expansion.
+- Review-fix round: fixed-duration correction approved
+- Next action: Run TDD for the expanded-title full-width wrapper, then review, deploy, and request live validation.
