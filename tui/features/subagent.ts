@@ -64,12 +64,7 @@ function durationBetween(end: unknown, start: unknown): number {
   return Math.max(0, Math.floor(finiteEnd - finiteStart))
 }
 
-function formatDuration(durationMs: number): string {
-  const seconds = Math.floor(durationMs / 1_000)
-  if (seconds >= 3_600) return `${Math.floor(seconds / 3_600)}h ${Math.floor((seconds % 3_600) / 60)}m`
-  if (seconds >= 60) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
-  return `${seconds}s`
-}
+import { formatDuration } from "../presentation/format.js"
 
 export function allocateSubagentEntryRow(
   availableCells: number,
@@ -136,7 +131,7 @@ export function createSubagentPanelModel(
       model: identity(assistant?.modelID) ?? identity(user?.model?.modelID) ?? "-",
       status,
       durationMs,
-      duration: formatDuration(durationMs),
+      duration: formatDuration(durationMs, "hours"),
     }
   })
   const successful = entries.filter(({ status }) => status === "successful").length
