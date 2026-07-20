@@ -1218,11 +1218,11 @@ git commit -m "fix(subagent): correct panel visual contract"
 - Remove every title `ref`, `onSizeChange`, `renderBefore`, child event listener, `LayoutEvents`, and root-only `"resized"` use. The mounted fixture has no title lifecycle simulation.
 - Preserve direct `string-width` 7.2.0, grapheme-safe end truncation, fixed-duration/two-gap compact-row expectations, full wrapping expanded titles, status colors, Rest treatment, detail clipping, source behavior, and build dependency policy.
 
-- [ ] **Step 1: Add the failing real-event regression**
+- [x] **Step 1: Add the failing real-event regression**
 
 Change the pure allocation, mounted host, source-boundary, and AGENTS-derived README contract tests before production. Update `allocateSubagentEntryRow` so its fixed seven-cell duration reservation exposes a two-cell `beforeDurationGap` and a 26-cell title at width 37. Assert that compact rows use this allocation, a fixed seven-cell right-aligned duration box, and a scrollbar-reduced path that preserves title separation and duration. Assert expanded titles wrap all content after the two-cell disclosure without a duration box. Update the AGENTS parser and README layouts for the new full-detail wrapped-title reference layout. Require `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, a two-cell `marginRight`, fixed duration width, direct allocation, and native `truncate`; reject separate gap text nodes, compact title `width`, and every title measurement hook.
 
-- [ ] **Step 2: Run and retain the focused RED**
+- [x] **Step 2: Run and retain the focused RED**
 
 Run:
 
@@ -1234,7 +1234,7 @@ node tests/compile-presentation.mjs && node --test \
 
 Expected RED at `af43ed5`: source-boundary assertions reject its one-cell dynamic duration and margin contract, while mounted compact/expanded layout assertions demonstrate the missing fixed duration reservation and full expanded title. Compilation must complete before the behavioral assertions fail.
 
-- [ ] **Step 3: Implement the responsive flex correction**
+- [x] **Step 3: Implement the responsive flex correction**
 
 Use the pure allocation directly:
 
@@ -1244,11 +1244,11 @@ const allocation = () => allocateSubagentEntryRow(37, stringWidth(props.entry.du
 
 Update `allocateSubagentEntryRow` so a seven-cell duration reservation receives a two-cell gap without weakening its existing finite-input or too-narrow invariants. For compact rows, pass `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, `marginRight={allocation().beforeDurationGap}`, `overflow="hidden"`, `wrapMode="none"`, and `truncate={true}` to the title `<text>`, with direct end-truncated content. Use `allocateSubagentEntryRow(37, 7)` for disclosure/title/margin/duration values and right-align the duration in its seven-cell box. For expanded rows, render the full wrapping title after disclosure and omit duration/margin. Do not change other rendering or source behavior.
 
-- [ ] **Step 4: Run automated GREEN gates and commit**
+- [x] **Step 4: Run automated GREEN gates and commit**
 
 Run the focused command from Step 2, then `npm run typecheck`, `npm test`, `npm run build`, the existing SubAgent bundle/dependency/AGENTS/artifact gates, and scoped `git diff --check`. Commit only the five listed tracked files.
 
-- [ ] **Step 5: Deploy and validate the live panel**
+- [x] **Step 5: Deploy and validate the live panel**
 
 Run `npm run deploy:local`, restart or reload OpenCode, and confirm every visible SubAgent row contains its title plus complete duration at normal and scrollbar-reduced widths. Record the live result before checking off OpenSpec 7.1/7.2.
 
@@ -1286,11 +1286,11 @@ Task 10 exists because live OpenCode disproved every dynamic title-measurement p
 - Modify: `tests/subagent-mounted.test.mjs`
 - Modify: `tests/shared-boundary.test.mjs`
 
-- [ ] **Step 1: Add the failing selection regression**
+- [x] **Step 1: Add the failing selection regression**
 
 Require both compact `MeasuredTitle` and expanded wrapping title text to set `selectable={false}`. Exercise the existing title-row click path for each state and assert expansion still changes. The source-boundary test must reject an implementation that leaves either interactive title selectable.
 
-- [ ] **Step 2: Run focused RED**
+- [x] **Step 2: Run focused RED**
 
 Run:
 
@@ -1302,15 +1302,15 @@ node tests/compile-presentation.mjs && node --test \
 
 Expected RED: source/mounted assertions report missing nonselectable compact and expanded title props; existing expansion behavior still compiles.
 
-- [ ] **Step 3: Apply the minimal interaction fix**
+- [x] **Step 3: Apply the minimal interaction fix**
 
 Set `selectable={false}` on only the compact and expanded SubAgent title `<text>` nodes. Do not alter row mouse handlers, disclosures, duration, title allocation, wrapping, colors, details, source behavior, or selection outside these interactive titles.
 
-- [ ] **Step 4: Run GREEN gates and commit**
+- [x] **Step 4: Run GREEN gates and commit**
 
 Run the focused command, `npm run typecheck`, `npm test`, `npm run build`, scoped `git diff --check`, and `npm run deploy:local`. Confirm the user-owned `AGENTS.md` remains unstaged. Commit only the four listed tracked files.
 
-- [ ] **Step 5: Confirm live behavior**
+- [x] **Step 5: Confirm live behavior**
 
 Restart or reload OpenCode, click compact and expanded SubAgent titles, confirm expansion/collapse still works, and confirm no title selection highlight appears. Record the result before checking OpenSpec 8.1/8.2.
 
@@ -1324,11 +1324,11 @@ Restart or reload OpenCode, click compact and expanded SubAgent titles, confirm 
 - Modify: `tests/subagent-mounted.test.mjs`
 - Modify: `tests/shared-boundary.test.mjs`
 
-- [ ] **Step 1: Add the failing character-retention regression**
+- [x] **Step 1: Add the failing character-retention regression**
 
 Mount an expanded title that crosses a character-wrap boundary, extract its title continuation lines, and assert they concatenate to the exact original title with no missing or reordered graphemes. Require the expanded title wrapper to be flexible and its nested wrapping text to use `width="100%"`; preserve `selectable={false}` and the parent row click contract.
 
-- [ ] **Step 2: Run focused RED**
+- [x] **Step 2: Run focused RED**
 
 Run:
 
@@ -1340,15 +1340,15 @@ node tests/compile-presentation.mjs && node --test \
 
 Expected RED: expanded title source lacks the full-width child wrapper and the mounted regression exposes the character-boundary loss.
 
-- [ ] **Step 3: Apply the minimal wrapping correction**
+- [x] **Step 3: Apply the minimal wrapping correction**
 
 Replace the expanded title flex-item text with a `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}` wrapper containing one `width="100%"`, `wrapMode="char"`, `selectable={false}` text child. Do not alter compact title allocation/truncation, duration, details, disclosures, mouse handlers, or selection outside the expanded title.
 
-- [ ] **Step 4: Run GREEN gates and commit**
+- [x] **Step 4: Run GREEN gates and commit**
 
 Run the focused command, `npm run typecheck`, `npm test`, `npm run build`, scoped `git diff --check`, and `npm run deploy:local`. Confirm user-owned `AGENTS.md` remains unstaged. Commit only the four listed tracked files.
 
-- [ ] **Step 5: Confirm live behavior**
+- [x] **Step 5: Confirm live behavior**
 
 Reload OpenCode, expand a title that wraps, and confirm continuation lines retain every character without selection highlighting. Record the result before checking OpenSpec 9.1/9.2.
 
@@ -1364,11 +1364,11 @@ Reload OpenCode, expand a title that wraps, and confirm continuation lines retai
 - Modify: `tests/plugin-wiring.test.mjs`
 - Modify: `README.md`
 
-- [ ] **Step 1: Add the failing fixed-width regression**
+- [x] **Step 1: Add the failing fixed-width regression**
 
 Update AGENTS-derived mounted and README layout expectations for the 25-cell expanded title example. Add an expanded long-title test that asserts every title line after disclosure has at most 25 terminal cells and their concatenation equals the original title.
 
-- [ ] **Step 2: Run focused RED**
+- [x] **Step 2: Run focused RED**
 
 Run:
 
@@ -1381,14 +1381,14 @@ node tests/compile-presentation.mjs && node --test \
 
 Expected RED: the expanded title is flexible/full-width rather than fixed 25 cells, and canonical layout expectations differ.
 
-- [ ] **Step 3: Apply fixed 25-cell wrapping**
+- [x] **Step 3: Apply fixed 25-cell wrapping**
 
 Replace the expanded title flexible wrapper with a fixed 25-cell, nonselectable `wrapMode="char"` region after disclosure. Keep its parent row click handler, details, compact title/duration, and all unrelated layouts unchanged.
 
-- [ ] **Step 4: Run GREEN gates and commit**
+- [x] **Step 4: Run GREEN gates and commit**
 
 Run the focused command, `npm run typecheck`, `npm test`, `npm run build`, scoped `git diff --check`, and `npm run deploy:local`. Preserve the canonical `AGENTS.md` update and commit only the six listed tracked files plus that update.
 
-- [ ] **Step 5: Confirm live behavior**
+- [x] **Step 5: Confirm live behavior**
 
 Reload OpenCode and confirm expanded titles wrap after 25 cells with no character loss or selection highlight. Record the result before checking OpenSpec 10.1/10.2.
