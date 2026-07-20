@@ -2,6 +2,7 @@ import { join } from "path";
 import { existsSync } from "fs";
 
 import { getOpencodeRuntimeDirCandidates } from "./opencode-runtime-paths";
+import { asRecord } from "./json-utils";
 import { pickFirstExistingPath } from "./path-pick";
 import { openOpenCodeSqliteReadOnly, type SqliteConn } from "./opencode-sqlite";
 
@@ -84,10 +85,6 @@ type SessionRow = {
   time_created: number;
   time_updated: number;
 };
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
 
 function safeJsonParse(raw: string): unknown | null {
   try { return JSON.parse(raw) as unknown; } catch { return null; }

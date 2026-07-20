@@ -1,5 +1,3 @@
-export type CursorQuotaPlan = "none" | "pro" | "pro-plus" | "ultra";
-
 const QUOTA_PROVIDER_ID_SYNONYMS: Readonly<Record<string, string>> = {
   "github-copilot": "copilot",
   "copilot-chat": "copilot",
