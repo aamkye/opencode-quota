@@ -33,20 +33,45 @@ function Divider() {
   return <box width="100%" height={1} border={["top"]} />
 }
 
+function summarySegments(value: CompactPanelSummary): readonly PanelTextSegment[] {
+  const source = value.segments?.length
+    ? value.segments
+    : [{ text: value.text, ...(value.status ? { status: value.status } : {}) }]
+  const text = source.map((segment) => segment.text).join("")
+  const mutedOffsets = new Set<number>()
+
+  for (let index = 0; index < text.length; index += 1) {
+    if (
+      text[index] === "/"
+      && /[\d%KMB]$/iu.test(text.slice(0, index))
+      && /^[+-]?\d/u.test(text.slice(index + 1))
+    ) mutedOffsets.add(index)
+  }
+
+  let offset = 0
+  return source.flatMap((segment) => {
+    const result: PanelTextSegment[] = []
+    let start = 0
+    for (let index = 0; index < segment.text.length; index += 1) {
+      if (!mutedOffsets.has(offset + index)) continue
+      if (index > start) result.push({ ...segment, text: segment.text.slice(start, index) })
+      result.push({ text: "/", status: "textMuted" })
+      start = index + 1
+    }
+    if (start < segment.text.length) result.push({ ...segment, text: segment.text.slice(start) })
+    offset += segment.text.length
+    return result
+  })
+}
+
 function CompactSummary(props: { value: CompactPanelSummary; theme: Accessor<PanelTheme> }) {
   const color = (status?: PanelStatus) => (status ? props.theme()[status] : undefined)
-
   return (
-    <Show
-      when={props.value.segments?.length}
-      fallback={<text flexShrink={0} fg={color(props.value.status)}>{props.value.text}</text>}
-    >
-      <box flexDirection="row" flexShrink={0}>
-        <For each={props.value.segments}>
-          {(segment) => <text flexShrink={0} fg={color(segment.status)}>{segment.text}</text>}
-        </For>
-      </box>
-    </Show>
+    <box flexDirection="row" flexShrink={0}>
+      <For each={summarySegments(props.value)}>
+        {(segment) => <text flexShrink={0} fg={color(segment.status)}>{segment.text}</text>}
+      </For>
+    </box>
   )
 }
 
