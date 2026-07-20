@@ -42,7 +42,7 @@ export function formatBytes(value: number, precision = 1): string {
   return `${rendered} ${units[unitIndex]}`
 }
 
-export function formatDuration(milliseconds: number): string {
+export function formatDuration(milliseconds: number, maxUnit?: "days" | "hours"): string {
   if (!Number.isFinite(milliseconds)) return "0s"
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1_000))
   const days = Math.floor(totalSeconds / 86_400)
@@ -50,7 +50,7 @@ export function formatDuration(milliseconds: number): string {
   const minutes = Math.floor((totalSeconds % 3_600) / 60)
   const seconds = totalSeconds % 60
 
-  if (days > 0) return `${days}d ${hours}h`
+  if (maxUnit !== "hours" && days > 0) return `${days}d ${hours}h`
   if (hours > 0) return `${hours}h ${minutes}m`
   if (minutes > 0) return `${minutes}m ${seconds}s`
   return `${seconds}s`
