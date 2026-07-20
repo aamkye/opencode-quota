@@ -2,6 +2,18 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { createSessionRenameHooks } from "../.tmp-test/session-rename.js"
 
+async function handledError(promise) {
+  let error
+  try {
+    await promise
+  } catch (caught) {
+    error = caught
+  }
+  assert.ok(error instanceof Error)
+  assert.equal(error.message, "session rename handled")
+  return error
+}
+
 test("config disables only OpenCode's hidden title agent", async () => {
   const hooks = createSessionRenameHooks({})
   const config = { agent: { build: { model: "openai/gpt-5.6" }, title: { model: "openai/gpt-5.6-mini" } } }
@@ -43,9 +55,9 @@ test("updates the active session for a valid supplied title and aborts the comma
     prompt: async (request) => { calls.push(["prompt", request]); return { data: {} } },
   } }, () => {})
 
-  await assert.rejects(hooks["command.execute.before"]({
+  await handledError(hooks["command.execute.before"]({
     command: "session-rename", arguments: "  Project planning notes  ", sessionID: "parent-1",
-  }), () => true)
+  }))
 
   assert.deepEqual(calls, [
     ["update", { path: { id: "parent-1" }, body: { title: "Project planning notes" } }],
@@ -63,9 +75,9 @@ test("reports usage without updating for an invalid supplied title and aborts th
     prompt: async (request) => { calls.push(["prompt", request]); return { data: {} } },
   } }, () => {})
 
-  await assert.rejects(hooks["command.execute.before"]({
+  await handledError(hooks["command.execute.before"]({
     command: "/session-rename", arguments: "Too short", sessionID: "parent-1",
-  }), () => true)
+  }))
 
   assert.deepEqual(calls, [["prompt", { path: { id: "parent-1" }, body: {
     noReply: true,
@@ -82,15 +94,43 @@ test("warns, reports failure, and aborts when the direct update rejects", async 
     prompt: async (request) => { calls.push(request); return { data: {} } },
   } }, (...warning) => { warnings.push(warning) })
 
-  await assert.rejects(hooks["command.execute.before"]({
+  await handledError(hooks["command.execute.before"]({
     command: "session-rename", arguments: "Project planning notes", sessionID: "parent-1",
-  }), () => true)
+  }))
 
   assert.deepEqual(warnings, [["update", "parent-1", updateError]])
   assert.equal(calls.length, 1)
   assert.equal(calls[0].path.id, "parent-1")
   assert.equal(calls[0].body.noReply, true)
   assert.equal(calls[0].body.parts[0].ignored, true)
+})
+
+test("logs default warnings as exact structured JSON", async () => {
+  const warnings = []
+  const originalWarn = console.warn
+  console.warn = (...args) => { warnings.push(args) }
+
+  try {
+    const hooks = createSessionRenameHooks({ session: {
+      update: async () => { throw new Error("update unavailable") },
+      prompt: async () => ({ data: {} }),
+    } })
+
+    await handledError(hooks["command.execute.before"]({
+      command: "session-rename", arguments: "Project planning notes", sessionID: "parent-1",
+    }))
+  } finally {
+    console.warn = originalWarn
+  }
+
+  assert.equal(warnings.length, 1)
+  assert.equal(warnings[0].length, 1)
+  assert.deepEqual(JSON.parse(warnings[0][0]), {
+    plugin: "session-rename",
+    action: "update",
+    sessionID: "parent-1",
+    message: "update unavailable",
+  })
 })
 
 test("warns and aborts when command feedback rejects", async () => {
@@ -101,9 +141,9 @@ test("warns and aborts when command feedback rejects", async () => {
     prompt: async () => { throw feedbackError },
   } }, (...warning) => { warnings.push(warning) })
 
-  await assert.rejects(hooks["command.execute.before"]({
+  await handledError(hooks["command.execute.before"]({
     command: "session-rename", arguments: "Project planning notes", sessionID: "parent-1",
-  }), () => true)
+  }))
 
   assert.deepEqual(warnings, [["feedback", "parent-1", feedbackError]])
 })
@@ -133,9 +173,9 @@ test("generated rename resolves its model from the latest user message, cleans u
     update: async (request) => { calls.push(["update", request]); return { data: {} } },
   } }, () => {})
 
-  await assert.rejects(hooks["command.execute.before"]({
+  await handledError(hooks["command.execute.before"]({
     command: "session-rename", arguments: "   ", sessionID: "parent-1",
-  }), () => true)
+  }))
 
   assert.deepEqual(calls, [
     ["messages", { path: { id: "parent-1" } }],
@@ -245,9 +285,9 @@ test("generated rename failure boundaries leave the parent unchanged and abort t
       scenario.setup?.(session, calls)
       const hooks = createSessionRenameHooks({ session }, (...warning) => { warnings.push(warning) })
 
-      await assert.rejects(hooks["command.execute.before"]({
+      await handledError(hooks["command.execute.before"]({
         command: "session-rename", arguments: "", sessionID: "parent-1",
-      }), () => true)
+      }))
 
       assert.equal(warnings.length, 1)
       assert.equal(warnings[0][0], scenario.warning)
@@ -262,6 +302,22 @@ test("generated rename failure boundaries leave the parent unchanged and abort t
   }
 })
 
+test("reuses one handled Error sentinel across repeated commands", async () => {
+  const hooks = createSessionRenameHooks({ session: {
+    prompt: async () => ({ data: {} }),
+  } }, () => {})
+  const execute = hooks["command.execute.before"]
+
+  const first = await handledError(execute({
+    command: "session-rename", arguments: "Too short", sessionID: "parent-1",
+  }))
+  const second = await handledError(execute({
+    command: "/session-rename", arguments: "Still short", sessionID: "parent-2",
+  }))
+
+  assert.strictEqual(second, first)
+})
+
 test("exposes command-only hooks and cannot mutate sessions without command execution", async () => {
   const calls = []
   const hooks = createSessionRenameHooks({ session: {
@@ -269,8 +325,7 @@ test("exposes command-only hooks and cannot mutate sessions without command exec
     update: async () => { calls.push("update"); return { data: {} } },
   } }, () => {})
 
-  assert.equal(hooks["chat.message"], undefined)
-  assert.equal(hooks.event, undefined)
+  assert.deepEqual(Object.keys(hooks), ["config", "command.execute.before"])
   await Promise.resolve()
   assert.deepEqual(calls, [])
 })
