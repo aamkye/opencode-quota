@@ -500,18 +500,39 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.match(sourceFiles, /Idempotently migrates nine local\/global plugins and `tui\.json` entries/u)
   assert.match(editWorkflow, /npm run build:plugins # rebuild all nine standalone plugins plus shared code/u)
 
+  assert.match(sesTokensFeatures, /K\/M\/B suffixes/u)
   assert.match(sesTokensFeatures, /up to two decimal places/u)
+  assert.match(sesTokensFeatures, /trimmed zeroes/u)
   assert.match(sesTokensFeatures, /collapsed summary shows only the aggregate total/u)
-  assert.match(sessionRenameSection, /`\/session-rename`/u)
+  assert.match(sessionRenameSection, /`\/session-rename Project planning notes`/u)
+  assert.match(
+    sessionRenameSection,
+    /`\/session-rename` without a\s+title to generate one from recent user text and the latest selected user model/u,
+  )
+  assert.match(sessionRenameSection, /manual-only/u)
+  assert.match(sessionRenameSection, /only when the command is invoked/u)
+  assert.match(sessionRenameSection, /success or failure feedback as an ignored message/u)
+  assert.match(sessionRenameSection, /disables\s+OpenCode's built-in title agent/u)
   assert.match(sessionRenameSection, /`npm run build:session-rename`/u)
   assert.match(sessionRenameSection, /`npm run deploy:session-rename`/u)
   assert.match(sessionRenameSection, /`dist\/session-rename\.ts`/u)
-  assert.match(sessionRenameSection, /removes the previously managed legacy artifact/u)
-  assert.match(sessionRenameSection, /only when the command is invoked/u)
-  assert.doesNotMatch(sessionRenameSection, /first message|idle event|automatic rename/iu)
+  assert.match(sessionRenameSection, /`~\/\.config\/opencode\/plugins\/session-rename\.ts`/u)
+  assert.match(
+    sessionRenameSection,
+    /Deployment installs the new file\s+before it removes the previously managed legacy artifact/u,
+  )
+  assert.match(sessionRenameSection, /Fully restart OpenCode\s+after deployment/u)
   assert.match(artifactLayout, /^└── session-rename\.ts$/mu)
+  assert.match(
+    artifactLayout,
+    /^\| `session-rename\.ts`\s+\| `aamkye\/session-rename`\s+\| Manual global session rename command\.\s+\|$/mu,
+  )
   assert.match(sourceFiles, /^\| `lib\/session-rename\.ts`\s+\| Manual session rename command behavior\s+\|$/mu)
   assert.match(sourceFiles, /^\| `session-rename\.ts`\s+\| Global manual session rename plugin entry point\s+\|$/mu)
+  assert.match(sourceFiles, /^\| `build-session-rename\.mjs`\s+\| Builds the bundled global session rename plugin\s+\|$/mu)
+  assert.match(sourceFiles, /^\| `deploy-session-rename\.mjs`\s+\| Installs the global session rename plugin and removes the legacy artifact\s+\|$/mu)
+  assert.doesNotMatch(readme, /session-title|### Session title plugin/iu)
+  assert.doesNotMatch(readme, /first message|idle event|automatic rename/iu)
 
   assert.match(prose, /Long IDs truncate with an ellipsis so expanded lines fit within 37 cells and collapsed lines fit within 36 cells\./u)
   assert.match(prose, /TODO continuation lines align under the content column, and only completed records contribute to the collapsed numerator\./u)
