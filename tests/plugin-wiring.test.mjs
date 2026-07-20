@@ -413,6 +413,9 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
       assert.equal(line.trimEnd(), line, `${heading} SubAgent layout has trailing whitespace`)
     }
   }
+  const wrappingTitleLines = approvedSubagentLayouts[1].slice(2, 6).map((line) => line.slice(2))
+  assert.ok(wrappingTitleLines.every((line) => [...line].length <= 25), "AGENTS.md must limit expanded title lines to 25 cells")
+  assert.deepEqual(wrappingTitleLines.join(""), "SubAgent11 with super long name that would normally wrap but is too long to fit.")
 
   const subagentDocumentation = `${subagentFeatures} ${subagentLayouts}`.replace(/\s+/gu, " ")
   for (const text of [

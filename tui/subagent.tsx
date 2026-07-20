@@ -162,7 +162,7 @@ function SubagentRow(props: {
             />
           )}
         >
-          <box flexBasis={0} flexGrow={1} flexShrink={1} minWidth={0}>
+          <box width={25} flexShrink={1} minWidth={0}>
             <text width="100%" wrapMode="char" selectable={false}>{props.entry.title}</text>
           </box>
         </Show>

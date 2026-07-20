@@ -246,7 +246,7 @@ LSPs will activate as files are read | 6. should be grayed out
 ```
 ▼ SubAgent                           | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
 ------------------------------------ |
-▶ SubAgent11 with super long… 9m 45s | 6. truncate the title with an end ellipsis; 7. no trailing whitespace; 8. no status bullet; 9. keep one cell between title and time; 10. color time by status
+▶ SubAgent11 with super lo…   9m 45s | 6. truncate the title with an end ellipsis; 7. no trailing whitespace; 8. no status bullet; 9. keep one cell between title and time; 10. color time by status
 ▶ SubAgent10                  1h 15m |
 ▼ SubAgent9                          |
   agent:                     general |
@@ -267,12 +267,41 @@ LSPs will activate as files are read | 6. should be grayed out
 ------------------------------------ |
 ```
 
+or
+
+```
+▼ SubAgent                           | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
+------------------------------------ |
+▶ SubAgent11 with super lon          | 6. truncate the title with an end ellipsis; 7. no trailing whitespace; 8. no status bullet; 9. keep one cell between title and time; 10. color time by status
+  g name that would normall          |
+  y wrap but is too long to          |
+   fit.                              |
+  agent:                     general |
+  status:                    running |
+  time:                       9m 45s | 11. color the detail time by status
+  model:                 gpt-4o-mini |
+  Open Session                       |
+▶ SubAgent10                  1h 15m |
+▼ SubAgent9                   15m 4s |
+▶ SubAgent8                   2h 18m |
+▶ SubAgent7                   2h 18m |
+---                              --- | 12. render two muted three-dash segments with flexible space between them
+▼ Rest                               | 13. gray the disclosure and `Rest` title
+▶ SubAgent6                   9m 45s |
+▶ SubAgent5                   1h 15m |
+▶ SubAgent4                      15s |
+▶ SubAgent3                      25s |
+▶ SubAgent2                       5s |
+▶ SubAgent1                    1h 2m |
+------------------------------------ |
+```
+
 #### Extended
 
 ```
 ▼ SubAgent                           | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
 ------------------------------------ |
-▶ SubAgent11 with super long… 9m 45s | 6. `SubAgent11 with super long name` is truncated with an ellipsis; 7. no trailing whitespace
+▶ SubAgent11 with super lo…   9m 45s | 6. `SubAgent11 with super long name` is truncated with an ellipsis; 7. no trailing whitespace
 ▶ SubAgent10                  1h 15m |
 ▶ SubAgent9                   15m 4s |
 ▶ SubAgent8                   2h 18m |
@@ -293,7 +322,7 @@ or after a background refresh fails:
 ```
 ▼ SubAgent                     stale | 1. `stale` should be yellow; 2. retain the complete entry body
 ------------------------------------ |
-▶ SubAgent11 with super long… 9m 45s |
+▶ SubAgent11 with super lo…   9m 45s |
 ▶ SubAgent10                  1h 15m |
 ▶ SubAgent9                   15m 4s |
 ▶ SubAgent8                   2h 18m |
@@ -314,7 +343,7 @@ or after a background refresh fails:
 ```
 ▼ SubAgent                           | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
 ------------------------------------ |
-▶ SubAgent11 with super long… 9m 45s | 6. `SubAgent11 with super long name` is truncated with an ellipsis; 7. no trailing whitespace
+▶ SubAgent11 with super lo…   9m 45s | 6. `SubAgent11 with super long name` is truncated with an ellipsis; 7. no trailing whitespace
 ▶ SubAgent10                  1h 15m |
 ▶ SubAgent9                   15m 4s |
 ▶ SubAgent8                   2h 18m |

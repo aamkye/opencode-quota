@@ -516,9 +516,10 @@ trailing whitespace.
 ```text
 ▼ SubAgent
 ------------------------------------
-▶ SubAgent11 with super long name th
-  at would normally wrap but is too
-  long to fit.
+▶ SubAgent11 with super lon
+  g name that would normall
+  y wrap but is too long to
+   fit.
   agent:                     general
   status:                    running
   time:                       9m 45s

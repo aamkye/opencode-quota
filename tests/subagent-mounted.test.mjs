@@ -226,7 +226,7 @@ test("matches the full wrapping expanded-title AGENTS layout without a duration 
     : entry)
   const expectedLayout = oneDetailWrappingLayout.map((line, index) => {
     if (index === 2) return line.replace("▶ ", "▼ ")
-    if (index === 11) return line.replace("▼ ", "▶ ")
+    if (line.startsWith("▼ SubAgent9")) return line.replace("▼ ", "▶ ")
     return line
   })
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
@@ -235,6 +235,9 @@ test("matches the full wrapping expanded-title AGENTS layout without a duration 
     await mounted.view().clickEntry(title)
     const row = mounted.view().entryRows[0]
     assert.deepEqual(mounted.view().lines, expectedLayout)
+    assert.equal(row.titleProps.width, "100%")
+    assert.ok(row.renderedTitleLines.every((line) => stringWidth(line) <= 25))
+    assert.equal(row.renderedTitleLines.join(""), title)
     assert.equal(row.titleProps.marginRight, undefined)
     assert.equal(row.durationProps.width, undefined)
     assert.equal(mounted.view().lines.slice(2, 5).join("").includes("9m 45s"), false)

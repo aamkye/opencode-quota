@@ -198,7 +198,7 @@ function rowLayout(row: HostNode, width: number) {
     let overflow = basisTotal - rowWidth
     for (let index = cells.length - 1; index >= 0 && overflow > 0; index -= 1) {
       const cell = cells[index]
-      if (configuredWidths[index] > 0 || Number(cell.props.flexShrink ?? 0) <= 0 || cell.props.minWidth !== 0) continue
+      if (Number(cell.props.flexShrink ?? 0) <= 0 || cell.props.minWidth !== 0) continue
       const reduction = Math.min(childWidths[index], overflow)
       childWidths[index] -= reduction
       overflow -= reduction
@@ -548,19 +548,23 @@ export async function mountSubagentPanel(options: {
       lines,
       entryRows: entryRows.map(({ node, texts, layout }, index) => {
         const titleNode = wrappingText(layout.cells[1]) ?? layout.cells[1]
+        const expanded = titleNode?.props.wrapMode === "char"
         return {
           disclosure: texts[0],
           title: currentTitles[index] ?? texts[1],
           duration: texts.at(-1) ?? "",
-          durationColor: layout.cells.at(-1)?.children.find((child) => child.type === "text")?.props.fg,
+          durationColor: expanded ? undefined : layout.cells.at(-1)?.children.find((child) => child.type === "text")?.props.fg,
           renderedTitle: layout.renderedCells[1]?.trimEnd() ?? "",
+          renderedTitleLines: expanded
+            ? layout.renderedLines.map((line) => line.slice(2))
+            : [],
           renderedText: layout.renderedText,
           rowWidth: layout.rowWidth,
           childWidths: layout.childWidths,
           titleMarginRight: layout.marginsRight[1] ?? 0,
           rowProps: node.props,
           titleProps: titleNode?.props ?? {},
-          durationProps: layout.cells.at(-1)?.props ?? {},
+          durationProps: expanded ? {} : layout.cells.at(-1)?.props ?? {},
         }
       }),
       detailRows: detailRows.map(({ texts, layout }) => ({
