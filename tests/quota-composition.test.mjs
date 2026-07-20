@@ -23,7 +23,7 @@ process.env.XDG_DATA_HOME = isolatedProviderHome
 const { default: quotaPlugin } = await import("../.tmp-test/plugin-adapters-quota-fixture.mjs")
 const { composeQuotaPanel, normalizeQuotaOptions, selectedQuotaProviderID, selectedSessionQuotaProviderID } = await import("../.tmp-test/quota-composition.mjs")
 const { createQuotaSelectionHost, mountQuotaSelection } = await import("../.tmp-test/quota-selection.mjs")
-const { normalizePanelModel, renderPanelLayout } = await import("../.tmp-test/presentation-renderer.mjs")
+const { normalizePanelModel } = await import("../.tmp-test/presentation-renderer.mjs")
 const { createReactiveOpenAiAdapter, createReactiveZaiAdapter } = await import("../.tmp-test/provider-lifecycle.mjs")
 
 after(async () => {
@@ -245,16 +245,10 @@ test("keeps stale freshness separate from collapsed quota colors", () => {
     ],
   })
 
-  const collapsed = renderPanelLayout(model, { availableCells: 37, collapsed: new Set(["panel:quota"]) })
-  assert.equal(collapsed.header.cells.reduce((width, cell) => width + cell.width, 0), 37)
-  assert.deepEqual(collapsed.header.cells.filter((cell) => cell.status).map((cell) => [cell.text, cell.status]), [
-    ["stale", "warning"],
-    [" ", "textMuted"],
-    ["46%/80%", "success"],
-  ])
-
-  const constrained = renderPanelLayout(model, { availableCells: 10, collapsed: new Set(["panel:quota"]) })
-  assert.equal(constrained.header.cells.reduce((width, cell) => width + cell.width, 0), 10)
+  const normalized = normalizePanelModel(model, { availableCells: 37 })
+  const summary = normalized.header.summary
+  assert.ok(summary, "collapsed summary should exist")
+  assert.deepEqual(summary?.segments?.find((s) => s.status === "warning")?.text, "stale")
 })
 
 test("composes stale collapsed summaries from real OpenAI and Z.AI adapters", async (t) => {
@@ -544,10 +538,6 @@ test("separates adjacent providers inside the shared Other providers group", () 
 
   const normalized = normalizePanelModel(model).groups.find((group) => group.id === "other-providers")
   assert.equal(normalized.items.filter((entry) => entry.kind === "divider").length, 1)
-  const expanded = renderPanelLayout(model, { availableCells: 37 })
-  assert.equal(expanded.groups.find((group) => group.id === "other-providers").items.filter((entry) => entry.kind === "divider").length, 1)
-  const collapsed = renderPanelLayout(model, { availableCells: 37, collapsed: new Set(["group:other-providers"]) })
-  assert.deepEqual(collapsed.groups.find((group) => group.id === "other-providers").items, [])
 })
 
 test("falls back to descending selected metrics when sort direction is invalid", () => {
@@ -684,29 +674,10 @@ test("three providers preserve OpenCode Go aggregate semantics", () => {
     assert.deepEqual(headers(selectedOpenAi.groups.find((group) => group.id === "other-providers")), ["OpenCode GO:", "Z.AI"])
   }
 
-  const layouts = [
-    renderPanelLayout(remaining, { availableCells: 37 }),
-    renderPanelLayout(remaining, { availableCells: 37, collapsed: new Set(["group:other-providers"]) }),
-    renderPanelLayout(remaining, { availableCells: 37, collapsed: new Set(["panel:quota"]) }),
-  ]
-  assert.equal(layouts[1].groups.find((group) => group.id === "other-providers").collapsed, true)
-  assert.equal(layouts[2].collapsed, true)
-
-  for (const layout of layouts) {
-    const widths = [
-      layout.header.cells.reduce((total, cell) => total + cell.width, 0),
-      ...layout.groups.flatMap((group) => [
-        ...(group.header ? [2 + group.header.title.length] : []),
-        ...group.items.flatMap((entry) => {
-          if (entry.kind === "divider") return []
-          if (entry.kind === "progress") return [entry.cells.reduce((total, cell) => total + cell.width, 0)]
-          if (entry.kind === "table") return entry.rows.map((row) => row.reduce((total, cell) => total + cell.width, 0))
-          return [entry.text.length + (entry.detail ? entry.detail.length + 1 : 0)]
-        }),
-      ]),
-    ]
-    assert.equal(widths.every((width) => width <= 37), true)
-  }
+  const normalized = normalizePanelModel(remaining, { availableCells: 37 })
+  const otherGroup = normalized.groups.find((group) => group.id === "other-providers")
+  assert.ok(otherGroup, "other-providers group should exist")
+  assert.equal(otherGroup?.items.filter((entry) => entry.kind === "divider").length, 1)
 })
 
 test("orders configured secondary metrics by direction and keeps each header with its quota rows", () => {

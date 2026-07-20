@@ -1,6 +1,6 @@
 import { For, Show, type Accessor, type JSX } from "solid-js"
 
-import { allocateStatusRow } from "./layout.js"
+import { allocateStatusRow, PANEL_MAX_CELLS } from "./layout.js"
 import type { PanelStatus, PanelTextSegment } from "./types.js"
 
 export type PanelTheme = Record<PanelStatus, string>
@@ -80,7 +80,7 @@ function CompactSummary(props: { value: CompactPanelSummary; theme: Accessor<Pan
 }
 
 export function CompactStatusRow(props: CompactStatusRowProps) {
-  const allocation = () => allocateStatusRow(37, props.label.length)
+  const allocation = () => allocateStatusRow(PANEL_MAX_CELLS, props.label.length)
 
   return (
     <box flexDirection="row" width="100%" overflow="hidden">

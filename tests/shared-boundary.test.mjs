@@ -178,7 +178,7 @@ test("SubAgent fixes expanded titles to a 25-cell character-wrapped region", () 
   const subagent = source("tui/subagent.tsx")
   const measuredTitle = subagent.split("function MeasuredTitle", 2)[1].split("function DetailRow", 1)[0]
 
-  assert.match(subagent, /const\s+allocation\s*=\s*\(\)\s*=>\s*allocateSubagentEntryRow\(37,\s*7\)/)
+  assert.match(subagent, /const\s+allocation\s*=\s*\(\)\s*=>\s*allocateSubagentEntryRow\((?:37|PANEL_MAX_CELLS),\s*7\)/)
   assert.match(subagent, /<MeasuredTitle\s+value=\{props\.entry\.title\}\s+cells=\{allocation\(\)\.title\}\s+marginRight=\{allocation\(\)\.beforeDurationGap\}/)
   assert.match(measuredTitle, /flexBasis=\{0\}/)
   assert.match(measuredTitle, /flexGrow=\{1\}/)
