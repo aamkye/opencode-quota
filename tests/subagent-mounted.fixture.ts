@@ -563,6 +563,9 @@ export async function mountSubagentPanel(options: {
           childWidths: layout.childWidths,
           titleMarginRight: layout.marginsRight[1] ?? 0,
           rowProps: node.props,
+          titleRegionWidth: layout.cells[1]?.props.width,
+          titleRegionFlexShrink: layout.cells[1]?.props.flexShrink,
+          titleRegionMinWidth: layout.cells[1]?.props.minWidth,
           titleProps: titleNode?.props ?? {},
           durationProps: expanded ? {} : layout.cells.at(-1)?.props ?? {},
         }

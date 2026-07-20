@@ -246,8 +246,8 @@ test("matches the full wrapping expanded-title AGENTS layout without a duration 
   }
 })
 
-test("retains every grapheme across expanded character-wrap continuation lines", async () => {
-  const title = "Safety"
+test("keeps expanded titles in a non-shrinking 25-cell character-wrap region", async () => {
+  const title = "abcdefghijklmnopqrstuvwxyz"
   const child = {
     ...canonicalChildren[0],
     session: { ...canonicalChildren[0].session, title },
@@ -257,9 +257,13 @@ test("retains every grapheme across expanded character-wrap continuation lines",
     await mounted.resolveReady([child])
     await mounted.view().clickEntry(title)
     await mounted.resize(5)
-    const titleLines = mounted.view().lines.slice(2, 4).map((line) => line.slice(2))
-    assert.deepEqual(titleLines, ["Saf", "ety"])
-    assert.equal(titleLines.join(""), title)
+    const row = mounted.view().entryRows[0]
+    assert.equal(row.titleRegionWidth, 25)
+    assert.equal(row.titleRegionFlexShrink, undefined)
+    assert.equal(row.titleRegionMinWidth, undefined)
+    assert.equal(row.childWidths[1], 25)
+    assert.ok(row.renderedTitleLines.every((line) => stringWidth(line) <= 25))
+    assert.equal(row.renderedTitleLines.join(""), title)
   } finally {
     await mounted.dispose()
   }
