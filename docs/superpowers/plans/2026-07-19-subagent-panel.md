@@ -1351,3 +1351,44 @@ Run the focused command, `npm run typecheck`, `npm test`, `npm run build`, scope
 - [ ] **Step 5: Confirm live behavior**
 
 Reload OpenCode, expand a title that wraps, and confirm continuation lines retain every character without selection highlighting. Record the result before checking OpenSpec 9.1/9.2.
+
+### Task 13: Fix Expanded Title Width
+
+**OpenSpec mapping:** 10.1, 10.2; corrective acceptance for the canonical 25-cell expanded title layout.
+
+**Files:**
+- Modify: `tui/subagent.tsx`
+- Modify: `tests/subagent-mounted.fixture.ts`
+- Modify: `tests/subagent-mounted.test.mjs`
+- Modify: `tests/shared-boundary.test.mjs`
+- Modify: `tests/plugin-wiring.test.mjs`
+- Modify: `README.md`
+
+- [ ] **Step 1: Add the failing fixed-width regression**
+
+Update AGENTS-derived mounted and README layout expectations for the 25-cell expanded title example. Add an expanded long-title test that asserts every title line after disclosure has at most 25 terminal cells and their concatenation equals the original title.
+
+- [ ] **Step 2: Run focused RED**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test \
+  tests/subagent-mounted.test.mjs \
+  tests/plugin-wiring.test.mjs \
+  tests/shared-boundary.test.mjs
+```
+
+Expected RED: the expanded title is flexible/full-width rather than fixed 25 cells, and canonical layout expectations differ.
+
+- [ ] **Step 3: Apply fixed 25-cell wrapping**
+
+Replace the expanded title flexible wrapper with a fixed 25-cell, nonselectable `wrapMode="char"` region after disclosure. Keep its parent row click handler, details, compact title/duration, and all unrelated layouts unchanged.
+
+- [ ] **Step 4: Run GREEN gates and commit**
+
+Run the focused command, `npm run typecheck`, `npm test`, `npm run build`, scoped `git diff --check`, and `npm run deploy:local`. Preserve the canonical `AGENTS.md` update and commit only the six listed tracked files plus that update.
+
+- [ ] **Step 5: Confirm live behavior**
+
+Reload OpenCode and confirm expanded titles wrap after 25 cells with no character loss or selection highlight. Record the result before checking OpenSpec 10.1/10.2.
