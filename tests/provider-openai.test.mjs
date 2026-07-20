@@ -579,13 +579,13 @@ test("suppresses expected OpenAI abort logs but diagnoses non-abort failures", a
   const controller = new AbortController()
   const aborted = fetchOpenAiQuota({ access: "token" }, controller.signal)
   controller.abort()
-  assert.equal(await aborted, null)
+  assert.deepEqual(await aborted, { kind: "transient-failure" })
   assert.equal(errors.length, 0)
 
   globalThis.fetch = async () => {
     throw new Error("transport failed")
   }
-  assert.equal(await fetchOpenAiQuota({ access: "token" }, new AbortController().signal), null)
+  assert.deepEqual(await fetchOpenAiQuota({ access: "token" }, new AbortController().signal), { kind: "transient-failure" })
   assert.equal(errors.length, 1)
   assert.equal(errors[0][0], "[quota-openai] fetchQuota error:")
 })

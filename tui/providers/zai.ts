@@ -1,16 +1,14 @@
 import { existsSync, readFileSync } from "node:fs"
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { Message, Part, Provider, TextPart } from "@opencode-ai/sdk/v2"
-import { createEffect, createRoot, createSignal, onCleanup } from "solid-js"
+import { createEffect, createRoot, createSignal } from "solid-js"
 
 import type { PanelItem, PanelModel, PanelStatus, PanelTextSegment } from "../presentation/types.js"
 import type { HomeQuotaSummary, ProviderFreshness, QuotaProviderAdapter, QuotaProviderOptions } from "./types.js"
+import { EXHAUSTED_POLL_MS, FETCH_TIMEOUT_MS, clampPct, safeNumber } from "./_shared.js"
+import { createQuotaPollingEngine } from "./quota-engine.js"
+import type { QuotaEngineFetchResult } from "./quota-engine.js"
 
-const DEFAULT_REFRESH_INTERVAL_MS = 10_000
-const EXHAUSTED_POLL_MS = 300_000
-const TICK_MS = 1_000
-const FETCH_TIMEOUT_MS = 20_000
-const STALE_MAX_MS = 10 * 60 * 1_000
 const CREDENTIAL_FILE_PATHS = [
   `${process.env.XDG_DATA_HOME || `${process.env.HOME || ""}/.local/share`}/opencode/auth.json`,
   `${process.env.XDG_CONFIG_HOME || `${process.env.HOME || ""}/.config`}/opencode/auth.json`,
@@ -28,14 +26,6 @@ const RESET_PARSE_RE = /Your limit will reset at (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:
 const RETRY_AFTER_RE = /reset after (\d+h)?(\d+m)?(\d+s)?/i
 const SGT_OFFSET_MS = 8 * 60 * 60 * 1_000
 const TIME_UNIT = { SESSION_5H: 3, WEEKLY_7D: 6 } as const
-
-function providerRefreshInterval(options: QuotaProviderOptions): number {
-  return typeof options.refreshIntervalMs === "number"
-    && Number.isFinite(options.refreshIntervalMs)
-    && options.refreshIntervalMs > 0
-    ? options.refreshIntervalMs
-    : DEFAULT_REFRESH_INTERVAL_MS
-}
 
 type TokenLimit = {
   type: "TOKENS_LIMIT"
@@ -121,15 +111,6 @@ type AccountFile = {
   version: number
   active?: Record<string, string>
   accounts?: Record<string, AccountEntry>
-}
-
-function clampPct(value: number): number {
-  return Math.min(100, Math.max(0, value))
-}
-
-function safeNumber(value: unknown, fallback: number): number {
-  const number = Number(value)
-  return Number.isFinite(number) ? number : fallback
 }
 
 function parseSgt(date: string): number | null {
@@ -274,6 +255,14 @@ export function zaiHomeQuotaSummary(data: ZaiQuotaData): HomeQuotaSummary {
   }
 }
 
+async function fetchZaiViaEngine(
+  apiKey: string,
+  signal: AbortSignal,
+): Promise<QuotaEngineFetchResult<ZaiQuotaData>> {
+  const data = await fetchZaiQuota(apiKey, signal)
+  return data ? { kind: "success", data } : { kind: "transient-failure" }
+}
+
 function header(
   title: string,
   detail?: string,
@@ -393,260 +382,126 @@ function scanMessageParts(messages: readonly Message[], partReader: (messageID: 
   return null
 }
 
-function unref(timer: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>): void {
-  ;(timer as { unref?: () => void }).unref?.()
-}
-
 function freshnessFor(phase: ZaiPanelPhase): ProviderFreshness {
   if (phase === "heuristic" || phase === "rate-limited") return "unavailable"
   return phase
 }
 
 export function createZaiProvider(api: TuiPluginApi, options: QuotaProviderOptions = {}): QuotaProviderAdapter {
-  const refreshIntervalMs = providerRefreshInterval(options)
   return createRoot((dispose) => {
-  type PublishedQuota = { data: ZaiQuotaData; generation: number }
-  type GenerationBoundary = { epoch: number; generation: number }
+    type PublishedQuota = { data: ZaiQuotaData; generation: number }
 
-  const [apiKey, setApiKey] = createSignal<string | null>(null)
-  const [quotaState, setQuotaState] = createSignal<PublishedQuota | null>(null)
-  const quotaData = () => quotaState()?.data ?? null
-  const [phase, setPhase] = createSignal<ZaiPanelPhase>("loading")
-  const [lastSuccessAt, setLastSuccessAt] = createSignal(0)
-  const [retryAfterEpoch, setRetryAfterEpoch] = createSignal<number | null>(null)
-  const [baselineSgt, setBaselineSgt] = createSignal(FALLBACK_BASELINE_SGT)
-  const [cycleMs, setCycleMs] = createSignal(FALLBACK_CYCLE_MS)
-  const [sessionID, setSessionID] = createSignal<string | null>(null)
-  const [now, setNow] = createSignal(Date.now())
-  const [refreshedBoundary, setRefreshedBoundary] = createSignal<GenerationBoundary | null>(null)
-  let refreshInFlight: Promise<void> | null = null
-  let refreshStartedAt = 0
-  let pendingBoundary: GenerationBoundary | null = null
-  let credentialGeneration = 0
-  let observedCredential: string | null | undefined
-  let disposed = false
-  let boundarySchedule: {
-    timer: ReturnType<typeof setTimeout>
-    generation: number
-  } | null = null
-  let activeRequest: {
-    generation: number
-    controller: AbortController
-    timeout: ReturnType<typeof setTimeout>
-    promise: Promise<void>
-  } | null = null
+    const [quotaState, setQuotaState] = createSignal<PublishedQuota | null>(null)
+    const quotaData = () => quotaState()?.data ?? null
+    const [phase, setPhase] = createSignal<ZaiPanelPhase>("loading")
+    const [lastSuccessAt, setLastSuccessAt] = createSignal(0)
+    const [retryAfterEpoch, setRetryAfterEpoch] = createSignal<number | null>(null)
+    const [baselineSgt, setBaselineSgt] = createSignal(FALLBACK_BASELINE_SGT)
+    const [cycleMs, setCycleMs] = createSignal(FALLBACK_CYCLE_MS)
+    const [sessionID, setLocalSessionID] = createSignal<string | null>(null)
+    const [now, setNow] = createSignal(Date.now())
 
-  const clearBoundarySchedule = (): void => {
-    const schedule = boundarySchedule
-    boundarySchedule = null
-    if (schedule) clearTimeout(schedule.timer)
-    pendingBoundary = null
-    setRefreshedBoundary(null)
-  }
+    let providerDisposed = false
 
-  const cancelActiveRequest = (): void => {
-    const request = activeRequest
-    if (!request) return
-    activeRequest = null
-    request.controller.abort()
-    clearTimeout(request.timeout)
-    if (refreshInFlight === request.promise) {
-      refreshInFlight = null
-      refreshStartedAt = 0
-    }
-  }
+    const engine = createQuotaPollingEngine<ZaiQuotaData, string, ZaiPanelPhase>({
+      providerId: "zai",
+      refreshIntervalMs: options.refreshIntervalMs,
+      exhaustedPollMs: EXHAUSTED_POLL_MS,
+      resolveCredential: () => findZaiKeyFromProviders(api.state.provider) ?? findZaiKeyFromFiles(),
+      credentialFingerprint: (key) => key,
+      fetch: fetchZaiViaEngine,
+      quotaState,
+      lastSuccessAt,
+      initialPhase: "loading",
+      isExhausted: (data) => data.tokenRemainingPct === 0,
+      onCredentialMissing: () => "unavailable",
+      onCredentialChanged: () => { setRetryAfterEpoch(null) },
+      onFetchSuccess: () => { setPhase("ready") },
+      onFetchTransientFailure: () =>
+        retryAfterEpoch() && retryAfterEpoch()! > Date.now() ? "rate-limited" : "heuristic",
+      onStaleHorizon: (h) => {
+        setQuotaState(null)
+        h.clearScheduledRefresh()
+        setPhase("heuristic")
+      },
+      onDispose: () => { providerDisposed = true; dispose() },
+      setQuotaState,
+      setPhase,
+      setLastSuccessAt,
+      setNow,
+    })
 
-  const refresh = (): Promise<void> => {
-    if (disposed) return Promise.resolve()
-    if (refreshInFlight) return refreshInFlight
-    const key = apiKey()
-    if (!key) {
-      setPhase("unavailable")
-      return Promise.resolve()
-    }
-
-    const generation = credentialGeneration
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-    const startedAt = Date.now()
-    const request = (async () => {
-      const data = await fetchZaiQuota(key, controller.signal)
-      if (disposed || generation !== credentialGeneration) return
-      if (data) {
-        setQuotaState({ data, generation })
-        setPhase("ready")
-        setLastSuccessAt(Date.now())
-      } else if (quotaData()) {
-        setPhase("stale")
-      } else {
-        setPhase(retryAfterEpoch() && retryAfterEpoch()! > Date.now() ? "rate-limited" : "heuristic")
-      }
-    })()
-    refreshInFlight = request
-    refreshStartedAt = startedAt
-    activeRequest = { generation, controller, timeout, promise: request }
-    const settled = () => {
-      if (activeRequest?.promise === request) {
-        clearTimeout(activeRequest.timeout)
-        activeRequest = null
-      }
-      if (refreshInFlight !== request) return
-      refreshInFlight = null
-      refreshStartedAt = 0
-      const queued = pendingBoundary
-      if (disposed || generation !== credentialGeneration || queued?.generation !== generation) return
-      pendingBoundary = null
-      setRefreshedBoundary(queued)
-      void refresh()
-    }
-    void request.then(settled, settled)
-    return request
-  }
-
-  createEffect(() => {
-    const next = findZaiKeyFromProviders(api.state.provider) ?? findZaiKeyFromFiles()
-    if (next === observedCredential) return
-    const replacingCredential = observedCredential !== undefined && observedCredential !== null
-    observedCredential = next
-    credentialGeneration += 1
-    clearBoundarySchedule()
-    cancelActiveRequest()
-    setRetryAfterEpoch(null)
-    setApiKey(next)
-
-    if (!next) {
-      setQuotaState(null)
-      setLastSuccessAt(0)
-      setPhase("unavailable")
-      return
-    }
-    setPhase(replacingCredential && quotaData() ? "stale" : "loading")
-    void refresh()
-  })
-
-  createEffect(() => {
-    const key = apiKey()
-    const published = quotaState()
-    const exhausted = published?.generation === credentialGeneration
-      && published.data.tokenRemainingPct === 0
-    if (!key) return
-    const timer = setInterval(() => void refresh(), exhausted ? EXHAUSTED_POLL_MS : refreshIntervalMs)
-    unref(timer)
-    onCleanup(() => clearInterval(timer))
-  })
-
-  createEffect(() => {
-    try {
-      const storedBaseline = api.kv.get<string>(KV_BASELINE_KEY)
-      if (storedBaseline) setBaselineSgt(storedBaseline)
-      const storedCycle = api.kv.get<number>(KV_CYCLE_MS_KEY)
-      if (storedCycle) setCycleMs(Number(storedCycle) || FALLBACK_CYCLE_MS)
-    } catch {
-      // The host KV store can initialize after the adapter.
-    }
-  })
-
-  createEffect(() => {
-    const id = sessionID()
-    if (!id) return
-    let messages: readonly Message[] = []
-    try {
-      messages = api.state.session.messages(id)
-    } catch {
-      return
-    }
-    const readParts = (messageID: string): readonly Part[] => {
+    createEffect(() => {
       try {
-        return api.state.part(messageID)
+        const storedBaseline = api.kv.get<string>(KV_BASELINE_KEY)
+        if (storedBaseline) setBaselineSgt(storedBaseline)
+        const storedCycle = api.kv.get<number>(KV_CYCLE_MS_KEY)
+        if (storedCycle) setCycleMs(Number(storedCycle) || FALLBACK_CYCLE_MS)
       } catch {
-        return []
+        // The host KV store can initialize after the adapter.
       }
-    }
-    const resetMessage = scanMessageParts(messages, readParts, RESET_PARSE_RE)
-    const reset = resetMessage?.match(RESET_PARSE_RE)?.[1]
-    if (reset && reset !== baselineSgt()) {
-      setBaselineSgt(reset)
+    })
+
+    createEffect(() => {
+      const id = sessionID()
+      if (!id) return
+      let messages: readonly Message[] = []
       try {
-        api.kv.set(KV_BASELINE_KEY, reset)
+        messages = api.state.session.messages(id)
       } catch {
-        // The reset fallback remains in memory if persistence is unavailable.
-      }
-    }
-    const retryMessage = scanMessageParts(messages, readParts, RETRY_AFTER_RE)
-    const match = retryMessage?.match(RETRY_AFTER_RE)
-    const seconds = (match?.[1] ? Number.parseInt(match[1]) * 3_600 : 0) + (match?.[2] ? Number.parseInt(match[2]) * 60 : 0) + (match?.[3] ? Number.parseInt(match[3]) : 0)
-    setRetryAfterEpoch(seconds > 0 ? Date.now() + seconds * 1_000 : null)
-  })
-
-  const tick = setInterval(() => {
-    if (disposed) return
-    const current = Date.now()
-    setNow(current)
-    if (lastSuccessAt() && current - lastSuccessAt() > STALE_MAX_MS && quotaData()) {
-      setQuotaState(null)
-      clearBoundarySchedule()
-      setPhase("heuristic")
-    }
-  }, TICK_MS)
-  unref(tick)
-  onCleanup(() => clearInterval(tick))
-
-  createEffect(() => {
-    const published = quotaState()
-    const generation = published?.generation ?? credentialGeneration
-    if (published && generation !== credentialGeneration) return
-    const epoch = published?.data.tokenNextResetEpoch ?? retryAfterEpoch() ?? 0
-    const refreshed = refreshedBoundary()
-    const pending = pendingBoundary
-    if (
-      epoch <= 0
-      || (refreshed?.generation === generation && refreshed.epoch === epoch)
-      || (pending?.generation === generation && pending.epoch === epoch)
-    ) return
-
-    const timer = setTimeout(() => {
-      const current = quotaState()
-      const sourceIsCurrent = published
-        ? current?.generation === generation
-        : current === null
-      if (disposed || generation !== credentialGeneration || !sourceIsCurrent) return
-      if (refreshInFlight && activeRequest?.generation === generation && refreshStartedAt < epoch) {
-        pendingBoundary = { epoch, generation }
         return
       }
-      setRefreshedBoundary({ epoch, generation })
-      void refresh()
-    }, Math.max(0, epoch - Date.now()))
-    const schedule = { timer, generation }
-    boundarySchedule = schedule
-    unref(timer)
-    onCleanup(() => {
-      if (boundarySchedule !== schedule) return
-      boundarySchedule = null
-      clearTimeout(timer)
+      const readParts = (messageID: string): readonly Part[] => {
+        try {
+          return api.state.part(messageID)
+        } catch {
+          return []
+        }
+      }
+      const resetMessage = scanMessageParts(messages, readParts, RESET_PARSE_RE)
+      const reset = resetMessage?.match(RESET_PARSE_RE)?.[1]
+      if (reset && reset !== baselineSgt()) {
+        setBaselineSgt(reset)
+        try {
+          api.kv.set(KV_BASELINE_KEY, reset)
+        } catch {
+          // The reset fallback remains in memory if persistence is unavailable.
+        }
+      }
+      const retryMessage = scanMessageParts(messages, readParts, RETRY_AFTER_RE)
+      const match = retryMessage?.match(RETRY_AFTER_RE)
+      const seconds = (match?.[1] ? Number.parseInt(match[1]) * 3_600 : 0) + (match?.[2] ? Number.parseInt(match[2]) * 60 : 0) + (match?.[3] ? Number.parseInt(match[3]) : 0)
+      setRetryAfterEpoch(seconds > 0 ? Date.now() + seconds * 1_000 : null)
     })
-  })
 
-  return {
-    id: "zai",
-    order: PROVIDER_ORDER,
-    panel: () => mapZaiPanelState({ phase: phase(), data: quotaData(), retryAfterEpoch: retryAfterEpoch(), baselineSgt: baselineSgt(), cycleMs: cycleMs(), hideTools: options.hideTools, now: now() }),
-    home: () => phase() === "ready" && quotaData() ? zaiHomeQuotaSummary(quotaData()!) : null,
-    quotaSummary: () => quotaData() ? zaiHomeQuotaSummary(quotaData()!) : null,
-    configured: () => Boolean(apiKey()),
-    freshness: () => freshnessFor(phase()),
-    refresh,
-    setSessionID(id: string): void {
-      if (!disposed) setSessionID(id)
-    },
-    dispose(): void {
-      if (disposed) return
-      disposed = true
-      credentialGeneration += 1
-      clearBoundarySchedule()
-      cancelActiveRequest()
-      dispose()
-    },
-  }
+    createEffect(() => {
+      const published = quotaState()
+      const generation = published?.generation ?? engine.helpers.credentialGeneration()
+      if (published && generation !== engine.helpers.credentialGeneration()) return
+      const epoch = published?.data.tokenNextResetEpoch ?? retryAfterEpoch() ?? 0
+      if (epoch <= 0) return
+      const refreshed = engine.helpers.refreshedBoundary()
+      const pending = engine.helpers.pendingBoundary()
+      if (
+        (refreshed?.generation === generation && refreshed.epoch === epoch)
+        || (pending?.generation === generation && pending.epoch === epoch)
+      ) return
+      engine.helpers.scheduleRefreshAt(epoch)
+    })
+
+    return {
+      id: "zai",
+      order: PROVIDER_ORDER,
+      panel: () => mapZaiPanelState({ phase: phase(), data: quotaData(), retryAfterEpoch: retryAfterEpoch(), baselineSgt: baselineSgt(), cycleMs: cycleMs(), hideTools: options.hideTools, now: now() }),
+      home: () => phase() === "ready" && quotaData() ? zaiHomeQuotaSummary(quotaData()!) : null,
+      quotaSummary: () => quotaData() ? zaiHomeQuotaSummary(quotaData()!) : null,
+      configured: () => Boolean(engine.credential()),
+      freshness: () => freshnessFor(phase()),
+      refresh: engine.refresh,
+      setSessionID(id: string): void {
+        if (!providerDisposed) setLocalSessionID(id)
+      },
+      dispose: engine.dispose,
+    }
   })
 }
