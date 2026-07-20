@@ -13,6 +13,7 @@ const root = resolve(import.meta.dirname, "..")
 const runtimeModulePrefix = "opentui:runtime-module:"
 const hostRuntimeUrls = {
   "solid-js": import.meta.resolve("solid-js/dist/solid.js"),
+  "@opentui/core": import.meta.resolve("@opentui/core"),
   "@opentui/solid": import.meta.resolve("@opentui/solid"),
   "@opentui/solid/jsx-runtime": import.meta.resolve("@opentui/solid/jsx-runtime"),
 }
@@ -24,6 +25,7 @@ const expectedArtifacts = [
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
+    if (specifier === "@opentui/core") return nextResolve(hostRuntimeUrls[specifier], context)
     if (specifier.startsWith(runtimeModulePrefix)) {
       const hostModule = decodeURIComponent(specifier.slice(runtimeModulePrefix.length))
       return nextResolve(hostRuntimeUrls[hostModule] ?? hostModule, context)
@@ -128,6 +130,13 @@ function includesSource(inputs, source) {
   return inputs.some((file) => file === normalized || file.endsWith(`/${normalized}`))
 }
 
+function nodeModulePackageRoots(result) {
+  return [...new Set(inputNames(result).flatMap((file) => {
+    const match = file.match(/(?:^|\/)node_modules\/((?:@[^/]+\/)?[^/]+)(?:\/|$)/)
+    return match ? [match[1]] : []
+  }))].sort()
+}
+
 let buildPlugins
 let buildResults
 let contents
@@ -146,9 +155,9 @@ before(async () => {
 test("build:plugins emits the manifest artifact layout and return shape", async () => {
   const pkg = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"))
   assert.equal(pkg.scripts["build:plugins"], "node build-plugins.mjs")
-  assert.equal(expectedArtifacts.length, 9)
+  assert.equal(expectedArtifacts.length, 10)
   assert.deepEqual(Object.keys(buildResults).sort(), ["features", "shared"])
-  assert.equal(Object.keys(buildResults.features).length, 8)
+  assert.equal(Object.keys(buildResults.features).length, 9)
   assert.deepEqual(Object.keys(buildResults.features), pluginManifest.map((entry) => entry.key))
 
   for (const file of expectedArtifacts) {
@@ -197,6 +206,9 @@ test("feature metafiles contain their own source and no sibling feature", () => 
   assert.ok(sharedInputs.some((file) => file.endsWith("tui/features/ses-tokens.ts")))
   assert.ok(sharedInputs.some((file) => file.endsWith("tui/services/session-tree-snapshot.ts")))
   assert.ok(sharedInputs.some((file) => file.endsWith("tui/services/ses-tokens-source.ts")))
+  assert.ok(sharedInputs.some((file) => file.endsWith("tui/features/subagent.ts")))
+  assert.ok(sharedInputs.some((file) => file.endsWith("tui/services/subagent-snapshot.ts")))
+  assert.ok(sharedInputs.some((file) => file.endsWith("tui/services/subagent-source.ts")))
 
   const sesTokensResult = buildResults.features["ses-tokens"]
   assert.ok(sesTokensResult, "missing ses-tokens build result")
@@ -206,6 +218,16 @@ test("feature metafiles contain their own source and no sibling feature", () => 
     .filter((entry) => entry.key !== "ses-tokens")
     .every((entry) => !includesSource(sesTokensInputs, entry.source)), true)
   assert.match(contents["dist/opencode-tools-ses-tokens.js"], /from["']\.\/opencode-tools-shared\.js["']/)
+
+  const subagentResult = buildResults.features.subagent
+  assert.ok(subagentResult, "missing subagent build result")
+  const subagentInputs = inputNames(subagentResult)
+  assert.equal(includesSource(subagentInputs, "tui/subagent.tsx"), true)
+  assert.equal(includesSource(subagentInputs, "tui/features/subagent.ts"), false)
+  assert.equal(includesSource(subagentInputs, "tui/services/subagent-snapshot.ts"), false)
+  assert.equal(includesSource(subagentInputs, "tui/services/subagent-source.ts"), false)
+  assert.match(contents["dist/opencode-tools-subagent.js"], /from["']\.\/opencode-tools-shared\.js["']/)
+  assert.doesNotMatch(contents["dist/opencode-tools-subagent.js"], /(?:^|["'])\.\.\/tui\//)
 })
 
 test("all host and built-in dependencies remain external", () => {
@@ -213,7 +235,6 @@ test("all host and built-in dependencies remain external", () => {
   const results = [buildResults.shared, ...Object.values(buildResults.features)]
 
   for (const result of results) {
-    assert.ok(Object.keys(result.metafile.inputs).every((file) => !file.includes("node_modules")))
     for (const output of Object.values(result.metafile.outputs)) {
       for (const dependency of output.imports) {
         const bare = dependency.path.replace(/^node:/, "").split("/")[0]
@@ -228,6 +249,25 @@ test("all host and built-in dependencies remain external", () => {
         if (host) assert.equal(dependency.external, true, `${dependency.path} was bundled`)
       }
     }
+  }
+})
+
+test("only the SubAgent feature bundles its approved dependency chain", () => {
+  const approvedSubagentPackages = [
+    "ansi-regex",
+    "emoji-regex",
+    "get-east-asian-width",
+    "string-width",
+    "strip-ansi",
+  ]
+
+  assert.deepEqual(nodeModulePackageRoots(buildResults.shared), [], "shared bundled a package")
+  for (const [feature, result] of Object.entries(buildResults.features)) {
+    assert.deepEqual(
+      nodeModulePackageRoots(result),
+      feature === "subagent" ? approvedSubagentPackages : [],
+      `${feature} bundled an unapproved package`,
+    )
   }
 })
 
@@ -256,6 +296,7 @@ test("each artifact loads alone, activates only its feature, and cleans up", asy
     lsp: { slots: ["sidebar_content"], keymaps: 0 },
     todo: { slots: ["sidebar_content"], keymaps: 0 },
     "ses-tokens": { slots: ["sidebar_content"], keymaps: 0 },
+    subagent: { slots: ["sidebar_content"], keymaps: 0 },
   }
   const isolatedRoot = await mkdtemp(resolve(tmpdir(), "opencode-tools-artifacts-"))
   const originalEnvironment = {

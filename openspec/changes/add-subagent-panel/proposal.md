@@ -27,6 +27,6 @@ None.
 - Adds a new TUI plugin entry point and pure feature model under `tui/`.
 - Extends the shared TUI module, plugin manifest, package exports, deployment expectations, and local TUI API declarations.
 - Reorders existing sidebar manifest entries to Home 1, Context 100, SesTokens 110, SubAgent 120, Quota 130, MCP 140, LSP 150, and TODO 160.
-- Uses existing OpenCode TUI/SDK session, message, status, event, route, slot, lifecycle, and KV APIs without changing a public application API or adding a dependency.
+- Uses existing OpenCode TUI/SDK session, message, status, event, route, slot, lifecycle, and KV APIs without changing a public application API. Declares the already-installed `string-width` package directly for responsive terminal-cell end truncation because OpenTUI 0.4.x exposes only middle truncation.
 - May reuse general session indexing utilities introduced by the separate SesTokens change, but remains independently buildable and testable.
 - Adds focused model, mounted rendering, lifecycle, navigation, manifest, build, deployment, and type tests.

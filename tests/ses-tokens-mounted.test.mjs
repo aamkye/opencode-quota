@@ -36,12 +36,12 @@ async function exhaustFailedLoad(mounted) {
   }
 }
 
-test("registers ID order and one session-scoped sidebar slot", async () => {
+test("registers SesTokens at slot 110 and one session-scoped sidebar slot", async () => {
   const mounted = await mountSesTokensPanel()
   try {
     assert.equal(mounted.pluginID, "aamkye/opencode-tools-ses-tokens")
     assert.equal(mounted.registrations.length, 1)
-    assert.equal(mounted.registrations[0].order, 115)
+    assert.equal(mounted.registrations[0].order, 110)
     assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
     assert.deepEqual(mounted.listCalls, [])
     assert.equal(await mounted.setSessionID(), null)

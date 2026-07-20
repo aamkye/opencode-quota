@@ -19,12 +19,12 @@ const message = ({ input = 205_000, cost = 1.25 } = {}) => ({
 })
 const sessions = new Map([["session-a", [message()]]])
 
-test("registers at order 112 and renders the expanded metric contract", async () => {
+test("registers Context at slot 100 and renders the expanded metric contract", async () => {
   const mounted = await mountContextPanel({ sessionID: "session-a", sessions, providers: [provider()] })
   try {
     const view = mounted.view()
     assert.equal(mounted.pluginID, "aamkye/opencode-tools-context")
-    assert.equal(mounted.registrations[0].order, 112)
+    assert.equal(mounted.registrations[0].order, 100)
     assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
     assert.equal(view.marker, "▼ ")
     assert.equal(view.title, "Context")

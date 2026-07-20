@@ -5,14 +5,15 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./quota": "./tui/quota.tsx",
     "./home": "./tui/home.tsx",
     "./token-report": "./tui/token-report.tsx",
-    "./mcp": "./tui/mcp.tsx",
     "./context": "./tui/context.tsx",
+    "./ses-tokens": "./tui/ses-tokens.tsx",
+    "./subagent": "./tui/subagent.tsx",
+    "./quota": "./tui/quota.tsx",
+    "./mcp": "./tui/mcp.tsx",
     "./lsp": "./tui/lsp.tsx",
-    "./todo": "./tui/todo.tsx",
-    "./ses-tokens": "./tui/ses-tokens.tsx"
+    "./todo": "./tui/todo.tsx"
   },
   "files": [
     "dist",
@@ -47,7 +48,8 @@
     "@opencode-ai/plugin": "^1.3.3",
     "@opentui/core": "^0.4.2",
     "@opentui/solid": "^0.4.2",
-    "solid-js": "^1.9.12"
+    "solid-js": "^1.9.12",
+    "string-width": "7.2.0"
   },
   "devDependencies": {
     "@types/node": "^26.0.1",

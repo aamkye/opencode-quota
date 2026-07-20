@@ -35,6 +35,30 @@ export { createTodoPanelModel } from "../tui/features/todo.js";
 export type { TodoPanelModel, TodoStatusRole, TodoStatusRow } from "../tui/features/todo.js";
 export { createSesTokensPanelModel } from "../tui/features/ses-tokens.js";
 export type { SesTokenTotals, SesTokensMessage, SesTokensPanelModel } from "../tui/features/ses-tokens.js";
+export { allocateSubagentEntryRow, createSubagentPanelModel } from "../tui/features/subagent.js";
+export type {
+  SubagentEntry,
+  SubagentEntryRowAllocation,
+  SubagentPanelModel,
+  SubagentStatus,
+} from "../tui/features/subagent.js";
+export { createSubagentSnapshotLoader } from "../tui/services/subagent-snapshot.js";
+export type {
+  CreateSubagentSnapshotLoaderOptions,
+  SubagentChildSnapshot,
+  SubagentSnapshot,
+  SubagentSnapshotLoadContext,
+  SubagentSnapshotLoader,
+} from "../tui/services/subagent-snapshot.js";
+export { createSubagentSource } from "../tui/services/subagent-source.js";
+export type {
+  RetainedFailures,
+  SubagentEventRegistrar,
+  SubagentRefreshEvent,
+  SubagentSource,
+  SubagentSourceDependencies,
+  SubagentSourceState,
+} from "../tui/services/subagent-source.js";
 export {
   collectSessionTreeIDs,
   createSessionTreeSnapshotLoader,

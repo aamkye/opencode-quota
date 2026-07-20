@@ -8,7 +8,7 @@ canonical_spec: openspec
 
 ## Scope
 
-Add a standalone `subagent` TUI plugin that monitors direct child sessions of the viewed session. The plugin shows the newest five children in its primary group, places older children under an independently collapsible Rest group, reconstructs status and identity after remount, preserves terminal failures, and opens a selected child through the built-in session route.
+Add a standalone `subagent` TUI plugin that monitors direct child sessions of the viewed session. The plugin shows the newest five children in its primary group, places older children under an independently collapsible Rest group, reconstructs status and identity after remount, preserves terminal failures, and opens a selected child through the built-in session route. Entry rows omit status bullets, color time by status, and use a flexible title region so titles cannot consume the required gap or duration.
 
 The OpenSpec delta at `openspec/changes/add-subagent-panel/specs/subagent-panel/spec.md` defines user-visible behavior. `AGENTS.md` defines the canonical 37-cell layouts. This document defines module boundaries, snapshot and event flow, status derivation, persistence, rendering, cleanup, and tests.
 
@@ -339,15 +339,15 @@ An expanded empty snapshot renders muted `No subagents`.
 
 ### Entry Rows
 
-Each entry row is a full-width horizontal box with these fixed regions:
+Each entry row is a full-width horizontal box with these regions:
 
 ```text
-disclosure + bullet + flexible title + gap + duration
+disclosure + flexible title + gap + duration
 ```
 
-The disclosure and bullet render `▶ • ` or `▼ • `. Only the title flexes. It uses OpenTUI ellipsis truncation and cannot consume the duration region. The duration stays fixed at the right edge. Status colors apply to the bullet: success, warning, or error.
+The disclosure renders `▶ ` or `▼ `. Entry rows have no status bullet. Compact rows reserve a fixed seven-cell, right-aligned duration box for `XXm XXs` and two structural title-to-duration gap cells: one ordinary gap and one spare cell for a visible host scrollbar. The title uses `flexBasis={0}`, `flexGrow={1}`, `flexShrink={1}`, `minWidth={0}`, a right margin equal to the two-cell allocation, and `selectable={false}` so its click expands the row without terminal selection highlighting. At the 37-cell maximum this leaves a 26-cell title basis; a scrollbar can shrink only the title while the spare gap prevents native title truncation from reaching the duration. Its direct `string-width` end-truncated value and native `truncate={true}` provide terminal-cell safety. Declare the already-installed `string-width` package directly to measure terminal cells. The duration uses the entry status color: success, warning, or error. Expanded entries omit the duration reservation, render their nonselectable character-wrapping text as a full-width child of the flex-computed remaining region, retain every grapheme across continuation lines, and retain title-row clicks.
 
-Add a pure allocation helper for 37-cell and narrower tests. Do not build padded strings in the component.
+Update the pure allocation helper for disclosure, title, gap, and duration at 37 cells and narrower. Do not build padded rows in the component.
 
 ### Detail Rows
 
@@ -361,7 +361,7 @@ An expanded entry omits duration from its header and renders these rows in order
   Open Session
 ```
 
-Labels and values use clipped flex rows with a two-cell indent. `Open Session` is a clickable row. Activating it calls:
+Labels and values use clipped flex rows with a two-cell indent. The `time` value uses the entry status color. `Open Session` is a clickable row. Activating it calls:
 
 ```ts
 api.route.navigate("session", { sessionID: child.id })
@@ -369,7 +369,7 @@ api.route.navigate("session", { sessionID: child.id })
 
 ### Rest Group
 
-Render no Rest section for five or fewer children. Otherwise render one internal divider after the fifth primary entry, then a full-width `▼ Rest` or `▶ Rest` header. Rest collapse does not change the outer panel or counts.
+Render no Rest section for five or fewer children. Otherwise render one internal divider after the fifth primary entry as muted `---`, flexible space, and `---`, then a full-width muted `▼ Rest` or `▶ Rest` header. Rest collapse does not change the outer panel or counts.
 
 ### Conditional Clock
 
@@ -427,7 +427,7 @@ Inject loader, timer, event, and failure-store dependencies. Cover immediate ini
 
 ### Mounted Panel Tests
 
-Assert every AGENTS layout: expanded, one detail, expanded Rest, semi-collapsed Rest, collapsed counts, stale expanded, and stale collapsed. Also cover no output for loading/unavailable, `No subagents`, exact row order, status colors, ellipsis, 37/36-cell boundaries, no trailing whitespace, parent-scoped persistence, one-entry expansion, invalid ID cleanup, hidden Rest details, conditional clock start/stop/disposal, and route navigation.
+Assert every AGENTS layout: expanded, one detail, expanded Rest, semi-collapsed Rest, collapsed counts, stale expanded, and stale collapsed. Also cover no output for loading/unavailable, `No subagents`, exact row order, status-colored compact/detail time, end ellipsis, a flexible title region that receives 28 cells at width 37 and 27 at scrollbar-reduced width 36 while preserving the one-cell gap and full duration, muted Rest treatment, spaced divider segments, no trailing whitespace, parent-scoped persistence, one-entry expansion, invalid ID cleanup, hidden Rest details, conditional clock start/stop/disposal, and route navigation.
 
 ### Type And Integration Tests
 

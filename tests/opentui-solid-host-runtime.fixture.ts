@@ -9,7 +9,12 @@ export type HostNode = {
 }
 
 export function createHostNode(type: string): HostNode {
-  return { type, props: {}, children: [], removed: false }
+  return {
+    type,
+    props: {},
+    children: [],
+    removed: false,
+  }
 }
 
 function removeFromParent(node: HostNode): void {

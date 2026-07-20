@@ -1,0 +1,274 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+
+const { createSubagentSnapshotLoader } = await import("../.tmp-test/subagent-snapshot.mjs")
+
+const session = (id, parentID, created) => ({
+  id,
+  parentID,
+  title: id,
+  time: { created, updated: created },
+})
+
+const message = (sessionID) => ({ role: "assistant", sessionID })
+
+function deferred() {
+  let resolve
+  let reject
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, reject, resolve }
+}
+
+const context = (onChildIDs = () => {}) => ({
+  signal: new AbortController().signal,
+  onChildIDs,
+})
+
+const settle = () => new Promise((resolve) => setImmediate(resolve))
+
+test("returns a complete empty snapshot without message calls", async () => {
+  const statusCalls = []
+  const messageCalls = []
+  const discoveries = []
+  const loader = createSubagentSnapshotLoader({
+    async listSessions() { return [session("unrelated", "other", 1)] },
+    sessionStatus(sessionID) {
+      statusCalls.push(sessionID)
+      return { type: "idle" }
+    },
+    async listMessages(sessionID) {
+      messageCalls.push(sessionID)
+      return [message(sessionID)]
+    },
+  })
+
+  const snapshot = await loader("root", context((childIDs) => discoveries.push([...childIDs])))
+
+  assert.deepEqual(snapshot, { parentID: "root", childIDs: [], children: [] })
+  assert.deepEqual(discoveries, [[]])
+  assert.deepEqual(statusCalls, [])
+  assert.deepEqual(messageCalls, [])
+})
+
+test("requests only sorted direct children and never requests grandchildren", async () => {
+  const sessions = [
+    session("child-b", "root", 2),
+    session("grandchild", "child-a", 9),
+    session("child-new", "root", 3),
+    session("unrelated", "other", 10),
+    session("child-a", "root", 2),
+  ]
+  const statusCalls = []
+  const messageCalls = []
+  const loader = createSubagentSnapshotLoader({
+    async listSessions() { return sessions },
+    sessionStatus(sessionID) {
+      statusCalls.push(sessionID)
+      return { type: "idle" }
+    },
+    async listMessages(sessionID) {
+      messageCalls.push(sessionID)
+      return [message(sessionID)]
+    },
+  })
+
+  const snapshot = await loader("root", context())
+
+  assert.deepEqual(snapshot.childIDs, ["child-new", "child-a", "child-b"])
+  assert.deepEqual(statusCalls, snapshot.childIDs)
+  assert.deepEqual(messageCalls, snapshot.childIDs)
+  assert.deepEqual(snapshot.children.map(({ session: child }) => child.id), snapshot.childIDs)
+  assert.equal(messageCalls.includes("grandchild"), false)
+})
+
+test("publishes discovered child IDs before status or message fan-out", async () => {
+  const events = []
+  const loader = createSubagentSnapshotLoader({
+    async listSessions() {
+      return [session("child-b", "root", 1), session("child-a", "root", 1)]
+    },
+    sessionStatus(sessionID) {
+      events.push(["status", sessionID])
+      return { type: "idle" }
+    },
+    async listMessages(sessionID) {
+      events.push(["messages", sessionID])
+      return [message(sessionID)]
+    },
+  })
+
+  await loader("root", context((childIDs) => events.push(["children", [...childIDs]])))
+
+  assert.deepEqual(events[0], ["children", ["child-a", "child-b"]])
+  assert.equal(events.slice(1).every(([kind]) => kind === "status" || kind === "messages"), true)
+})
+
+test("keeps sorted output when child requests finish in reverse", async () => {
+  const completions = new Map()
+  const statuses = new Map([
+    ["child-new", { type: "busy" }],
+    ["child-a", { type: "idle" }],
+    ["child-b", undefined],
+  ])
+  const loader = createSubagentSnapshotLoader({
+    async listSessions() {
+      return [
+        session("child-b", "root", 1),
+        session("child-new", "root", 2),
+        session("child-a", "root", 1),
+      ]
+    },
+    sessionStatus(sessionID) { return statuses.get(sessionID) },
+    listMessages(sessionID) {
+      const result = deferred()
+      completions.set(sessionID, result)
+      return result.promise
+    },
+  })
+  const pending = loader("root", context())
+
+  await settle()
+  for (const sessionID of ["child-b", "child-a", "child-new"]) {
+    completions.get(sessionID).resolve([message(sessionID)])
+  }
+
+  const snapshot = await pending
+  assert.deepEqual(snapshot.childIDs, ["child-new", "child-a", "child-b"])
+  assert.deepEqual(snapshot.children.map(({ session: child }) => child.id), snapshot.childIDs)
+  assert.deepEqual(snapshot.children.map(({ status }) => status), snapshot.childIDs.map((id) => statuses.get(id)))
+  assert.deepEqual(snapshot.children.map(({ messages }) => messages[0].sessionID), snapshot.childIDs)
+})
+
+test("shares four message slots across overlapping generations", async () => {
+  const released = deferred()
+  let active = 0
+  let maximum = 0
+  const messageCalls = []
+  const loader = createSubagentSnapshotLoader({
+    async listSessions() {
+      return [
+        ...Array.from({ length: 6 }, (_, index) => session(`old-${index}`, "old", index)),
+        ...Array.from({ length: 6 }, (_, index) => session(`new-${index}`, "new", index)),
+      ]
+    },
+    sessionStatus() { return { type: "idle" } },
+    async listMessages(sessionID) {
+      messageCalls.push(sessionID)
+      active += 1
+      maximum = Math.max(maximum, active)
+      await released.promise
+      active -= 1
+      return [message(sessionID)]
+    },
+    concurrency: 100,
+  })
+
+  const oldResult = loader("old", context())
+  const newResult = loader("new", context())
+  await settle()
+
+  assert.equal(active, 4)
+  assert.equal(messageCalls.length, 4)
+  released.resolve()
+  const [oldSnapshot, newSnapshot] = await Promise.all([oldResult, newResult])
+
+  assert.equal(maximum, 4)
+  assert.equal(messageCalls.length, 12)
+  assert.equal(oldSnapshot.children.length, 6)
+  assert.equal(newSnapshot.children.length, 6)
+})
+
+test("aborted queued work rejects without starting an SDK call", async () => {
+  const activeRequest = deferred()
+  const messageCalls = []
+  const loader = createSubagentSnapshotLoader({
+    async listSessions() {
+      return [session("active-child", "active", 1), session("queued-child", "queued", 1)]
+    },
+    sessionStatus() { return { type: "idle" } },
+    async listMessages(sessionID) {
+      messageCalls.push(sessionID)
+      if (sessionID === "active-child") await activeRequest.promise
+      return [message(sessionID)]
+    },
+    concurrency: 1,
+  })
+  const activeResult = loader("active", context())
+  await settle()
+  const queuedController = new AbortController()
+  const queuedResult = loader("queued", {
+    signal: queuedController.signal,
+    onChildIDs() {},
+  })
+  await settle()
+
+  queuedController.abort()
+  await assert.rejects(queuedResult, /abort/i)
+  assert.deepEqual(messageCalls, ["active-child"])
+
+  activeRequest.resolve()
+  await activeResult
+  assert.deepEqual(messageCalls, ["active-child"])
+})
+
+test("one failure stops new claims and waits for active requests", async () => {
+  const activeRequest = deferred()
+  const messageCalls = []
+  let settled = false
+  const loader = createSubagentSnapshotLoader({
+    async listSessions() {
+      return [
+        session("child-a", "root", 4),
+        session("child-b", "root", 3),
+        session("child-c", "root", 2),
+      ]
+    },
+    sessionStatus() { return { type: "idle" } },
+    async listMessages(sessionID) {
+      messageCalls.push(sessionID)
+      if (sessionID === "child-a") throw new Error("message request failed")
+      if (sessionID === "child-b") return activeRequest.promise
+      return [message(sessionID)]
+    },
+    concurrency: 2,
+  })
+  const pending = loader("root", context()).finally(() => { settled = true })
+  const rejection = assert.rejects(pending, /message request failed/)
+
+  await settle()
+  assert.equal(settled, false)
+  assert.deepEqual(messageCalls, ["child-a", "child-b"])
+  activeRequest.resolve([message("child-b")])
+  await rejection
+  assert.deepEqual(messageCalls, ["child-a", "child-b"])
+})
+
+test("list status or message failure rejects without a partial snapshot", async (t) => {
+  for (const failure of ["list", "status", "message"]) {
+    await t.test(failure, async () => {
+      let snapshot
+      const loader = createSubagentSnapshotLoader({
+        async listSessions() {
+          if (failure === "list") throw new Error("list failed")
+          return [session("child", "root", 1)]
+        },
+        sessionStatus() {
+          if (failure === "status") throw new Error("status failed")
+          return { type: "idle" }
+        },
+        async listMessages(sessionID) {
+          if (failure === "message") throw new Error("message failed")
+          return [message(sessionID)]
+        },
+      })
+
+      await assert.rejects(async () => {
+        snapshot = await loader("root", context())
+      }, new RegExp(`${failure} failed`))
+      assert.equal(snapshot, undefined)
+    })
+  }
+})

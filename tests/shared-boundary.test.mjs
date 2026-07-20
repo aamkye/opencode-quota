@@ -50,6 +50,21 @@ function namedImportLocalName(sourceFile, moduleSpecifier, importName) {
   }
 }
 
+function typeOnlyNamedImportLocalName(sourceFile, moduleSpecifier, importName) {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)
+      || !ts.isStringLiteral(statement.moduleSpecifier)
+      || statement.moduleSpecifier.text !== moduleSpecifier
+      || !statement.importClause?.isTypeOnly
+      || !ts.isNamedImports(statement.importClause.namedBindings)) continue
+
+    const specifier = statement.importClause.namedBindings.elements.find((element) =>
+      (element.propertyName?.text ?? element.name.text) === importName
+    )
+    if (specifier) return specifier.name.text
+  }
+}
+
 function callsIdentifier(sourceFile, name) {
   let found = false
   function visit(node) {
@@ -107,6 +122,8 @@ test("loadable TUI entries use the shared facade for computation", () => {
   const todo = source("tui/todo.tsx")
   const todoSource = parsedSource("tui/todo.tsx")
   const sesTokensSource = parsedSource("tui/ses-tokens.tsx")
+  const subagent = source("tui/subagent.tsx")
+  const subagentSource = parsedSource("tui/subagent.tsx")
 
   assert.match(quota, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
   assert.match(home, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
@@ -123,6 +140,11 @@ test("loadable TUI entries use the shared facade for computation", () => {
   const sesTokensModelImport = namedImportLocalName(sesTokensSource, "../shared/opencode-tools-shared.js", "createSesTokensPanelModel")
   assert.ok(sesTokensModelImport, "tui/ses-tokens.tsx must named-import createSesTokensPanelModel from the shared facade")
   assert.ok(callsIdentifier(sesTokensSource, sesTokensModelImport), "tui/ses-tokens.tsx must call the imported createSesTokensPanelModel")
+  for (const exportName of ["createSubagentPanelModel", "createSubagentSnapshotLoader", "createSubagentSource"]) {
+    const localName = namedImportLocalName(subagentSource, "../shared/opencode-tools-shared.js", exportName)
+    assert.ok(localName, `tui/subagent.tsx must named-import ${exportName} from the shared facade`)
+    assert.ok(callsIdentifier(subagentSource, localName), `tui/subagent.tsx must call the imported ${exportName}`)
+  }
   assertRelativeImports("tui/quota.tsx", [
     "../shared/opencode-tools-shared.js",
     "./presentation/renderer.js",
@@ -140,12 +162,46 @@ test("loadable TUI entries use the shared facade for computation", () => {
   assertRelativeImports("tui/lsp.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/todo.tsx", ["../shared/opencode-tools-shared.js"])
   assertRelativeImports("tui/ses-tokens.tsx", ["../shared/opencode-tools-shared.js"])
+  assertRelativeImports("tui/subagent.tsx", ["../shared/opencode-tools-shared.js"])
+  assert.deepEqual(relativeImports(subagent), ["../shared/opencode-tools-shared.js"])
+  assert.doesNotMatch(subagent, /(?:^|["'])\.\/?(?:features|services)\//m)
   assert.doesNotMatch(tokenReport, /\bcomputeTokenReport\b|\brenderTokenReport\b/)
   assert.doesNotMatch(tokenReport, /client\.session\.prompt/)
   assert.doesNotMatch(tokenReport, /\bhistory\b|\bmodel\b/)
   assert.doesNotMatch(mcp, /\.sort\(|setInterval|setTimeout/)
   assert.doesNotMatch(context, /message\.updated|setInterval|setTimeout/)
   assert.doesNotMatch(todo, /todo\.updated|setInterval|setTimeout/)
+  assert.match(subagent, /from ["']\.\.\/shared\/opencode-tools-shared\.js["']/)
+})
+
+test("SubAgent fixes expanded titles to a 25-cell character-wrapped region", () => {
+  const subagent = source("tui/subagent.tsx")
+  const measuredTitle = subagent.split("function MeasuredTitle", 2)[1].split("function DetailRow", 1)[0]
+
+  assert.match(subagent, /const\s+allocation\s*=\s*\(\)\s*=>\s*allocateSubagentEntryRow\(37,\s*7\)/)
+  assert.match(subagent, /<MeasuredTitle\s+value=\{props\.entry\.title\}\s+cells=\{allocation\(\)\.title\}\s+marginRight=\{allocation\(\)\.beforeDurationGap\}/)
+  assert.match(measuredTitle, /flexBasis=\{0\}/)
+  assert.match(measuredTitle, /flexGrow=\{1\}/)
+  assert.match(measuredTitle, /flexShrink=\{1\}/)
+  assert.match(measuredTitle, /minWidth=\{0\}/)
+  assert.match(measuredTitle, /marginRight=\{props\.marginRight\}/)
+  assert.match(measuredTitle, /selectable=\{false\}/)
+  assert.doesNotMatch(measuredTitle, /\bwidth\s*=/)
+  assert.match(subagent, /truncateTerminalCellsEnd\(props\.value,\s*props\.cells\)/)
+  assert.match(subagent, /truncate=\{true\}/)
+  assert.match(subagent, /width=\{allocation\(\)\.duration\}/)
+  assert.match(subagent, /justifyContent=["']flex-end["']/)
+  assert.match(subagent, /<box\s+width=\{allocation\(\)\.duration\}\s+flexShrink=\{0\}\s+justifyContent=["']flex-end["']\s+flexDirection=["']row["']/)
+  assert.match(subagent, /when=\{props\.expanded\}[\s\S]*?<box\s+width=\{25\}>\s*<text(?=[^>]*width=["']100%["'])(?=[^>]*selectable=\{false\})(?=[^>]*wrapMode=["']char["'])[^>]*>\s*\{props\.entry\.title\}/)
+  assert.match(subagent, /<box\s+flexDirection=["']row["']\s+width=["']100%["']\s+overflow=["']hidden["']\s+onMouseDown=\{props\.onToggle\}>/)
+  assert.doesNotMatch(subagent, /<text\s+width=\{allocation\(\)\.beforeDurationGap\}[^>]*>\s*<\/text>/)
+  assert.doesNotMatch(subagent, /\bref\s*=/)
+  assert.doesNotMatch(subagent, /\bonSizeChange\b/)
+  assert.doesNotMatch(subagent, /\brenderBefore\b/)
+  assert.doesNotMatch(subagent, /["']resize["']/)
+  assert.doesNotMatch(subagent, /\bRenderable\b/)
+  assert.doesNotMatch(subagent, /\bLayoutEvents\b/)
+  assert.doesNotMatch(subagent, /["']resized["']/)
 })
 
 test("shared facade exports computation without plugin registration or JSX", () => {
@@ -188,6 +244,14 @@ test("shared facade exports computation without plugin registration or JSX", () 
   assert.ok(
     hasNamedReExport(sharedSource, "../tui/features/ses-tokens.js", "createSesTokensPanelModel"),
     "shared facade must re-export createSesTokensPanelModel from the SesTokens feature",
+  )
+  assert.ok(
+    hasNamedReExport(sharedSource, "../tui/features/subagent.js", "createSubagentPanelModel"),
+    "shared facade must re-export createSubagentPanelModel from the SubAgent feature",
+  )
+  assert.ok(
+    hasNamedReExport(sharedSource, "../tui/features/subagent.js", "allocateSubagentEntryRow"),
+    "shared facade must re-export allocateSubagentEntryRow from the SubAgent feature",
   )
   assert.ok(
     hasNamedReExport(sharedSource, "../tui/services/session-tree-snapshot.js", "loadSessionTreeSnapshot"),

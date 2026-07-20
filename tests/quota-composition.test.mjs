@@ -483,20 +483,20 @@ test("OpenCode Go integration constructs quota-only polling with normalized opti
   assert.equal(observations.intervals.filter((timer) => timer.active && timer.delay === 2_500).length, 3)
 })
 
-test("quota plugin keeps the manifest-owned sidebar slot order", async (t) => {
+test("quota plugin keeps the manifest-owned sidebar slot 130", async (t) => {
   const registration = await aggregateRegistration(t, {
     quota: { refreshIntervalSeconds: 2.5, opencodego: sentinel },
   })
 
-  assert.equal(registration.order, 110)
+  assert.equal(registration.order, 130)
 })
 
-test("shared quota composition preserves the legacy manifest order", () => {
+test("shared quota composition preserves manifest slot 130", () => {
   const model = composeQuotaPanel(supported("zai"), [
     provider({ id: "zai", title: "Z.AI", order: 110, primaryPct: 50 }),
   ])
 
-  assert.equal(model.order, 110)
+  assert.equal(model.order, 130)
 })
 
 test("keeps the selected supported provider first while loading or unavailable", () => {
