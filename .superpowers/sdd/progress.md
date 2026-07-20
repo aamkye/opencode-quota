@@ -96,3 +96,4 @@ add-subagent-panel Task 7: complete (commits c774c36..2dc53d0, thorough review c
 add-subagent-panel Task 8: complete (verification-only at c543340; focused 83/83, full 410/410, typecheck/build/bundle/AGENTS/artifact gates passed; evidence review clean)
 polish-tui-session-rename Task 1: complete (commits 30db8c3..10760c2, standard risk review clean)
 polish-tui-session-rename Task 2: complete (commits 10760c2..41df4c9, standard risk review clean)
+polish-tui-session-rename Task 3: complete (commit b26aa85, standard non-risk task; focused SesTokens tests passed 29/29)
