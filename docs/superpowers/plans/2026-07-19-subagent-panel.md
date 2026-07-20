@@ -1275,3 +1275,41 @@ Run `npm run deploy:local`, restart or reload OpenCode, and confirm every visibl
 ## Planning Concern
 
 Task 10 exists because live OpenCode disproved every dynamic title-measurement path: `onSizeChange`, a ref-bound child `resize` listener, and `renderBefore` all left either blank or unbounded title text. It also proved that a fixed 28-cell title basis allows the scrollbar to overlay the final duration cell, while one gap cell can be overpainted by native title truncation. The binding architecture reserves a seven-cell right-aligned `XXm XXs` duration box and two title-margin cells, so the scrollbar can consume only the spare gap. Expanded rows no longer reserve compact-row duration space and instead wrap their full title. No callback or scrollbar state is used. The worktree also contains coordinator-owned Comet state and progress files; they remain outside Task 10 staging. Exact-path staging is mandatory, Tasks 1-9 stay completed, and no unrelated source belongs in the Task 10 commit.
+
+### Task 11: Disable Interactive Title Selection
+
+**OpenSpec mapping:** 8.1, 8.2; corrective acceptance for SubAgent row click behavior.
+
+**Files:**
+- Modify: `tui/subagent.tsx`
+- Modify: `tests/subagent-mounted.fixture.ts`
+- Modify: `tests/subagent-mounted.test.mjs`
+- Modify: `tests/shared-boundary.test.mjs`
+
+- [ ] **Step 1: Add the failing selection regression**
+
+Require both compact `MeasuredTitle` and expanded wrapping title text to set `selectable={false}`. Exercise the existing title-row click path for each state and assert expansion still changes. The source-boundary test must reject an implementation that leaves either interactive title selectable.
+
+- [ ] **Step 2: Run focused RED**
+
+Run:
+
+```bash
+node tests/compile-presentation.mjs && node --test \
+  tests/subagent-mounted.test.mjs \
+  tests/shared-boundary.test.mjs
+```
+
+Expected RED: source/mounted assertions report missing nonselectable compact and expanded title props; existing expansion behavior still compiles.
+
+- [ ] **Step 3: Apply the minimal interaction fix**
+
+Set `selectable={false}` on only the compact and expanded SubAgent title `<text>` nodes. Do not alter row mouse handlers, disclosures, duration, title allocation, wrapping, colors, details, source behavior, or selection outside these interactive titles.
+
+- [ ] **Step 4: Run GREEN gates and commit**
+
+Run the focused command, `npm run typecheck`, `npm test`, `npm run build`, scoped `git diff --check`, and `npm run deploy:local`. Confirm the user-owned `AGENTS.md` remains unstaged. Commit only the four listed tracked files.
+
+- [ ] **Step 5: Confirm live behavior**
+
+Restart or reload OpenCode, click compact and expanded SubAgent titles, confirm expansion/collapse still works, and confirm no title selection highlight appears. Record the result before checking OpenSpec 8.1/8.2.

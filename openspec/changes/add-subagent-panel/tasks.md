@@ -31,5 +31,10 @@
 
 ## 7. Reserved Duration And Expanded Title Correction
 
-- [ ] 7.1 Add a failing mounted regression that reserves a fixed seven-cell `XXm XXs` duration box plus a two-cell title margin, verifies the scrollbar can consume only the spare margin, and verifies expanded titles wrap completely without a duration reservation
-- [ ] 7.2 Implement the fixed-duration/two-gap compact row and wrapping expanded-title pattern, preserve all approved visual behavior, pass focused/full/typecheck/build/bundle gates, deploy locally, and confirm titles in the live OpenCode sidebar
+- [x] 7.1 Add a failing mounted regression that reserves a fixed seven-cell `XXm XXs` duration box plus a two-cell title margin, verifies the scrollbar can consume only the spare margin, and verifies expanded titles wrap completely without a duration reservation
+- [x] 7.2 Implement the fixed-duration/two-gap compact row and wrapping expanded-title pattern, preserve all approved visual behavior, pass focused/full/typecheck/build/bundle gates, deploy locally, and confirm titles in the live OpenCode sidebar
+
+## 8. Interactive Title Selection Correction
+
+- [ ] 8.1 Add a failing mounted/source-boundary regression that requires compact and expanded interactive SubAgent titles to disable text selection while retaining row click expansion
+- [ ] 8.2 Set `selectable={false}` on those title text nodes, preserve all compact/expanded layout and interaction behavior, pass focused/full/typecheck/build gates, deploy locally, and confirm no title selection in live OpenCode
