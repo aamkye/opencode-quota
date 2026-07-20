@@ -41,10 +41,10 @@
 
 ## 9. Expanded Title Character Preservation
 
-- [ ] 9.1 Add a failing mounted regression that forces an expanded title across a character-wrap boundary and proves concatenated continuation text retains every title grapheme
-- [ ] 9.2 Render expanded title text at the flex-computed remaining width without dropping boundary characters, preserve character-wrap layout and row interactions, pass focused/full/typecheck/build gates, deploy locally, and confirm complete expanded titles in live OpenCode
+- [x] 9.1 Add a failing mounted regression that forces an expanded title across a character-wrap boundary and proves concatenated continuation text retains every title grapheme
+- [x] 9.2 Render expanded title text at the flex-computed remaining width without dropping boundary characters, preserve character-wrap layout and row interactions, pass focused/full/typecheck/build gates, deploy locally, and confirm complete expanded titles in live OpenCode
 
 ## 10. Fixed Expanded Title Width
 
-- [ ] 10.1 Add a failing mounted/AGENTS-derived regression that requires expanded title lines to wrap at 25 cells after the disclosure and concatenate to the complete original title
-- [ ] 10.2 Render expanded titles in a fixed 25-cell character-wrap region, preserve selection/click behavior and all compact-row behavior, pass focused/full/typecheck/build gates, deploy locally, and confirm the live layout
+- [x] 10.1 Add a failing mounted/AGENTS-derived regression that requires expanded title lines to wrap at 25 cells after the disclosure and concatenate to the complete original title
+- [x] 10.2 Render expanded titles in a fixed 25-cell character-wrap region, preserve selection/click behavior and all compact-row behavior, pass focused/full/typecheck/build gates, deploy locally, and confirm the live layout
