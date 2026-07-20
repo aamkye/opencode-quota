@@ -10,7 +10,7 @@ tags:
   - "domain:session-rename.ts"
   - "git:branch:feature/20260720/polish-tui-session-rename"
   - "git:repo:opencode-quota"
-timestamp: "2026-07-20T10:29:40Z"
+timestamp: "2026-07-20T13:52:04Z"
 concept_id: lib/session-rename/createSessionRenameHooks
 language: typescript
 ---
@@ -24,7 +24,7 @@ function createSessionRenameHooks(client: Client, warn: Warn = logWarning): Hook
 ```
 
 ## Source
-Lines 70–200 in `lib/session-rename.ts`
+Lines 70–204 in `lib/session-rename.ts`
 
 ## Relationships
 

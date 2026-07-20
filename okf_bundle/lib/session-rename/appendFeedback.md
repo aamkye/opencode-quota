@@ -10,7 +10,7 @@ tags:
   - "domain:session-rename.ts"
   - "git:branch:feature/20260720/polish-tui-session-rename"
   - "git:repo:opencode-quota"
-timestamp: "2026-07-20T10:29:40Z"
+timestamp: "2026-07-20T13:52:04Z"
 concept_id: lib/session-rename/appendFeedback
 language: typescript
 ---
@@ -24,7 +24,7 @@ function appendFeedback(sessionID: string, text: string): Promise<void>
 ```
 
 ## Source
-Lines 71–79 in `lib/session-rename.ts`
+Lines 71–80 in `lib/session-rename.ts`
 
 ## Relationships
 

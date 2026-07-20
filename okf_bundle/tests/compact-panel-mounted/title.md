@@ -10,7 +10,7 @@ tags:
   - "domain:compact-panel-mounted.test.mjs"
   - "git:branch:feature/20260720/polish-tui-session-rename"
   - "git:repo:opencode-quota"
-timestamp: "2026-07-20T08:58:48Z"
+timestamp: "2026-07-20T13:50:11Z"
 concept_id: tests/compact-panel-mounted/title
 language: javascript
 ---
@@ -24,7 +24,7 @@ const title = () =>
 ```
 
 ## Source
-Lines 220–220 in `tests/compact-panel-mounted.test.mjs`
+Lines 228–228 in `tests/compact-panel-mounted.test.mjs`
 
 ## Relationships
 

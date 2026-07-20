@@ -10,7 +10,7 @@ tags:
   - "domain:session-rename.lifecycle.test.mjs"
   - "git:branch:feature/20260720/polish-tui-session-rename"
   - "git:repo:opencode-quota"
-timestamp: "2026-07-20T09:46:45Z"
+timestamp: "2026-07-20T13:50:11Z"
 concept_id: tests/session-rename/handledError
 language: javascript
 ---

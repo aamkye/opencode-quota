@@ -10,7 +10,7 @@ tags:
   - "domain:presentation"
   - "git:branch:feature/20260720/polish-tui-session-rename"
   - "git:repo:opencode-quota"
-timestamp: "2026-07-20T08:57:24Z"
+timestamp: "2026-07-20T13:52:44Z"
 concept_id: tui/presentation/compact-panel/Divider
 language: typescript
 ---
@@ -24,7 +24,7 @@ function Divider()
 ```
 
 ## Source
-Lines 32–34 in `tui/presentation/compact-panel.tsx`
+Lines 36–38 in `tui/presentation/compact-panel.tsx`
 
 ## Relationships
 

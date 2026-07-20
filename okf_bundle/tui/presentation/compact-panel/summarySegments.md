@@ -10,7 +10,7 @@ tags:
   - "domain:presentation"
   - "git:branch:feature/20260720/polish-tui-session-rename"
   - "git:repo:opencode-quota"
-timestamp: "2026-07-20T08:57:24Z"
+timestamp: "2026-07-20T13:52:44Z"
 concept_id: tui/presentation/compact-panel/summarySegments
 language: typescript
 ---
@@ -24,7 +24,7 @@ function summarySegments(value: CompactPanelSummary): readonly PanelTextSegment[
 ```
 
 ## Source
-Lines 36–65 in `tui/presentation/compact-panel.tsx`
+Lines 40–69 in `tui/presentation/compact-panel.tsx`
 
 ## Relationships
 

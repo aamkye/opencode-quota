@@ -3,7 +3,7 @@ description: 'Top-level OKF summary: 1479 concepts across 11 domains and 126 mod
 git_branch: feature/20260720/polish-tui-session-rename
 git_repo: opencode-quota
 okf_version: '0.2'
-timestamp: '2026-07-20T12:27:09Z'
+timestamp: '2026-07-20T13:54:10Z'
 title: okf_bundle — Knowledge Summary
 type: Index
 ---
