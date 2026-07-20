@@ -69,6 +69,29 @@ test("tracked project files contain no active legacy identifier", () => {
   }
 })
 
+test("retains the legacy session artifact name only for deployment cleanup", () => {
+  const legacySessionArtifact = ["session", "title"].join("-")
+  const allowed = new Set([
+    "deploy-session-rename.mjs",
+    "tests/session-rename-deploy.test.mjs",
+  ])
+  const trackedFiles = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" })
+    .split("\0")
+    .filter(Boolean)
+    .filter((file) => !file.startsWith("openspec/") && !file.startsWith("docs/superpowers/"))
+    .filter((file) => existsSync(file))
+
+  for (const file of trackedFiles) {
+    if (!readFileSync(file, "utf8").includes(legacySessionArtifact)) continue
+    assert.equal(allowed.has(file), true, `${file} retains the obsolete session plugin name`)
+  }
+
+  const source = readFileSync("lib/session-rename.ts", "utf8")
+  for (const obsolete of ["TitleState", "TitleStage", "hasPriorParentMessages", "session.idle", "chat.message", "first message"]) {
+    assert.equal(source.includes(obsolete), false, `session rename source retains ${obsolete}`)
+  }
+})
+
 test("documents standalone installation, migration, sidebar layouts, and rollback", () => {
   const readme = readFileSync("README.md", "utf8")
   const agents = readFileSync("AGENTS.md", "utf8")
@@ -531,7 +554,8 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.match(sourceFiles, /^\| `session-rename\.ts`\s+\| Global manual session rename plugin entry point\s+\|$/mu)
   assert.match(sourceFiles, /^\| `build-session-rename\.mjs`\s+\| Builds the bundled global session rename plugin\s+\|$/mu)
   assert.match(sourceFiles, /^\| `deploy-session-rename\.mjs`\s+\| Installs the global session rename plugin and removes the legacy artifact\s+\|$/mu)
-  assert.doesNotMatch(readme, /session-title|### Session title plugin/iu)
+  assert.equal(readme.includes(["session", "title"].join("-")), false)
+  assert.doesNotMatch(readme, /### Session title plugin/iu)
   assert.doesNotMatch(readme, /first message|idle event|automatic rename/iu)
 
   assert.match(prose, /Long IDs truncate with an ellipsis so expanded lines fit within 37 cells and collapsed lines fit within 36 cells\./u)
