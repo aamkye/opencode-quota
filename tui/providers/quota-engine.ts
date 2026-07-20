@@ -5,7 +5,7 @@ import { FETCH_TIMEOUT_MS, STALE_MAX_MS, TICK_MS, providerRefreshInterval, unref
 export type QuotaEngineFetchResult<TData> =
   | { kind: "success"; data: TData }
   | { kind: "transient-failure" }
-  | { kind: "auth-required" }
+  | { kind: "authentication-required" }
   | { kind: "invalid-response" }
 
 export type PublishedQuota<TData> = { data: TData; generation: number }
@@ -71,6 +71,8 @@ export function createQuotaPollingEngine<TData, TCredential, TPhase extends stri
   const fetchTimeoutMs = options.fetchTimeoutMs ?? FETCH_TIMEOUT_MS
   const staleMaxMs = options.staleMaxMs ?? STALE_MAX_MS
 
+  const fingerprint = options.credentialFingerprint ?? ((c: TCredential) => c as unknown as string)
+
   const [credential, setCredential] = createSignal<TCredential | null>(null)
   const [refreshedBoundary, setRefreshedBoundary] = createSignal<GenerationBoundary | null>(null)
 
@@ -91,14 +93,18 @@ export function createQuotaPollingEngine<TData, TCredential, TPhase extends stri
     generation: number
   } | null = null
 
-  const fingerprint = options.credentialFingerprint ?? ((c: TCredential) => c as unknown as string)
-
   const clearScheduledRefresh = (): void => {
     const schedule = boundarySchedule
     boundarySchedule = null
     if (schedule) clearTimeout(schedule.timer)
     pendingBoundary = null
     setRefreshedBoundary(null)
+  }
+
+  const clearBoundaryTimer = (): void => {
+    const schedule = boundarySchedule
+    boundarySchedule = null
+    if (schedule) clearTimeout(schedule.timer)
   }
 
   const cancelActiveRequest = (): void => {
@@ -116,7 +122,7 @@ export function createQuotaPollingEngine<TData, TCredential, TPhase extends stri
   const helpers: QuotaEngineHelpers = {
     scheduleRefreshAt(epoch: number): void {
       if (disposed) return
-      clearScheduledRefresh()
+      clearBoundaryTimer()
       if (epoch <= Date.now()) return
       const generation = credentialGeneration
       const refreshed = refreshedBoundary()
@@ -182,7 +188,7 @@ export function createQuotaPollingEngine<TData, TCredential, TPhase extends stri
           // The callback fires only when there's no prior data (provider-specific fallback phase).
           options.setPhase(priorData ? ("stale" as TPhase) : options.onFetchTransientFailure(helpers))
           break
-        case "auth-required":
+        case "authentication-required":
           options.setPhase(
             (options.onFetchAuthRequired ?? options.onCredentialMissing)?.(helpers)
               ?? ("unavailable" as TPhase),
@@ -220,6 +226,22 @@ export function createQuotaPollingEngine<TData, TCredential, TPhase extends stri
     return request
   }
 
+  // Synchronous initial credential setup (so credential() is populated before the engine returns)
+  const initialCred = options.resolveCredential()
+  if (initialCred !== null) {
+    observedCredential = fingerprint(initialCred)
+    credentialGeneration = 1
+    setCredential(() => initialCred)
+  }
+
+  // Initial phase + refresh for the synchronous credential
+  if (initialCred === null) {
+    options.setPhase(options.onCredentialMissing?.() ?? ("unavailable" as TPhase))
+  } else {
+    options.setPhase(options.initialPhase)
+    void refresh()
+  }
+
   createEffect(() => {
     const next = options.resolveCredential()
     const nextFingerprint = next !== null ? fingerprint(next) : null
@@ -253,23 +275,27 @@ export function createQuotaPollingEngine<TData, TCredential, TPhase extends stri
         && options.isExhausted(published.data)
     }
     const interval = exhausted && exhaustedPollMs ? exhaustedPollMs : refreshIntervalMs
-    const timer = setInterval(() => void refresh(), interval)
+    const timer = setInterval(refresh, interval)
     unref(timer)
     onCleanup(() => clearInterval(timer))
   })
 
-  const tick = setInterval(() => {
-    if (disposed) return
-    const current = Date.now()
-    options.setNow(current)
-    const last = options.lastSuccessAt()
-    const published = options.quotaState()
-    if (last && current - last > staleMaxMs && published?.data) {
-      options.onStaleHorizon(helpers)
-    }
-  }, tickMs)
-  unref(tick)
-  onCleanup(() => clearInterval(tick))
+  createEffect(() => {
+    const cred = credential()
+    if (!cred) return
+    const tick = setInterval(() => {
+      if (disposed) return
+      const current = Date.now()
+      options.setNow(current)
+      const last = options.lastSuccessAt()
+      const published = options.quotaState()
+      if (last && current - last > staleMaxMs && published?.data) {
+        options.onStaleHorizon(helpers)
+      }
+    }, tickMs)
+    unref(tick)
+    onCleanup(() => clearInterval(tick))
+  })
 
   const dispose = (): void => {
     if (disposed) return
@@ -277,7 +303,6 @@ export function createQuotaPollingEngine<TData, TCredential, TPhase extends stri
     credentialGeneration += 1
     clearScheduledRefresh()
     cancelActiveRequest()
-    clearInterval(tick)
     options.onDispose?.()
   }
 

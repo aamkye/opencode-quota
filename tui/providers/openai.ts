@@ -132,10 +132,10 @@ export async function fetchOpenAiQuota(
   signal?: AbortSignal,
 ): Promise<QuotaEngineFetchResult<OpenAiQuotaData>> {
   const accessToken = auth.access
-  if (!accessToken) return { kind: "auth-required" }
+  if (!accessToken) return { kind: "authentication-required" }
   if (auth.expires && auth.expires < Date.now()) {
     console.error("[quota-openai] Token expired")
-    return { kind: "auth-required" }
+    return { kind: "authentication-required" }
   }
 
   const ownedController = signal ? null : new AbortController()
