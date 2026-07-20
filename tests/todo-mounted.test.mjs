@@ -59,6 +59,11 @@ test("does not look up an empty session and renders the empty state", async () =
     mounted.view().clickHeader()
     assert.equal(mounted.view().marker, "▶ ")
     assert.equal(mounted.view().summaryText, "0/0")
+    assert.deepEqual(mounted.view().summarySegments, [
+      ["0", undefined],
+      ["/", "#888888"],
+      ["0", undefined],
+    ])
     assert.equal(mounted.view().hint, "")
     assert.equal(mounted.view().dividerCount, 1)
     assert.deepEqual(mounted.kvWrites, [["aamkye.opencode-tools-todo.collapsed", true]])
@@ -142,6 +147,11 @@ test("persists collapse, updates the summary reactively, and restores the prefer
   first.view().clickHeader()
   assert.equal(first.view().marker, "▶ ")
   assert.equal(first.view().summaryText, "1/5")
+  assert.deepEqual(first.view().summarySegments, [
+    ["1", undefined],
+    ["/", "#888888"],
+    ["5", undefined],
+  ])
   assert.equal(first.view().rows.length, 0)
   assert.deepEqual(first.kvWrites, [["aamkye.opencode-tools-todo.collapsed", true]])
   first.setTodos("session-a", [

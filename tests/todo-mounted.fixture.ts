@@ -159,7 +159,10 @@ export async function mountTodoPanel(options: TodoFixtureOptions = {}) {
     const headerNodes = header ? descendantsOf(mounted, header) : []
     const marker = headerNodes.find((node) => node.element.type === "text" && ["▶ ", "▼ "].includes(textOf(node)))
     const title = headerNodes.find((node) => node.element.type === "text" && textOf(node) === "TODO")
-    const summary = headerNodes.find((node) => node.element.type === "text" && node !== marker && node !== title)
+    const summary = headerNodes.find((node) => node.element.type === "box" && node.parent === header)
+    const summaryNodes = summary
+      ? mounted.filter((node) => node.element.type === "text" && node.parent === summary)
+      : []
     const hint = mounted.find((node) => node.element.type === "text" && textOf(node) === "No TODOs for this session")
     const statusMarkers = mounted.filter((node) => node.element.type === "text" && MARKERS.has(textOf(node)))
     const rows = statusMarkers.map((statusMarker) => {
@@ -189,7 +192,8 @@ export async function mountTodoPanel(options: TodoFixtureOptions = {}) {
     return {
       marker: textOf(marker),
       title: textOf(title),
-      summaryText: textOf(summary),
+      summaryText: summaryNodes.map(textOf).join(""),
+      summarySegments: summaryNodes.map((node) => [textOf(node), node.element.props.fg]),
       allText: mounted.filter((node) => node.element.type === "text").map(textOf),
       hint: textOf(hint),
       hintColor: hint?.element.props.fg,
