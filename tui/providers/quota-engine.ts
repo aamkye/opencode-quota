@@ -170,6 +170,7 @@ export function createQuotaPollingEngine<TData, TCredential, TPhase extends stri
         result = { kind: "transient-failure" }
       }
       if (disposed || generation !== credentialGeneration) return
+      const priorData = options.quotaState()?.data ?? null
       switch (result.kind) {
         case "success":
           options.setQuotaState({ data: result.data, generation })
@@ -177,7 +178,9 @@ export function createQuotaPollingEngine<TData, TCredential, TPhase extends stri
           options.setLastSuccessAt(Date.now())
           break
         case "transient-failure":
-          options.setPhase(options.onFetchTransientFailure(helpers))
+          // All three providers share the same priority: prior data + failure → "stale".
+          // The callback fires only when there's no prior data (provider-specific fallback phase).
+          options.setPhase(priorData ? ("stale" as TPhase) : options.onFetchTransientFailure(helpers))
           break
         case "auth-required":
           options.setPhase(
