@@ -54,7 +54,7 @@ export const readyMessages = Array.from({ length: 97 }, (_, index) => assistantM
   "session-a",
   index,
   index === 0
-    ? { input: 4_400_000, output: 18_600, reasoning: 2_800, cache: { read: 24_700_000, write: 0 } }
+    ? { input: 4_410_000, output: 18_690, reasoning: 2_870, cache: { read: 24_770_000, write: 0 } }
     : { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
 ))
 
@@ -297,6 +297,7 @@ export async function mountSesTokensPanel(options: {
         const value = layout.cells.find((node) => node !== label && node.type === "text")
         return {
           label: textOf(label),
+          labelColor: label.props.fg,
           value: textOf(value),
           renderedText: layout.renderedText,
           cells: layout.childWidths.reduce((total, childWidth) => total + childWidth, 0),
@@ -315,6 +316,13 @@ export async function mountSesTokensPanel(options: {
       && Array.isArray(node.props.border)
       && node.props.border[0] === "top"
     ))
+    const totalSeparator = nodes.find((node) => (
+      node.type === "box"
+      && node.props.width === "100%"
+      && node.children.filter((child) => child.type === "text" && textOf(child) === "---").length === 2
+    ))
+    const totalSeparatorTexts = totalSeparator?.children.filter((child) => child.type === "text") ?? []
+    const totalSeparatorSpacer = totalSeparator?.children.find((child) => child.type === "box")
     return {
       marker: textOf(marker),
       title: textOf(title),
@@ -328,6 +336,11 @@ export async function mountSesTokensPanel(options: {
       rows,
       renderedWidth: Math.max(0, ...rows.map((row) => row.rowWidth)),
       dividerCount: dividers.length,
+      totalSeparator: totalSeparator ? {
+        width: totalSeparator.props.width,
+        segments: totalSeparatorTexts.map((node) => ({ text: textOf(node), color: node.props.fg })),
+        spacerFlexGrow: totalSeparatorSpacer?.props.flexGrow,
+      } : undefined,
       async clickHeader() {
         const onMouseDown = header?.props.onMouseDown
         if (typeof onMouseDown !== "function") throw new Error("SesTokens header is not interactive")

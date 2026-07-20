@@ -44,7 +44,11 @@ function SesTokensMetricRow(props: { row: MetricRow; theme: () => PanelTheme }) 
   return (
     <box flexDirection="column" width="100%" overflow="hidden">
       <Show when={props.row.total}>
-        <box width="100%" height={1} border={["top"]} />
+        <box flexDirection="row" width="100%">
+          <text flexShrink={0} fg={props.theme().textMuted}>---</text>
+          <box flexBasis={0} flexGrow={1} />
+          <text flexShrink={0} fg={props.theme().textMuted}>---</text>
+        </box>
       </Show>
       <box flexDirection="row" width="100%" overflow="hidden">
         <text
@@ -54,7 +58,6 @@ function SesTokensMetricRow(props: { row: MetricRow; theme: () => PanelTheme }) 
           minWidth={0}
           overflow="hidden"
           wrapMode="none"
-          fg={props.theme().textMuted}
         >
           {props.row.label}
         </text>

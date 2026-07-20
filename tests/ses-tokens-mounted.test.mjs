@@ -53,7 +53,7 @@ test("registers SesTokens at slot 110 and one session-scoped sidebar slot", asyn
   }
 })
 
-test("renders the exact expanded row order symbols values and three dividers", async () => {
+test("renders the exact expanded row order symbols values and semantic total separator", async () => {
   const mounted = await mountSesTokensPanel({ sessionID: "session-a" })
   try {
     await resolveReady(mounted)
@@ -64,15 +64,25 @@ test("renders the exact expanded row order symbols values and three dividers", a
     assert.equal(view.summaryText, "")
     assert.deepEqual(view.rows.map(({ label, value }) => [label, value]), [
       ["↻ turns", "97"],
-      ["↑ in", "4.4M"],
-      ["↓ out", "18.6K"],
+      ["↑ in", "4.41M"],
+      ["↓ out", "18.69K"],
       ["▤ cache write", "0"],
-      ["▤ cache read", "24.7M"],
+      ["▤ cache read", "24.77M"],
       ["ø cache hit ratio", "5.6×"],
-      ["✦ think", "2.8K"],
-      ["Σ total", "29.1M"],
+      ["✦ think", "2.87K"],
+      ["Σ total", "29.2M"],
     ])
-    assert.equal(view.dividerCount, 3)
+    assert.ok(view.rows.every((row) => row.labelColor === undefined), "labels inherit normal text color")
+    assert.deepEqual(view.totalSeparator, {
+      width: "100%",
+      segments: [
+        { text: "---", color: "#888888" },
+        { text: "---", color: "#888888" },
+      ],
+      spacerFlexGrow: 1,
+    })
+    assert.equal(view.dividerCount, 2, "only the CompactPanel header and footer borders remain")
+    assert.ok(view.totalSeparator.segments.every(({ text }) => text.trimEnd() === text))
     assert.deepEqual(mounted.listCalls, [{ directory: "/repo" }])
     assert.deepEqual(mounted.messageCalls, [{ sessionID: "session-a", directory: "/repo" }])
   } finally {
@@ -87,7 +97,7 @@ test("collapses to the token-turn summary and persists across remount", async ()
   assert.deepEqual(first.kvReads, ["aamkye.opencode-tools-ses-tokens.collapsed"])
   await first.view().clickHeader()
   assert.equal(first.view().marker, "▶ ")
-  assert.equal(first.view().summaryText, "Σ 29.1M / ↻ 97")
+  assert.equal(first.view().summaryText, "29.2M")
   assert.equal(first.view().rows.length, 0)
   assert.equal(first.view().dividerCount, 1)
   assert.deepEqual(first.kvWrites, [["aamkye.opencode-tools-ses-tokens.collapsed", true]])
@@ -97,7 +107,7 @@ test("collapses to the token-turn summary and persists across remount", async ()
   try {
     await resolveReady(second)
     assert.equal(second.view().marker, "▶ ")
-    assert.equal(second.view().summaryText, "Σ 29.1M / ↻ 97")
+    assert.equal(second.view().summaryText, "29.2M")
     assert.deepEqual(second.kvWrites, [])
     await second.view().clickHeader()
     assert.equal(second.view().marker, "▼ ")
@@ -118,11 +128,12 @@ test("renders stale detail in expanded and collapsed option-A headers", async ()
     assert.equal(mounted.view().detailText, "stale")
     assert.equal(mounted.view().detailColor, "#ffaa00")
     assert.equal(mounted.view().summaryText, "")
-    assert.equal(mounted.view().rows.at(-1).value, "29.1M")
+    assert.equal(mounted.view().rows.at(-1).value, "29.2M")
     await mounted.view().clickHeader()
-    assert.equal(mounted.view().detailText, "stale")
-    assert.equal(mounted.view().detailColor, "#ffaa00")
-    assert.equal(mounted.view().summaryText, "Σ 29.1M / ↻ 97")
+    const collapsed = mounted.view()
+    assert.equal(collapsed.detailText, "stale")
+    assert.equal(collapsed.detailColor, "#ffaa00")
+    assert.equal(collapsed.summaryText, "29.2M")
   } finally {
     await mounted.dispose()
   }
@@ -172,6 +183,17 @@ test("right-aligns values within 37 cells without trailing whitespace", async ()
     await resolveReady(mounted)
     const view = mounted.view(37)
     assert.equal(view.renderedWidth, 37)
+    assert.ok(view.rows.every((row) => row.labelColor === undefined), "labels inherit normal text color")
+    assert.deepEqual(view.totalSeparator, {
+      width: "100%",
+      segments: [
+        { text: "---", color: "#888888" },
+        { text: "---", color: "#888888" },
+      ],
+      spacerFlexGrow: 1,
+    })
+    assert.equal(view.dividerCount, 2, "only the CompactPanel header and footer borders remain")
+    assert.ok(view.totalSeparator.segments.every(({ text }) => text.trimEnd() === text))
     for (const row of view.rows) {
       assert.equal(row.cellCount, 2)
       assert.equal(row.rowWidth, 37)
@@ -197,7 +219,7 @@ test("switches slot sessions without remounting or leaking prior metrics", async
   const mounted = await mountSesTokensPanel({ sessionID: "session-a" })
   try {
     await resolveReady(mounted)
-    assert.equal(mounted.view().rows[1].value, "4.4M")
+    assert.equal(mounted.view().rows[1].value, "4.41M")
     await mounted.view().clickHeader()
     assert.equal(mounted.view().marker, "▶ ")
     await mounted.setSessionID("session-b")
@@ -205,7 +227,7 @@ test("switches slot sessions without remounting or leaking prior metrics", async
     assert.equal(mounted.view().rows.length, 0)
     await resolveReady(mounted, "session-b", oneMessage("session-b", 12))
     assert.equal(mounted.view().marker, "▶ ")
-    assert.equal(mounted.view().summaryText, "Σ 12 / ↻ 1")
+    assert.equal(mounted.view().summaryText, "12")
     assert.equal(mounted.view().rows.length, 0)
     await mounted.view().clickHeader()
     assert.deepEqual(mounted.view().rows.map((row) => row.value), ["1", "12", "0", "0", "0", "0.0×", "0", "12"])

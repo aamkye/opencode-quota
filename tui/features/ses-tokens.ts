@@ -56,6 +56,6 @@ export function createSesTokensPanelModel(messages: readonly SesTokensMessage[])
     cacheWrite: formatCount(totals.cacheWrite),
     cacheRatio,
     total,
-    summary: [{ text: `Σ ${total} / ↻ ${turns}` }],
+    summary: [{ text: total }],
   }
 }
