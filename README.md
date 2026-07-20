@@ -134,7 +134,9 @@ totals, direct-child SubAgent activity, and `/tokens_*` reports for **Z.AI
   and a terminal duration for successful or failed children. Expanding a row
   shows its agent, status, time, model, and `Open Session` action.
   Compact durations and expanded time values use the child's status color.
-  Titles are grapheme-safe, end-truncated to the measured terminal-cell width, including scrollbar width changes.
+  Compact titles are grapheme-safe and end-truncated beside a fixed seven-cell,
+  right-aligned duration box with a two-cell structural margin. Expanded titles
+  wrap in full without a duration reservation.
   The Rest disclosure and title are muted, and its divider is two muted three-dash segments separated by flexible space.
 - **Persistent interaction state**: panel collapse, `Rest` collapse, expanded
   child, and retained failure evidence persist per parent session.
@@ -483,33 +485,12 @@ Rows show the newest five direct children first; older entries appear in the
 separate `Rest` group. Fenced lines omit runtime right-padding and contain no
 trailing whitespace.
 
-#### Expanded
-
-```text
-▼ SubAgent
-------------------------------------
-▶ SubAgent11 with super long… 9m 45s
-▶ SubAgent10                  1h 15m
-▶ SubAgent9                   15m 4s
-▶ SubAgent8                   2h 18m
-▶ SubAgent7                   2h 18m
----                              ---
-▼ Rest
-▶ SubAgent6                   9m 45s
-▶ SubAgent5                   1h 15m
-▶ SubAgent4                      15s
-▶ SubAgent3                      25s
-▶ SubAgent2                       5s
-▶ SubAgent1                    1h 2m
-------------------------------------
-```
-
 #### Expanded, one detail
 
 ```text
 ▼ SubAgent
 ------------------------------------
-▶ SubAgent11 with super long… 9m 45s
+▶ SubAgent11 with super lo…   9m 45s
 ▶ SubAgent10                  1h 15m
 ▼ SubAgent9
   agent:                     general
@@ -530,12 +511,82 @@ trailing whitespace.
 ------------------------------------
 ```
 
+#### Expanded, one detail wrapping
+
+```text
+▼ SubAgent
+------------------------------------
+▶ SubAgent11 with super long name th
+  at would normally wrap but is too
+  long to fit.
+  agent:                     general
+  status:                    running
+  time:                       9m 45s
+  model:                 gpt-4o-mini
+  Open Session
+▶ SubAgent10                  1h 15m
+▼ SubAgent9                   15m 4s
+▶ SubAgent8                   2h 18m
+▶ SubAgent7                   2h 18m
+---                              ---
+▼ Rest
+▶ SubAgent6                   9m 45s
+▶ SubAgent5                   1h 15m
+▶ SubAgent4                      15s
+▶ SubAgent3                      25s
+▶ SubAgent2                       5s
+▶ SubAgent1                    1h 2m
+------------------------------------
+```
+
+#### Expanded
+
+```text
+▼ SubAgent
+------------------------------------
+▶ SubAgent11 with super lo…   9m 45s
+▶ SubAgent10                  1h 15m
+▶ SubAgent9                   15m 4s
+▶ SubAgent8                   2h 18m
+▶ SubAgent7                   2h 18m
+---                              ---
+▼ Rest
+▶ SubAgent6                   9m 45s
+▶ SubAgent5                   1h 15m
+▶ SubAgent4                      15s
+▶ SubAgent3                      25s
+▶ SubAgent2                       5s
+▶ SubAgent1                    1h 2m
+------------------------------------
+```
+
+#### Expanded, stale
+
+```text
+▼ SubAgent                     stale
+------------------------------------
+▶ SubAgent11 with super lo…   9m 45s
+▶ SubAgent10                  1h 15m
+▶ SubAgent9                   15m 4s
+▶ SubAgent8                   2h 18m
+▶ SubAgent7                   2h 18m
+---                              ---
+▼ Rest
+▶ SubAgent6                   9m 45s
+▶ SubAgent5                   1h 15m
+▶ SubAgent4                      15s
+▶ SubAgent3                      25s
+▶ SubAgent2                       5s
+▶ SubAgent1                    1h 2m
+------------------------------------
+```
+
 #### Semi-collapsed
 
 ```text
 ▼ SubAgent
 ------------------------------------
-▶ SubAgent11 with super long… 9m 45s
+▶ SubAgent11 with super lo…   9m 45s
 ▶ SubAgent10                  1h 15m
 ▶ SubAgent9                   15m 4s
 ▶ SubAgent8                   2h 18m
@@ -549,27 +600,6 @@ trailing whitespace.
 
 ```text
 ▶ SubAgent                     7/1/3
-------------------------------------
-```
-
-#### Expanded, stale
-
-```text
-▼ SubAgent                     stale
-------------------------------------
-▶ SubAgent11 with super long… 9m 45s
-▶ SubAgent10                  1h 15m
-▶ SubAgent9                   15m 4s
-▶ SubAgent8                   2h 18m
-▶ SubAgent7                   2h 18m
----                              ---
-▼ Rest
-▶ SubAgent6                   9m 45s
-▶ SubAgent5                   1h 15m
-▶ SubAgent4                      15s
-▶ SubAgent3                      25s
-▶ SubAgent2                       5s
-▶ SubAgent1                    1h 2m
 ------------------------------------
 ```
 

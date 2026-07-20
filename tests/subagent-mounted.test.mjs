@@ -36,9 +36,10 @@ const agentsSubagentSection = readFileSync(new URL("../AGENTS.md", import.meta.u
   .split("\n### ", 1)[0]
 const agentsSubagentLayouts = [...agentsSubagentSection.matchAll(/```\n([\s\S]*?)```/g)]
   .map(([, body]) => body.trimEnd().split("\n").map((line) => line.split(/\s+\|(?:\s|$)/, 1)[0].trimEnd()))
-assert.equal(agentsSubagentLayouts.length, 6, "AGENTS SubAgent layout count changed")
+assert.equal(agentsSubagentLayouts.length, 7, "AGENTS SubAgent layout count changed")
 const [
-  oneDetailLayout,
+  oneDetailCompactLayout,
+  oneDetailWrappingLayout,
   expandedLayout,
   staleExpandedLayout,
   semiCollapsedLayout,
@@ -203,8 +204,36 @@ test("matches one-detail and expanded-Rest AGENTS layouts", async () => {
   try {
     await mounted.resolveReady()
     await mounted.view().clickEntry("SubAgent9")
-    assert.deepEqual(mounted.view().lines, oneDetailLayout)
+    assert.deepEqual(mounted.view().lines, oneDetailCompactLayout)
     assert.equal(mounted.view().openSessionInteractive, true)
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("matches the full wrapping expanded-title AGENTS layout without a duration box", async () => {
+  const title = "SubAgent11 with super long name that would normally wrap but is too long to fit."
+  const first = canonicalChildren[0]
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady([{
+      ...first,
+      session: { ...first.session, title },
+    }])
+    await mounted.view().clickEntry(title)
+    const row = mounted.view().entryRows[0]
+    assert.equal(
+      `${oneDetailWrappingLayout[2].slice(2)}${oneDetailWrappingLayout[3].slice(2)} ${oneDetailWrappingLayout[4].slice(2)}`,
+      title,
+    )
+    assert.deepEqual(mounted.view().lines.slice(2, 5), [
+      oneDetailWrappingLayout[2].replace("▶ ", "▼ "),
+      oneDetailWrappingLayout[3],
+      oneDetailWrappingLayout[4],
+    ])
+    assert.equal(row.titleProps.marginRight, undefined)
+    assert.equal(row.durationProps.width, undefined)
+    assert.equal(mounted.view().lines.slice(2, 5).join("").includes("9m 45s"), false)
   } finally {
     await mounted.dispose()
   }
@@ -381,7 +410,7 @@ test("clips long detail identities to one row at 37 and 35 cells", async () => {
   }
 })
 
-test("flexes end-truncated titles without consuming the duration gap", async () => {
+test("reserves the fixed duration box while flexing end-truncated titles", async () => {
   const first = canonicalChildren[0]
   const children = [{
     ...first,
@@ -408,30 +437,32 @@ test("flexes end-truncated titles without consuming the duration gap", async () 
     await mounted.resolveReady(children)
     const initialView = mounted.view()
     assert.equal(initialView.entryRows[0].duration, "3m 55s")
-    assert.equal(initialView.entryRows[0].renderedTitle, "SubAgent11 with super long…")
+    assert.equal(initialView.entryRows[0].renderedTitle, "SubAgent11 with super lo…")
     assert.ok(initialView.entryRows.every((row) => row.renderedTitle.length > 0))
-    for (const [width, expectedTitle, expectedTitleAllocation] of [
-      [37, "SubAgent11 with super long…", [28, 1]],
-      [36, "SubAgent11 with super long…", [27, 1]],
+    for (const [width, expectedTitleAllocation] of [
+      [37, [26, 2]],
+      [36, [25, 2]],
+      [35, [24, 2]],
     ]) {
       await mounted.resize(width)
       const view = mounted.view()
       const row = view.entryRows[0]
-      assert.equal(row.renderedTitle, expectedTitle)
+      assert.ok(stringWidth(row.renderedTitle) <= expectedTitleAllocation[0])
       assert.equal(row.renderedTitle.endsWith("…"), true)
       assert.equal(row.renderedTitle.match(/…/gu)?.length, 1)
       assert.equal(row.duration, "3m 55s")
       assert.equal(row.rowWidth, width)
       assert.deepEqual([row.childWidths[1], row.titleMarginRight], expectedTitleAllocation)
-      assert.deepEqual(row.childWidths, [2, expectedTitleAllocation[0], 6])
+      assert.deepEqual(row.childWidths, [2, expectedTitleAllocation[0], 7])
       assert.equal(row.titleProps.width, undefined)
       assert.equal(row.titleProps.flexBasis, 0)
       assert.equal(row.titleProps.flexGrow, 1)
       assert.equal(row.titleProps.flexShrink, 1)
       assert.equal(row.titleProps.minWidth, 0)
-      assert.equal(row.titleProps.marginRight, 1)
+      assert.equal(row.titleProps.marginRight, 2)
       assert.equal(row.titleProps.truncate, true)
-      assert.equal(row.durationProps.width, 6)
+      assert.equal(row.durationProps.width, 7)
+      assert.equal(row.durationProps.justifyContent, "flex-end")
       assert.equal(row.childWidths.reduce((total, cells) => total + cells, 0) + row.titleMarginRight, width)
       assert.equal(row.renderedText.endsWith(row.duration), true)
       for (const line of view.lines) assert.equal(line.trimEnd(), line)
@@ -457,12 +488,12 @@ test("measures wide and combining titles in terminal cells", async () => {
     await mounted.resize(37)
     const rows = Object.fromEntries(mounted.view().entryRows.map((row) => [row.title, row]))
 
-    assert.equal(rows[wideTitle].renderedTitle, `${"界".repeat(13)}…`)
-    assert.equal(rows[combiningTitle].renderedTitle, `${"e\u0301".repeat(27)}…`)
+    assert.equal(rows[wideTitle].renderedTitle, `${"界".repeat(12)}…`)
+    assert.equal(rows[combiningTitle].renderedTitle, `${"e\u0301".repeat(25)}…`)
     assert.equal(rows[wideTitle].renderedTitle.match(/…/gu)?.length, 1)
     assert.equal(rows[combiningTitle].renderedTitle.match(/…/gu)?.length, 1)
-    assert.equal(stringWidth(rows[wideTitle].renderedTitle), 27)
-    assert.equal(stringWidth(rows[combiningTitle].renderedTitle), 28)
+    assert.equal(stringWidth(rows[wideTitle].renderedTitle), 25)
+    assert.equal(stringWidth(rows[combiningTitle].renderedTitle), 26)
   } finally {
     await mounted.dispose()
   }
@@ -750,7 +781,8 @@ test("collapse parent switch completion and disposal stop the clock", async () =
 test("documents the corrected SubAgent visual behavior", () => {
   for (const statement of [
     "Compact durations and expanded time values use the child's status color.",
-    "Titles are grapheme-safe, end-truncated to the measured terminal-cell width, including scrollbar width changes.",
+    "Compact titles are grapheme-safe and end-truncated beside a fixed seven-cell,",
+    "wrap in full without a duration reservation.",
     "The Rest disclosure and title are muted, and its divider is two muted three-dash segments separated by flexible space.",
   ]) assert.equal(readme.includes(statement), true, `missing README statement: ${statement}`)
 })

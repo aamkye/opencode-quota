@@ -258,26 +258,26 @@ test("colors successful running failed counts and muted separators", () => {
   ])
 })
 
-test("allocates disclosure title gap and duration without a status bullet", () => {
-  assert.deepEqual(allocateSubagentEntryRow(37, 6), {
-    disclosure: 2,
-    title: 28,
-    beforeDurationGap: 1,
-    duration: 6,
-  })
-  assert.deepEqual(allocateSubagentEntryRow(36, 6), {
-    disclosure: 2,
-    title: 27,
-    beforeDurationGap: 1,
-    duration: 6,
-  })
-  assert.deepEqual(allocateSubagentEntryRow(35, 6), {
+test("reserves a fixed seven-cell duration and two-cell structural gap", () => {
+  assert.deepEqual(allocateSubagentEntryRow(37, 7), {
     disclosure: 2,
     title: 26,
-    beforeDurationGap: 1,
-    duration: 6,
+    beforeDurationGap: 2,
+    duration: 7,
   })
-  assert.equal("bullet" in allocateSubagentEntryRow(37, 6), false)
+  assert.deepEqual(allocateSubagentEntryRow(36, 7), {
+    disclosure: 2,
+    title: 25,
+    beforeDurationGap: 2,
+    duration: 7,
+  })
+  assert.deepEqual(allocateSubagentEntryRow(35, 7), {
+    disclosure: 2,
+    title: 24,
+    beforeDurationGap: 2,
+    duration: 7,
+  })
+  assert.equal("bullet" in allocateSubagentEntryRow(37, 7), false)
 
   for (const [available, duration] of [[Number.NaN, 6], [3.9, Number.POSITIVE_INFINITY], [5, 20]]) {
     const allocation = allocateSubagentEntryRow(available, duration)

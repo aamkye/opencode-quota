@@ -391,14 +391,15 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
 
   const approvedSubagentLayouts = [...subagentContract.matchAll(/```\n([\s\S]*?)\n```/gu)]
     .map((match) => match[1].split("\n").map((line) => line.split(" |")[0].trimEnd()))
-  assert.equal(approvedSubagentLayouts.length, 6, "AGENTS.md must define six SubAgent reference layouts")
+  assert.equal(approvedSubagentLayouts.length, 7, "AGENTS.md must define seven SubAgent reference layouts")
   const expectedSubagentLayouts = new Map([
     ["Expanded, one detail", approvedSubagentLayouts[0]],
-    ["Expanded", approvedSubagentLayouts[1]],
-    ["Expanded, stale", approvedSubagentLayouts[2]],
-    ["Semi-collapsed", approvedSubagentLayouts[3]],
-    ["Collapsed", approvedSubagentLayouts[4]],
-    ["Collapsed, stale", approvedSubagentLayouts[5]],
+    ["Expanded, one detail wrapping", approvedSubagentLayouts[1]],
+    ["Expanded", approvedSubagentLayouts[2]],
+    ["Expanded, stale", approvedSubagentLayouts[3]],
+    ["Semi-collapsed", approvedSubagentLayouts[4]],
+    ["Collapsed", approvedSubagentLayouts[5]],
+    ["Collapsed, stale", approvedSubagentLayouts[6]],
     ["Expanded, empty", ["▼ SubAgent", "-".repeat(36), "No subagents", "-".repeat(36)]],
   ])
   for (const [heading, expected] of expectedSubagentLayouts) {

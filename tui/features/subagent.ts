@@ -79,7 +79,7 @@ export function allocateSubagentEntryRow(
   const requestedDuration = normalizedCells(durationCells)
   const disclosure = Math.min(2, available)
   const remaining = available - disclosure
-  const gap = disclosure > 0 && requestedDuration > 0 ? 1 : 0
+  const gap = disclosure > 0 && requestedDuration > 0 ? 2 : 0
   const duration = requestedDuration + gap <= remaining ? requestedDuration : 0
   const beforeDurationGap = duration > 0 ? gap : 0
   const title = remaining - beforeDurationGap - duration

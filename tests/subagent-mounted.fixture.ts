@@ -135,6 +135,19 @@ function truncateCells(text: string, width: number): string {
   return `${takeCells(text, width - ellipsisWidth)}${ellipsis}`
 }
 
+function wrapCells(text: string, width: number): string[] {
+  if (width <= 0) return [""]
+  const lines: string[] = []
+  let remaining = text
+  while (remaining.length > 0) {
+    const line = takeCells(remaining, width)
+    if (line.length === 0) break
+    lines.push(line.trimEnd())
+    remaining = remaining.slice(line.length)
+  }
+  return lines.length > 0 ? lines : [""]
+}
+
 function resolvedWidth(value: unknown, parentWidth: number): number {
   if (typeof value === "number") return value
   if (typeof value === "string" && value.endsWith("%")) {
@@ -183,20 +196,37 @@ function rowLayout(row: HostNode, width: number) {
     if ((configuredWidths[index] === 0 || cell.props.truncate) && cellWidth(text) > allocated) {
       rendered = cell.props.truncate ? truncateCells(text, allocated) : takeCells(text, allocated)
     }
+    if (cell.props.justifyContent === "flex-end") {
+      rendered = `${" ".repeat(Math.max(0, allocated - cellWidth(rendered)))}${rendered}`
+    }
     const hasFollowingCell = index < cells.length - 1
     if (hasFollowingCell && (Number(cell.props.flexGrow ?? 0) > 0 || configuredWidths[index] > 0)) {
       rendered += " ".repeat(Math.max(0, allocated - cellWidth(rendered)))
     }
     return rendered
   })
+  const wrappingIndex = cells.findIndex((cell) => cell.props.wrapMode === "char")
+  const renderedLines = wrappingIndex > 0
+    ? (() => {
+        const prefix = renderedCells.slice(0, wrappingIndex).map((rendered, index) => (
+          `${rendered}${index < renderedCells.length - 1 ? " ".repeat(marginsRight[index]) : ""}`
+        )).join("")
+        const wrapped = wrapCells(textOf(cells[wrappingIndex]), childWidths[wrappingIndex])
+        return [
+          `${prefix}${wrapped[0]}`,
+          ...wrapped.slice(1).map((line) => `${" ".repeat(cellWidth(prefix))}${line}`),
+        ]
+      })()
+    : [renderedCells.map((rendered, index) => (
+      `${rendered}${index < renderedCells.length - 1 ? " ".repeat(marginsRight[index]) : ""}`
+    )).join("")]
   return {
     cells,
     childWidths,
     marginsRight,
     renderedCells,
-    renderedText: renderedCells.map((rendered, index) => (
-      `${rendered}${index < renderedCells.length - 1 ? " ".repeat(marginsRight[index]) : ""}`
-    )).join(""),
+    renderedText: renderedLines[0],
+    renderedLines,
     rowWidth,
   }
 }
@@ -460,7 +490,7 @@ export async function mountSubagentPanel(options: {
     const lines = panel && header ? [
       rowLayout(header, width).renderedText,
       "-".repeat(Math.max(0, width)),
-      ...bodyItems.map((item) => rowLayout(item, width).renderedText),
+      ...bodyItems.flatMap((item) => rowLayout(item, width).renderedLines),
       ...(fallback && bodyItems.length === 0 ? [textOf(fallback)] : []),
       ...(dividers.length > 1 ? ["-".repeat(Math.max(0, width))] : []),
     ] : []
@@ -500,7 +530,7 @@ export async function mountSubagentPanel(options: {
         disclosure: texts[0],
         title: currentTitles[index] ?? texts[1],
         duration: texts.at(-1) ?? "",
-        durationColor: layout.cells.at(-1)?.props.fg,
+        durationColor: layout.cells.at(-1)?.children.find((child) => child.type === "text")?.props.fg,
         renderedTitle: layout.renderedCells[1]?.trimEnd() ?? "",
         renderedText: layout.renderedText,
         rowWidth: layout.rowWidth,

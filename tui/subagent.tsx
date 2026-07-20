@@ -146,18 +146,27 @@ function SubagentRow(props: {
   theme: () => PanelTheme
 }) {
   const role = () => statusRole(props.entry.status)
-  const allocation = () => allocateSubagentEntryRow(37, stringWidth(props.entry.duration))
+  const allocation = () => allocateSubagentEntryRow(37, 7)
   return (
     <box flexDirection="column" width="100%" overflow="hidden">
       <box flexDirection="row" width="100%" overflow="hidden" onMouseDown={props.onToggle}>
         <text width={allocation().disclosure} flexShrink={0}>{props.expanded ? "▼ " : "▶ "}</text>
-        <MeasuredTitle
-          value={props.entry.title}
-          cells={allocation().title}
-          marginRight={allocation().beforeDurationGap}
-        />
+        <Show
+          when={props.expanded}
+          fallback={(
+            <MeasuredTitle
+              value={props.entry.title}
+              cells={allocation().title}
+              marginRight={allocation().beforeDurationGap}
+            />
+          )}
+        >
+          <text flexGrow={1} flexShrink={1} minWidth={0} wrapMode="char">{props.entry.title}</text>
+        </Show>
         <Show when={!props.expanded}>
-          <text width={allocation().duration} flexShrink={0} wrapMode="none" fg={props.theme()[role()]}>{props.entry.duration}</text>
+          <box width={allocation().duration} flexShrink={0} justifyContent="flex-end">
+            <text wrapMode="none" fg={props.theme()[role()]}>{props.entry.duration}</text>
+          </box>
         </Show>
       </box>
       <Show when={props.expanded}>
