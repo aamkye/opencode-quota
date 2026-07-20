@@ -1,15 +1,13 @@
 import { existsSync, readFileSync } from "node:fs"
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
-import { createEffect, createRoot, createSignal, onCleanup } from "solid-js"
+import { createEffect, createRoot, createSignal } from "solid-js"
 
 import type { PanelItem, PanelModel, PanelTextSegment } from "../presentation/types.js"
 import type { HomeQuotaSummary, ProviderFreshness, QuotaProviderAdapter, QuotaProviderOptions } from "./types.js"
+import { EXHAUSTED_POLL_MS, clampPct, safeNumber } from "./_shared.js"
+import { createQuotaPollingEngine } from "./quota-engine.js"
+import type { QuotaEngineFetchResult } from "./quota-engine.js"
 
-const DEFAULT_REFRESH_INTERVAL_MS = 10_000
-const EXHAUSTED_POLL_MS = 300_000
-const TICK_MS = 1_000
-const FETCH_TIMEOUT_MS = 20_000
-const STALE_MAX_MS = 10 * 60 * 1_000
 const CREDENTIAL_FILE_PATHS = [
   `${process.env.XDG_DATA_HOME || `${process.env.HOME || ""}/.local/share`}/opencode/auth.json`,
   `${process.env.XDG_CONFIG_HOME || `${process.env.HOME || ""}/.config`}/opencode/auth.json`,
@@ -20,14 +18,6 @@ const OPENAI_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
 const USER_AGENT = "OpenCode-Quota-Toast/1.0"
 const AUTH_SOURCE_KEYS = ["openai", "codex", "chatgpt", "opencode"] as const
 const PROVIDER_ORDER = 120
-
-function providerRefreshInterval(options: QuotaProviderOptions): number {
-  return typeof options.refreshIntervalMs === "number"
-    && Number.isFinite(options.refreshIntervalMs)
-    && options.refreshIntervalMs > 0
-    ? options.refreshIntervalMs
-    : DEFAULT_REFRESH_INTERVAL_MS
-}
 
 export type RateLimitWindow = {
   used_percent: number
@@ -79,15 +69,6 @@ export type OpenAiPanelState = {
   now: number
   data?: OpenAiQuotaData | null
   authenticated?: boolean
-}
-
-function clampPct(value: number): number {
-  return Math.min(100, Math.max(0, value))
-}
-
-function safeNumber(value: unknown, fallback: number): number {
-  const number = Number(value)
-  return Number.isFinite(number) ? number : fallback
 }
 
 function resetEpochMs(window: RateLimitWindow, now: number): number {
@@ -146,19 +127,19 @@ function decodeJwtAccountId(token: string): string | null {
   }
 }
 
-export async function fetchOpenAiQuota(auth: OpenAiAuthEntry, signal?: AbortSignal): Promise<OpenAiQuotaData | null> {
+export async function fetchOpenAiQuota(
+  auth: OpenAiAuthEntry,
+  signal?: AbortSignal,
+): Promise<QuotaEngineFetchResult<OpenAiQuotaData>> {
   const accessToken = auth.access
-  if (!accessToken) return null
+  if (!accessToken) return { kind: "auth-required" }
   if (auth.expires && auth.expires < Date.now()) {
     console.error("[quota-openai] Token expired")
-    return null
+    return { kind: "auth-required" }
   }
 
   const ownedController = signal ? null : new AbortController()
   const requestSignal = signal ?? ownedController!.signal
-  const timeout = ownedController
-    ? setTimeout(() => ownedController.abort(), FETCH_TIMEOUT_MS)
-    : null
   try {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${accessToken}`,
@@ -170,28 +151,31 @@ export async function fetchOpenAiQuota(auth: OpenAiAuthEntry, signal?: AbortSign
     const response = await fetch(OPENAI_USAGE_URL, { headers, signal: requestSignal })
     if (!response.ok) {
       console.error(`[quota-openai] API returned ${response.status}`)
-      return null
+      return { kind: "transient-failure" }
     }
     const data = await response.json() as UsageResponse
     const primary = data.rate_limit?.primary_window
     if (!primary) {
       console.error("[quota-openai] No primary rate limit window")
-      return null
+      return { kind: "invalid-response" }
     }
     return {
-      planType: derivePlanLabel(data.plan_type),
-      primary,
-      secondary: data.rate_limit?.secondary_window ?? null,
-      codeReview: data.code_review_rate_limit?.primary_window ?? null,
-      limitReached: Boolean(data.rate_limit?.limit_reached),
-      creditsBalance: data.credits?.balance ?? null,
-      creditsUnlimited: Boolean(data.credits?.unlimited),
+      kind: "success",
+      data: {
+        planType: derivePlanLabel(data.plan_type),
+        primary,
+        secondary: data.rate_limit?.secondary_window ?? null,
+        codeReview: data.code_review_rate_limit?.primary_window ?? null,
+        limitReached: Boolean(data.rate_limit?.limit_reached),
+        creditsBalance: data.credits?.balance ?? null,
+        creditsUnlimited: Boolean(data.credits?.unlimited),
+      },
     }
   } catch (error) {
     if (!requestSignal.aborted) console.error("[quota-openai] fetchQuota error:", error)
-    return null
+    return { kind: "transient-failure" }
   } finally {
-    if (timeout) clearTimeout(timeout)
+    if (ownedController) ownedController.abort()
   }
 }
 
@@ -286,214 +270,77 @@ export function mapOpenAiPanelState(state: OpenAiPanelState): PanelModel {
   }
 }
 
-function unref(timer: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>): void {
-  ;(timer as { unref?: () => void }).unref?.()
-}
-
 function freshnessFor(phase: OpenAiPanelPhase): ProviderFreshness {
   return phase
 }
 
 export function createOpenAiProvider(api: TuiPluginApi, options: QuotaProviderOptions = {}): QuotaProviderAdapter {
-  const refreshIntervalMs = providerRefreshInterval(options)
   return createRoot((dispose) => {
     type PublishedQuota = { data: OpenAiQuotaData; generation: number }
-    type GenerationBoundary = { epoch: number; generation: number }
 
-    const [auth, setAuth] = createSignal<OpenAiAuthEntry | null>(null)
     const [quotaState, setQuotaState] = createSignal<PublishedQuota | null>(null)
     const quotaData = () => quotaState()?.data ?? null
     const [phase, setPhase] = createSignal<OpenAiPanelPhase>("loading")
     const [lastSuccessAt, setLastSuccessAt] = createSignal(0)
     const [now, setNow] = createSignal(Date.now())
-    const [refreshedBoundary, setRefreshedBoundary] = createSignal<GenerationBoundary | null>(null)
-    let refreshInFlight: Promise<void> | null = null
-    let refreshStartedAt = 0
-    let pendingBoundary: GenerationBoundary | null = null
-    let credentialGeneration = 0
-    let observedCredential: string | null | undefined
-    let disposed = false
-    let boundarySchedule: {
-      timer: ReturnType<typeof setTimeout>
-      generation: number
-    } | null = null
-    let activeRequest: {
-      generation: number
-      controller: AbortController
-      timeout: ReturnType<typeof setTimeout>
-      promise: Promise<void>
-    } | null = null
 
-    const clearBoundarySchedule = (): void => {
-      const schedule = boundarySchedule
-      boundarySchedule = null
-      if (schedule) clearTimeout(schedule.timer)
-      pendingBoundary = null
-      setRefreshedBoundary(null)
-    }
-
-    const cancelActiveRequest = (): void => {
-      const request = activeRequest
-      if (!request) return
-      activeRequest = null
-      request.controller.abort()
-      clearTimeout(request.timeout)
-      if (refreshInFlight === request.promise) {
-        refreshInFlight = null
-        refreshStartedAt = 0
-      }
-    }
-
-    const refresh = (): Promise<void> => {
-      if (disposed) return Promise.resolve()
-      if (refreshInFlight) return refreshInFlight
-      const currentAuth = auth()
-      if (!currentAuth?.access) {
-        setPhase("unavailable")
-        return Promise.resolve()
-      }
-
-      const generation = credentialGeneration
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-      const startedAt = Date.now()
-      const request = (async () => {
-        const data = await fetchOpenAiQuota(currentAuth, controller.signal)
-        if (disposed || generation !== credentialGeneration) return
-        if (data) {
-          setQuotaState({ data, generation })
-          setPhase("ready")
-          setLastSuccessAt(Date.now())
-        } else if (quotaData()) {
-          setPhase("stale")
-        } else {
-          setPhase("unavailable")
-        }
-      })()
-      refreshInFlight = request
-      refreshStartedAt = startedAt
-      activeRequest = { generation, controller, timeout, promise: request }
-      const settled = () => {
-        if (activeRequest?.promise === request) {
-          clearTimeout(activeRequest.timeout)
-          activeRequest = null
-        }
-        if (refreshInFlight !== request) return
-        refreshInFlight = null
-        refreshStartedAt = 0
-        const queued = pendingBoundary
-        if (disposed || generation !== credentialGeneration || queued?.generation !== generation) return
-        pendingBoundary = null
-        setRefreshedBoundary(queued)
-        void refresh()
-      }
-      void request.then(settled, settled)
-      return request
-    }
-
-    createEffect(() => {
-      const next = findOpenAiAuthFromProviders(api.state.provider) ?? findOpenAiAuthFromFiles()
-      const credential = next?.access
-        ? `${next.access}\u0000${next.accountId ?? ""}`
-        : null
-      if (credential === observedCredential) return
-      const replacingCredential = observedCredential !== undefined && observedCredential !== null
-      observedCredential = credential
-      credentialGeneration += 1
-      clearBoundarySchedule()
-      cancelActiveRequest()
-      setAuth(next)
-
-      if (!credential) {
+    const engine = createQuotaPollingEngine<OpenAiQuotaData, OpenAiAuthEntry, OpenAiPanelPhase>({
+      providerId: "openai",
+      refreshIntervalMs: options.refreshIntervalMs,
+      exhaustedPollMs: EXHAUSTED_POLL_MS,
+      resolveCredential: () => findOpenAiAuthFromProviders(api.state.provider) ?? findOpenAiAuthFromFiles(),
+      credentialFingerprint: (auth) => `${auth.access}\u0000${auth.accountId ?? ""}`,
+      fetch: fetchOpenAiQuota,
+      quotaState,
+      lastSuccessAt,
+      initialPhase: "loading",
+      isExhausted: (data) => openAiRemainingPct(data.primary) <= 0,
+      onCredentialMissing: () => "unavailable",
+      onFetchSuccess: () => { setPhase("ready") },
+      onFetchTransientFailure: () => "unavailable",
+      onFetchAuthRequired: () => "unavailable",
+      onFetchInvalidResponse: () => "unavailable",
+      onStaleHorizon: (h) => {
         setQuotaState(null)
-        setLastSuccessAt(0)
+        h.clearScheduledRefresh()
         setPhase("unavailable")
-        return
-      }
-      setPhase(replacingCredential && quotaData() ? "stale" : "loading")
-      void refresh()
+      },
+      onDispose: () => { dispose() },
+      setQuotaState,
+      setPhase,
+      setLastSuccessAt,
+      setNow,
     })
 
     createEffect(() => {
-      if (!auth()?.access) return
       const published = quotaState()
-      const exhausted = published?.generation === credentialGeneration
-        && openAiRemainingPct(published.data.primary) <= 0
-      const timer = setInterval(() => void refresh(), exhausted ? EXHAUSTED_POLL_MS : refreshIntervalMs)
-      unref(timer)
-      onCleanup(() => clearInterval(timer))
-    })
-
-    const tick = setInterval(() => {
-      if (disposed) return
-      const current = Date.now()
-      setNow(current)
-      if (lastSuccessAt() && current - lastSuccessAt() > STALE_MAX_MS && quotaData()) {
-        setQuotaState(null)
-        clearBoundarySchedule()
-        setPhase("unavailable")
-      }
-    }, TICK_MS)
-    unref(tick)
-    onCleanup(() => clearInterval(tick))
-
-    createEffect(() => {
-      const published = quotaState()
-      if (!published || published.generation !== credentialGeneration) return
+      if (!published || published.generation !== engine.helpers.credentialGeneration()) return
       const generation = published.generation
       const epoch = resetEpochMs(published.data.primary, now())
-      const refreshed = refreshedBoundary()
-      const pending = pendingBoundary
+      if (epoch <= 0) return
+      const refreshed = engine.helpers.refreshedBoundary()
+      const pending = engine.helpers.pendingBoundary()
       if (
-        epoch <= 0
-        || (refreshed?.generation === generation && refreshed.epoch === epoch)
+        (refreshed?.generation === generation && refreshed.epoch === epoch)
         || (pending?.generation === generation && pending.epoch === epoch)
       ) return
-
-      const timer = setTimeout(() => {
-        if (
-          disposed
-          || generation !== credentialGeneration
-          || quotaState()?.generation !== generation
-        ) return
-        if (refreshInFlight && activeRequest?.generation === generation && refreshStartedAt < epoch) {
-          pendingBoundary = { epoch, generation }
-          return
-        }
-        setRefreshedBoundary({ epoch, generation })
-        void refresh()
-      }, Math.max(0, epoch - Date.now()))
-      const schedule = { timer, generation }
-      boundarySchedule = schedule
-      unref(timer)
-      onCleanup(() => {
-        if (boundarySchedule !== schedule) return
-        boundarySchedule = null
-        clearTimeout(timer)
-      })
+      engine.helpers.scheduleRefreshAt(epoch)
     })
 
     return {
       id: "openai",
       order: PROVIDER_ORDER,
-      panel: () => mapOpenAiPanelState({ phase: phase(), data: quotaData(), authenticated: Boolean(auth()?.access), now: now() }),
+      panel: () => mapOpenAiPanelState({ phase: phase(), data: quotaData(), authenticated: Boolean(engine.credential()?.access), now: now() }),
       // The legacy home slot removes unavailable and stale OpenAI data rather than showing cached usage.
       home: () => phase() === "ready" && quotaData() ? openAiHomeQuotaSummary(quotaData()!) : null,
       quotaSummary: () => quotaData() ? openAiHomeQuotaSummary(quotaData()!) : null,
-      configured: () => Boolean(auth()?.access),
+      configured: () => Boolean(engine.credential()?.access),
       freshness: () => freshnessFor(phase()),
-      refresh,
+      refresh: engine.refresh,
       setSessionID(sessionID: string): void {
         void sessionID
       },
-      dispose(): void {
-        if (disposed) return
-        disposed = true
-        credentialGeneration += 1
-        clearBoundarySchedule()
-        cancelActiveRequest()
-        dispose()
-      },
+      dispose: engine.dispose,
     }
   })
 }
