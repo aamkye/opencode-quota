@@ -99,3 +99,4 @@ polish-tui-session-rename Task 2: complete (commits 10760c2..41df4c9, standard r
 polish-tui-session-rename Task 3: complete (commit b26aa85, standard non-risk task; focused SesTokens tests passed 29/29)
 polish-tui-session-rename Task 4: complete (commits 39b9f09..61d28af, standard risk review clean after one test-strengthening fix round)
 polish-tui-session-rename Task 5: complete (commit 7d5b253, standard deployment risk review clean)
+polish-tui-session-rename Task 6: complete (commits 1ed9121..36f53f4, standard documentation risk review clean after one contract-strengthening fix round)
