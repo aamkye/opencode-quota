@@ -69,13 +69,14 @@ function resolveLatestUserModel(messages: readonly SessionMessage[]): { model: S
 
 export function createSessionRenameHooks(client: Client, warn: Warn = logWarning): Hooks {
   async function appendFeedback(sessionID: string, text: string): Promise<void> {
-    await client.session.prompt({
+    const result = await client.session.prompt({
       path: { id: sessionID },
       body: {
         noReply: true,
         parts: [{ type: "text", text, ignored: true }],
       },
     })
+    if (result.error !== undefined) throw result.error
   }
 
   async function generateTitle(
@@ -115,7 +116,8 @@ export function createSessionRenameHooks(client: Client, warn: Warn = logWarning
     } finally {
       if (childID) {
         try {
-          await client.session.delete({ path: { id: childID } })
+          const result = await client.session.delete({ path: { id: childID } })
+          if (result.error !== undefined) throw result.error
         } catch (error) {
           failed = true
           warn("cleanup", parentID, error)
@@ -154,7 +156,8 @@ export function createSessionRenameHooks(client: Client, warn: Warn = logWarning
           if (!title) throw new Error("generated title is unavailable")
 
           try {
-            await client.session.update({ path: { id: input.sessionID }, body: { title } })
+            const result = await client.session.update({ path: { id: input.sessionID }, body: { title } })
+            if (result.error !== undefined) throw result.error
             feedback = `Session renamed to "${title}".`
           } catch (error) {
             warn("update", input.sessionID, error)
@@ -180,7 +183,8 @@ export function createSessionRenameHooks(client: Client, warn: Warn = logWarning
 
       if (title) {
         try {
-          await client.session.update({ path: { id: input.sessionID }, body: { title } })
+          const result = await client.session.update({ path: { id: input.sessionID }, body: { title } })
+          if (result.error !== undefined) throw result.error
           feedback = `Session renamed to "${title}".`
         } catch (error) {
           warn("update", input.sessionID, error)

@@ -105,6 +105,24 @@ test("warns, reports failure, and aborts when the direct update rejects", async 
   assert.equal(calls[0].body.parts[0].ignored, true)
 })
 
+test("warns, reports failure, and aborts when the direct update resolves with an error", async () => {
+  const warnings = []
+  const calls = []
+  const updateError = new Error("update unavailable")
+  const hooks = createSessionRenameHooks({ session: {
+    update: async () => ({ data: undefined, error: updateError }),
+    prompt: async (request) => { calls.push(request); return { data: {} } },
+  } }, (...warning) => { warnings.push(warning) })
+
+  await handledError(hooks["command.execute.before"]({
+    command: "session-rename", arguments: "Project planning notes", sessionID: "parent-1",
+  }))
+
+  assert.deepEqual(warnings, [["update", "parent-1", updateError]])
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].body.parts[0].text, "Unable to rename this session.")
+})
+
 test("logs default warnings as exact structured JSON", async () => {
   const warnings = []
   const originalWarn = console.warn
@@ -139,6 +157,21 @@ test("warns and aborts when command feedback rejects", async () => {
   const hooks = createSessionRenameHooks({ session: {
     update: async () => ({ data: {} }),
     prompt: async () => { throw feedbackError },
+  } }, (...warning) => { warnings.push(warning) })
+
+  await handledError(hooks["command.execute.before"]({
+    command: "session-rename", arguments: "Project planning notes", sessionID: "parent-1",
+  }))
+
+  assert.deepEqual(warnings, [["feedback", "parent-1", feedbackError]])
+})
+
+test("warns and aborts when command feedback resolves with an error", async () => {
+  const warnings = []
+  const feedbackError = new Error("prompt unavailable")
+  const hooks = createSessionRenameHooks({ session: {
+    update: async () => ({ data: {} }),
+    prompt: async () => ({ data: undefined, error: feedbackError }),
   } }, (...warning) => { warnings.push(warning) })
 
   await handledError(hooks["command.execute.before"]({
@@ -252,10 +285,30 @@ test("generated rename failure boundaries leave the parent unchanged and abort t
       creates: 1,
     },
     {
+      name: "Parent update resolved error",
+      setup: (session, calls) => { session.update = async (request) => {
+        calls.push(["update", request])
+        return { data: undefined, error: new Error("update unavailable") }
+      } },
+      warning: "update",
+      cleanup: 1,
+      creates: 1,
+    },
+    {
       name: "Child cleanup failure",
       setup: (session, calls) => { session.delete = async (request) => {
         calls.push(["delete", request])
         throw new Error("cleanup unavailable")
+      } },
+      warning: "cleanup",
+      cleanup: 1,
+      creates: 1,
+    },
+    {
+      name: "Child cleanup resolved error",
+      setup: (session, calls) => { session.delete = async (request) => {
+        calls.push(["delete", request])
+        return { data: undefined, error: new Error("cleanup unavailable") }
       } },
       warning: "cleanup",
       cleanup: 1,
