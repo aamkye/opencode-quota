@@ -94,3 +94,5 @@ add-subagent-panel Task 5: complete (commits 0a0e983..f0064a2, thorough review c
 add-subagent-panel Task 6: complete (commit 3a7c1df, thorough review clean)
 add-subagent-panel Task 7: complete (commits c774c36..2dc53d0, thorough review clean after one fix round; full suite 410/410)
 add-subagent-panel Task 8: complete (verification-only at c543340; focused 83/83, full 410/410, typecheck/build/bundle/AGENTS/artifact gates passed; evidence review clean)
+polish-tui-session-rename Task 1: complete (commits 30db8c3..10760c2, standard risk review clean)
+polish-tui-session-rename Task 2: complete (commits 10760c2..41df4c9, standard risk review clean)
