@@ -1,23 +1,14 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 
-type SessionTitleModel = { providerID: string; modelID: string; variant?: string }
+type SessionRenameModel = { providerID: string; modelID: string; variant?: string }
 
 export type SessionMessage = {
   info: {
     id: string
     role: string
-    model?: SessionTitleModel
+    model?: SessionRenameModel
   }
   parts?: readonly { type: string; text?: string }[]
-}
-
-export type TitleStage = "checking" | "generating" | "ready" | "updating" | "handled"
-
-type TitleRecord = {
-  stage: TitleStage
-  childID?: string
-  candidate?: string
-  idleSeen: boolean
 }
 
 const TITLE = /^[\p{L}\p{N}][\p{L}\p{N}'-]*(?: [\p{L}\p{N}][\p{L}\p{N}'-]*){2,7}$/u
@@ -30,13 +21,6 @@ type Warn = (action: string, sessionID: string, error: unknown) => void
 export function normalizeTitle(value: string): string | undefined {
   const title = value.trim().replace(/^['"]|['"]$/g, "")
   return TITLE.test(title) ? title : undefined
-}
-
-export function hasPriorParentMessages(
-  messages: readonly SessionMessage[],
-  currentMessageID: string,
-): boolean {
-  return messages.some((message) => message.info.id !== currentMessageID && message.info.role === "user")
 }
 
 export function collectRecentUserText(
@@ -70,7 +54,7 @@ export function collectRecentUserText(
   return context || undefined
 }
 
-function resolveLatestUserModel(messages: readonly SessionMessage[]): { model: SessionTitleModel; variant?: string } | undefined {
+function resolveLatestUserModel(messages: readonly SessionMessage[]): { model: SessionRenameModel; variant?: string } | undefined {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index]
     const model = message.info.model
@@ -83,80 +67,7 @@ function resolveLatestUserModel(messages: readonly SessionMessage[]): { model: S
   }
 }
 
-export class TitleState {
-  #parents = new Map<string, TitleRecord>()
-  #children = new Set<string>()
-  #handledParents = new Set<string>()
-
-  claim(parentID: string): boolean {
-    if (this.#parents.has(parentID) || this.#handledParents.has(parentID)) return false
-    this.#parents.set(parentID, { stage: "checking", idleSeen: false })
-    return true
-  }
-
-  beginGeneration(parentID: string): void {
-    const record = this.#record(parentID, "checking")
-    record.stage = "generating"
-  }
-
-  registerChild(parentID: string, childID: string): void {
-    this.beginGeneration(parentID)
-    const record = this.#record(parentID, "generating")
-    record.childID = childID
-    this.#children.add(childID)
-  }
-
-  complete(parentID: string, candidate: string): string | undefined {
-    const record = this.#record(parentID, "generating")
-    record.candidate = candidate
-    if (!record.idleSeen) {
-      record.stage = "ready"
-      return undefined
-    }
-    record.stage = "updating"
-    return candidate
-  }
-
-  fail(parentID: string): void {
-    if (!this.#parents.delete(parentID)) return
-    this.#handledParents.add(parentID)
-  }
-
-  onFirstIdle(parentID: string): string | undefined {
-    const record = this.#parents.get(parentID)
-    if (!record || record.idleSeen || record.stage === "handled") return undefined
-    record.idleSeen = true
-    if (record.stage !== "ready" || !record.candidate) return undefined
-    record.stage = "updating"
-    return record.candidate
-  }
-
-  finishUpdate(parentID: string): void {
-    this.fail(parentID)
-  }
-
-  releaseChild(childID: string): void {
-    this.#children.delete(childID)
-  }
-
-  isChild(sessionID: string): boolean {
-    return this.#children.has(sessionID)
-  }
-
-  stage(parentID: string): TitleStage | undefined {
-    return this.#parents.get(parentID)?.stage
-  }
-
-  #record(parentID: string, expected: TitleStage): TitleRecord {
-    const record = this.#parents.get(parentID)
-    if (!record || record.stage !== expected) throw new Error(`invalid title state for ${parentID}`)
-    return record
-  }
-}
-
-export function createSessionTitleHooks(client: Client, warn: Warn = logWarning): Hooks {
-  const state = new TitleState()
-
+export function createSessionRenameHooks(client: Client, warn: Warn = logWarning): Hooks {
   async function appendFeedback(sessionID: string, text: string): Promise<void> {
     await client.session.prompt({
       path: { id: sessionID },
@@ -167,23 +78,11 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
     })
   }
 
-  function resolveModel(input: Parameters<NonNullable<Hooks["chat.message"]>>[0], output: Parameters<NonNullable<Hooks["chat.message"]>>[1]) {
-    const inputModel = input.model
-    const outputModel = output.message.model
-    return inputModel?.providerID && inputModel.modelID
-      ? inputModel
-      : outputModel?.providerID && outputModel.modelID
-        ? outputModel
-        : undefined
-  }
-
   async function generateTitle(
     parentID: string,
-    model: SessionTitleModel | undefined,
+    model: SessionRenameModel | undefined,
     variant: string | undefined,
     request: string,
-    onChildCreated?: (childID: string) => void,
-    onChildReleased?: (childID: string) => void,
   ): Promise<string | undefined> {
     let childID: string | undefined
     let candidate: string | undefined
@@ -195,8 +94,7 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
       const created = await client.session.create({ body: { parentID, title: "Session title" } })
       if (!created.data) throw new Error("child session was not created")
       childID = created.data.id
-      onChildCreated?.(childID)
-      if (!request) throw new Error("first message has no text")
+      if (!request) throw new Error("rename context has no text")
 
       const response = await client.session.prompt({
         path: { id: childID },
@@ -221,23 +119,11 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
         } catch (error) {
           failed = true
           warn("cleanup", parentID, error)
-        } finally {
-          onChildReleased?.(childID)
         }
       }
     }
 
     return failed ? undefined : candidate
-  }
-
-  async function update(parentID: string, title: string): Promise<void> {
-    try {
-      await client.session.update({ path: { id: parentID }, body: { title } })
-    } catch (error) {
-      warn("update", parentID, error)
-    } finally {
-      state.finishUpdate(parentID)
-    }
   }
 
   return {
@@ -310,55 +196,10 @@ export function createSessionTitleHooks(client: Client, warn: Warn = logWarning)
 
       throw HANDLED_SESSION_RENAME
     },
-    async "chat.message"(input, output) {
-      const parentID = input.sessionID
-      if (state.isChild(parentID) || !state.claim(parentID)) return
-
-      const currentMessageID = input.messageID ?? output.message.id
-
-      try {
-        const messages = await client.session.messages({ path: { id: parentID } })
-        if (!messages.data) throw new Error("prior messages are unavailable")
-        if (hasPriorParentMessages(messages.data, currentMessageID)) {
-          state.fail(parentID)
-          return
-        }
-      } catch (error) {
-        warn("generate", parentID, error)
-        state.fail(parentID)
-        return
-      }
-
-      const request = output.parts
-        .filter((part) => part.type === "text")
-        .map((part) => part.text.trim())
-        .filter(Boolean)
-        .join("\n")
-      const candidate = await generateTitle(
-        parentID,
-        resolveModel(input, output),
-        input.variant,
-        request,
-        (childID) => state.registerChild(parentID, childID),
-        (childID) => state.releaseChild(childID),
-      )
-      if (!candidate) {
-        state.fail(parentID)
-        return
-      }
-
-      const title = state.complete(parentID, candidate)
-      if (title) await update(parentID, title)
-    },
-    async event({ event }) {
-      if (event.type !== "session.idle" || state.isChild(event.properties.sessionID)) return
-      const title = state.onFirstIdle(event.properties.sessionID)
-      if (title) await update(event.properties.sessionID, title)
-    },
   }
 }
 
 function logWarning(action: string, sessionID: string, error: unknown): void {
   const message = error instanceof Error ? error.message : String(error)
-  console.warn(JSON.stringify({ plugin: "session-title", action, sessionID, message }))
+  console.warn(JSON.stringify({ plugin: "session-rename", action, sessionID, message }))
 }

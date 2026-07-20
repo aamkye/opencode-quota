@@ -24,8 +24,8 @@ test("publishes and typechecks the standalone plugins", () => {
   assert.deepEqual(pkg.files, ["dist", "plugin-manifest.json", "tui", "shared", "README.md"])
   assert.deepEqual(tsconfig.include, [
     "opencode-plugin-tui.d.ts",
-    "lib/session-title.ts",
-    "session-title.ts",
+    "lib/session-rename.ts",
+    "session-rename.ts",
     "tui/**/*.ts",
     "tui/**/*.tsx",
     "shared/**/*.ts",

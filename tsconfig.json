@@ -20,8 +20,8 @@
   },
   "include": [
     "opencode-plugin-tui.d.ts",
-    "lib/session-title.ts",
-    "session-title.ts",
+    "lib/session-rename.ts",
+    "session-rename.ts",
     "tui/**/*.ts",
     "tui/**/*.tsx",
     "shared/**/*.ts",

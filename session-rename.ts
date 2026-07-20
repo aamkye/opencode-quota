@@ -1,11 +1,11 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
-import { createSessionTitleHooks } from "./lib/session-title"
+import { createSessionRenameHooks } from "./lib/session-rename"
 
 async function server(input: PluginInput): Promise<Hooks> {
-  return createSessionTitleHooks(input.client)
+  return createSessionRenameHooks(input.client)
 }
 
 export default {
-  id: "aamkye/session-title",
+  id: "aamkye/session-rename",
   server,
 }
