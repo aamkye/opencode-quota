@@ -192,7 +192,7 @@ test("SubAgent flexes its title with a structural margin beside its fixed durati
   assert.match(subagent, /width=\{allocation\(\)\.duration\}/)
   assert.match(subagent, /justifyContent=["']flex-end["']/)
   assert.match(subagent, /<box\s+width=\{allocation\(\)\.duration\}\s+flexShrink=\{0\}\s+justifyContent=["']flex-end["']\s+flexDirection=["']row["']/)
-  assert.match(subagent, /when=\{props\.expanded\}[\s\S]*?<text(?=[^>]*selectable=\{false\})(?=[^>]*wrapMode=["']char["'])[^>]*>\s*\{props\.entry\.title\}/)
+  assert.match(subagent, /when=\{props\.expanded\}[\s\S]*?<box(?=[^>]*flexBasis=\{0\})(?=[^>]*flexGrow=\{1\})(?=[^>]*flexShrink=\{1\})(?=[^>]*minWidth=\{0\})[^>]*>\s*<text(?=[^>]*width=["']100%["'])(?=[^>]*selectable=\{false\})(?=[^>]*wrapMode=["']char["'])[^>]*>\s*\{props\.entry\.title\}/)
   assert.match(subagent, /<box\s+flexDirection=["']row["']\s+width=["']100%["']\s+overflow=["']hidden["']\s+onMouseDown=\{props\.onToggle\}>/)
   assert.doesNotMatch(subagent, /<text\s+width=\{allocation\(\)\.beforeDurationGap\}[^>]*>\s*<\/text>/)
   assert.doesNotMatch(subagent, /\bref\s*=/)

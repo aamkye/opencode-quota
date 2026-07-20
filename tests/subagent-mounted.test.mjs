@@ -243,6 +243,25 @@ test("matches the full wrapping expanded-title AGENTS layout without a duration 
   }
 })
 
+test("retains every grapheme across expanded character-wrap continuation lines", async () => {
+  const title = "Safety"
+  const child = {
+    ...canonicalChildren[0],
+    session: { ...canonicalChildren[0].session, title },
+  }
+  const mounted = await mountSubagentPanel({ parentID: "parent-a" })
+  try {
+    await mounted.resolveReady([child])
+    await mounted.view().clickEntry(title)
+    await mounted.resize(5)
+    const titleLines = mounted.view().lines.slice(2, 4).map((line) => line.slice(2))
+    assert.deepEqual(titleLines, ["Saf", "ety"])
+    assert.equal(titleLines.join(""), title)
+  } finally {
+    await mounted.dispose()
+  }
+})
+
 test("makes compact and expanded titles unselectable without disabling title rows", async () => {
   const mounted = await mountSubagentPanel({ parentID: "parent-a" })
   try {

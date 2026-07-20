@@ -148,6 +148,21 @@ function wrapCells(text: string, width: number): string[] {
   return lines.length > 0 ? lines : [""]
 }
 
+function wrappingText(cell: HostNode): HostNode | undefined {
+  if (cell.props.wrapMode === "char") return cell
+  return cell.children.find((child) => child.type === "text" && child.props.wrapMode === "char")
+}
+
+function wrapTextBuffer(text: string, width: number, hasExplicitWidth: boolean): string[] {
+  const lines = wrapCells(text, width)
+  if (hasExplicitWidth) return lines
+  return lines.map((line, index) => {
+    if (index === 0) return line
+    const first = graphemeSegmenter.segment(line)[Symbol.iterator]().next().value
+    return first ? line.slice(first.segment.length) : line
+  })
+}
+
 function resolvedWidth(value: unknown, parentWidth: number): number {
   if (typeof value === "number") return value
   if (typeof value === "string" && value.endsWith("%")) {
@@ -205,13 +220,18 @@ function rowLayout(row: HostNode, width: number) {
     }
     return rendered
   })
-  const wrappingIndex = cells.findIndex((cell) => cell.props.wrapMode === "char")
+  const wrappingIndex = cells.findIndex((cell) => wrappingText(cell) !== undefined)
+  const wrappingCell = wrappingIndex >= 0 ? wrappingText(cells[wrappingIndex]) : undefined
   const renderedLines = wrappingIndex > 0
     ? (() => {
         const prefix = renderedCells.slice(0, wrappingIndex).map((rendered, index) => (
           `${rendered}${index < renderedCells.length - 1 ? " ".repeat(marginsRight[index]) : ""}`
         )).join("")
-        const wrapped = wrapCells(textOf(cells[wrappingIndex]), childWidths[wrappingIndex])
+        const wrapped = wrapTextBuffer(
+          textOf(wrappingCell),
+          childWidths[wrappingIndex],
+          wrappingCell?.props.width === "100%",
+        )
         return [
           `${prefix}${wrapped[0]}`,
           ...wrapped.slice(1).map((line) => `${" ".repeat(cellWidth(prefix))}${line}`),
@@ -526,20 +546,23 @@ export async function mountSubagentPanel(options: {
       },
       openSessionInteractive: typeof openSession?.node.props.onMouseDown === "function",
       lines,
-      entryRows: entryRows.map(({ node, texts, layout }, index) => ({
-        disclosure: texts[0],
-        title: currentTitles[index] ?? texts[1],
-        duration: texts.at(-1) ?? "",
-        durationColor: layout.cells.at(-1)?.children.find((child) => child.type === "text")?.props.fg,
-        renderedTitle: layout.renderedCells[1]?.trimEnd() ?? "",
-        renderedText: layout.renderedText,
-        rowWidth: layout.rowWidth,
-        childWidths: layout.childWidths,
-        titleMarginRight: layout.marginsRight[1] ?? 0,
-        rowProps: node.props,
-        titleProps: layout.cells[1]?.props ?? {},
-        durationProps: layout.cells.at(-1)?.props ?? {},
-      })),
+      entryRows: entryRows.map(({ node, texts, layout }, index) => {
+        const titleNode = wrappingText(layout.cells[1]) ?? layout.cells[1]
+        return {
+          disclosure: texts[0],
+          title: currentTitles[index] ?? texts[1],
+          duration: texts.at(-1) ?? "",
+          durationColor: layout.cells.at(-1)?.children.find((child) => child.type === "text")?.props.fg,
+          renderedTitle: layout.renderedCells[1]?.trimEnd() ?? "",
+          renderedText: layout.renderedText,
+          rowWidth: layout.rowWidth,
+          childWidths: layout.childWidths,
+          titleMarginRight: layout.marginsRight[1] ?? 0,
+          rowProps: node.props,
+          titleProps: titleNode?.props ?? {},
+          durationProps: layout.cells.at(-1)?.props ?? {},
+        }
+      }),
       detailRows: detailRows.map(({ texts, layout }) => ({
         label: texts[1],
         value: texts[2],
