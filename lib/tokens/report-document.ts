@@ -58,24 +58,6 @@ function renderKvRow(row: ReportKvRow): string {
   return `${indent}- ${row.key}${row.trailingColon ? ":" : ""}`;
 }
 
-function renderPlainTextBlock(block: ReportBlock): string[] {
-  switch (block.kind) {
-    case "lines":
-      return block.lines;
-    case "kv":
-      return block.rows.map(renderKvRow);
-    case "table":
-      return [
-        renderMarkdownTable({
-          headers: block.headers,
-          rows: block.rows,
-          aligns: block.aligns,
-          widthMode: block.widthMode,
-        }),
-      ];
-  }
-}
-
 function renderMarkdownBlock(block: ReportBlock): string[] {
   switch (block.kind) {
     case "lines":
@@ -92,38 +74,6 @@ function renderMarkdownBlock(block: ReportBlock): string[] {
         }),
       ];
   }
-}
-
-export function renderPlainTextReport(document: ReportDocument): string {
-  const lines: string[] = [];
-
-  if (document.heading) {
-    lines.push(
-      renderCommandHeading({
-        title: document.heading.title,
-        generatedAtMs: document.heading.generatedAtMs,
-      }),
-    );
-  }
-
-  const sections = document.sections
-    .map((section) => ({ ...section, blocks: getRenderableBlocks(section) }))
-    .filter((section) => section.title || section.blocks.length > 0);
-
-  for (const section of sections) {
-    if (lines.length > 0) lines.push("");
-
-    if (section.title) {
-      lines.push(section.title);
-    }
-
-    for (const [index, block] of section.blocks.entries()) {
-      if (index > 0) lines.push("");
-      lines.push(...renderPlainTextBlock(block));
-    }
-  }
-
-  return lines.join("\n");
 }
 
 export function renderMarkdownReport(document: ReportDocument): string {

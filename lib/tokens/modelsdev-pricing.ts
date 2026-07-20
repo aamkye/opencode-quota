@@ -152,24 +152,6 @@ export function hasModel(providerId: string, modelId: string): boolean {
   return !!p[modelId];
 }
 
-export function inferProviderForModelId(modelId: string): string | null {
-  const providers = listProvidersForModelId(modelId);
-  if (!providers || providers.length !== 1) return null;
-  return providers[0] ?? null;
-}
-
-export function getProviderModelCount(providerId: string): number {
-  return Object.keys(ensureLoaded().providers[providerId] || {}).length;
-}
-
-export function listProviders(): string[] {
-  return Object.keys(ensureLoaded().providers);
-}
-
-export function listModelsForProvider(providerId: string): string[] {
-  return Object.keys(ensureLoaded().providers[providerId] ?? {});
-}
-
 export function listProvidersForModelId(modelId: string): string[] {
   const providers = ensureModelIndex().get(modelId) ?? [];
   return [...providers].sort((a, b) => a.localeCompare(b));
