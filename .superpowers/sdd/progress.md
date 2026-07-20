@@ -100,3 +100,4 @@ polish-tui-session-rename Task 3: complete (commit b26aa85, standard non-risk ta
 polish-tui-session-rename Task 4: complete (commits 39b9f09..61d28af, standard risk review clean after one test-strengthening fix round)
 polish-tui-session-rename Task 5: complete (commit 7d5b253, standard deployment risk review clean)
 polish-tui-session-rename Task 6: complete (commits 1ed9121..36f53f4, standard documentation risk review clean after one contract-strengthening fix round)
+polish-tui-session-rename Task 7: complete (commits c7067d9..98c3e26, standard risk review clean after mounted segmented-summary repair)
