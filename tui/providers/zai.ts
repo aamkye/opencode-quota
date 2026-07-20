@@ -5,11 +5,10 @@ import { createEffect, createRoot, createSignal } from "solid-js"
 
 import type { PanelItem, PanelModel, PanelStatus, PanelTextSegment } from "../presentation/types.js"
 import type { HomeQuotaSummary, ProviderFreshness, QuotaProviderAdapter, QuotaProviderOptions } from "./types.js"
-import { EXHAUSTED_POLL_MS, clampPct, safeNumber } from "./_shared.js"
+import { EXHAUSTED_POLL_MS, FETCH_TIMEOUT_MS, clampPct, safeNumber } from "./_shared.js"
 import { createQuotaPollingEngine } from "./quota-engine.js"
 import type { QuotaEngineFetchResult } from "./quota-engine.js"
 
-const FETCH_TIMEOUT_MS = 20_000
 const CREDENTIAL_FILE_PATHS = [
   `${process.env.XDG_DATA_HOME || `${process.env.HOME || ""}/.local/share`}/opencode/auth.json`,
   `${process.env.XDG_CONFIG_HOME || `${process.env.HOME || ""}/.config`}/opencode/auth.json`,
