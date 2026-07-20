@@ -3,7 +3,7 @@ description: 'Top-level OKF summary: 1479 concepts across 11 domains and 126 mod
 git_branch: feature/20260720/polish-tui-session-rename
 git_repo: opencode-quota
 okf_version: '0.2'
-timestamp: '2026-07-20T12:01:35Z'
+timestamp: '2026-07-20T12:27:09Z'
 title: okf_bundle — Knowledge Summary
 type: Index
 ---
@@ -84,8 +84,8 @@ Use these links to navigate the bundle or prime an AI agent with focused context
 - [tests/ses-tokens-mounted](tests/ses-tokens-mounted/index.md) (37 concepts)
 - [tests/compact-panel-mounted](tests/compact-panel-mounted/index.md) (32 concepts)
 - [tests/plugin-build](tests/plugin-build/index.md) (28 concepts)
-- [tests/subagent-source](tests/subagent-source/index.md) (26 concepts)
 - [tests/context-mounted](tests/context-mounted/index.md) (26 concepts)
+- [tests/subagent-source](tests/subagent-source/index.md) (26 concepts)
 - [tests/todo-mounted](tests/todo-mounted/index.md) (24 concepts)
 - *…and 52 more modules*
 
@@ -98,7 +98,7 @@ Use these links to navigate the bundle or prime an AI agent with focused context
 - [tui/presentation/renderer](tui/presentation/renderer/index.md) (33 concepts)
 - [tui/services/subagent-source](tui/services/subagent-source/index.md) (31 concepts)
 - [tui/services/quota-provider-hub](tui/services/quota-provider-hub/index.md) (25 concepts)
-- [tui/subagent](tui/subagent/index.md) (23 concepts)
+- [tui/services/session-tree-snapshot](tui/services/session-tree-snapshot/index.md) (23 concepts)
 - *…and 26 more modules*
 
 ## Dependencies

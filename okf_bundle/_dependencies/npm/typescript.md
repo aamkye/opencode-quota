@@ -10,9 +10,9 @@ tags:
   - "module:package.json"
   - "git:branch:feature/20260720/polish-tui-session-rename"
   - "git:repo:opencode-quota"
+  - "ecosystem:npm"
   - "version:^6.0.3"
   - "manifest:package.json"
-  - "ecosystem:npm"
 timestamp: "2026-07-20T10:00:22Z"
 concept_id: _dependencies/npm/typescript
 language: manifest
