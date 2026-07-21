@@ -22,15 +22,23 @@ The system SHALL derive the panel from the ordered reactive list returned by `ap
 - **THEN** the aggregate and expanded rows update without restarting or polling
 
 ### Requirement: Collapsed aggregate summary
-The system SHALL show the connected MCP count over the total MCP count at the right edge of the header only while the panel is collapsed.
+The system SHALL show a three-bucket health rollup `success/warning/error` at the right edge of the header only while the panel is collapsed, where success counts `connected` entries, warning counts `disabled` entries, and error counts every other non-connected entry (`failed`, `needs_auth`, `needs_client_registration`, and any unknown future status). Each of the three numbers SHALL always take its bucket color (success/warning/error), including when the count is zero, and both `/` separators SHALL be muted.
 
-#### Scenario: Every configured MCP is connected
-- **WHEN** two of two MCP entries have status `connected` and the panel is collapsed
-- **THEN** the header shows `▶ MCP` and right-aligned `2/2` with both numbers in the success color and the slash muted
+#### Scenario: All configured MCPs are connected
+- **WHEN** four of four MCP entries have status `connected` and the panel is collapsed
+- **THEN** the header shows `▶ MCP` and right-aligned `4/0/0` with the first number success-colored, the second warning-colored, the third error-colored, and both slashes muted
 
-#### Scenario: At least one configured MCP is not connected
-- **WHEN** two of three MCP entries are connected and the remaining entry is disabled, failed, needs authentication, or needs client registration
-- **THEN** the header shows a success-colored `2`, a muted slash, and an error-colored `3`
+#### Scenario: Mixed health across the three buckets
+- **WHEN** two MCP entries are connected, one is disabled, and one is failed, and the panel is collapsed
+- **THEN** the header shows a success-colored `2`, a muted slash, a warning-colored `1`, a muted slash, and an error-colored `1`
+
+#### Scenario: Needs-auth counts as an error
+- **WHEN** one MCP entry is connected and one has status `needs_auth` and the panel is collapsed
+- **THEN** the header shows a success-colored `1`, a muted slash, a warning-colored `0`, a muted slash, and an error-colored `1`
+
+#### Scenario: Disabled contributes to the warning bucket
+- **WHEN** one MCP entry is connected and one is disabled and the panel is collapsed
+- **THEN** the header shows a success-colored `1`, a muted slash, a warning-colored `1`, a muted slash, and an error-colored `0`
 
 #### Scenario: Panel is expanded
 - **WHEN** the panel is expanded
@@ -41,7 +49,7 @@ The expanded panel SHALL render one row per MCP entry with a status-colored bull
 
 #### Scenario: Native status roles are rendered
 - **WHEN** expanded rows include all supported MCP states
-- **THEN** connected uses success, failed and needs-client-registration use error, needs-auth uses warning, and disabled uses muted for their bullets
+- **THEN** connected uses success, failed/needs-auth/needs-client-registration use error, and disabled uses muted for their bullets
 
 #### Scenario: Stable labels are rendered
 - **WHEN** an MCP row is visible
@@ -50,7 +58,7 @@ The expanded panel SHALL render one row per MCP entry with a status-colored bull
 
 #### Scenario: Unknown future status is received
 - **WHEN** OpenCode supplies an MCP status outside the declared status union
-- **THEN** the entry counts as non-connected and renders a muted bullet with the muted label `Unknown`
+- **THEN** the entry counts toward the error bucket and renders a muted bullet with the muted label `Unknown`
 - **AND** the remaining panel continues to render
 
 ### Requirement: Persistent collapse interaction
@@ -66,11 +74,11 @@ The panel SHALL always expose a collapse or expand marker and SHALL persist the 
 - **THEN** the panel restores that preference
 
 ### Requirement: Compact empty state
-The system SHALL render a configured-empty MCP panel as a forced-collapsed header with a muted `0/0` summary and no rows, and SHALL preserve an expand activation received while reactive MCP state is temporarily empty so it takes effect when entries become available.
+The system SHALL render a configured-empty MCP panel as a forced-collapsed header with a `0/0/0` summary whose three zeros each take their bucket color (success/warning/error) and whose two slashes are muted, with no rows, and SHALL preserve an expand activation received while reactive MCP state is temporarily empty so it takes effect when entries become available.
 
 #### Scenario: No MCP servers are configured
 - **WHEN** `api.state.mcp()` returns an empty list
-- **THEN** the panel shows `▶ MCP` with right-aligned muted `0/0` and the header separator
+- **THEN** the panel shows `▶ MCP` with right-aligned `0/0/0` where the first `0` is success-colored, the second `0` is warning-colored, the third `0` is error-colored, and both slashes are muted, followed by the header separator
 - **AND** the forced state does not overwrite the user's stored non-empty preference
 
 #### Scenario: User expands before MCP state hydration completes
