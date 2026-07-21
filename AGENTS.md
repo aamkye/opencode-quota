@@ -163,7 +163,7 @@ or
 #### Collapsed
 
 ```
-▶ MCP                            2/4 | 1. plain name; 2. used/total; 3. no percent; 4. no reset time; 5. no spacer
+▶ MCP                           4/1/0 | 1. plain name; 2. success/warning/error counts; 3. no percent; 4. no reset time; 5. no spacer; 6. each number is colored by its bucket (success/warning/error); 7. separators are muted
 ------------------------------------ |
 ```
 
