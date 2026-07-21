@@ -74,6 +74,35 @@ test("does not look up an empty session and renders the empty state", async () =
   }
 })
 
+test("excludes every cancelled record from the collapsed summary while still rendering the rows", async () => {
+  const sessions = new Map([
+    ["session-c", [
+      { content: "abandoned one", status: "cancelled", priority: "low" },
+      { content: "abandoned two", status: "cancelled", priority: "low" },
+    ]],
+  ])
+  const mounted = await mountTodoPanel({ sessionID: "session-c", sessions })
+  try {
+    assert.equal(mounted.view().marker, "▼ ")
+    assert.deepEqual(mounted.view().rows.map((row) => [row.content, row.marker, row.markerColor]), [
+      ["abandoned one", "[-] ", "#888888"],
+      ["abandoned two", "[-] ", "#888888"],
+    ])
+    mounted.view().clickHeader()
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.equal(mounted.view().summaryText, "0/0/0")
+    assert.deepEqual(mounted.view().summarySegments, [
+      ["0", "#00ff00"],
+      ["/", "#888888"],
+      ["0", "#ffaa00"],
+      ["/", "#888888"],
+      ["0", "#ffffff"],
+    ])
+  } finally {
+    await mounted.dispose()
+  }
+})
+
 test("switches sessions and reacts to synchronized TODO changes without remounting", async () => {
   const sessions = new Map([
     ["session-a", [{ content: "A", status: "pending", priority: "low" }]],
