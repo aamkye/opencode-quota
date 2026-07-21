@@ -150,6 +150,7 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.deepEqual(Object.keys(quotaEntry[1]), ["quota"])
   assert.equal(configuration.plugin.filter((entry) => Array.isArray(entry)).length, 1)
   assert.deepEqual(configuration.plugin_enabled, {
+    "internal:sidebar-context": false,
     "internal:sidebar-mcp": false,
     "internal:sidebar-lsp": false,
     "internal:sidebar-todo": false,

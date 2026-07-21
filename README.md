@@ -31,8 +31,8 @@ totals, direct-child SubAgent activity, and `/tokens_*` reports for **Z.AI
 Requires OpenCode 1.18.1 or newer, Git, and Node.js with npm.
 
 ```bash
-git clone https://github.com/aamkye/opencode-quota.git
-cd opencode-quota
+git clone https://github.com/aamkye/opencode-tools.git
+cd opencode-tools
 npm ci
 npm run deploy:global
 ```
@@ -181,7 +181,7 @@ published to npm, and OpenCode is never configured with an npm package spec.
 OpenCode 1.18.1 or newer is required for the standalone TUI plugin and
 synchronized MCP, Context, LSP, TODO, session-tree, and SubAgent state APIs.
 
-### Configuration in `tui.json`
+### Configuration
 
 Native TUI options can be supplied with the local plugin entry:
 
