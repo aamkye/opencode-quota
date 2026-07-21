@@ -19,7 +19,7 @@ const plugin = defineTuiPlugin(descriptor, (_context, api) => {
     const isCollapsed = () => model().total === 0 || collapsed()
     const summary = () => {
       const panel = model()
-      return isCollapsed() ? { text: `${panel.connected}/${panel.total}`, segments: panel.summary } : undefined
+      return isCollapsed() ? { text: `${panel.connected}/${panel.warning}/${panel.error}`, segments: panel.summary } : undefined
     }
 
     createEffect(() => {
