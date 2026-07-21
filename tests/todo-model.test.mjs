@@ -22,14 +22,23 @@ test("maps TODO statuses in source order without mutating SDK records", () => {
       { content: "future task", marker: "[ ]", status: "text" },
     ],
     completed: 1,
+    done: 1,
+    working: 1,
+    todo: 2,
     total: 5,
-    summary: "1/5",
+    summary: [
+      { text: "1", status: "success" },
+      { text: "/", status: "textMuted" },
+      { text: "1", status: "warning" },
+      { text: "/", status: "textMuted" },
+      { text: "2", status: "text" },
+    ],
   })
   assert.deepEqual(records, before)
   assert.equal(JSON.stringify(createTodoPanelModel(records)).includes("priority"), false)
 })
 
-test("counts only completed TODOs while retaining cancelled and unknown records", () => {
+test("counts done/working/todo while excluding cancelled and bucketing unknown as todo", () => {
   const model = createTodoPanelModel([
     { content: "done one", status: "completed", priority: "high" },
     { content: "done two", status: "completed", priority: "low" },
@@ -38,16 +47,39 @@ test("counts only completed TODOs while retaining cancelled and unknown records"
   ])
 
   assert.equal(model.completed, 2)
+  assert.equal(model.done, 2)
+  assert.equal(model.working, 0)
+  assert.equal(model.todo, 1)
   assert.equal(model.total, 4)
-  assert.equal(model.summary, "2/4")
-  assert.deepEqual(model.rows.map((row) => row.content), ["done one", "done two", "cancelled", "unknown"])
+  assert.deepEqual(model.summary, [
+    { text: "2", status: "success" },
+    { text: "/", status: "textMuted" },
+    { text: "0", status: "warning" },
+    { text: "/", status: "textMuted" },
+    { text: "1", status: "text" },
+  ])
+  assert.deepEqual(model.rows.map((row) => [row.content, row.marker, row.status]), [
+    ["done one", "[✓]", "success"],
+    ["done two", "[✓]", "success"],
+    ["cancelled", "[-]", "textMuted"],
+    ["unknown", "[ ]", "text"],
+  ])
 })
 
-test("returns the stable empty TODO model", () => {
+test("returns the stable empty TODO model with colored zeros", () => {
   assert.deepEqual(createTodoPanelModel([]), {
     rows: [],
     completed: 0,
+    done: 0,
+    working: 0,
+    todo: 0,
     total: 0,
-    summary: "0/0",
+    summary: [
+      { text: "0", status: "success" },
+      { text: "/", status: "textMuted" },
+      { text: "0", status: "warning" },
+      { text: "/", status: "textMuted" },
+      { text: "0", status: "text" },
+    ],
   })
 })
