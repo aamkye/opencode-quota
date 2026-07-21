@@ -58,11 +58,13 @@ test("does not look up an empty session and renders the empty state", async () =
     assert.equal(mounted.view().dividerCount, 2)
     mounted.view().clickHeader()
     assert.equal(mounted.view().marker, "▶ ")
-    assert.equal(mounted.view().summaryText, "0/0")
+    assert.equal(mounted.view().summaryText, "0/0/0")
     assert.deepEqual(mounted.view().summarySegments, [
-      ["0", undefined],
+      ["0", "#00ff00"],
       ["/", "#888888"],
-      ["0", undefined],
+      ["0", "#ffaa00"],
+      ["/", "#888888"],
+      ["0", "#ffffff"],
     ])
     assert.equal(mounted.view().hint, "")
     assert.equal(mounted.view().dividerCount, 1)
@@ -146,11 +148,13 @@ test("persists collapse, updates the summary reactively, and restores the prefer
   assert.deepEqual(first.kvReads, [collapsedKey])
   first.view().clickHeader()
   assert.equal(first.view().marker, "▶ ")
-  assert.equal(first.view().summaryText, "1/5")
+  assert.equal(first.view().summaryText, "1/1/2")
   assert.deepEqual(first.view().summarySegments, [
-    ["1", undefined],
+    ["1", "#00ff00"],
     ["/", "#888888"],
-    ["5", undefined],
+    ["1", "#ffaa00"],
+    ["/", "#888888"],
+    ["2", "#ffffff"],
   ])
   assert.equal(first.view().rows.length, 0)
   assert.deepEqual(first.kvWrites, [["aamkye.opencode-tools-todo.collapsed", true]])
@@ -158,14 +162,14 @@ test("persists collapse, updates the summary reactively, and restores the prefer
     { content: "done", status: "completed", priority: "high" },
     { content: "also done", status: "completed", priority: "medium" },
   ])
-  assert.equal(first.view().summaryText, "2/2")
+  assert.equal(first.view().summaryText, "2/0/0")
   await first.dispose()
 
   const second = await mountTodoPanel({ sessionID: "session-a", records, store })
   try {
     assert.deepEqual(second.kvReads, [collapsedKey])
     assert.equal(second.view().marker, "▶ ")
-    assert.equal(second.view().summaryText, "1/5")
+    assert.equal(second.view().summaryText, "1/1/2")
     assert.deepEqual(second.kvWrites, [])
     second.view().clickHeader()
     assert.equal(second.view().marker, "▼ ")
@@ -179,7 +183,7 @@ test("persists collapse, updates the summary reactively, and restores the prefer
   try {
     assert.deepEqual(conflicting.kvReads, [collapsedKey])
     assert.equal(conflicting.view().marker, "▶ ")
-    assert.equal(conflicting.view().summaryText, "1/5")
+    assert.equal(conflicting.view().summaryText, "1/1/2")
     assert.deepEqual(conflicting.kvWrites, [])
   } finally {
     await conflicting.dispose()
