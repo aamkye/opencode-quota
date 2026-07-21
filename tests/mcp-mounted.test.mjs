@@ -14,7 +14,7 @@ const statuses = [
   { name: "codegraph-global", status: "connected", label: "Connected", color: "#00ff00" },
   { name: "context7-global", status: "disabled", label: "Disabled", color: "#888888" },
   { name: "postgres-test-vendsystem-with-a-name-that-exceeds-the-sidebar", status: "failed", label: "Failed", color: "#ff0000" },
-  { name: "auth", status: "needs_auth", label: "Needs auth", color: "#ffaa00" },
+  { name: "auth", status: "needs_auth", label: "Needs auth", color: "#ff0000" },
   { name: "client", status: "needs_client_registration", label: "Needs client ID", color: "#ff0000" },
   { name: "future", status: "future_status", label: "Unknown", color: "#888888" },
 ]
@@ -49,18 +49,20 @@ test("restores and persists only non-empty MCP collapse toggles", async () => {
     savedCollapsed: true,
     entries: [
       { name: "docs", status: "connected" },
-      { name: "database", status: "failed" },
+      { name: "database", status: "needs_auth" },
     ],
   })
 
   try {
     let view = mounted.view()
     assert.equal(view.marker, "▶ ")
-    assert.equal(view.summaryText, "1/2")
+    assert.equal(view.summaryText, "1/0/1")
     assert.deepEqual(view.summarySegments, [
       ["1", "#00ff00"],
       ["/", "#888888"],
-      ["2", "#ff0000"],
+      ["0", "#ffaa00"],
+      ["/", "#888888"],
+      ["1", "#ff0000"],
     ])
     assert.equal(view.rows.length, 0)
     assert.equal(view.dividerCount, 1)
@@ -87,11 +89,13 @@ test("forces empty MCP state collapsed without writes and restores the saved sig
     try {
       let view = mounted.view()
       assert.equal(view.marker, "▶ ")
-      assert.equal(view.summaryText, "0/0")
+      assert.equal(view.summaryText, "0/0/0")
       assert.deepEqual(view.summarySegments, [
-        ["0", "#888888"],
+        ["0", "#00ff00"],
         ["/", "#888888"],
-        ["0", "#888888"],
+        ["0", "#ffaa00"],
+        ["/", "#888888"],
+        ["0", "#ff0000"],
       ])
       assert.equal(view.rows.length, 0)
       assert.equal(view.dividerCount, 1)
@@ -145,20 +149,26 @@ test("reacts to MCP additions, removals, reorder, and status changes without rea
     ])
     let view = mounted.view()
     assert.deepEqual(view.rows.map((row) => [row.name, row.label, row.bulletColor]), [
-      ["third", "Needs auth", "#ffaa00"],
+      ["third", "Needs auth", "#ff0000"],
       ["first", "Failed", "#ff0000"],
     ])
     assert.equal(mounted.registrations.length, 1)
 
     view.clickHeader()
     view = mounted.view()
-    assert.equal(view.summaryText, "0/2")
-    assert.deepEqual(view.summarySegments.map((segment) => segment[1]), ["#00ff00", "#888888", "#ff0000"])
+    assert.equal(view.summaryText, "0/0/2")
+    assert.deepEqual(view.summarySegments, [
+      ["0", "#00ff00"],
+      ["/", "#888888"],
+      ["0", "#ffaa00"],
+      ["/", "#888888"],
+      ["2", "#ff0000"],
+    ])
 
     mounted.setMcp([{ name: "first", status: "connected" }])
-    assert.equal(mounted.view().summaryText, "1/1")
+    assert.equal(mounted.view().summaryText, "1/0/0")
     mounted.setMcp([])
-    assert.equal(mounted.view().summaryText, "0/0")
+    assert.equal(mounted.view().summaryText, "0/0/0")
     assert.equal(mounted.registrations.length, 1)
     assert.equal(mounted.slotMounts(), 1)
     assert.deepEqual(mounted.kvReads, ["aamkye.opencode-tools-mcp.collapsed"])
