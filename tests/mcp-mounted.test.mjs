@@ -49,7 +49,7 @@ test("restores and persists only non-empty MCP collapse toggles", async () => {
     savedCollapsed: true,
     entries: [
       { name: "docs", status: "connected" },
-      { name: "database", status: "failed" },
+      { name: "database", status: "needs_auth" },
     ],
   })
 
@@ -157,7 +157,13 @@ test("reacts to MCP additions, removals, reorder, and status changes without rea
     view.clickHeader()
     view = mounted.view()
     assert.equal(view.summaryText, "0/0/2")
-    assert.deepEqual(view.summarySegments.map((segment) => segment[1]), ["#00ff00", "#888888", "#ffaa00", "#888888", "#ff0000"])
+    assert.deepEqual(view.summarySegments, [
+      ["0", "#00ff00"],
+      ["/", "#888888"],
+      ["0", "#ffaa00"],
+      ["/", "#888888"],
+      ["2", "#ff0000"],
+    ])
 
     mounted.setMcp([{ name: "first", status: "connected" }])
     assert.equal(mounted.view().summaryText, "1/0/0")
