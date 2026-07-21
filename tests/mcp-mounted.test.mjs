@@ -44,7 +44,7 @@ test("registers MCP at slot 140 and renders rows in source order", async () => {
   }
 })
 
-test("restores and persists only non-empty MCP collapse toggles", async () => {
+test("restores and persists MCP collapse toggles", async () => {
   const mounted = await mountMcpPanel({
     savedCollapsed: true,
     entries: [
@@ -83,34 +83,54 @@ test("restores and persists only non-empty MCP collapse toggles", async () => {
   }
 })
 
-test("forces empty MCP state collapsed without writes and restores the saved signal without interaction", async () => {
+test("renders an expanded empty MCP panel and persists its header toggles", async () => {
   for (const savedCollapsed of [false, true]) {
     const mounted = await mountMcpPanel({ savedCollapsed })
     try {
       let view = mounted.view()
-      assert.equal(view.marker, "▶ ")
-      assert.equal(view.summaryText, "0/0/0")
-      assert.deepEqual(view.summarySegments, [
-        ["0", "#00ff00"],
-        ["/", "#888888"],
-        ["0", "#ffaa00"],
-        ["/", "#888888"],
-        ["0", "#ff0000"],
-      ])
-      assert.equal(view.rows.length, 0)
-      assert.equal(view.dividerCount, 1)
+      assert.equal(view.marker, savedCollapsed ? "▶ " : "▼ ")
+      assert.equal(view.summaryText, savedCollapsed ? "0/0/0" : "")
+      if (savedCollapsed) {
+        assert.deepEqual(view.summarySegments, [
+          ["0", "#00ff00"],
+          ["/", "#888888"],
+          ["0", "#ffaa00"],
+          ["/", "#888888"],
+          ["0", "#ff0000"],
+        ])
+        assert.equal(view.rows.length, 0)
+        assert.equal(view.dividerCount, 1)
+      } else {
+        assert.deepEqual(view.rows.map((row) => [row.name, row.label, row.bulletColor, row.labelColor]), [
+          ["No MCP servers configured", "", "#888888", "#888888"],
+        ])
+        assert.equal(view.dividerCount, 2)
+      }
       assert.deepEqual(mounted.kvWrites, [])
 
-      mounted.setMcp([{ name: "docs", status: "connected" }])
+      if (savedCollapsed) view.clickHeader()
       view = mounted.view()
-      assert.equal(view.marker, savedCollapsed ? "▶ " : "▼ ")
+      assert.equal(view.marker, "▼ ")
+      assert.equal(view.summaryText, "")
+      assert.deepEqual(view.rows.map((row) => [row.name, row.label, row.bulletColor, row.labelColor]), [
+        ["No MCP servers configured", "", "#888888", "#888888"],
+      ])
+      assert.equal(view.dividerCount, 2)
+      assert.deepEqual(mounted.kvWrites, savedCollapsed ? [["aamkye.opencode-tools-mcp.collapsed", false]] : [])
+
+      view.clickHeader()
+      view = mounted.view()
+      assert.equal(view.marker, "▶ ")
+      assert.equal(view.summaryText, "0/0/0")
+      assert.equal(view.dividerCount, 1)
+      assert.deepEqual(mounted.kvWrites.at(-1), ["aamkye.opencode-tools-mcp.collapsed", true])
     } finally {
       await mounted.dispose()
     }
   }
 })
 
-test("honors one expand click received before MCP entries hydrate", async () => {
+test("retains the empty MCP expansion when entries hydrate", async () => {
   const mounted = await mountMcpPanel({ savedCollapsed: true })
 
   try {
@@ -119,8 +139,8 @@ test("honors one expand click received before MCP entries hydrate", async () => 
 
     view.clickHeader()
     view = mounted.view()
-    assert.equal(view.marker, "▶ ")
-    assert.deepEqual(mounted.kvWrites, [])
+    assert.equal(view.marker, "▼ ")
+    assert.deepEqual(mounted.kvWrites, [["aamkye.opencode-tools-mcp.collapsed", false]])
 
     mounted.setMcp([{ name: "docs", status: "connected" }])
     view = mounted.view()
