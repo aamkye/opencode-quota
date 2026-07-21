@@ -75,8 +75,10 @@ Fully restart OpenCode after deployment.
   source order without polling.
 - **Native status roles** — connected, disabled, failed, authentication, and
   client-registration states use compact labels and status-colored bullets.
-- **Persistent collapse state** — remembers the user's preference while an
-  empty MCP list stays compact as a muted `0/0` summary.
+- **Persistent collapse state** — remembers the user's preference, and the
+  collapsed header shows a `success/warning/error` health rollup (connected,
+  disabled, and error-state counts) that stays compact as a colored `0/0/0`
+  summary when the server list is empty.
 
 ### Context
 
@@ -115,7 +117,8 @@ Fully restart OpenCode after deployment.
   lines align beneath the content column. An empty list shows
   `No TODOs for this session`.
 - **Persistent collapse state** — remembers the user's header-click preference
-  and summarizes completed records over all session records.
+  and summarizes `done/working/todo` counts (cancelled excluded) in the
+  collapsed header.
 
 ### SesTokens
 
@@ -306,28 +309,29 @@ within the 37-cell sidebar width and contains no trailing whitespace.
 #### Collapsed, all connected
 
 ```text
-▶ MCP                             2/2
+▶ MCP                           4/0/0
 -------------------------------------
 ```
 
-#### Collapsed, attention needed
+#### Collapsed, mixed health
 
 ```text
-▶ MCP                             2/3
+▶ MCP                           2/1/1
 -------------------------------------
 ```
 
 #### Collapsed, empty
 
 ```text
-▶ MCP                             0/0
+▶ MCP                           0/0/0
 -------------------------------------
 ```
 
-For the healthy `2/2` summary, both numbers use the success color and the slash
-is muted. For the unhealthy `2/3` summary, `2` uses the success color, `3` uses
-the error color, and the slash is muted.
-For the empty `0/0` summary, both numbers and the slash are muted.
+The collapsed summary shows `success/warning/error` counts: connected servers,
+disabled servers, and servers in any error state (failed, needs authentication,
+needs client registration, or unknown). Each number uses its bucket color —
+success, warning, or error — including when it is zero, and both separators are
+muted. For the empty `0/0/0` summary, each zero keeps its bucket color.
 
 ### Context sidebar layouts
 
@@ -396,8 +400,9 @@ preference.
 
 TODO records stay in synchronized source order. Status markers occupy four
 cells, so wrapped content continues beneath the content column without trailing
-whitespace. TODO continuation lines align under the content column, and only
-completed records contribute to the collapsed numerator.
+whitespace. TODO continuation lines align under the content column, and the
+collapsed summary rolls records into `done/working/todo` counts that exclude
+cancelled records.
 
 #### Expanded
 
@@ -424,7 +429,7 @@ No TODOs for this session
 #### Collapsed
 
 ```text
-▶ TODO                            2/5
+▶ TODO                          4/3/2
 -------------------------------------
 ```
 

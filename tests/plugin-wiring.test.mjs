@@ -223,15 +223,15 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
       "-".repeat(37),
     ]],
     ["Collapsed, all connected", [
-      `${"▶ MCP".padEnd(34)}2/2`,
+      `${"▶ MCP".padEnd(32)}4/0/0`,
       "-".repeat(37),
     ]],
-    ["Collapsed, attention needed", [
-      `${"▶ MCP".padEnd(34)}2/3`,
+    ["Collapsed, mixed health", [
+      `${"▶ MCP".padEnd(32)}2/1/1`,
       "-".repeat(37),
     ]],
     ["Collapsed, empty", [
-      `${"▶ MCP".padEnd(34)}0/0`,
+      `${"▶ MCP".padEnd(32)}0/0/0`,
       "-".repeat(37),
     ]],
   ])
@@ -248,9 +248,9 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     }
   }
 
-  assert.match(prose, /For the healthy `2\/2` summary, both numbers use the success color and the slash is muted\./u)
-  assert.match(prose, /For the unhealthy `2\/3` summary, `2` uses the success color, `3` uses the error color, and the slash is muted\./u)
-  assert.match(prose, /For the empty `0\/0` summary, both numbers and the slash are muted\./u)
+  assert.match(prose, /The collapsed summary shows `success\/warning\/error` counts: connected servers,/u)
+  assert.match(prose, /Each number uses its bucket color — success, warning, or error — including when it is zero, and both separators are muted\./u)
+  assert.match(prose, /For the empty `0\/0\/0` summary, each zero keeps its bucket color\./u)
 
   const mcpLayoutsIndex = readme.indexOf("\n### MCP sidebar layouts")
   const contextLayoutsIndex = readme.indexOf("\n### Context sidebar layouts")
@@ -359,7 +359,7 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
       "-".repeat(37),
     ]],
     ["Collapsed", [
-      `${"▶ TODO".padEnd(34)}2/5`,
+      `${"▶ TODO".padEnd(32)}4/3/2`,
       "-".repeat(37),
     ]],
   ])
@@ -560,7 +560,7 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.doesNotMatch(readme, /first message|idle event|automatic rename/iu)
 
   assert.match(prose, /Long IDs truncate with an ellipsis so expanded lines fit within 37 cells and collapsed lines fit within 36 cells\./u)
-  assert.match(prose, /TODO continuation lines align under the content column, and only completed records contribute to the collapsed numerator\./u)
+  assert.match(prose, /TODO continuation lines align under the content column, and the collapsed summary rolls records into `done\/working\/todo` counts that exclude cancelled records\./u)
 })
 
 test("documents secret-safe OpenCode Go configuration", () => {
