@@ -50,7 +50,7 @@ const plugin = defineTuiPlugin(descriptor, (_context, api) => {
       <CompactPanel
         title="TODO"
         collapsed={collapsed()}
-        summary={collapsed() ? { text: model().summary } : undefined}
+        summary={collapsed() ? { text: `${model().done}/${model().working}/${model().todo}`, segments: model().summary } : undefined}
         onToggle={toggle}
         footerDivider={!collapsed()}
         theme={() => api.theme.current}

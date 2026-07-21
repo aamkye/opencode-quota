@@ -1,4 +1,5 @@
 import type { Todo } from "@opencode-ai/sdk/v2"
+import type { PanelTextSegment } from "../presentation/types.js"
 
 type TodoPanelRecord = Pick<Todo, "content" | "status">
 
@@ -13,8 +14,11 @@ export type TodoStatusRow = {
 export type TodoPanelModel = {
   rows: readonly TodoStatusRow[]
   completed: number
+  done: number
+  working: number
+  todo: number
   total: number
-  summary: string
+  summary: readonly PanelTextSegment[]
 }
 
 type TodoStatusDisplay = Pick<TodoStatusRow, "marker" | "status">
@@ -28,10 +32,25 @@ const STATUS_DISPLAY = Object.freeze({
 
 const UNKNOWN_STATUS = Object.freeze({ marker: "[ ]", status: "text" } satisfies TodoStatusDisplay)
 
+type TodoBucket = "done" | "working" | "todo"
+
+function bucket(status: string): TodoBucket | undefined {
+  if (status === "completed") return "done"
+  if (status === "in_progress") return "working"
+  if (status === "pending") return "todo"
+  if (status === "cancelled") return undefined
+  return "todo"
+}
+
 export function createTodoPanelModel(records: readonly TodoPanelRecord[]): TodoPanelModel {
-  let completed = 0
+  let done = 0
+  let working = 0
+  let todo = 0
   const rows = records.map((record): TodoStatusRow => {
-    if (record.status === "completed") completed += 1
+    const bucketStatus = bucket(record.status)
+    if (bucketStatus === "done") done += 1
+    else if (bucketStatus === "working") working += 1
+    else if (bucketStatus === "todo") todo += 1
     const display = Object.hasOwn(STATUS_DISPLAY, record.status)
       ? STATUS_DISPLAY[record.status as keyof typeof STATUS_DISPLAY]
       : UNKNOWN_STATUS
@@ -41,8 +60,17 @@ export function createTodoPanelModel(records: readonly TodoPanelRecord[]): TodoP
 
   return {
     rows,
-    completed,
+    completed: done,
+    done,
+    working,
+    todo,
     total,
-    summary: `${completed}/${total}`,
+    summary: [
+      { text: String(done), status: "success" },
+      { text: "/", status: "textMuted" },
+      { text: String(working), status: "warning" },
+      { text: "/", status: "textMuted" },
+      { text: String(todo), status: "text" },
+    ],
   }
 }

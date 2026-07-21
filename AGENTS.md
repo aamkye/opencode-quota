@@ -242,7 +242,7 @@ LSPs will activate as files are read | 6. should be grayed out
 #### Collapsed
 
 ```
-▶ TODO                           2/5 | 1. plain name; 2. used/total; 3. no percent; 4. no reset time; 5. no spacer
+▶ TODO                          4/3/2 | 1. plain name; 2. done/working/todo counts; 3. no percent; 4. no reset time; 5. no spacer; 6. each number is colored by its bucket (success/warning/text); 7. separators are muted
 ------------------------------------ |
 ```
 
