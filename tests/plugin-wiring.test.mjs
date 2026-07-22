@@ -169,9 +169,10 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     /Context ships as a separate opt-in artifact\. Enable it by adding `\.\/opencode-tools-context\.js` to the `plugin` array\./u,
   )
   assert.match(configurationSection, /Context, LSP, and TODO accept no options\./u)
-  assert.match(configurationSection, /Context has no built-in panel override\s+to disable\./u)
+  assert.match(configurationSection, /Context's built-in override is\s+`internal:sidebar-context`\./u)
   assert.match(configurationSection, /SesTokens accepts no options and has no built-in panel override\./u)
   assert.match(configurationSection, /SubAgent accepts no options and has no built-in panel override\./u)
+  assert.doesNotMatch(configurationSection, /Context has no built-in panel override\s+to disable\./u)
 
   for (const id of [
     "aamkye/opencode-tools-quota",
@@ -193,13 +194,13 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     "quota options remain attached only to the quota entry",
     "normalized quota runtime ID",
     "host-managed plugin state may reset",
-    "Users must disable `internal:sidebar-mcp`, `internal:sidebar-lsp`, and `internal:sidebar-todo` themselves",
-    "Deployment does not edit `plugin_enabled` or disable the built-in MCP, LSP, or TODO panel",
-    "Set the overrides in the configuration example yourself when replacing any built-in panel",
+    "Deployment automatically disables OpenCode's built-in Context, MCP, LSP, and TODO sidebar panels",
+    "to prevent duplicate panels",
     "Rollback",
     "remove `./opencode-tools-mcp.js`",
     "re-enable `internal:sidebar-mcp`",
     "remove `./opencode-tools-context.js`",
+    "re-enable `internal:sidebar-context`",
     "remove `./opencode-tools-lsp.js`",
     "re-enable `internal:sidebar-lsp`",
     "remove `./opencode-tools-todo.js`",
@@ -208,9 +209,9 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     "remove `./opencode-tools-subagent.js`",
     "restart OpenCode",
   ]) assert.equal(prose.includes(text), true, `missing README text: ${text}`)
-  assert.doesNotMatch(prose, /automatically disables? `?internal:sidebar-mcp`?/iu)
-  assert.doesNotMatch(prose, /automatically disables? `?internal:sidebar-lsp`?/iu)
-  assert.doesNotMatch(prose, /automatically disables? `?internal:sidebar-todo`?/iu)
+  assert.doesNotMatch(prose, /Users must disable `internal:sidebar-mcp`, `internal:sidebar-lsp`, and `internal:sidebar-todo` themselves/u)
+  assert.doesNotMatch(prose, /Deployment does not edit `plugin_enabled` or disable the built-in MCP, LSP, or TODO panel/u)
+  assert.doesNotMatch(prose, /Set the overrides in the configuration example yourself when replacing any built-in panel/u)
 
   const expectedLayouts = new Map([
     ["Expanded", [
@@ -473,14 +474,13 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.match(buildAndDeploy, /configuration entries to the nine standalone entries in manifest order/u)
   assert.match(
     rollback.replace(/\s+/gu, " "),
-    /To remove the Context panel, remove `\.\/opencode-tools-context\.js` from the `plugin` array and restart OpenCode\./u,
+    /To return to OpenCode's built-in Context panel, remove `\.\/opencode-tools-context\.js` from the `plugin` array, then remove the `"internal:sidebar-context": false` override \(or set it to `true`\) to re-enable `internal:sidebar-context`, then restart OpenCode\./u,
   )
-  const contextRollback = rollback.match(/To remove the Context panel,[\s\S]*?restart OpenCode\./u)?.[0] ?? ""
+  const contextRollback = rollback.match(/To return to OpenCode's built-in Context panel,[\s\S]*?restart OpenCode\./u)?.[0] ?? ""
   assert.equal(
     contextRollback.replace(/\s+/gu, " "),
-    "To remove the Context panel, remove `./opencode-tools-context.js` from the `plugin` array and restart OpenCode.",
+    "To return to OpenCode's built-in Context panel, remove `./opencode-tools-context.js` from the `plugin` array, then remove the `\"internal:sidebar-context\": false` override (or set it to `true`) to re-enable `internal:sidebar-context`, then restart OpenCode.",
   )
-  assert.doesNotMatch(contextRollback, /plugin_enabled/u)
   assert.match(
     rollback.replace(/\s+/gu, " "),
     /To remove the SesTokens panel, remove `\.\/opencode-tools-ses-tokens\.js` from the `plugin` array and restart OpenCode\./u,

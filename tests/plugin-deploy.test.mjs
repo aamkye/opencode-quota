@@ -78,6 +78,12 @@ const obsoleteArtifacts = [
   "plugins/tokens.ts",
   ...new Set([...pluginManifest.map((entry) => entry.source), "tui/context.tsx", "tui/lsp.tsx", "tui/ses-tokens.tsx", "tui/subagent.tsx"]),
 ]
+const disabledSidebarPanels = {
+  "internal:sidebar-context": false,
+  "internal:sidebar-mcp": false,
+  "internal:sidebar-lsp": false,
+  "internal:sidebar-todo": false,
+}
 const temporaryRoots = []
 let deployPlugins
 let resolveGlobalConfigRoot
@@ -97,6 +103,13 @@ async function fixture() {
   await writeFile(join(root, "tui.json"), JSON.stringify({
     $schema: "https://opencode.ai/tui.json",
     theme: "unchanged",
+    plugin_enabled: {
+      "unrelated:sidebar": true,
+      "internal:sidebar-context": true,
+      "internal:sidebar-mcp": true,
+      "internal:sidebar-lsp": true,
+      "internal:sidebar-todo": true,
+    },
     plugin: [
       "./unrelated.js",
       "@scope/unrelated-plugin",
@@ -222,6 +235,13 @@ function assertPlainSubagentEntry(config) {
   assert.deepEqual(entries, ["./opencode-tools-subagent.js"])
 }
 
+function assertDisabledSidebarPanels(config) {
+  assert.deepEqual(config.plugin_enabled, {
+    "unrelated:sidebar": true,
+    ...disabledSidebarPanels,
+  })
+}
+
 function assertSingleTrailingNewline(contents, label) {
   assert.equal(contents.endsWith("\n"), true, `${label} must end with a newline`)
   assert.equal(contents.endsWith("\n\n"), false, `${label} must end with exactly one newline`)
@@ -271,6 +291,7 @@ test("local deployment removes token artifacts and commands while preserving unr
   assertPlainTodoEntry(config)
   assertPlainSesTokensEntry(config)
   assertPlainSubagentEntry(config)
+  assertDisabledSidebarPanels(config)
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "used", sortDirection: "asc" },
     quota: {
@@ -307,6 +328,21 @@ test("deployment removes an empty managed command object", async () => {
   assert.deepEqual(JSON.parse(tuiBytes).plugin, expectedManagedEntries())
   assertSingleTrailingNewline(openCodeBytes, "opencode.json")
   assertSingleTrailingNewline(tuiBytes, "tui.json")
+})
+
+test("deployment replaces missing and invalid sidebar panel settings", async () => {
+  for (const initialPluginEnabled of [undefined, "invalid", [], null]) {
+    const root = await mkdtemp(join(tmpdir(), "opencode-tools-sidebar-panels-"))
+    temporaryRoots.push(root)
+    const config = initialPluginEnabled === undefined ? {} : { plugin_enabled: initialPluginEnabled }
+    await writeFile(join(root, "tui.json"), JSON.stringify(config))
+
+    await deployPlugins(root, { logLevel: "silent" })
+
+    const deployedConfig = JSON.parse(await readFile(join(root, "tui.json"), "utf8"))
+    assert.deepEqual(deployedConfig.plugin_enabled, disabledSidebarPanels)
+    assert.deepEqual(deployedConfig.plugin, expectedManagedEntries())
+  }
 })
 
 test("local deployment preserves project fallback semantics across repeated migration", async () => {
@@ -349,6 +385,13 @@ test("local deployment preserves project fallback semantics across repeated migr
   await writeFile(join(configRoot, "tui.json"), JSON.stringify({
     $schema: "https://opencode.ai/tui.json",
     theme: "selected-theme",
+    plugin_enabled: {
+      "unrelated:sidebar": true,
+      "internal:sidebar-context": true,
+      "internal:sidebar-mcp": true,
+      "internal:sidebar-lsp": true,
+      "internal:sidebar-todo": true,
+    },
     plugin: [
       "./selected-unrelated-first.js",
       "./opencode-tools-quota.js",
@@ -412,6 +455,7 @@ test("local deployment preserves project fallback semantics across repeated migr
   assertPlainTodoEntry(selectedConfig)
   assertPlainSesTokensEntry(selectedConfig)
   assertPlainSubagentEntry(selectedConfig)
+  assertDisabledSidebarPanels(selectedConfig)
   assert.deepEqual(selectedConfig.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "asc" },
     quota: {
@@ -458,6 +502,13 @@ test("global deployment removes token artifacts and commands while preserving un
 
   await mkdir(join(root, "plugins"), { recursive: true })
   await writeFile(join(root, "tui.json"), JSON.stringify({
+    plugin_enabled: {
+      "unrelated:sidebar": true,
+      "internal:sidebar-context": true,
+      "internal:sidebar-mcp": true,
+      "internal:sidebar-lsp": true,
+      "internal:sidebar-todo": true,
+    },
     plugin: [
       "file:///tmp/other.js",
       ["file:///tmp/unrelated/tui/quota.tsx", { preserve: "quota" }],
@@ -539,6 +590,7 @@ test("global deployment removes token artifacts and commands while preserving un
   assertPlainTodoEntry(config)
   assertPlainSesTokensEntry(config)
   assertPlainSubagentEntry(config)
+  assertDisabledSidebarPanels(config)
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "desc" },
     quota: {

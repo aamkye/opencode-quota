@@ -239,13 +239,11 @@ Context ships as a separate opt-in artifact. Enable it by adding
 The entries must remain standalone and in manifest order. Only quota accepts
 the options object; home, token-report, Context, SesTokens, SubAgent, MCP, LSP,
 and TODO use string entries.
-MCP, Context, LSP, and TODO accept no options. Context has no built-in panel override
-to disable. SesTokens accepts no options and has no built-in panel override. The
-SubAgent accepts no options and has no built-in panel override. The other
-external panels do not deactivate their built-in counterparts. Users must disable
-`internal:sidebar-mcp`,
-`internal:sidebar-lsp`, and `internal:sidebar-todo` themselves, as shown by
-`plugin_enabled`, to avoid duplicate panels.
+MCP, Context, LSP, and TODO accept no options. Context's built-in override is
+`internal:sidebar-context`. SesTokens accepts no options and has no built-in panel override. The
+SubAgent accepts no options and has no built-in panel override. Deployment automatically disables
+OpenCode's built-in Context, MCP, LSP, and TODO sidebar panels through `plugin_enabled` to prevent
+duplicate panels. It preserves unrelated `plugin_enabled` entries.
 
 `quota.opencodego.workspaceId` identifies the OpenCode Go workspace.
 `quota.opencodego.workspaceToken` authenticates the console request;
@@ -667,10 +665,10 @@ quota options remain attached only to the quota entry. Local deployment also
 removes managed source entries from the project-root `tui.json`, because
 OpenCode loads it together with `.opencode/tui.json`; options in the selected
 `.opencode` config take precedence. Repeating either command produces the same
-files and configuration. Deployment does not edit `plugin_enabled` or disable
-the built-in MCP, LSP, or TODO panel. Set the overrides in the configuration
-example yourself when replacing any built-in panel. Fully restart OpenCode after
-deployment.
+files and configuration. Deployment automatically disables OpenCode's built-in
+Context, MCP, LSP, and TODO sidebar panels through `plugin_enabled` to prevent
+duplicate panels. It preserves unrelated `plugin_enabled` entries. Fully restart
+OpenCode after deployment.
 
 Deployment replaces stale managed SubAgent artifacts and removes stale managed
 source entries while preserving unrelated files and configuration entries.
@@ -681,9 +679,12 @@ migration; the deployer still preserves quota's configuration options.
 
 #### Rollback
 
-To remove the Context panel, remove `./opencode-tools-context.js` from the
-`plugin` array and restart OpenCode. To remove the SesTokens panel, remove
-`./opencode-tools-ses-tokens.js` from the `plugin` array and restart OpenCode.
+To return to OpenCode's built-in Context panel, remove
+`./opencode-tools-context.js` from the `plugin` array, then remove the
+`"internal:sidebar-context": false` override (or set it to `true`) to re-enable
+`internal:sidebar-context`, then restart OpenCode. To remove the SesTokens panel,
+remove `./opencode-tools-ses-tokens.js` from the `plugin` array and restart
+OpenCode.
 To remove the SubAgent panel, remove `./opencode-tools-subagent.js` from the
 `plugin` array and restart OpenCode. To return to OpenCode's built-in MCP panel,
 remove `./opencode-tools-mcp.js`
