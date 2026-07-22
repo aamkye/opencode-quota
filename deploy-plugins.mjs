@@ -48,6 +48,13 @@ const managedConfigPaths = [
   ...historicalManagedPaths,
 ]
 
+const managedSidebarPanels = {
+  "internal:sidebar-context": false,
+  "internal:sidebar-mcp": false,
+  "internal:sidebar-lsp": false,
+  "internal:sidebar-todo": false,
+}
+
 function entrySpec(entry) {
   if (typeof entry === "string") return entry
   return Array.isArray(entry) && typeof entry[0] === "string" ? entry[0] : undefined
@@ -111,6 +118,14 @@ function cleanManagedTokenCommands(config) {
 
   for (const id of managedTokenCommandIds) delete config.command[id]
   if (Object.keys(config.command).length === 0) delete config.command
+}
+
+function disableManagedSidebarPanels(config) {
+  const existing = config.plugin_enabled
+  config.plugin_enabled = {
+    ...(existing && typeof existing === "object" && !Array.isArray(existing) ? existing : {}),
+    ...managedSidebarPanels,
+  }
 }
 
 function cleanManagedEntries(config, configRoot) {
@@ -204,6 +219,7 @@ export async function deployPlugins(targetRoot, { logLevel = "info", projectConf
       : `./${entry.outfile}`
   ))
   config.plugin = [...selected.unrelated, ...managedEntries]
+  disableManagedSidebarPanels(config)
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`)
 
   const openCodeConfigPath = join(targetRoot, "opencode.json")
