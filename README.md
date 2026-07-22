@@ -75,10 +75,11 @@ Fully restart OpenCode after deployment.
   source order without polling.
 - **Native status roles** — connected, disabled, failed, authentication, and
   client-registration states use compact labels and status-colored bullets.
-- **Persistent collapse state** — remembers the user's preference, and the
-  collapsed header shows a `success/warning/error` health rollup (connected,
-  disabled, and error-state counts) that stays compact as a colored `0/0/0`
-  summary when the server list is empty.
+- **Persistent collapse state** — remembers the user's preference for populated
+  and empty MCP lists. The collapsed header shows a `success/warning/error`
+  health rollup (connected, disabled, and error-state counts) that stays compact
+  as a colored `0/0/0` summary when the server list is empty. An expanded empty
+  list shows `No MCP servers configured`.
 
 ### Context
 
@@ -317,6 +318,15 @@ within the 37-cell sidebar width and contains no trailing whitespace.
 
 ```text
 ▶ MCP                           2/1/1
+-------------------------------------
+```
+
+#### Expanded, empty
+
+```text
+▼ MCP
+-------------------------------------
+• No MCP servers configured
 -------------------------------------
 ```
 

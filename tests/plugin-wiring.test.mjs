@@ -230,6 +230,12 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
       `${"▶ MCP".padEnd(32)}2/1/1`,
       "-".repeat(37),
     ]],
+    ["Expanded, empty", [
+      "▼ MCP",
+      "-".repeat(37),
+      "• No MCP servers configured",
+      "-".repeat(37),
+    ]],
     ["Collapsed, empty", [
       `${"▶ MCP".padEnd(32)}0/0/0`,
       "-".repeat(37),
