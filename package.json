@@ -29,8 +29,7 @@
     "build:plugins": "node build-plugins.mjs",
     "deploy:local": "node deploy-plugins.mjs local",
     "deploy:global": "node deploy-plugins.mjs global",
-    "build:session-rename": "node build-session-rename.mjs",
-    "deploy:session-rename": "node deploy-session-rename.mjs"
+    "build:session-rename": "node build-session-rename.mjs"
   },
   "keywords": [
     "opencode",

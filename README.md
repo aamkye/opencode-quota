@@ -831,7 +831,7 @@ The plugin adds success or failure feedback as an ignored message and disables
 OpenCode's built-in title agent.
 
 Build the plugin with `npm run build:session-rename`. Deploy it with
-`npm run deploy:session-rename`; this installs `dist/session-rename.ts` as
+`npm run deploy:global`; this installs `dist/session-rename.ts` as
 `~/.config/opencode/plugins/session-rename.ts`. Deployment installs the new file
 before it removes the previously managed legacy artifact. Fully restart OpenCode
 after deployment.
@@ -861,7 +861,6 @@ after deployment.
 | `session-rename.ts`                     | Global manual session rename plugin entry point                                               |
 | `plugin-manifest.json`                  | Manifest order, runtime IDs, artifacts, slots, and option ownership                           |
 | `build-session-rename.mjs`              | Builds the bundled global session rename plugin                                               |
-| `deploy-session-rename.mjs`             | Installs the global session rename plugin and removes the legacy artifact                     |
 | `build-plugins.mjs`                     | Builds the shared artifact and nine standalone local ESM plugins                              |
 | `deploy-plugins.mjs`                    | Idempotently migrates nine local/global plugins and `tui.json` entries                        |
 

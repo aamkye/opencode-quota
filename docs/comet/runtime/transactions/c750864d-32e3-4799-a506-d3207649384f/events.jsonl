@@ -1,0 +1,8 @@
+{"sequence":1,"timestamp":"2026-07-23T13:08:14.982Z","type":"prepared"}
+{"sequence":2,"timestamp":"2026-07-23T13:08:15.870Z","type":"operation-started","operationId":"spec-1-unify-session-rename-deploy"}
+{"sequence":3,"timestamp":"2026-07-23T13:08:15.918Z","type":"operation-completed","operationId":"spec-1-unify-session-rename-deploy"}
+{"sequence":4,"timestamp":"2026-07-23T13:08:15.929Z","type":"operation-started","operationId":"archive-change"}
+{"sequence":5,"timestamp":"2026-07-23T13:08:16.025Z","type":"operation-completed","operationId":"archive-change"}
+{"sequence":6,"timestamp":"2026-07-23T13:08:16.083Z","type":"archive-finalization-started"}
+{"sequence":7,"timestamp":"2026-07-23T13:08:16.133Z","type":"archive-finalized"}
+{"sequence":8,"timestamp":"2026-07-23T13:08:16.151Z","type":"commit"}

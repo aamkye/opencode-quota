@@ -12,9 +12,7 @@ test("documents OKF lookup instructions", () => {
 })
 
 test("indexes final session rename modules", () => {
-  const legacyDeployPath = ["deploy", "session", "title"].join("-") + ".mjs"
   assert.match(summary, /session-rename\.ts/)
   assert.match(summary, /lib\/session-rename/)
-  assert.match(summary, /deploy-session-rename\.mjs/)
-  assert.equal(summary.includes(legacyDeployPath), false)
+  assert.equal(summary.includes("deploy-session-rename"), false)
 })

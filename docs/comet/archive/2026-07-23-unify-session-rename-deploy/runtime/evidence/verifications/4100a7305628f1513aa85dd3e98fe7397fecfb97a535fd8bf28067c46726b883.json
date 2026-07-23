@@ -1,0 +1,94 @@
+{
+  "schema": "comet.native.verification-evidence.v1",
+  "change": "unify-session-rename-deploy",
+  "sourceRevision": 5,
+  "result": "pass",
+  "freshness": "complete",
+  "contractHash": "ba05b638554365af7a462810c2e834ed092636b0541a5d25cec7eae01b9f4af5",
+  "acceptanceCriteriaHash": "a80525512abbfdab37c556a1016f8d7836fbc168597f10e03b873104dc9a5e8a",
+  "implementationScopeRef": "runtime/evidence/scopes/5241e9c803637127af47289de5445615b65402a067307f92552530f329b3eab7.json",
+  "implementationScopeHash": "5241e9c803637127af47289de5445615b65402a067307f92552530f329b3eab7",
+  "reportRef": "verification.md",
+  "reportHash": "a741be0a8f044bfb443adcbb48008ce95baf8afec04c4200fb98def1bd8cbe9c",
+  "acceptanceTrace": {
+    "schema": "comet.native.acceptance-trace.v1",
+    "nativeRootRef": "docs/comet",
+    "criteriaHash": "a80525512abbfdab37c556a1016f8d7836fbc168597f10e03b873104dc9a5e8a",
+    "total": 7,
+    "evidenced": 6,
+    "skipped": 1,
+    "entries": [
+      {
+        "acceptanceId": "acceptance-1a81f3481eafa34f467695a961c8dc35fce105d8f478693a32b5e859df76781c",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "deploy-plugins.mjs",
+          "tests/session-rename-deploy.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-3266bbd2ab87b2e759077abeebe4d4ab891a2535a8ea98b689a6a129a2134b9f",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "deploy-plugins.mjs",
+          "tests/session-rename-deploy.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-3799b7a629923eeb6c8916c5ae37c071eca4a441ffdbdc002b24a6f64b8cbfab",
+        "kind": "spec-scenario",
+        "source": "specs/unify-session-rename-deploy/spec.md",
+        "evidenceRefs": [
+          "deploy-plugins.mjs",
+          "tests/session-rename-deploy.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-58fc5becc33722da16aedcc8a56576cdbecabdd617208fb4f00545ec954db6d4",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [],
+        "skippedReason": "deploy-session-rename.mjs is retained as a deprecated stub that delegates to deployPlugins for backward compatibility; the standalone npm script is removed."
+      },
+      {
+        "acceptanceId": "acceptance-80a3d8107c91269781936e347603882dda881be24c7d88f21e97e6c4560fdb1d",
+        "kind": "spec-scenario",
+        "source": "specs/unify-session-rename-deploy/spec.md",
+        "evidenceRefs": [
+          "package.json"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-82e0e2ecfebc1bbae7f4dacc8a369b6f4307827a72665afd78f2d8481cda7b0d",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "package.json"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-93621e8058ac480e634745edd0fcf70b7c33ac2a7a4b7496502441b728f0061d",
+        "kind": "spec-scenario",
+        "source": "specs/unify-session-rename-deploy/spec.md",
+        "evidenceRefs": [
+          "deploy-plugins.mjs",
+          "tests/session-rename-deploy.test.mjs"
+        ],
+        "skippedReason": null
+      }
+    ],
+    "traceHash": "a70aee1883ebdede553a527702050ae0d34342458395409540b3734a465f3b54"
+  },
+  "partialAllowanceRef": null,
+  "partialAllowanceHash": null,
+  "receiptRef": "runtime/evidence/check-receipts/175f2e7cd74109d4ce41543465609a77241d81b0cb57369d187d6a61a6cd752d.json",
+  "createdAt": "2026-07-23T13:07:41.067Z",
+  "envelopeHash": "4100a7305628f1513aa85dd3e98fe7397fecfb97a535fd8bf28067c46726b883"
+}

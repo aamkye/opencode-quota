@@ -72,7 +72,7 @@ test("tracked project files contain no active legacy identifier", () => {
 test("retains the legacy session artifact name only for deployment cleanup", () => {
   const legacySessionArtifact = ["session", "title"].join("-")
   const allowed = new Set([
-    "deploy-session-rename.mjs",
+    "deploy-plugins.mjs",
     "tests/session-rename-deploy.test.mjs",
   ])
   const trackedFiles = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" })
@@ -538,7 +538,7 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.match(sessionRenameSection, /success or failure feedback as an ignored message/u)
   assert.match(sessionRenameSection, /disables\s+OpenCode's built-in title agent/u)
   assert.match(sessionRenameSection, /`npm run build:session-rename`/u)
-  assert.match(sessionRenameSection, /`npm run deploy:session-rename`/u)
+  assert.match(sessionRenameSection, /`npm run deploy:global`/u)
   assert.match(sessionRenameSection, /`dist\/session-rename\.ts`/u)
   assert.match(sessionRenameSection, /`~\/\.config\/opencode\/plugins\/session-rename\.ts`/u)
   assert.match(
@@ -554,7 +554,6 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
   assert.match(sourceFiles, /^\| `lib\/session-rename\.ts`\s+\| Manual session rename command behavior\s+\|$/mu)
   assert.match(sourceFiles, /^\| `session-rename\.ts`\s+\| Global manual session rename plugin entry point\s+\|$/mu)
   assert.match(sourceFiles, /^\| `build-session-rename\.mjs`\s+\| Builds the bundled global session rename plugin\s+\|$/mu)
-  assert.match(sourceFiles, /^\| `deploy-session-rename\.mjs`\s+\| Installs the global session rename plugin and removes the legacy artifact\s+\|$/mu)
   assert.equal(readme.includes(["session", "title"].join("-")), false)
   assert.doesNotMatch(readme, /### Session title plugin/iu)
   assert.doesNotMatch(readme, /first message|idle event|automatic rename/iu)

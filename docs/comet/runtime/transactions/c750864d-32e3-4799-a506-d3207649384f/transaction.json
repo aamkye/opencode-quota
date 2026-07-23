@@ -1,0 +1,27 @@
+{
+  "schema": "comet.native.transaction.v2",
+  "id": "c750864d-32e3-4799-a506-d3207649384f",
+  "kind": "archive",
+  "status": "committed",
+  "change": "unify-session-rename-deploy",
+  "createdAt": "2026-07-23T13:08:14.219Z",
+  "preflightHash": "dce5c7f49e88fe72c7e0d5a5b479bdcc7ed7fd99acc7b51c0a320053bf8a61c7",
+  "operations": [
+    {
+      "id": "spec-1-unify-session-rename-deploy",
+      "type": "write",
+      "target": "specs/unify-session-rename-deploy/spec.md",
+      "staged": "runtime/transactions/c750864d-32e3-4799-a506-d3207649384f/staged/specs/unify-session-rename-deploy/spec.md",
+      "expectedTargetHash": null,
+      "stagedHash": "d46fc545dfd9c48ebcf5494080eae0e83da5868f36898aa33fe2c84acd3671ac"
+    },
+    {
+      "id": "archive-change",
+      "type": "move",
+      "source": "changes/unify-session-rename-deploy",
+      "target": "archive/2026-07-23-unify-session-rename-deploy",
+      "expectedSourceHash": "cab8b6e988272f4f8b9118d646ccf0b316bd64624cbd23e590b7f42374d45ec9",
+      "expectedTargetHash": null
+    }
+  ]
+}

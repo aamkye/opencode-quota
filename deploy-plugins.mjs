@@ -3,11 +3,14 @@ import { homedir } from "node:os"
 import { dirname, isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { buildPlugins } from "./build-plugins.mjs"
+import { buildSessionRename } from "./build-session-rename.mjs"
 import { pluginManifest, validatePluginManifest } from "./plugin-manifest.mjs"
 
 const projectRoot = dirname(fileURLToPath(import.meta.url))
 const obsoleteNamespace = ["opencode", "quota"].join("-")
 const sharedArtifact = "opencode-tools-shared.js"
+const sessionRenameArtifact = "session-rename.ts"
+const legacySessionRenameArtifact = "session-title.ts"
 const quotaPlugin = pluginManifest.find((entry) => entry.options === "quota")
 
 const historicalManagedPaths = [
@@ -171,10 +174,13 @@ export function resolveGlobalConfigRoot(env = process.env, home = homedir()) {
 export async function deployPlugins(targetRoot, { logLevel = "info", projectConfigRoot } = {}) {
   validatePluginManifest(pluginManifest)
   await buildPlugins({ logLevel })
+  await buildSessionRename({ logLevel })
   await mkdir(join(targetRoot, "plugins"), { recursive: true })
 
   const artifacts = [sharedArtifact, ...pluginManifest.map((entry) => entry.outfile)]
   await Promise.all(artifacts.map((artifact) => copyBuiltArtifact(artifact, targetRoot)))
+  await copyBuiltArtifact(sessionRenameArtifact, join(targetRoot, "plugins"))
+  await rm(join(targetRoot, "plugins", legacySessionRenameArtifact), { force: true })
 
   await Promise.all(obsoleteFiles.map((file) => rm(join(targetRoot, file), { force: true })))
 

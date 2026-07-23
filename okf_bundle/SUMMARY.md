@@ -45,16 +45,12 @@ Use these links to navigate the bundle or prime an AI agent with focused context
 
 - [deploy-plugins](deploy-plugins/index.md) (14 concepts)
 
-### [deploy-session-rename.mjs](deploy-session-rename.mjs/index.md) — 1 concepts
-
-- [deploy-session-rename](deploy-session-rename/index.md) (1 concepts)
-
 ### [lib](lib/index.md) — 278 concepts
 
 - [lib/tokens/modelsdev-pricing](lib/tokens/modelsdev-pricing/index.md) (50 concepts)
 - [lib/tokens/quota-stats](lib/tokens/quota-stats/index.md) (34 concepts)
 - [lib/tokens/opencode-storage](lib/tokens/opencode-storage/index.md) (29 concepts)
-- [lib/tokens/quota-stats-format](lib/tokens/quota-stats-format/index.md) (20 concepts) — Use markdown-conceal for proper TUI alignment (strips markdown syntax for width 
+- [lib/tokens/quota-stats-format](lib/tokens/quota-stats-format/index.md) (20 concepts) — Use markdown-conceal for proper TUI alignment (strips markdown syntax for width)
 - [lib/tokens/format-utils](lib/tokens/format-utils/index.md) (18 concepts)
 - [lib/tokens/opencode-sqlite](lib/tokens/opencode-sqlite/index.md) (17 concepts)
 - [lib/session-rename](lib/session-rename/index.md) (14 concepts)

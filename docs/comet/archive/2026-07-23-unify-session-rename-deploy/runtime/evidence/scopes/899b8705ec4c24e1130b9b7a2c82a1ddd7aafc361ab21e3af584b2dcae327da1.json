@@ -1,0 +1,215 @@
+{
+  "schema": "comet.native.implementation-scope.v2",
+  "contractHash": "ba05b638554365af7a462810c2e834ed092636b0541a5d25cec7eae01b9f4af5",
+  "baselineProjectionRef": "runtime/evidence/snapshots/86aa6cd6da5e50e507cd24f169569db978a13f757fd61fe18e01ccc4a57e0d37.json",
+  "baselineProjectionHash": "86aa6cd6da5e50e507cd24f169569db978a13f757fd61fe18e01ccc4a57e0d37",
+  "currentProjectionRef": "runtime/evidence/snapshots/62beec29a6c620d98c5360c85ca2bf32d5d1ed56664bc256746d7bc83f2ab54a.json",
+  "currentProjectionHash": "62beec29a6c620d98c5360c85ca2bf32d5d1ed56664bc256746d7bc83f2ab54a",
+  "complete": true,
+  "declaredArtifacts": [
+    {
+      "path": "README.md",
+      "kind": "file"
+    },
+    {
+      "path": "build-session-rename.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "deploy-plugins.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "deploy-session-rename.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "okf_bundle/SUMMARY.md",
+      "kind": "file"
+    },
+    {
+      "path": "package.json",
+      "kind": "file"
+    },
+    {
+      "path": "tests/okf-bundle.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/plugin-wiring.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/session-rename-deploy.test.mjs",
+      "kind": "file"
+    }
+  ],
+  "changes": [
+    {
+      "path": "README.md",
+      "kind": "modified",
+      "before": {
+        "hash": "927974f564a568e34218b9c4b286b7ef7fadfecdc07104adac65a9c6ba6838bb",
+        "size": 42142
+      },
+      "after": {
+        "hash": "76aafe5f4788a3daf93c82c2aabe2f31f4c9fcd52f444d4ef00056a379afd91f",
+        "size": 41994
+      },
+      "attributedTo": [
+        {
+          "path": "README.md",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "build-session-rename.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "290288f5265662990dc797eed930941bdb6fff48dd64eb29f0b7f7e779f5b56e",
+        "size": 467
+      },
+      "after": {
+        "hash": "32925f313907fb47b5e0075049c3606d8d66c2f9109510e4ab9c0f071d82ecef",
+        "size": 665
+      },
+      "attributedTo": [
+        {
+          "path": "build-session-rename.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "deploy-plugins.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "761450cc441bd781014145633f0d5027cfaa1fdcf1ae002323e157b0d44ac80d",
+        "size": 8578
+      },
+      "after": {
+        "hash": "e5f17f218861570405d96f344d9545d8a430ae60b299f3640209cfbfe32c9c47",
+        "size": 8952
+      },
+      "attributedTo": [
+        {
+          "path": "deploy-plugins.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "deploy-session-rename.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "e04e88aae903d4084de639054ee6d656c991b51b03d8717876e0b298f5d1a571",
+        "size": 948
+      },
+      "after": {
+        "hash": "5073bbf6e9b6bf3397d99458582807d798303a0d1c081be08c69084445f99819",
+        "size": 367
+      },
+      "attributedTo": [
+        {
+          "path": "deploy-session-rename.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "okf_bundle/SUMMARY.md",
+      "kind": "modified",
+      "before": {
+        "hash": "79c503f7960e4adedb7f10ea96a5e2fbaa5d868fa3cd34ea86fed295e5840ee2",
+        "size": 5498
+      },
+      "after": {
+        "hash": "21f275411de6e5166449531fe3e0c024f669f8bdaa024f47db2dce87e47a1a12",
+        "size": 5342
+      },
+      "attributedTo": [
+        {
+          "path": "okf_bundle/SUMMARY.md",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "package.json",
+      "kind": "modified",
+      "before": {
+        "hash": "e530ca3b8bf3758913b75c5751b26bddca08d842c45f0bc259d8b7c305b04bc4",
+        "size": 1705
+      },
+      "after": {
+        "hash": "4ae044aae6d5d0aedcd43ac6750351817ebf1824a7cf843dfc635dd1faa4b8ff",
+        "size": 1642
+      },
+      "attributedTo": [
+        {
+          "path": "package.json",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/okf-bundle.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "9af4eb2d2fcd8a37d93d72db1c1689be026f82a186e2e8ac895893d97fe30b32",
+        "size": 751
+      },
+      "after": {
+        "hash": "60184388396adb3c0e38278baad75ec6628076cd2b9aed77aca9aabe8fcbcca6",
+        "size": 627
+      },
+      "attributedTo": [
+        {
+          "path": "tests/okf-bundle.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/plugin-wiring.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "7745c5a98cad5412b72602ad0af65aeb19069804add17f64083d9a1cbe49680d",
+        "size": 32475
+      },
+      "after": {
+        "hash": "54bf078015be175ebd80471119532f3fb42a0aff7e7028fec966f5602ef02139",
+        "size": 32309
+      },
+      "attributedTo": [
+        {
+          "path": "tests/plugin-wiring.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/session-rename-deploy.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "fd6027ed380ae7236312f4331b16f6765ed4238d8b962b6917abb9c5e528b225",
+        "size": 2377
+      },
+      "after": {
+        "hash": "fbf7a2a4168788532ac9fe23ed4bcd737143e581ab009c5b690f52ff9d90daef",
+        "size": 2054
+      },
+      "attributedTo": [
+        {
+          "path": "tests/session-rename-deploy.test.mjs",
+          "kind": "file"
+        }
+      ]
+    }
+  ],
+  "unattributed": [],
+  "unresolvedScopes": [],
+  "noCodeReason": null,
+  "scopeHash": "899b8705ec4c24e1130b9b7a2c82a1ddd7aafc361ab21e3af584b2dcae327da1"
+}
