@@ -102,6 +102,9 @@ Fully restart OpenCode after deployment.
 
 - **Reactive server list** — shows OpenCode's synchronized LSP IDs in source
   order without polling.
+- **Operating directory** — each row shows the basename of the server's `root`
+  (the directory where it operates), right-aligned in the muted label color.
+  Servers with an empty `root` show the id alone.
 - **Status-colored bullets** — successful servers use the success color,
   failed servers use the error color, and unknown statuses remain in the list
   with a muted bullet.
@@ -450,16 +453,19 @@ Spent                           $0.00
 
 ### LSP sidebar layouts
 
-LSP IDs stay in synchronized source order. Long IDs truncate with an ellipsis
-so expanded lines fit within 37 cells and collapsed lines fit within 36 cells.
+LSP IDs stay in synchronized source order. Each row also shows the basename of
+the server's operating directory (`root`), right-aligned in the muted label
+color; a server with an empty `root` shows the id alone. Long IDs truncate with
+an ellipsis so expanded lines fit within 37 cells and collapsed lines fit within
+36 cells.
 
 #### Expanded
 
 ```text
 ▼ LSP
 -------------------------------------
-• typescript
-• yaml-ls
+• typescript           opencode-tools
+• yaml-ls              opencode-tools
 -------------------------------------
 ```
 

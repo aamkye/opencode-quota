@@ -1,7 +1,9 @@
+import { pathBasename } from "../presentation/format.js"
 import type { PanelStatus } from "../presentation/types.js"
 
 export type LspStatusRow = {
   id: string
+  label: string
   status: PanelStatus
 }
 
@@ -12,6 +14,8 @@ export type LspPanelModel = {
 
 type LspEntry = {
   id: string
+  name: string
+  root: string
   status: string
 }
 
@@ -23,7 +27,11 @@ function statusRole(status: string): PanelStatus {
 
 export function createLspPanelModel(entries: readonly LspEntry[]): LspPanelModel {
   return {
-    rows: entries.map((entry) => ({ id: entry.id, status: statusRole(entry.status) })),
+    rows: entries.map((entry) => ({
+      id: entry.id,
+      label: pathBasename(entry.root),
+      status: statusRole(entry.status),
+    })),
     total: entries.length,
   }
 }

@@ -202,8 +202,8 @@ Spent                          $0.00 | 13. cost of used tokens; 14. no trailing 
 ```
 ▼ LSP                                | 1. plain name; 2. no used/total; 3. no percent; 4. no reset time; 5. no spacer
 ------------------------------------ |
-• typescript                         |
-• yaml-ls                            |
+• typescript          opencode-tools | 6. basename of the server root dir, right-aligned and muted; empty root shows the id alone
+• yaml-ls             opencode-tools |
 ------------------------------------ |
 ```
 

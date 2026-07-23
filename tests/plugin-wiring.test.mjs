@@ -307,8 +307,8 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     ["Expanded", [
       "▼ LSP",
       "-".repeat(37),
-      "• typescript",
-      "• yaml-ls",
+      "• typescript           opencode-tools",
+      "• yaml-ls              opencode-tools",
       "-".repeat(37),
     ]],
     ["Expanded, empty", [

@@ -1,0 +1,237 @@
+{
+  "schema": "comet.native.implementation-scope.v2",
+  "contractHash": "9300d6b515273052916b87eb3f47937708cf257bca737b210c1da20c9622aa8e",
+  "baselineProjectionRef": "runtime/evidence/snapshots/0defc46be4b91d98e5418f8cde01107fdbf226bc8e339d55feb5847277642577.json",
+  "baselineProjectionHash": "0defc46be4b91d98e5418f8cde01107fdbf226bc8e339d55feb5847277642577",
+  "currentProjectionRef": "runtime/evidence/snapshots/bf880c45da72716476a711a7c85e249c2ac300672544ec5a1062168353172b16.json",
+  "currentProjectionHash": "bf880c45da72716476a711a7c85e249c2ac300672544ec5a1062168353172b16",
+  "complete": true,
+  "declaredArtifacts": [
+    {
+      "path": "AGENTS.md",
+      "kind": "file"
+    },
+    {
+      "path": "README.md",
+      "kind": "file"
+    },
+    {
+      "path": "tests/lsp-model.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/lsp-mounted.fixture.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tests/lsp-mounted.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/plugin-wiring.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/presentation-format.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tui/features/lsp.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tui/lsp.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/presentation/format.ts",
+      "kind": "file"
+    }
+  ],
+  "changes": [
+    {
+      "path": "AGENTS.md",
+      "kind": "modified",
+      "before": {
+        "hash": "cbb652e86cb58a80a5c0d5d9b47b7c70c9b19d6b4be6f203300139da5f886586",
+        "size": 17163
+      },
+      "after": {
+        "hash": "00c35d5ba03f1092861dfd0e35ad1198f3faf0274beaa16aec0a397416c8c394",
+        "size": 17254
+      },
+      "attributedTo": [
+        {
+          "path": "AGENTS.md",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "README.md",
+      "kind": "modified",
+      "before": {
+        "hash": "76aafe5f4788a3daf93c82c2aabe2f31f4c9fcd52f444d4ef00056a379afd91f",
+        "size": 41994
+      },
+      "after": {
+        "hash": "6a85582456d4d6c48a1a5a0cb3185c844f5e460c592dd475b94b52e2137d2a0e",
+        "size": 42424
+      },
+      "attributedTo": [
+        {
+          "path": "README.md",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/lsp-model.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "9f4d6024f20880b0c31f6090cecf5a4044f2709788b5abc9ac7d146f77501e08",
+        "size": 1318
+      },
+      "after": {
+        "hash": "ba338f3443a30e8bcd466033b9ec2b3da0ae74712b98d859cf815830036438f8",
+        "size": 2083
+      },
+      "attributedTo": [
+        {
+          "path": "tests/lsp-model.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/lsp-mounted.fixture.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "4f52dc1dd81efca552edb687b05d1f1b423bf5f31075b1b0785b06a443d2a136",
+        "size": 7704
+      },
+      "after": {
+        "hash": "0a6ced704769833d4513433d54ebf15a6d72116ee0a8a1e80d8a775324cef276",
+        "size": 8564
+      },
+      "attributedTo": [
+        {
+          "path": "tests/lsp-mounted.fixture.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/lsp-mounted.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "2c2d7b8003c089f01d2ec765f70649623fbea51571abfe6235641f19240bb078",
+        "size": 6923
+      },
+      "after": {
+        "hash": "47a4cedb2c893920401c6974af72f8d31587f5902d8da2c06f5dc6bf9a7df77d",
+        "size": 8628
+      },
+      "attributedTo": [
+        {
+          "path": "tests/lsp-mounted.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/plugin-wiring.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "54bf078015be175ebd80471119532f3fb42a0aff7e7028fec966f5602ef02139",
+        "size": 32309
+      },
+      "after": {
+        "hash": "d5e107dfeff21d02862ed27035a2202f18b6c8d81cc1b30d426d039e5ac97930",
+        "size": 32362
+      },
+      "attributedTo": [
+        {
+          "path": "tests/plugin-wiring.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/presentation-format.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "b50f6c6cf9820195298fcefcc0505b546bb002bd690ede6e802ef8f288ab70e8",
+        "size": 2067
+      },
+      "after": {
+        "hash": "f11a29a94d1b7a760890401ac9c0199d3679476c8a50747ca6798e4babab9185",
+        "size": 2525
+      },
+      "attributedTo": [
+        {
+          "path": "tests/presentation-format.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/features/lsp.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "73724d6c89cd81634579bbe90887c330d79b990b8f9ca5083ff0f89829f45d04",
+        "size": 638
+      },
+      "after": {
+        "hash": "02d1118ba906efe5972c42085eec1188686558bc5907c8a400cf082b7692a019",
+        "size": 797
+      },
+      "attributedTo": [
+        {
+          "path": "tui/features/lsp.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/lsp.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "daf3c04db3b1b395e916ff6a752a6aa55b4b43fbc9fd5e50be41721b8da163e1",
+        "size": 2219
+      },
+      "after": {
+        "hash": "e22644f3425d0530e0530a52f500c55fa664d85a77cbc4abd542dea852f7fd44",
+        "size": 2677
+      },
+      "attributedTo": [
+        {
+          "path": "tui/lsp.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/presentation/format.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "785ba418af866b6dbf9e75105cfafdf2862d6e259979433ee0db3237ee1bb009",
+        "size": 3925
+      },
+      "after": {
+        "hash": "26f78f3ebb8f224142f76097160465404a73a050d9b1d94c6a9dddc804d7968a",
+        "size": 4300
+      },
+      "attributedTo": [
+        {
+          "path": "tui/presentation/format.ts",
+          "kind": "file"
+        }
+      ]
+    }
+  ],
+  "unattributed": [],
+  "unresolvedScopes": [],
+  "noCodeReason": null,
+  "scopeHash": "0cad1447eee7e5e8da2156747ee941f22163863027dd1f49991b8a6be942e658"
+}

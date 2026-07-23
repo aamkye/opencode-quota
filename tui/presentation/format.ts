@@ -102,3 +102,14 @@ export function truncateText(text: string, width: number, marker = "…"): strin
   if (available <= marker.length) return marker.slice(0, available)
   return text.slice(0, available - marker.length) + marker
 }
+
+export function pathBasename(path: string): string {
+  if (typeof path !== "string" || path.length === 0) return ""
+  const SLASH = 47
+  let end = path.length
+  while (end > 0 && path.charCodeAt(end - 1) === SLASH) end -= 1
+  if (end === 0) return ""
+  let start = end
+  while (start > 0 && path.charCodeAt(start - 1) !== SLASH) start -= 1
+  return path.slice(start, end)
+}

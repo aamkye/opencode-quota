@@ -36,8 +36,10 @@ type LspView = {
   dividerCount: number
   rows: Array<{
     id: string
+    label: string
     bullet: string
     bulletColor: unknown
+    labelColor: unknown
     renderedText: string
     cells: number
     idProps: Record<string, unknown>
@@ -117,16 +119,28 @@ function readLspView(tree: unknown, width: number): LspView {
   const rows = bullets.map((bullet) => {
     const row = bullet.parent
     if (!row) throw new Error("LSP status bullet is missing its row")
-    const id = mounted.find((node) => node.parent === row && node.element.type === "text" && node !== bullet)
+    const children = mounted.filter((node) => node.parent === row)
+    const id = children.find((node) => node.element.type === "text" && node !== bullet && textOf(node) !== " ")
+    const labelBox = children.find((node) => node.element.type === "box")
+    const label = labelBox ? mounted.find((node) => node.parent === labelBox && node.element.type === "text") : undefined
     const bulletWidth = Number(bullet.element.props.width)
-    const available = Math.max(0, width - bulletWidth)
-    const renderedID = truncate(textOf(id), available)
+    const gapWidth = children
+      .filter((node) => node.element.type === "text" && textOf(node) === " ")
+      .reduce((total, node) => total + Number(node.element.props.width), 0)
+    const labelWidth = labelBox ? Number(labelBox.element.props.width) : 0
+    const fixedNameWidth = Number(id?.element.props.width)
+    const nameWidth = Number.isFinite(fixedNameWidth) && fixedNameWidth > 0
+      ? fixedNameWidth
+      : Math.max(0, width - bulletWidth - gapWidth - labelWidth)
+    const renderedID = truncate(textOf(id), nameWidth)
     return {
       id: textOf(id),
+      label: textOf(label),
       bullet: textOf(bullet),
       bulletColor: bullet.element.props.fg,
-      renderedText: `${textOf(bullet)}${renderedID}`,
-      cells: bulletWidth + renderedID.length,
+      labelColor: label?.element.props.fg,
+      renderedText: `${textOf(bullet)}${renderedID}${" ".repeat(gapWidth)}${textOf(label)}`,
+      cells: bulletWidth + nameWidth + gapWidth + labelWidth,
       idProps: id?.element.props ?? {},
     }
   })

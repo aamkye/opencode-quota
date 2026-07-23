@@ -15,7 +15,7 @@ const entries = [
   { id: "yaml-ls", name: "YAML", root: "/workspace/yaml", status: "error" },
 ]
 
-test("registers LSP at slot 150 and renders ordered IDs with semantic bullets", async () => {
+test("registers LSP at slot 150 and renders ordered IDs with semantic bullets and root basenames", async () => {
   const mounted = await mountLspPanel({ entries })
   try {
     const view = mounted.view()
@@ -29,6 +29,11 @@ test("registers LSP at slot 150 and renders ordered IDs with semantic bullets", 
       ["typescript", "• ", "#00ff00"],
       ["future-ls", "• ", "#888888"],
       ["yaml-ls", "• ", "#ff0000"],
+    ])
+    assert.deepEqual(view.rows.map((row) => [row.label, row.labelColor]), [
+      ["ts", "#888888"],
+      ["future", "#888888"],
+      ["yaml", "#888888"],
     ])
     assert.equal(JSON.stringify(view).includes("TypeScript"), false)
     assert.equal(JSON.stringify(view).includes("/workspace"), false)
@@ -119,7 +124,7 @@ test("ignores persisted and unsupported defaults for an empty list", async () =>
 test("truncates long IDs inside 37 and 36 cells without trailing whitespace", async () => {
   const longID = "typescript-language-server-with-an-extremely-long-id"
   const mounted = await mountLspPanel({
-    entries: [{ id: longID, name: "ignored", root: "/ignored", status: "connected" }],
+    entries: [{ id: longID, name: "ignored", root: "", status: "connected" }],
   })
   try {
     const wide = mounted.view(37).rows[0]
@@ -130,6 +135,7 @@ test("truncates long IDs inside 37 and 36 cells without trailing whitespace", as
     assert.equal(narrow.renderedText.length, 36)
     assert.equal(wide.renderedText.trimEnd(), wide.renderedText)
     assert.equal(narrow.renderedText.trimEnd(), narrow.renderedText)
+    assert.equal(wide.label, "")
     assert.equal(wide.bullet, "• ")
     assert.deepEqual({
       flexBasis: wide.idProps.flexBasis,
@@ -150,6 +156,46 @@ test("truncates long IDs inside 37 and 36 cells without trailing whitespace", as
       truncate: true,
       width: undefined,
     })
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("renders the root basename right-aligned in the muted color without leaking the full path", async () => {
+  const mounted = await mountLspPanel({
+    entries: [{
+      id: "typescript",
+      name: "TypeScript and JavaScript Language Server",
+      root: "/Users/aam/Projects/priv/opencode-tools",
+      status: "connected",
+    }],
+  })
+  try {
+    const row = mounted.view().rows[0]
+    assert.equal(row.id, "typescript")
+    assert.equal(row.bulletColor, "#00ff00")
+    assert.equal(row.label, "opencode-tools")
+    assert.equal(row.labelColor, "#888888")
+    assert.equal(row.renderedText, "• typescript opencode-tools")
+    assert.equal(row.renderedText.trimEnd(), row.renderedText)
+    assert.equal(JSON.stringify(mounted.view()).includes("/Users"), false)
+    assert.equal(JSON.stringify(mounted.view()).includes("Projects"), false)
+    assert.equal(JSON.stringify(mounted.view()).includes("TypeScript"), false)
+  } finally {
+    await mounted.dispose()
+  }
+})
+
+test("omits the label for an empty root and keeps the row trailing-whitespace free", async () => {
+  const mounted = await mountLspPanel({
+    entries: [{ id: "typescript", name: "TypeScript", root: "", status: "connected" }],
+  })
+  try {
+    const row = mounted.view().rows[0]
+    assert.equal(row.label, "")
+    assert.equal(row.labelColor, undefined)
+    assert.equal(row.renderedText, "• typescript")
+    assert.equal(row.renderedText.trimEnd(), row.renderedText)
   } finally {
     await mounted.dispose()
   }

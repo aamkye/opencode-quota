@@ -1,0 +1,114 @@
+{
+  "schema": "comet.native.verification-evidence.v1",
+  "change": "lsp-show-operating-dir",
+  "sourceRevision": 3,
+  "result": "pass",
+  "freshness": "complete",
+  "contractHash": "9300d6b515273052916b87eb3f47937708cf257bca737b210c1da20c9622aa8e",
+  "acceptanceCriteriaHash": "14a001fffa08c7d4c8b4ba6a9b4706914da02021f4c2a3bc0e1a3c20f3178449",
+  "implementationScopeRef": "runtime/evidence/scopes/0cad1447eee7e5e8da2156747ee941f22163863027dd1f49991b8a6be942e658.json",
+  "implementationScopeHash": "0cad1447eee7e5e8da2156747ee941f22163863027dd1f49991b8a6be942e658",
+  "reportRef": "verification.md",
+  "reportHash": "45504b77e4900ad2b1b3aa4d637bddc5ecf24a62f6bc5515474d9ad605f33c3f",
+  "acceptanceTrace": {
+    "schema": "comet.native.acceptance-trace.v1",
+    "nativeRootRef": "docs/comet",
+    "criteriaHash": "14a001fffa08c7d4c8b4ba6a9b4706914da02021f4c2a3bc0e1a3c20f3178449",
+    "total": 9,
+    "evidenced": 9,
+    "skipped": 0,
+    "entries": [
+      {
+        "acceptanceId": "acceptance-2fb05ad860b1901d75f965fe8027bef728709517edec9d58e00423082b0f92d6",
+        "kind": "spec-scenario",
+        "source": "specs/lsp-show-operating-dir/spec.md",
+        "evidenceRefs": [
+          "tests/lsp-model.test.mjs",
+          "tests/lsp-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-458c8d69361e102067982e8690fcea285b0c2f6524b9ff80b78e189504d1f20a",
+        "kind": "spec-scenario",
+        "source": "specs/lsp-show-operating-dir/spec.md",
+        "evidenceRefs": [
+          "tests/lsp-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-5044dc3a473335a092ec978663284ba7184ab6c98125b47d2081019ca13715f7",
+        "kind": "spec-scenario",
+        "source": "specs/lsp-show-operating-dir/spec.md",
+        "evidenceRefs": [
+          "tests/lsp-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-587fe71819edc9324453199632841d4591fef97ac319bf5272cd2a88fee86174",
+        "kind": "spec-scenario",
+        "source": "specs/lsp-show-operating-dir/spec.md",
+        "evidenceRefs": [
+          "tests/lsp-model.test.mjs",
+          "tests/lsp-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-79601ff87a7ced783fa530d7c1beb227eecb34365c50e54922d931cd624ed1b4",
+        "kind": "spec-scenario",
+        "source": "specs/lsp-show-operating-dir/spec.md",
+        "evidenceRefs": [
+          "tests/lsp-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-7c49ddca9363257d83ca491a2036b17c8a38ad823ec284addec0be308819c869",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/lsp-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-838096563f4bd59350d69f1faf14063e1ead31150d2e1bd71f06fddc895609d0",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/lsp-model.test.mjs",
+          "tests/lsp-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-8dc91252a21c1c9a7760fbf8070f9c4a06e3f7d77926e68fb5f3fe3db879c9ef",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/lsp-model.test.mjs",
+          "tests/lsp-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-cfef3cc466ea342187bd88e57508f58184a8f241757630429ea9421f44248f9b",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/lsp-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      }
+    ],
+    "traceHash": "18ba073a02c2d71e6246bab48c79c3358f70100e3e3869eba4a1b92bc2b87f35"
+  },
+  "partialAllowanceRef": null,
+  "partialAllowanceHash": null,
+  "receiptRef": null,
+  "createdAt": "2026-07-23T14:08:32.834Z",
+  "envelopeHash": "fa48bbeee518a5d5da371db19c7f91083641e12ce276478200e961a609ed9f6e"
+}

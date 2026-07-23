@@ -9,6 +9,7 @@ const {
   formatDuration,
   formatPercent,
   formatTimer,
+  pathBasename,
   truncateText,
 } = await import("../.tmp-test/presentation-format.mjs")
 
@@ -58,4 +59,14 @@ test("renders only semantic timer states", () => {
   assert.equal(formatTimer({ state: "idle" }), "resets in -")
   assert.equal(formatTimer({ state: "countdown", epoch: 3_660_000 }, 0), "resets in 1h 1m")
   assert.equal(formatTimer({ state: "expired" }), "reset pending")
+})
+
+test("returns the final path segment and ignores trailing separators", () => {
+  assert.equal(pathBasename("/Users/aam/Projects/priv/opencode-tools"), "opencode-tools")
+  assert.equal(pathBasename("/srv/app/"), "app")
+  assert.equal(pathBasename("relative-dir"), "relative-dir")
+  assert.equal(pathBasename("/"), "")
+  assert.equal(pathBasename("///"), "")
+  assert.equal(pathBasename(""), "")
+  assert.equal(pathBasename(undefined), "")
 })

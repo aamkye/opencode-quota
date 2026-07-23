@@ -1,0 +1,11 @@
+{
+  "schema": "comet.native.archive-cas.v1",
+  "operationId": "spec-1-lsp-show-operating-dir",
+  "role": "post",
+  "hash": "bcf426d4d600b0e5d02637eb7b1e02bb39b98369ae8977928523f8ea8f62c839",
+  "identity": {
+    "dev": 16777232,
+    "ino": 353057059,
+    "birthtimeMs": 1784815742411.2068
+  }
+}

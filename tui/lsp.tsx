@@ -1,9 +1,11 @@
 import { createEffect, createMemo, createSignal, For, Show, type JSX } from "solid-js"
 
 import {
+  allocateStatusRow,
   CompactPanel,
   createLspPanelModel,
   defineTuiPlugin,
+  PANEL_MAX_CELLS,
   pluginDescriptor,
   resolveCollapseDefault,
   type LspStatusRow,
@@ -12,6 +14,7 @@ import {
 
 const descriptor = pluginDescriptor("lsp")
 function LspRow(props: { row: LspStatusRow; theme: () => PanelTheme }) {
+  const allocation = () => allocateStatusRow(PANEL_MAX_CELLS, props.row.label.length)
   return (
     <box flexDirection="row" width="100%" overflow="hidden">
       <text width={2} flexShrink={0} fg={props.theme()[props.row.status]}>• </text>
@@ -26,6 +29,12 @@ function LspRow(props: { row: LspStatusRow; theme: () => PanelTheme }) {
       >
         {props.row.id}
       </text>
+      <Show when={props.row.label !== ""}>
+        <text width={allocation().beforeLabelGap} flexShrink={0}> </text>
+        <box width={allocation().label} flexShrink={0} overflow="hidden" justifyContent="flex-end">
+          <text fg={props.theme().textMuted} wrapMode="none">{props.row.label}</text>
+        </box>
+      </Show>
     </box>
   )
 }

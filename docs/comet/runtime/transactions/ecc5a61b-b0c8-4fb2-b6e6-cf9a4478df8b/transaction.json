@@ -1,0 +1,27 @@
+{
+  "schema": "comet.native.transaction.v2",
+  "id": "ecc5a61b-b0c8-4fb2-b6e6-cf9a4478df8b",
+  "kind": "archive",
+  "status": "committed",
+  "change": "lsp-show-operating-dir",
+  "createdAt": "2026-07-23T14:09:01.086Z",
+  "preflightHash": "470398177f7e9be11ee518911e914502e87b73e05285b0348ec33418b1a53315",
+  "operations": [
+    {
+      "id": "spec-1-lsp-show-operating-dir",
+      "type": "write",
+      "target": "specs/lsp-show-operating-dir/spec.md",
+      "staged": "runtime/transactions/ecc5a61b-b0c8-4fb2-b6e6-cf9a4478df8b/staged/specs/lsp-show-operating-dir/spec.md",
+      "expectedTargetHash": null,
+      "stagedHash": "bcf426d4d600b0e5d02637eb7b1e02bb39b98369ae8977928523f8ea8f62c839"
+    },
+    {
+      "id": "archive-change",
+      "type": "move",
+      "source": "changes/lsp-show-operating-dir",
+      "target": "archive/2026-07-23-lsp-show-operating-dir",
+      "expectedSourceHash": "af5d213dc7068ebc2ce0368afd9fb9e49914f9067852e423933330dc5d837d19",
+      "expectedTargetHash": null
+    }
+  ]
+}
