@@ -1,0 +1,39 @@
+{
+  "schema": "comet.native.implementation-scope.v2",
+  "contractHash": "af03814bddfed797575f3b836a540047544c9d36836e345158d1f132a741be76",
+  "baselineProjectionRef": "runtime/evidence/snapshots/15431ee7c462988c9e31d85282ba265c6952fe46442daff41ad7dc67b467f8e1.json",
+  "baselineProjectionHash": "15431ee7c462988c9e31d85282ba265c6952fe46442daff41ad7dc67b467f8e1",
+  "currentProjectionRef": "runtime/evidence/snapshots/f345a986dcedf5d1e0fdcf87d42fb22356281045f26b1f24c7f0d0807c3d57f5.json",
+  "currentProjectionHash": "f345a986dcedf5d1e0fdcf87d42fb22356281045f26b1f24c7f0d0807c3d57f5",
+  "complete": true,
+  "declaredArtifacts": [
+    {
+      "path": "README.md",
+      "kind": "file"
+    }
+  ],
+  "changes": [
+    {
+      "path": "README.md",
+      "kind": "modified",
+      "before": {
+        "hash": "415af6deae4ba6b64d9b8c2dd72804bff76af07c04778014590873a3537c6051",
+        "size": 36106
+      },
+      "after": {
+        "hash": "927974f564a568e34218b9c4b286b7ef7fadfecdc07104adac65a9c6ba6838bb",
+        "size": 42142
+      },
+      "attributedTo": [
+        {
+          "path": "README.md",
+          "kind": "file"
+        }
+      ]
+    }
+  ],
+  "unattributed": [],
+  "unresolvedScopes": [],
+  "noCodeReason": null,
+  "scopeHash": "ff4296556475bdf14e6e7d4d2756c2b2083197e9350bbcda3a9b2f976cf84c57"
+}

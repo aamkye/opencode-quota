@@ -6,14 +6,16 @@ import {
   createMcpPanelModel,
   defineTuiPlugin,
   pluginDescriptor,
+  resolveCollapseDefault,
 } from "../shared/opencode-tools-shared.js"
 
 const descriptor = pluginDescriptor("mcp")
-const COLLAPSED_KEY = "aamkye.opencode-tools-mcp.collapsed"
+const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
+  const defaultCollapsed = resolveCollapseDefault(options, false).collapsed
+  const [sessionID, setSessionID] = createSignal("")
 
-const plugin = defineTuiPlugin(descriptor, (_context, api) => {
   function McpPanel() {
-    const [collapsed, setCollapsed] = createSignal(api.kv.get(COLLAPSED_KEY, false))
+    const [collapsed, setCollapsed] = createSignal(defaultCollapsed)
     const [pendingExpand, setPendingExpand] = createSignal(false)
     const model = createMemo(() => createMcpPanelModel(api.state.mcp()))
     const isCollapsed = () => model().total === 0 || collapsed()
@@ -23,10 +25,15 @@ const plugin = defineTuiPlugin(descriptor, (_context, api) => {
     }
 
     createEffect(() => {
+      sessionID()
+      setCollapsed(defaultCollapsed)
+      setPendingExpand(false)
+    })
+
+    createEffect(() => {
       if (model().total === 0 || !pendingExpand()) return
       setPendingExpand(false)
       setCollapsed(false)
-      api.kv.set(COLLAPSED_KEY, false)
     })
 
     const toggle = () => {
@@ -35,9 +42,7 @@ const plugin = defineTuiPlugin(descriptor, (_context, api) => {
         return
       }
       setPendingExpand(false)
-      const next = !collapsed()
-      setCollapsed(next)
-      api.kv.set(COLLAPSED_KEY, next)
+      setCollapsed((current) => !current)
     }
 
     const render = () => (
@@ -68,7 +73,8 @@ const plugin = defineTuiPlugin(descriptor, (_context, api) => {
   api.slots.register({
     order: descriptor.slotOrder,
     slots: {
-      sidebar_content() {
+      sidebar_content(_ctx, props) {
+        setSessionID(props?.session_id ?? "")
         return <McpPanel />
       },
     },

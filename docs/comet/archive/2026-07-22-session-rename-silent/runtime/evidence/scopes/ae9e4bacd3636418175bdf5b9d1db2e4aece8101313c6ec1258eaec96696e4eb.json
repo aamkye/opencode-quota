@@ -1,0 +1,83 @@
+{
+  "schema": "comet.native.implementation-scope.v2",
+  "contractHash": "837c284f0a97e73b3d433b8f23eb754d5ef1612dbefda35e930967823d04035e",
+  "baselineProjectionRef": "runtime/evidence/snapshots/57e93a41a57b737a48e0b06dff9f9dbc1b55d9ba468c144ee746bec8ce3a0cf6.json",
+  "baselineProjectionHash": "57e93a41a57b737a48e0b06dff9f9dbc1b55d9ba468c144ee746bec8ce3a0cf6",
+  "currentProjectionRef": "runtime/evidence/snapshots/a9fae4407cc176695bf37498fb23dc7cf592bdc6cf4a0e0eaefad4dc487f6864.json",
+  "currentProjectionHash": "a9fae4407cc176695bf37498fb23dc7cf592bdc6cf4a0e0eaefad4dc487f6864",
+  "complete": true,
+  "declaredArtifacts": [
+    {
+      "path": "lib/session-rename.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tests/session-rename.lifecycle.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/session-rename.unit.test.mjs",
+      "kind": "file"
+    }
+  ],
+  "changes": [
+    {
+      "path": "lib/session-rename.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "f2e536634ef9b6014d6748de5042b74f6eb6de7d32258df7c2a0f24693ea258a",
+        "size": 7367
+      },
+      "after": {
+        "hash": "73d35528bb2b2084dfd7bb2afd13287e8624f113206c0e595071fae65385405d",
+        "size": 7394
+      },
+      "attributedTo": [
+        {
+          "path": "lib/session-rename.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/session-rename.lifecycle.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "1b68684c491cbf758deec43e83d1d41e28d113977f4ffb77af4c6059a80c077c",
+        "size": 14841
+      },
+      "after": {
+        "hash": "0081db2531e54eb3dce278baf094b139d33df7397c90cc59d9b7ad349e206679",
+        "size": 13989
+      },
+      "attributedTo": [
+        {
+          "path": "tests/session-rename.lifecycle.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/session-rename.unit.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "7285562354d5c085deb9165d81901d0fa2566a3a1bdb04d8fd8858e6a86926d7",
+        "size": 1961
+      },
+      "after": {
+        "hash": "57d35c18876b894da02ec27044e4a88540c1f662d9a29983c86b3f4f5d16045e",
+        "size": 3006
+      },
+      "attributedTo": [
+        {
+          "path": "tests/session-rename.unit.test.mjs",
+          "kind": "file"
+        }
+      ]
+    }
+  ],
+  "unattributed": [],
+  "unresolvedScopes": [],
+  "noCodeReason": null,
+  "scopeHash": "ae9e4bacd3636418175bdf5b9d1db2e4aece8101313c6ec1258eaec96696e4eb"
+}

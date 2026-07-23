@@ -1,0 +1,22 @@
+schema: comet.native.v3
+minimum_runtime_version: 3
+revision: 5
+name: tui-default-collapse-option
+language: en
+phase: archive
+brief: brief.md
+approval: confirmed
+approved_contract_hash: f1c3a39ca71dcf186e6d3af254a9bd1bc77a16c4e4e06fb8e08e894434860a12
+spec_changes:
+  - capability: tui-default-collapse-option
+    operation: create
+    source: specs/tui-default-collapse-option/spec.md
+    base_hash: null
+verification_result: pass
+verification_report: verification.md
+implementation_scope: runtime/evidence/scopes/60ca586014c015b445b3fad58eb23dff6d70871082452522c05dae669cb81e60.json
+verification_evidence: runtime/evidence/verifications/ba27439a886203ec2c9221ebd7f07298f68a4cf532950b1c04c2133e6e8bf2b4.json
+partial_allowance: null
+archived: true
+created_at: 2026-07-22
+run_id: bbf432cf-1b5a-4c80-a943-43f1dbafaa7c

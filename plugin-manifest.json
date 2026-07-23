@@ -20,7 +20,7 @@
     "source": "tui/context.tsx",
     "outfile": "opencode-tools-context.js",
     "slotOrder": 100,
-    "options": "none"
+    "options": "defaultState"
   },
   {
     "key": "ses-tokens",
@@ -28,7 +28,7 @@
     "source": "tui/ses-tokens.tsx",
     "outfile": "opencode-tools-ses-tokens.js",
     "slotOrder": 110,
-    "options": "none"
+    "options": "defaultState"
   },
   {
     "key": "subagent",
@@ -36,7 +36,7 @@
     "source": "tui/subagent.tsx",
     "outfile": "opencode-tools-subagent.js",
     "slotOrder": 120,
-    "options": "none"
+    "options": "defaultState"
   },
   {
     "key": "quota",
@@ -52,7 +52,7 @@
     "source": "tui/mcp.tsx",
     "outfile": "opencode-tools-mcp.js",
     "slotOrder": 140,
-    "options": "none"
+    "options": "defaultState"
   },
   {
     "key": "lsp",
@@ -60,7 +60,7 @@
     "source": "tui/lsp.tsx",
     "outfile": "opencode-tools-lsp.js",
     "slotOrder": 150,
-    "options": "none"
+    "options": "defaultState"
   },
   {
     "key": "todo",
@@ -68,6 +68,6 @@
     "source": "tui/todo.tsx",
     "outfile": "opencode-tools-todo.js",
     "slotOrder": 160,
-    "options": "none"
+    "options": "defaultState"
   }
 ]

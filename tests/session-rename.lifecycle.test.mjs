@@ -48,7 +48,7 @@ test("registers the session rename command without changing unrelated config", a
   assert.equal(config.agent.title.disable, true)
 })
 
-test("updates the active session for a valid supplied title and aborts the command", async () => {
+test("updates the active session for a valid supplied title and aborts the command silently", async () => {
   const calls = []
   const hooks = createSessionRenameHooks({ session: {
     update: async (request) => { calls.push(["update", request]); return { data: {} } },
@@ -61,14 +61,10 @@ test("updates the active session for a valid supplied title and aborts the comma
 
   assert.deepEqual(calls, [
     ["update", { path: { id: "parent-1" }, body: { title: "Project planning notes" } }],
-    ["prompt", { path: { id: "parent-1" }, body: {
-      noReply: true,
-      parts: [{ type: "text", text: "Session renamed to \"Project planning notes\".", ignored: true }],
-    } }],
   ])
 })
 
-test("reports usage without updating for an invalid supplied title and aborts the command", async () => {
+test("posts a specific error without updating for an invalid supplied title and aborts the command", async () => {
   const calls = []
   const hooks = createSessionRenameHooks({ session: {
     update: async (request) => { calls.push(["update", request]); return { data: {} } },
@@ -81,11 +77,11 @@ test("reports usage without updating for an invalid supplied title and aborts th
 
   assert.deepEqual(calls, [["prompt", { path: { id: "parent-1" }, body: {
     noReply: true,
-    parts: [{ type: "text", text: "Usage: /session-rename [3-8 word title]", ignored: true }],
+    parts: [{ type: "text", text: 'The session name "Too short" is invalid: it must be 3 to 8 words, but has 2.', ignored: true }],
   } }]])
 })
 
-test("warns, reports failure, and aborts when the direct update rejects", async () => {
+test("warns and stays silent when the direct update rejects", async () => {
   const warnings = []
   const calls = []
   const updateError = new Error("update unavailable")
@@ -99,13 +95,10 @@ test("warns, reports failure, and aborts when the direct update rejects", async 
   }))
 
   assert.deepEqual(warnings, [["update", "parent-1", updateError]])
-  assert.equal(calls.length, 1)
-  assert.equal(calls[0].path.id, "parent-1")
-  assert.equal(calls[0].body.noReply, true)
-  assert.equal(calls[0].body.parts[0].ignored, true)
+  assert.deepEqual(calls, [])
 })
 
-test("warns, reports failure, and aborts when the direct update resolves with an error", async () => {
+test("warns and stays silent when the direct update resolves with an error", async () => {
   const warnings = []
   const calls = []
   const updateError = new Error("update unavailable")
@@ -119,8 +112,7 @@ test("warns, reports failure, and aborts when the direct update resolves with an
   }))
 
   assert.deepEqual(warnings, [["update", "parent-1", updateError]])
-  assert.equal(calls.length, 1)
-  assert.equal(calls[0].body.parts[0].text, "Unable to rename this session.")
+  assert.deepEqual(calls, [])
 })
 
 test("logs default warnings as exact structured JSON", async () => {
@@ -151,37 +143,35 @@ test("logs default warnings as exact structured JSON", async () => {
   })
 })
 
-test("warns and aborts when command feedback rejects", async () => {
+test("warns and aborts when the invalid-title error prompt rejects", async () => {
   const warnings = []
   const feedbackError = new Error("prompt unavailable")
   const hooks = createSessionRenameHooks({ session: {
-    update: async () => ({ data: {} }),
     prompt: async () => { throw feedbackError },
   } }, (...warning) => { warnings.push(warning) })
 
   await handledError(hooks["command.execute.before"]({
-    command: "session-rename", arguments: "Project planning notes", sessionID: "parent-1",
+    command: "session-rename", arguments: "Too short", sessionID: "parent-1",
   }))
 
   assert.deepEqual(warnings, [["feedback", "parent-1", feedbackError]])
 })
 
-test("warns and aborts when command feedback resolves with an error", async () => {
+test("warns and aborts when the invalid-title error prompt resolves with an error", async () => {
   const warnings = []
   const feedbackError = new Error("prompt unavailable")
   const hooks = createSessionRenameHooks({ session: {
-    update: async () => ({ data: {} }),
     prompt: async () => ({ data: undefined, error: feedbackError }),
   } }, (...warning) => { warnings.push(warning) })
 
   await handledError(hooks["command.execute.before"]({
-    command: "session-rename", arguments: "Project planning notes", sessionID: "parent-1",
+    command: "session-rename", arguments: "Too short", sessionID: "parent-1",
   }))
 
   assert.deepEqual(warnings, [["feedback", "parent-1", feedbackError]])
 })
 
-test("generated rename resolves its model from the latest user message, cleans up its child, and aborts the command", async () => {
+test("generated rename resolves its model from the latest user message, cleans up its child, and aborts the command silently", async () => {
   const calls = []
   const hooks = createSessionRenameHooks({ session: {
     messages: async (request) => {
@@ -220,10 +210,6 @@ test("generated rename resolves its model from the latest user message, cleans u
     } }],
     ["delete", { path: { id: "title-child" } }],
     ["update", { path: { id: "parent-1" }, body: { title: "Plan reliable background jobs" } }],
-    ["prompt", { path: { id: "parent-1" }, body: {
-      noReply: true,
-      parts: [{ type: "text", text: "Session renamed to \"Plan reliable background jobs\".", ignored: true }],
-    } }],
   ])
 })
 
@@ -348,9 +334,7 @@ test("generated rename failure boundaries leave the parent unchanged and abort t
       assert.equal(calls.filter(([name]) => name === "delete").length, scenario.cleanup)
       assert.equal(calls.filter(([name]) => name === "update").length, scenario.warning === "update" ? 1 : 0)
       const feedback = calls.filter(([name, request]) => name === "prompt" && request.body.noReply)
-      assert.equal(feedback.length, 1)
-      assert.equal(feedback[0][1].body.parts[0].ignored, true)
-      assert.notEqual(feedback[0][1].body.parts[0].text, "Session renamed to \"Plan reliable background jobs\".")
+      assert.equal(feedback.length, 0)
     })
   }
 })

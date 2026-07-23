@@ -189,3 +189,5 @@ export { acquireService, defineTuiPlugin } from "../tui/runtime/plugin.js";
 export type { FeatureActivation, ServiceFactory, ServiceKey, ServiceLease, ServiceValue, TuiFeatureContext } from "../tui/runtime/plugin.js";
 export { pluginDescriptor, pluginManifest } from "../tui/runtime/manifest.js";
 export type { PluginKey, PluginManifestEntry } from "../tui/runtime/manifest.js";
+export { resolveCollapseDefault } from "../tui/features/collapse-options.js";
+export type { PanelCollapseState, ResolvedCollapseDefault } from "../tui/features/collapse-options.js";

@@ -7,7 +7,7 @@ export type PluginManifestEntry = {
   source: string
   outfile: string
   slotOrder?: number
-  options: "quota" | "none"
+  options: "quota" | "defaultState" | "none"
 }
 
 export const pluginManifest = manifest as readonly PluginManifestEntry[]

@@ -1,17 +1,16 @@
-import { createMemo, createSignal, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, type JSX } from "solid-js"
 
 import {
   CompactPanel,
   createContextPanelModel,
   defineTuiPlugin,
   pluginDescriptor,
+  resolveCollapseDefault,
   type PanelStatus,
   type PanelTheme,
 } from "../shared/opencode-tools-shared.js"
 
 const descriptor = pluginDescriptor("context")
-const COLLAPSED_KEY = "aamkye.opencode-tools-context.collapsed"
-
 function ContextMetricRow(props: {
   label: string
   value: string
@@ -28,21 +27,22 @@ function ContextMetricRow(props: {
   )
 }
 
-const plugin = defineTuiPlugin(descriptor, (_context, api) => {
+const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
   const [sessionID, setSessionID] = createSignal("")
+  const defaultCollapsed = resolveCollapseDefault(options, false).collapsed
 
   function ContextPanel() {
-    const [collapsed, setCollapsed] = createSignal(api.kv.get(COLLAPSED_KEY, false))
+    const [collapsed, setCollapsed] = createSignal(defaultCollapsed)
+    createEffect(() => {
+      sessionID()
+      setCollapsed(defaultCollapsed)
+    })
     const model = createMemo(() => {
       const currentSessionID = sessionID()
       const messages = currentSessionID ? api.state.session.messages(currentSessionID) : []
       return createContextPanelModel(messages, api.state.provider)
     })
-    const toggle = () => {
-      const next = !collapsed()
-      setCollapsed(next)
-      api.kv.set(COLLAPSED_KEY, next)
-    }
+    const toggle = () => setCollapsed((current) => !current)
     const render = () => (
       <CompactPanel
         title="Context"

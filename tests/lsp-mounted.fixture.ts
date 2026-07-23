@@ -10,7 +10,9 @@ export type LspFixtureEntry = {
 }
 
 export type LspFixtureOptions = {
+  sessionID?: string
   entries?: readonly LspFixtureEntry[]
+  defaultState?: unknown
   savedCollapsed?: boolean
   store?: Map<string, unknown>
 }
@@ -157,7 +159,10 @@ export async function mountLspPanel(options: LspFixtureOptions = {}) {
   if (options.savedCollapsed !== undefined) store.set(COLLAPSED_KEY, options.savedCollapsed)
   const kvWrites: Array<[string, unknown]> = []
   const kvReads: string[] = []
-  const registrations: Array<{ order?: number; slots: Record<string, () => unknown> }> = []
+  const registrations: Array<{
+    order?: number
+    slots: Record<string, (ctx?: unknown, props?: { session_id?: string }) => unknown>
+  }> = []
   const controller = new AbortController()
   let cleanups: Array<() => void | Promise<void>> = []
   const theme = {
@@ -190,7 +195,7 @@ export async function mountLspPanel(options: LspFixtureOptions = {}) {
     theme: { current: theme },
   }
 
-  await lspPlugin.tui(api as never, undefined, undefined)
+  await lspPlugin.tui(api as never, { defaultState: options.defaultState }, undefined)
   const slot = registrations[0]?.slots.sidebar_content
   if (!slot) throw new Error("LSP sidebar slot was not registered")
 
@@ -200,7 +205,7 @@ export async function mountLspPanel(options: LspFixtureOptions = {}) {
   createRoot((dispose) => {
     disposeRoot = dispose
     slotMounts += 1
-    tree = mount(slot())
+    tree = mount(slot({}, options.sessionID ? { session_id: options.sessionID } : {}))
   })
 
   return {
@@ -210,6 +215,9 @@ export async function mountLspPanel(options: LspFixtureOptions = {}) {
     kvWrites,
     store,
     setLsp: setEntries,
+    setSessionID(sessionID?: string) {
+      slot({}, sessionID ? { session_id: sessionID } : {})
+    },
     slotMounts: () => slotMounts,
     lifecycleCleanups: () => cleanups.length,
     lifecycleAborted: () => controller.signal.aborted,

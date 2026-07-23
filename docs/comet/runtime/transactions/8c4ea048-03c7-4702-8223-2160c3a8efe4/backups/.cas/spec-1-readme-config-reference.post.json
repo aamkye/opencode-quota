@@ -1,0 +1,11 @@
+{
+  "schema": "comet.native.archive-cas.v1",
+  "operationId": "spec-1-readme-config-reference",
+  "role": "post",
+  "hash": "8d071f26472ca64d092510e0f47c7e86ab2c98ad23d22a7d7b4858f05ec62b86",
+  "identity": {
+    "dev": 16777232,
+    "ino": 352065849,
+    "birthtimeMs": 1784768947842.607
+  }
+}

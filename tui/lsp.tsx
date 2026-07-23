@@ -1,17 +1,16 @@
-import { createMemo, createSignal, For, Show, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, For, Show, type JSX } from "solid-js"
 
 import {
   CompactPanel,
   createLspPanelModel,
   defineTuiPlugin,
   pluginDescriptor,
+  resolveCollapseDefault,
   type LspStatusRow,
   type PanelTheme,
 } from "../shared/opencode-tools-shared.js"
 
 const descriptor = pluginDescriptor("lsp")
-const COLLAPSED_KEY = "aamkye.opencode-tools-lsp.collapsed"
-
 function LspRow(props: { row: LspStatusRow; theme: () => PanelTheme }) {
   return (
     <box flexDirection="row" width="100%" overflow="hidden">
@@ -31,15 +30,18 @@ function LspRow(props: { row: LspStatusRow; theme: () => PanelTheme }) {
   )
 }
 
-const plugin = defineTuiPlugin(descriptor, (_context, api) => {
+const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
+  const defaultCollapsed = resolveCollapseDefault(options, false).collapsed
+  const [sessionID, setSessionID] = createSignal("")
+
   function LspPanel() {
-    const [collapsed, setCollapsed] = createSignal(api.kv.get(COLLAPSED_KEY, false))
+    const [collapsed, setCollapsed] = createSignal(defaultCollapsed)
+    createEffect(() => {
+      sessionID()
+      setCollapsed(defaultCollapsed)
+    })
     const model = createMemo(() => createLspPanelModel(api.state.lsp()))
-    const toggle = () => {
-      const next = !collapsed()
-      setCollapsed(next)
-      api.kv.set(COLLAPSED_KEY, next)
-    }
+    const toggle = () => setCollapsed((current) => !current)
 
     const render = () => (
       <CompactPanel
@@ -66,7 +68,12 @@ const plugin = defineTuiPlugin(descriptor, (_context, api) => {
 
   api.slots.register({
     order: descriptor.slotOrder,
-    slots: { sidebar_content: () => <LspPanel /> },
+    slots: {
+      sidebar_content(_ctx, props) {
+        setSessionID(props?.session_id ?? "")
+        return <LspPanel />
+      },
+    },
   })
 })
 

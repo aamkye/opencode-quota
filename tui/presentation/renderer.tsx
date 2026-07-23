@@ -1,4 +1,4 @@
-import { For, Show, createSignal, onCleanup, type Accessor } from "solid-js"
+import { For, Show, createSignal, onCleanup, type Accessor, type JSX } from "solid-js"
 
 import { CompactPanel, type PanelTheme } from "./compact-panel.js"
 import { formatBytes, formatCount, formatCurrency, formatDuration, formatPercent, formatTimer, truncateText } from "./format.js"
@@ -339,8 +339,21 @@ function MountedItem(props: { item: NormalizedItem; theme: Accessor<PanelTheme> 
   }
 }
 
-export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Accessor<PanelTheme>; initiallyCollapsed?: boolean }) {
-  const [collapsed, setCollapsed] = createSignal(new Set(props.initiallyCollapsed ? [`panel:${props.model().id}`] : []))
+export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Accessor<PanelTheme>; initiallyCollapsed?: boolean; initiallyCollapsedGroupIds?: readonly string[]; resetKey?: Accessor<unknown> }) {
+  const initialCollapsed = () => new Set<string>([
+    ...(props.initiallyCollapsed ? [`panel:${props.model().id}`] : []),
+    ...(props.initiallyCollapsedGroupIds ?? []).map((id) => `group:${id}`),
+  ])
+  const [collapsed, setCollapsed] = createSignal(initialCollapsed())
+  let previousResetKey = props.resetKey?.()
+  const currentCollapsed = () => {
+    const resetKey = props.resetKey?.()
+    if (resetKey === previousResetKey) return collapsed()
+    previousResetKey = resetKey
+    const next = initialCollapsed()
+    setCollapsed(next)
+    return next
+  }
   const [now, setNow] = createSignal(Date.now())
   const interval = setInterval(() => setNow(Date.now()), 1_000)
   onCleanup(() => clearInterval(interval))
@@ -350,9 +363,9 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Acces
   }
 
   const normalized = () => normalizePanelModel(props.model(), { now: now() })
-  const panelCollapsed = () => collapsed().has(`panel:${props.model().id}`)
+  const panelCollapsed = () => currentCollapsed().has(`panel:${props.model().id}`)
 
-  return (
+  const render = () => (
     <CompactPanel
       title={props.model().title}
       collapsed={panelCollapsed()}
@@ -363,7 +376,7 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Acces
     >
       <For each={normalized().groups}>
         {(group, index) => {
-          const groupCollapsed = () => group.header?.collapsible === true && collapsed().has(`group:${group.id}`)
+          const groupCollapsed = () => group.header?.collapsible === true && currentCollapsed().has(`group:${group.id}`)
           const isLastGroup = () => index() === normalized().groups.length - 1
           return (
             <box flexDirection="column" width="100%">
@@ -387,4 +400,6 @@ export function PanelRenderer(props: { model: Accessor<PanelModel>; theme: Acces
       </For>
     </CompactPanel>
   )
+
+  return render as unknown as JSX.Element
 }

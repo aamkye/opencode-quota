@@ -6,13 +6,13 @@ import { pluginManifest, validatePluginManifest } from "../plugin-manifest.mjs"
 const expected = [
   ["home", "aamkye/opencode-tools-home", "tui/home.tsx", "opencode-tools-home.js", 1, "none"],
   ["token-report", "aamkye/opencode-tools-token-report", "tui/token-report.tsx", "opencode-tools-token-report.js", undefined, "none"],
-  ["context", "aamkye/opencode-tools-context", "tui/context.tsx", "opencode-tools-context.js", 100, "none"],
-  ["ses-tokens", "aamkye/opencode-tools-ses-tokens", "tui/ses-tokens.tsx", "opencode-tools-ses-tokens.js", 110, "none"],
-  ["subagent", "aamkye/opencode-tools-subagent", "tui/subagent.tsx", "opencode-tools-subagent.js", 120, "none"],
+  ["context", "aamkye/opencode-tools-context", "tui/context.tsx", "opencode-tools-context.js", 100, "defaultState"],
+  ["ses-tokens", "aamkye/opencode-tools-ses-tokens", "tui/ses-tokens.tsx", "opencode-tools-ses-tokens.js", 110, "defaultState"],
+  ["subagent", "aamkye/opencode-tools-subagent", "tui/subagent.tsx", "opencode-tools-subagent.js", 120, "defaultState"],
   ["quota", "aamkye/opencode-tools-quota", "tui/quota.tsx", "opencode-tools-quota.js", 130, "quota"],
-  ["mcp", "aamkye/opencode-tools-mcp", "tui/mcp.tsx", "opencode-tools-mcp.js", 140, "none"],
-  ["lsp", "aamkye/opencode-tools-lsp", "tui/lsp.tsx", "opencode-tools-lsp.js", 150, "none"],
-  ["todo", "aamkye/opencode-tools-todo", "tui/todo.tsx", "opencode-tools-todo.js", 160, "none"],
+  ["mcp", "aamkye/opencode-tools-mcp", "tui/mcp.tsx", "opencode-tools-mcp.js", 140, "defaultState"],
+  ["lsp", "aamkye/opencode-tools-lsp", "tui/lsp.tsx", "opencode-tools-lsp.js", 150, "defaultState"],
+  ["todo", "aamkye/opencode-tools-todo", "tui/todo.tsx", "opencode-tools-todo.js", 160, "defaultState"],
 ]
 
 test("manifest describes the nine standalone plugins in deployment order", () => {

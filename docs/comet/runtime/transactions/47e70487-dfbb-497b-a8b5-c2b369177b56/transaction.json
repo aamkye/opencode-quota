@@ -1,0 +1,28 @@
+{
+  "schema": "comet.native.transaction.v2",
+  "id": "47e70487-dfbb-497b-a8b5-c2b369177b56",
+  "kind": "archive",
+  "status": "committed",
+  "change": "session-rename-error-ignored",
+  "createdAt": "2026-07-22T19:29:54.526Z",
+  "preflightHash": "dc852f3b697b8d384c37d57be1ddf2770c6c9e2bde6b7a4aedad5d0a5280c61e",
+  "operations": [
+    {
+      "id": "spec-1-session-rename",
+      "type": "write",
+      "target": "specs/session-rename/spec.md",
+      "staged": "runtime/transactions/47e70487-dfbb-497b-a8b5-c2b369177b56/staged/specs/session-rename/spec.md",
+      "backup": "runtime/transactions/47e70487-dfbb-497b-a8b5-c2b369177b56/backups/specs/session-rename/spec.md",
+      "expectedTargetHash": "226ed9f98d015e9425d72e66fbd9cd55d1655ee4b55a310187f8c25069c6cb87",
+      "stagedHash": "f8ff0673fa347da55f95900412622b098f14a3ef70d6f905baec7410df708891"
+    },
+    {
+      "id": "archive-change",
+      "type": "move",
+      "source": "changes/session-rename-error-ignored",
+      "target": "archive/2026-07-22-session-rename-error-ignored",
+      "expectedSourceHash": "4cba88aed8c17c386bf60922bfb35de9fb03ac82f6f2995f45d9872c1849027a",
+      "expectedTargetHash": null
+    }
+  ]
+}

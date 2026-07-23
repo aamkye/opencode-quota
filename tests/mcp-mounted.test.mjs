@@ -44,9 +44,10 @@ test("registers MCP at slot 140 and renders rows in source order", async () => {
   }
 })
 
-test("restores and persists only non-empty MCP collapse toggles", async () => {
+test("resets configured collapse state on every session selection without kv persistence", async () => {
   const mounted = await mountMcpPanel({
-    savedCollapsed: true,
+    sessionID: "session-a",
+    defaultState: "collapsed",
     entries: [
       { name: "docs", status: "connected" },
       { name: "database", status: "needs_auth" },
@@ -70,20 +71,23 @@ test("restores and persists only non-empty MCP collapse toggles", async () => {
     view.clickHeader()
     view = mounted.view()
     assert.equal(view.marker, "▼ ")
-    assert.deepEqual(mounted.kvWrites, [["aamkye.opencode-tools-mcp.collapsed", false]])
+    assert.deepEqual(mounted.kvWrites, [])
 
     view.clickHeader()
     assert.equal(mounted.view().marker, "▶ ")
-    assert.deepEqual(mounted.kvWrites, [
-      ["aamkye.opencode-tools-mcp.collapsed", false],
-      ["aamkye.opencode-tools-mcp.collapsed", true],
-    ])
+    mounted.setSessionID("session-b")
+    assert.equal(mounted.view().marker, "▶ ")
+    mounted.view().clickHeader()
+    mounted.setSessionID("session-a")
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.deepEqual(mounted.kvReads, [])
+    assert.deepEqual(mounted.kvWrites, [])
   } finally {
     await mounted.dispose()
   }
 })
 
-test("forces empty MCP state collapsed without writes and restores the saved signal without interaction", async () => {
+test("forces empty MCP state collapsed without reading saved collapse state", async () => {
   for (const savedCollapsed of [false, true]) {
     const mounted = await mountMcpPanel({ savedCollapsed })
     try {
@@ -103,7 +107,8 @@ test("forces empty MCP state collapsed without writes and restores the saved sig
 
       mounted.setMcp([{ name: "docs", status: "connected" }])
       view = mounted.view()
-      assert.equal(view.marker, savedCollapsed ? "▶ " : "▼ ")
+      assert.equal(view.marker, "▼ ")
+      assert.deepEqual(mounted.kvReads, [])
     } finally {
       await mounted.dispose()
     }
@@ -125,7 +130,7 @@ test("honors one expand click received before MCP entries hydrate", async () => 
     mounted.setMcp([{ name: "docs", status: "connected" }])
     view = mounted.view()
     assert.equal(view.marker, "▼ ")
-    assert.deepEqual(mounted.kvWrites, [["aamkye.opencode-tools-mcp.collapsed", false]])
+    assert.deepEqual(mounted.kvWrites, [])
   } finally {
     await mounted.dispose()
   }
@@ -141,7 +146,7 @@ test("reacts to MCP additions, removals, reorder, and status changes without rea
 
   try {
     assert.equal(mounted.slotMounts(), 1)
-    assert.deepEqual(mounted.kvReads, ["aamkye.opencode-tools-mcp.collapsed"])
+    assert.deepEqual(mounted.kvReads, [])
     assert.deepEqual(mounted.view().rows.map((row) => row.name), ["first", "second"])
     mounted.setMcp([
       { name: "third", status: "needs_auth" },
@@ -171,7 +176,7 @@ test("reacts to MCP additions, removals, reorder, and status changes without rea
     assert.equal(mounted.view().summaryText, "0/0/0")
     assert.equal(mounted.registrations.length, 1)
     assert.equal(mounted.slotMounts(), 1)
-    assert.deepEqual(mounted.kvReads, ["aamkye.opencode-tools-mcp.collapsed"])
+    assert.deepEqual(mounted.kvReads, [])
   } finally {
     await mounted.dispose()
   }

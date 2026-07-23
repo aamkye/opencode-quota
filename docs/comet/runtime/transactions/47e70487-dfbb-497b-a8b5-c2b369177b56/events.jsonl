@@ -1,0 +1,8 @@
+{"sequence":1,"timestamp":"2026-07-22T19:29:55.306Z","type":"prepared"}
+{"sequence":2,"timestamp":"2026-07-22T19:29:55.972Z","type":"operation-started","operationId":"spec-1-session-rename"}
+{"sequence":3,"timestamp":"2026-07-22T19:29:56.069Z","type":"operation-completed","operationId":"spec-1-session-rename"}
+{"sequence":4,"timestamp":"2026-07-22T19:29:56.082Z","type":"operation-started","operationId":"archive-change"}
+{"sequence":5,"timestamp":"2026-07-22T19:29:56.167Z","type":"operation-completed","operationId":"archive-change"}
+{"sequence":6,"timestamp":"2026-07-22T19:29:56.225Z","type":"archive-finalization-started"}
+{"sequence":7,"timestamp":"2026-07-22T19:29:56.287Z","type":"archive-finalized"}
+{"sequence":8,"timestamp":"2026-07-22T19:29:56.314Z","type":"commit"}

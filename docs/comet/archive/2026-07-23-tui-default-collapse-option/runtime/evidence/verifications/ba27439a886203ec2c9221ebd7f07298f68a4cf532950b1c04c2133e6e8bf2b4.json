@@ -1,0 +1,135 @@
+{
+  "schema": "comet.native.verification-evidence.v1",
+  "change": "tui-default-collapse-option",
+  "sourceRevision": 3,
+  "result": "pass",
+  "freshness": "complete",
+  "contractHash": "f1c3a39ca71dcf186e6d3af254a9bd1bc77a16c4e4e06fb8e08e894434860a12",
+  "acceptanceCriteriaHash": "418c3f1d7d145f1654caebd350e4074421ca2c3e3fceaa3e20e0831eebd25aa2",
+  "implementationScopeRef": "runtime/evidence/scopes/60ca586014c015b445b3fad58eb23dff6d70871082452522c05dae669cb81e60.json",
+  "implementationScopeHash": "60ca586014c015b445b3fad58eb23dff6d70871082452522c05dae669cb81e60",
+  "reportRef": "verification.md",
+  "reportHash": "cb8594b92a22dc80af6b17508064a5c47f7c3cbee26b2168b4f64e08dc53e63e",
+  "acceptanceTrace": {
+    "schema": "comet.native.acceptance-trace.v1",
+    "nativeRootRef": "docs/comet",
+    "criteriaHash": "418c3f1d7d145f1654caebd350e4074421ca2c3e3fceaa3e20e0831eebd25aa2",
+    "total": 10,
+    "evidenced": 10,
+    "skipped": 0,
+    "entries": [
+      {
+        "acceptanceId": "acceptance-20333a2364037182e106d21fe9440dc81a5d5d7ff4589069d96d04bc622bef47",
+        "kind": "spec-scenario",
+        "source": "specs/tui-default-collapse-option/spec.md",
+        "evidenceRefs": [
+          "tests/collapse-options.test.mjs",
+          "tui/features/collapse-options.ts"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-2d5480ae1b1ab7008a1e18d63028369abdc0751e9c0e0a16d53f7fce60f808fc",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/collapse-options.test.mjs",
+          "tui/features/collapse-options.ts"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-52e9f6e3c7bd732688911d5268aeaa890d2e6af6aeb8d3314bda5f820e4c3bb3",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/collapse-options.test.mjs",
+          "tui/features/collapse-options.ts"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-66817d23494dfdfd3151fb4585e0ea73f62742f5bf7f39400d8f8af9b8433be5",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tui/context.tsx",
+          "tui/lsp.tsx",
+          "tui/mcp.tsx",
+          "tui/ses-tokens.tsx",
+          "tui/todo.tsx"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-8ca67a20d0410145ffef23ee2b080f53feb78fafb69b8721dd54601d47523781",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tui/presentation/renderer.tsx",
+          "tui/quota.tsx",
+          "tui/subagent.tsx"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-8ce904aee2f0bfcb14a9c4c2b9288d219ef6b6fb7f9523d78f4aa13dbb32277d",
+        "kind": "spec-scenario",
+        "source": "specs/tui-default-collapse-option/spec.md",
+        "evidenceRefs": [
+          "tests/collapse-options.test.mjs",
+          "tui/features/collapse-options.ts"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-a41266b7054bdcba64c7f4fe18870b3e962865025c1bcf918cec8d439aefe400",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tui/context.tsx",
+          "tui/lsp.tsx",
+          "tui/mcp.tsx",
+          "tui/ses-tokens.tsx",
+          "tui/todo.tsx"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-b5752c1f7c5dd516bf7d05deb32686098940330e63a9903522499b38c0f8483a",
+        "kind": "spec-scenario",
+        "source": "specs/tui-default-collapse-option/spec.md",
+        "evidenceRefs": [
+          "tui/context.tsx",
+          "tui/features/collapse-options.ts"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-c6eb8573e6e9b5c630de8e6c8a790983bace9616e5c4b581c7cdb0822e9c1e35",
+        "kind": "spec-scenario",
+        "source": "specs/tui-default-collapse-option/spec.md",
+        "evidenceRefs": [
+          "tui/context.tsx",
+          "tui/features/collapse-options.ts"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-f1191274b3cf98129732fafb5d1728d9d4f955425874dc53194e57a8c6ccbc52",
+        "kind": "spec-scenario",
+        "source": "specs/tui-default-collapse-option/spec.md",
+        "evidenceRefs": [
+          "README.md"
+        ],
+        "skippedReason": null
+      }
+    ],
+    "traceHash": "18f1e37de61ec3d29c10a83ab7edee8cc4c9577628975dbb638c9ada0876df5d"
+  },
+  "partialAllowanceRef": null,
+  "partialAllowanceHash": null,
+  "receiptRef": "runtime/evidence/check-receipts/e02f0933b5d00a2b2689fa1db6bbbfc0bdd568fbeb1e7f815eb1f9938d264cbc.json",
+  "createdAt": "2026-07-23T00:07:42.012Z",
+  "envelopeHash": "ba27439a886203ec2c9221ebd7f07298f68a4cf532950b1c04c2133e6e8bf2b4"
+}

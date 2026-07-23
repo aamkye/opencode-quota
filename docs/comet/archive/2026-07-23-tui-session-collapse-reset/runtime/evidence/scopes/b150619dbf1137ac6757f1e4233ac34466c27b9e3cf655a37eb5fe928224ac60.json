@@ -1,0 +1,545 @@
+{
+  "schema": "comet.native.implementation-scope.v2",
+  "contractHash": "b791c0bbb59c431fae2269adb430cb1667efb381b72dd6885e1ae170d20b962f",
+  "baselineProjectionRef": "runtime/evidence/snapshots/628ac75f70e8d736a6ae2235da8564f7c1d217118afb2ab026f3531667b0b17a.json",
+  "baselineProjectionHash": "628ac75f70e8d736a6ae2235da8564f7c1d217118afb2ab026f3531667b0b17a",
+  "currentProjectionRef": "runtime/evidence/snapshots/85c823682dd350a8ac8bdf9d41e73c33aa3ff83ce64834aa2b879ea30b4262ab.json",
+  "currentProjectionHash": "85c823682dd350a8ac8bdf9d41e73c33aa3ff83ce64834aa2b879ea30b4262ab",
+  "complete": true,
+  "declaredArtifacts": [
+    {
+      "path": "README.md",
+      "kind": "file"
+    },
+    {
+      "path": "tests/context-mounted.fixture.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tests/context-mounted.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/lsp-mounted.fixture.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tests/lsp-mounted.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/mcp-mounted.fixture.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tests/mcp-mounted.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/plugin-wiring.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/presentation-mounted.fixture.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tests/presentation-mounted.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/ses-tokens-mounted.fixture.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tests/ses-tokens-mounted.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/subagent-mounted.fixture.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tests/subagent-mounted.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/todo-mounted.fixture.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tests/todo-mounted.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tui/context.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/lsp.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/mcp.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/presentation/renderer.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/quota.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/ses-tokens.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/subagent.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/todo.tsx",
+      "kind": "file"
+    }
+  ],
+  "changes": [
+    {
+      "path": "README.md",
+      "kind": "modified",
+      "before": {
+        "hash": "c957b6e11c5d78022f849d643b79c688acc3057b280e1d94a488faa4c0334e6e",
+        "size": 35702
+      },
+      "after": {
+        "hash": "415af6deae4ba6b64d9b8c2dd72804bff76af07c04778014590873a3537c6051",
+        "size": 36106
+      },
+      "attributedTo": [
+        {
+          "path": "README.md",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/context-mounted.fixture.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "5afc377ba7da55541e29b7716972b6dce12ba22a312370c0c7e66d2dbb172337",
+        "size": 7399
+      },
+      "after": {
+        "hash": "342dd2c71a485bd993a53d0878435c6a01c9f5c5315e5ce1d2ba1ba1e7f26358",
+        "size": 7453
+      },
+      "attributedTo": [
+        {
+          "path": "tests/context-mounted.fixture.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/context-mounted.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "f93cca1ca64856c2b5f468ffc5281c3f054b055ec12671e727f38fe7836016a8",
+        "size": 5500
+      },
+      "after": {
+        "hash": "303aa8d0ceeae171a88be333cebb82f6c8b92640182eb19487e59de06a6ebe02",
+        "size": 5210
+      },
+      "attributedTo": [
+        {
+          "path": "tests/context-mounted.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/lsp-mounted.fixture.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "ccac86c1a76a949da6262e998821b30bcbddc62873da8aa385e19841287ed640",
+        "size": 7407
+      },
+      "after": {
+        "hash": "4f52dc1dd81efca552edb687b05d1f1b423bf5f31075b1b0785b06a443d2a136",
+        "size": 7704
+      },
+      "attributedTo": [
+        {
+          "path": "tests/lsp-mounted.fixture.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/lsp-mounted.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "f0c1c51854cf71aa8d96bc7b208674794ed5296fb87d37fb279120239b22625a",
+        "size": 7180
+      },
+      "after": {
+        "hash": "2c2d7b8003c089f01d2ec765f70649623fbea51571abfe6235641f19240bb078",
+        "size": 6923
+      },
+      "attributedTo": [
+        {
+          "path": "tests/lsp-mounted.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/mcp-mounted.fixture.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "0a849ba704a6936a9ada2d688831958cdde3fbf8e37f07a21de51d98474f1f27",
+        "size": 7619
+      },
+      "after": {
+        "hash": "c7dd3e780cc36bc843512606071831fd8b3993c9f7eaf0a3c64c4124e3c0a0b4",
+        "size": 7975
+      },
+      "attributedTo": [
+        {
+          "path": "tests/mcp-mounted.fixture.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/mcp-mounted.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "a96fc41c98d244914ada98d0bd93fad021c4ebeea5c060ae4ead38b6942b74b1",
+        "size": 6133
+      },
+      "after": {
+        "hash": "efb0290dc4fd8c860c4e386deba20a0c8b9e3585312da7783b9bee6c1d9b6329",
+        "size": 6150
+      },
+      "attributedTo": [
+        {
+          "path": "tests/mcp-mounted.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/plugin-wiring.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "9ab13a8de08ed5e1f885aa0f8310c82e41d39005cd332075ed08e30336e22e00",
+        "size": 32425
+      },
+      "after": {
+        "hash": "7745c5a98cad5412b72602ad0af65aeb19069804add17f64083d9a1cbe49680d",
+        "size": 32475
+      },
+      "attributedTo": [
+        {
+          "path": "tests/plugin-wiring.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/presentation-mounted.fixture.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "4601f44bf3cef43d654ae8d44b02ba4da4e40d295365c0ef9ad76ff6ca717db2",
+        "size": 1784
+      },
+      "after": {
+        "hash": "1d6bbe1f08040fe80749d0e86a84df7263b1779f1d5dab7bbd693054b6014741",
+        "size": 2404
+      },
+      "attributedTo": [
+        {
+          "path": "tests/presentation-mounted.fixture.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/presentation-mounted.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "66e18cd79144b651e1a19e436f7ad588dc94b4e803df030f5122d1edfd4ce57b",
+        "size": 22212
+      },
+      "after": {
+        "hash": "636ef0b37234ba0fcef6988e68b60183e517aaed9123703d46fe8d4e1d5a68c5",
+        "size": 24128
+      },
+      "attributedTo": [
+        {
+          "path": "tests/presentation-mounted.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/ses-tokens-mounted.fixture.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "41d81e37318f1404bc19b68a1896d26ce35277e20c8e413070d619fcd5d2eb8b",
+        "size": 14635
+      },
+      "after": {
+        "hash": "8b6fe095fc2ee5a687d950a354590d4bc0c38fb159a9978b44413b71b0dc148c",
+        "size": 14689
+      },
+      "attributedTo": [
+        {
+          "path": "tests/ses-tokens-mounted.fixture.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/ses-tokens-mounted.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "3817948953bdc16a8a68f75fe6350403a3dc6c25d8f30c4fe33752a8b54d439a",
+        "size": 11267
+      },
+      "after": {
+        "hash": "f799c57662a777937c410dff7a3c5130c4ed21abb254d91f3dd3f8781fb4ccd9",
+        "size": 10945
+      },
+      "attributedTo": [
+        {
+          "path": "tests/ses-tokens-mounted.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/subagent-mounted.fixture.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "8010958769ffb6569004a958bfa8a3d0320ea6b544630c5fe1cacabb01a09b9f",
+        "size": 26471
+      },
+      "after": {
+        "hash": "4cb450e5ac0483d4d58b439a5516b5caccca693ec9cf8f1e6de0191c1984a8a0",
+        "size": 26525
+      },
+      "attributedTo": [
+        {
+          "path": "tests/subagent-mounted.fixture.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/subagent-mounted.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "91097cb66b87b8d1ea75242e2c760581fb02911e90bb9931573de7b6b69bdd39",
+        "size": 32705
+      },
+      "after": {
+        "hash": "37e0939672fbf7aba8e4d9192d76890e762c614a4d6d440c9a18d316d4245874",
+        "size": 29816
+      },
+      "attributedTo": [
+        {
+          "path": "tests/subagent-mounted.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/todo-mounted.fixture.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "2d2963e876c1b4a507959198b9e778d1ddd1a3c661f6a9af374d3d5b380d4c50",
+        "size": 8780
+      },
+      "after": {
+        "hash": "0998407e55b3d4a3953fccd18862e4fe30ea8817794d40a9a7e34e91e5cc0857",
+        "size": 8834
+      },
+      "attributedTo": [
+        {
+          "path": "tests/todo-mounted.fixture.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/todo-mounted.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "bfcc444b15220258251643d15bf5c1df70ecbd858dd9e256a623106049b45cf3",
+        "size": 8933
+      },
+      "after": {
+        "hash": "1db4a537c514c312184cf8c9d068153e478a6349227a4d7002deb96352f7375c",
+        "size": 8122
+      },
+      "attributedTo": [
+        {
+          "path": "tests/todo-mounted.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/context.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "368d101a03051331d5323bcf4dac796a9077ad8ad4229890247d460c0500620d",
+        "size": 2678
+      },
+      "after": {
+        "hash": "f942fbb4d07787efecfda48fc99fde186ed53b6ffd7d496ba29efb98a9f2ee72",
+        "size": 2620
+      },
+      "attributedTo": [
+        {
+          "path": "tui/context.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/lsp.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "99519e0dc5d70e2da19c32a749c2094d117f21523cbdf88529e45170d4c6fa1d",
+        "size": 2132
+      },
+      "after": {
+        "hash": "daf3c04db3b1b395e916ff6a752a6aa55b4b43fbc9fd5e50be41721b8da163e1",
+        "size": 2219
+      },
+      "attributedTo": [
+        {
+          "path": "tui/lsp.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/mcp.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "435563df6a905cfc9c7aaf81b2870e07712cdf1ee48651bd7c63211767ac1ae8",
+        "size": 2244
+      },
+      "after": {
+        "hash": "0466fb9bf72a307c4812dcf59e8f84044d37d1a253713f5dc83da9581756d4b1",
+        "size": 2292
+      },
+      "attributedTo": [
+        {
+          "path": "tui/mcp.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/presentation/renderer.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "22e4f7229735ce64c5dad9696109aa41df0d4075ff24e60ff88003c30d8a4278",
+        "size": 14037
+      },
+      "after": {
+        "hash": "d4ea228bfc3771a40ac7347317bd405df358f27ca9bd28c8acff9960a7bbfc41",
+        "size": 14488
+      },
+      "attributedTo": [
+        {
+          "path": "tui/presentation/renderer.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/quota.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "6a3fed0840739faafa363fe7690beb31f9e93870c4fa2e1ced8d4d02004de867",
+        "size": 3981
+      },
+      "after": {
+        "hash": "b7e4dfc733977c26e7bb27691080cd61daed7d0e166a49fd1c707fdc16666527",
+        "size": 4121
+      },
+      "attributedTo": [
+        {
+          "path": "tui/quota.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/ses-tokens.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "1ac0ea073b62c251a75a7b656c2be366bdbbb2fce5666939b6246b4f0bda07b2",
+        "size": 6142
+      },
+      "after": {
+        "hash": "bd2986769e9c71b77517a532a235e437b0b12ad975afcee859cd18ccb811cc4e",
+        "size": 6124
+      },
+      "attributedTo": [
+        {
+          "path": "tui/ses-tokens.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/subagent.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "733c7735523e3d0501d8ef4a52d3c7ebfff4d58d370dbb355d6d33ae7db49aa5",
+        "size": 14581
+      },
+      "after": {
+        "hash": "4b2ce7304745d4e5681e1b5254219574b85ff3c72a9ed90a79cf206288b49bb5",
+        "size": 13431
+      },
+      "attributedTo": [
+        {
+          "path": "tui/subagent.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/todo.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "83e0ecc3be6618aeac9342c2f39ba46d7216fb348bc8668a4f52334ff7c27866",
+        "size": 2474
+      },
+      "after": {
+        "hash": "4a0fa690a9f27632373ec02dfb1fa9fd6ad8985b32e49af181195d009654d008",
+        "size": 2419
+      },
+      "attributedTo": [
+        {
+          "path": "tui/todo.tsx",
+          "kind": "file"
+        }
+      ]
+    }
+  ],
+  "unattributed": [],
+  "unresolvedScopes": [],
+  "noCodeReason": null,
+  "scopeHash": "b150619dbf1137ac6757f1e4233ac34466c27b9e3cf655a37eb5fe928224ac60"
+}

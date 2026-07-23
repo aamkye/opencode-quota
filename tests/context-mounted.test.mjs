@@ -40,26 +40,21 @@ test("registers Context at slot 100 and renders the expanded metric contract", a
   } finally { await mounted.dispose() }
 })
 
-test("collapses to usage, persists the key, and restores on remount", async () => {
-  const first = await mountContextPanel({ sessionID: "session-a", sessions, providers: [provider()] })
-  const store = first.store
-  assert.deepEqual(first.kvReads, ["aamkye.opencode-tools-context.collapsed"])
-  first.view().clickHeader()
-  assert.equal(first.view().marker, "▶ ")
-  assert.equal(first.view().summaryText, "64%")
-  assert.equal(first.view().summaryColor, "#ff0000")
-  assert.equal(first.view().rows.length, 0)
-  assert.equal(first.view().dividerCount, 1)
-  assert.deepEqual(first.kvWrites, [["aamkye.opencode-tools-context.collapsed", true]])
-  await first.dispose()
-
-  const second = await mountContextPanel({ sessionID: "session-a", sessions, providers: [provider()], store })
+test("resets configured collapse state on every session selection without kv persistence", async () => {
+  const mounted = await mountContextPanel({ sessionID: "session-a", sessions, providers: [provider()], defaultState: "collapsed" })
   try {
-    assert.equal(second.view().marker, "▶ ")
-    second.view().clickHeader()
-    assert.equal(second.view().marker, "▼ ")
-    assert.deepEqual(second.kvWrites, [["aamkye.opencode-tools-context.collapsed", false]])
-  } finally { await second.dispose() }
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.equal(mounted.view().summaryText, "64%")
+    mounted.view().clickHeader()
+    assert.equal(mounted.view().marker, "▼ ")
+    mounted.setSessionID("session-b")
+    assert.equal(mounted.view().marker, "▶ ")
+    mounted.view().clickHeader()
+    mounted.setSessionID("session-a")
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.deepEqual(mounted.kvReads, [])
+    assert.deepEqual(mounted.kvWrites, [])
+  } finally { await mounted.dispose() }
 })
 
 test("renders and collapses unavailable state without an empty-session host call", async () => {

@@ -1,0 +1,28 @@
+{
+  "schema": "comet.native.transaction.v2",
+  "id": "a6a49515-8840-4dc6-a914-701b38a6b6f6",
+  "kind": "archive",
+  "status": "committed",
+  "change": "tui-session-collapse-reset",
+  "createdAt": "2026-07-23T00:41:45.702Z",
+  "preflightHash": "8efd4fa663ae27b9641155843b6017fd6b4b54b255c49ba2fcab3a2e59d13f5e",
+  "operations": [
+    {
+      "id": "spec-1-tui-default-collapse-option",
+      "type": "write",
+      "target": "specs/tui-default-collapse-option/spec.md",
+      "staged": "runtime/transactions/a6a49515-8840-4dc6-a914-701b38a6b6f6/staged/specs/tui-default-collapse-option/spec.md",
+      "backup": "runtime/transactions/a6a49515-8840-4dc6-a914-701b38a6b6f6/backups/specs/tui-default-collapse-option/spec.md",
+      "expectedTargetHash": "c1ffff62bf71afb4a2604fd666eda628e3f5c0501ca871dbf11d15df4521d477",
+      "stagedHash": "50ac3eb5760400bb5cf0060d189235b06fa98d1d2b1613cc8440d764625e3be5"
+    },
+    {
+      "id": "archive-change",
+      "type": "move",
+      "source": "changes/tui-session-collapse-reset",
+      "target": "archive/2026-07-23-tui-session-collapse-reset",
+      "expectedSourceHash": "8a49150fe0293813d8d3965a75aa9b9d237cf5a2dc3377e0ccc065bf73f5b8b0",
+      "expectedTargetHash": null
+    }
+  ]
+}

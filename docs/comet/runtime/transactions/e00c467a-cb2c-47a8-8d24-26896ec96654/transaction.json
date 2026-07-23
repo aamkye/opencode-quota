@@ -1,0 +1,27 @@
+{
+  "schema": "comet.native.transaction.v2",
+  "id": "e00c467a-cb2c-47a8-8d24-26896ec96654",
+  "kind": "archive",
+  "status": "committed",
+  "change": "tui-default-collapse-option",
+  "createdAt": "2026-07-23T00:08:01.503Z",
+  "preflightHash": "8cd711696f9887eb23587ef8daba58bea9eae2091870d9d56162c7bc8f165e35",
+  "operations": [
+    {
+      "id": "spec-1-tui-default-collapse-option",
+      "type": "write",
+      "target": "specs/tui-default-collapse-option/spec.md",
+      "staged": "runtime/transactions/e00c467a-cb2c-47a8-8d24-26896ec96654/staged/specs/tui-default-collapse-option/spec.md",
+      "expectedTargetHash": null,
+      "stagedHash": "c1ffff62bf71afb4a2604fd666eda628e3f5c0501ca871dbf11d15df4521d477"
+    },
+    {
+      "id": "archive-change",
+      "type": "move",
+      "source": "changes/tui-default-collapse-option",
+      "target": "archive/2026-07-23-tui-default-collapse-option",
+      "expectedSourceHash": "b7bc5b4077d0dfb603eda44987a4d2b3b3d541606820fff67b55d2a231731153",
+      "expectedTargetHash": null
+    }
+  ]
+}

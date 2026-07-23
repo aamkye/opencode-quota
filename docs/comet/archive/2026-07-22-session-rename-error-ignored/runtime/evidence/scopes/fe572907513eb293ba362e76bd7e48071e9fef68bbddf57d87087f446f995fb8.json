@@ -1,0 +1,61 @@
+{
+  "schema": "comet.native.implementation-scope.v2",
+  "contractHash": "60b78ae181ea92f238e3967156ec1dd010cec502336ebec0e702682affe9ecbb",
+  "baselineProjectionRef": "runtime/evidence/snapshots/342f809733878d1dfa88afe2ff5300ae1049ecaf80837d0e0e92e92e17c6d998.json",
+  "baselineProjectionHash": "342f809733878d1dfa88afe2ff5300ae1049ecaf80837d0e0e92e92e17c6d998",
+  "currentProjectionRef": "runtime/evidence/snapshots/10cd684896dcec64edf3866800406570e0a397122ed4e917b7aca193502c3415.json",
+  "currentProjectionHash": "10cd684896dcec64edf3866800406570e0a397122ed4e917b7aca193502c3415",
+  "complete": true,
+  "declaredArtifacts": [
+    {
+      "path": "lib/session-rename.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tests/session-rename.lifecycle.test.mjs",
+      "kind": "file"
+    }
+  ],
+  "changes": [
+    {
+      "path": "lib/session-rename.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "73d35528bb2b2084dfd7bb2afd13287e8624f113206c0e595071fae65385405d",
+        "size": 7394
+      },
+      "after": {
+        "hash": "c8e5487e542f0610a753a0666478c8c6ccaddf500f8a36c0688523382a54749b",
+        "size": 7432
+      },
+      "attributedTo": [
+        {
+          "path": "lib/session-rename.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/session-rename.lifecycle.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "0081db2531e54eb3dce278baf094b139d33df7397c90cc59d9b7ad349e206679",
+        "size": 13989
+      },
+      "after": {
+        "hash": "68813948a2c03cf250b8778a8ca2b6b3afb4c9acad7b9dbbb81bea6af9e3c7e1",
+        "size": 14023
+      },
+      "attributedTo": [
+        {
+          "path": "tests/session-rename.lifecycle.test.mjs",
+          "kind": "file"
+        }
+      ]
+    }
+  ],
+  "unattributed": [],
+  "unresolvedScopes": [],
+  "noCodeReason": null,
+  "scopeHash": "fe572907513eb293ba362e76bd7e48071e9fef68bbddf57d87087f446f995fb8"
+}

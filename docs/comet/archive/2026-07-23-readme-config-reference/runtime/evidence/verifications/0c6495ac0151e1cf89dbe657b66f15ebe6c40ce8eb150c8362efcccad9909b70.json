@@ -1,0 +1,101 @@
+{
+  "schema": "comet.native.verification-evidence.v1",
+  "change": "readme-config-reference",
+  "sourceRevision": 3,
+  "result": "pass",
+  "freshness": "complete",
+  "contractHash": "af03814bddfed797575f3b836a540047544c9d36836e345158d1f132a741be76",
+  "acceptanceCriteriaHash": "c1fa6f9fc5272089a75e1d5603f0c50118c0dc6f3aaf5eb88d4c2fef8aa9be2f",
+  "implementationScopeRef": "runtime/evidence/scopes/ff4296556475bdf14e6e7d4d2756c2b2083197e9350bbcda3a9b2f976cf84c57.json",
+  "implementationScopeHash": "ff4296556475bdf14e6e7d4d2756c2b2083197e9350bbcda3a9b2f976cf84c57",
+  "reportRef": "verification.md",
+  "reportHash": "8b29bce10f10fa24005257643a9269bc92315c15de85724dd3939f22f2ba6a6b",
+  "acceptanceTrace": {
+    "schema": "comet.native.acceptance-trace.v1",
+    "nativeRootRef": "docs/comet",
+    "criteriaHash": "c1fa6f9fc5272089a75e1d5603f0c50118c0dc6f3aaf5eb88d4c2fef8aa9be2f",
+    "total": 8,
+    "evidenced": 8,
+    "skipped": 0,
+    "entries": [
+      {
+        "acceptanceId": "acceptance-5721090242917cece587c71bde47815b023edcd19d4aee0eecaa66492f510e59",
+        "kind": "spec-scenario",
+        "source": "specs/readme-config-reference/spec.md",
+        "evidenceRefs": [
+          "README.md"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-7681ba3b4256d411a673525132bd9aa18986885bd9cbe18f246d763fc222e4ce",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "README.md"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-80a2f559675dd931ec82832069b65cd6c2820b08dfd7c6c321be636221725ae4",
+        "kind": "spec-scenario",
+        "source": "specs/readme-config-reference/spec.md",
+        "evidenceRefs": [
+          "README.md"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-aa399ee800a60ea0f2a10168f6f26b9c8a17da499a640cbeb75cd9856b2b8ed9",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "README.md"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-c44effcacbecc14f6f9952f08b3b11de803dc2cb36e906baa9e2b81f4c2b4eae",
+        "kind": "spec-scenario",
+        "source": "specs/readme-config-reference/spec.md",
+        "evidenceRefs": [
+          "README.md"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-c7d4bcf392428e0420e5f0d51162b4e122b02370e6f7d361a898ee5e3ff57b06",
+        "kind": "spec-scenario",
+        "source": "specs/readme-config-reference/spec.md",
+        "evidenceRefs": [
+          "README.md"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-c9751a9bd805321c9ca1af039193c087c3db91b0e25edac4a4d1fab427cf827d",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "README.md"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-dcde90d593e305b5847df2bea5b1eb2abd8333a98548f29630ae5a95b7a6c750",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "README.md"
+        ],
+        "skippedReason": null
+      }
+    ],
+    "traceHash": "e4bbe4363cd6817354e139d7c4d642fe6a2cb9a3296aa38881ab61e03404e2ae"
+  },
+  "partialAllowanceRef": null,
+  "partialAllowanceHash": null,
+  "receiptRef": "runtime/evidence/check-receipts/404d92fdcd2ca7838c8238ae16f4e2b45904a9b0d44ca386ce3282773ea2ead9.json",
+  "createdAt": "2026-07-23T01:08:46.069Z",
+  "envelopeHash": "0c6495ac0151e1cf89dbe657b66f15ebe6c40ce8eb150c8362efcccad9909b70"
+}

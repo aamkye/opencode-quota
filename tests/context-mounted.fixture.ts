@@ -23,6 +23,7 @@ export type ContextFixtureOptions = {
   sessionID?: string
   sessions?: ReadonlyMap<string, readonly ContextFixtureMessage[]>
   providers?: readonly ContextFixtureProvider[]
+  defaultState?: unknown
   savedCollapsed?: boolean
   store?: Map<string, unknown>
 }
@@ -114,7 +115,7 @@ export async function mountContextPanel(options: ContextFixtureOptions = {}) {
     theme: { current: { error: "#ff0000", warning: "#ffaa00", success: "#00ff00", text: "#ffffff", textMuted: "#888888" } },
   }
 
-  await contextPlugin.tui(api as never, undefined, undefined)
+  await contextPlugin.tui(api as never, { defaultState: options.defaultState }, undefined)
   const slot = registrations[0]?.slots.sidebar_content
   if (!slot) throw new Error("Context sidebar slot was not registered")
 

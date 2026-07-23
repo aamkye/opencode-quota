@@ -97,18 +97,24 @@ function createLifecycle() {
 }
 
 export async function mountMcpPanel(options: {
+  sessionID?: string
   entries?: readonly McpEntry[]
+  defaultState?: unknown
   savedCollapsed?: boolean
+  store?: Map<string, unknown>
 } = {}) {
   const [entries, setEntries] = createSignal<readonly McpEntry[]>(options.entries ?? [])
   const lifecycle = createLifecycle()
-  const store = new Map<string, unknown>()
+  const store = options.store ?? new Map<string, unknown>()
   if (options.savedCollapsed !== undefined) {
     store.set("aamkye.opencode-tools-mcp.collapsed", options.savedCollapsed)
   }
   const kvWrites: Array<[string, unknown]> = []
   const kvReads: string[] = []
-  const registrations: Array<{ order?: number; slots: Record<string, () => unknown> }> = []
+  const registrations: Array<{
+    order?: number
+    slots: Record<string, (ctx?: unknown, props?: { session_id?: string }) => unknown>
+  }> = []
   const theme = {
     error: "#ff0000",
     warning: "#ffaa00",
@@ -139,7 +145,7 @@ export async function mountMcpPanel(options: {
     theme: { current: theme },
   }
 
-  await mcpPlugin.tui(api as never, undefined, undefined)
+  await mcpPlugin.tui(api as never, { defaultState: options.defaultState }, undefined)
   const slot = registrations[0]?.slots.sidebar_content
   if (!slot) throw new Error("MCP sidebar slot was not registered")
 
@@ -149,7 +155,7 @@ export async function mountMcpPanel(options: {
   createRoot((dispose) => {
     disposeRoot = dispose
     slotMounts += 1
-    tree = mount(slot())
+    tree = mount(slot({}, options.sessionID ? { session_id: options.sessionID } : {}))
   })
 
   function nodes(): MountedNode[] {
@@ -218,7 +224,11 @@ export async function mountMcpPanel(options: {
     registrations,
     kvReads,
     kvWrites,
+    store,
     setMcp: setEntries,
+    setSessionID(sessionID?: string) {
+      slot({}, sessionID ? { session_id: sessionID } : {})
+    },
     slotMounts: () => slotMounts,
     view,
     async dispose() {

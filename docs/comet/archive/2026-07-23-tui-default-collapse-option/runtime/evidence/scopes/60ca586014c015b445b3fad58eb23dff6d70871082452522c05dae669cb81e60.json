@@ -1,0 +1,451 @@
+{
+  "schema": "comet.native.implementation-scope.v2",
+  "contractHash": "f1c3a39ca71dcf186e6d3af254a9bd1bc77a16c4e4e06fb8e08e894434860a12",
+  "baselineProjectionRef": "runtime/evidence/snapshots/b2d59bc7f19045e03b75c4eb31f779eb9be07669bb039020eae1bb899dd87f42.json",
+  "baselineProjectionHash": "b2d59bc7f19045e03b75c4eb31f779eb9be07669bb039020eae1bb899dd87f42",
+  "currentProjectionRef": "runtime/evidence/snapshots/e3514d9dfb0eeb8b0bafe8bbaa0a03ecf2fc8cfe90359004e20173abc5cbd7f0.json",
+  "currentProjectionHash": "e3514d9dfb0eeb8b0bafe8bbaa0a03ecf2fc8cfe90359004e20173abc5cbd7f0",
+  "complete": true,
+  "declaredArtifacts": [
+    {
+      "path": "README.md",
+      "kind": "file"
+    },
+    {
+      "path": "deploy-plugins.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "plugin-manifest.json",
+      "kind": "file"
+    },
+    {
+      "path": "plugin-manifest.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "shared/opencode-tools-shared.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tests/collapse-options.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/compile-presentation.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/plugin-deploy.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/plugin-manifest.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tests/plugin-wiring.test.mjs",
+      "kind": "file"
+    },
+    {
+      "path": "tui/context.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/features/collapse-options.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tui/lsp.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/mcp.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/presentation/renderer.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/quota.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/runtime/manifest.ts",
+      "kind": "file"
+    },
+    {
+      "path": "tui/ses-tokens.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/subagent.tsx",
+      "kind": "file"
+    },
+    {
+      "path": "tui/todo.tsx",
+      "kind": "file"
+    }
+  ],
+  "changes": [
+    {
+      "path": "README.md",
+      "kind": "modified",
+      "before": {
+        "hash": "2c89b156f26d79df5baae5e2c55c947c5025bdf2e2655c63e653242fe61cc363",
+        "size": 34806
+      },
+      "after": {
+        "hash": "df6e11be9dbe3ed90b551dbba6a75fc48305b704af7b0a1c1d65b557a8296d8a",
+        "size": 35522
+      },
+      "attributedTo": [
+        {
+          "path": "README.md",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "deploy-plugins.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "c843b63187b1a6ff53f622ea2aaeeb6e358960fdf483cf075d7f5eca9e020cc4",
+        "size": 7870
+      },
+      "after": {
+        "hash": "761450cc441bd781014145633f0d5027cfaa1fdcf1ae002323e157b0d44ac80d",
+        "size": 8578
+      },
+      "attributedTo": [
+        {
+          "path": "deploy-plugins.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "plugin-manifest.json",
+      "kind": "modified",
+      "before": {
+        "hash": "7e6047cb628e2d18b2c70a29a4b903cc813c20ca8eb3c6767505363cd870d36a",
+        "size": 1707
+      },
+      "after": {
+        "hash": "5a95b36272e9d0e63875f7ad8212ba087b5e9e31ad19b415c363b688e441b303",
+        "size": 1755
+      },
+      "attributedTo": [
+        {
+          "path": "plugin-manifest.json",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "plugin-manifest.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "2c2cc55c3a945831aa82a10d6f22a56aca1f8d23ef3bedaa631747b27167397e",
+        "size": 1412
+      },
+      "after": {
+        "hash": "f61f87dd658c4e794f51bd48103b1f1bb4bf7b49bd3bbb80129d8b370a290439",
+        "size": 1428
+      },
+      "attributedTo": [
+        {
+          "path": "plugin-manifest.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "shared/opencode-tools-shared.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "a5f299f5a08e883686aeeada544f3550a9850e96dfe327d38a8baff393dd0654",
+        "size": 6447
+      },
+      "after": {
+        "hash": "d443c0a98af826eca23defd933c7b23f07cd3842ac65cd5ff75ac052188f4dac",
+        "size": 6629
+      },
+      "attributedTo": [
+        {
+          "path": "shared/opencode-tools-shared.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/collapse-options.test.mjs",
+      "kind": "added",
+      "before": null,
+      "after": {
+        "hash": "b223aa4ea5bf3684691b825e8f2a0e021ab5f2107c1c4fe33ed887e785a287d7",
+        "size": 1792
+      },
+      "attributedTo": [
+        {
+          "path": "tests/collapse-options.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/compile-presentation.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "86b0cda537085b5ad27ba8e35f14cec31c4c5613b85528eaf7a8e548b2081101",
+        "size": 6427
+      },
+      "after": {
+        "hash": "c547de4a56a525de70ca6879c3bb0c113db855e224f6966a6d334f669d6329a7",
+        "size": 6501
+      },
+      "attributedTo": [
+        {
+          "path": "tests/compile-presentation.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/plugin-deploy.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "1558bb318762907919b633265a488a06282e7fd255d9e671c543cae5c90fb209",
+        "size": 24238
+      },
+      "after": {
+        "hash": "9e68450fdfffca608e25822f2553c016a7b3a05bba8bb8a6629a76f62c2e5f74",
+        "size": 25641
+      },
+      "attributedTo": [
+        {
+          "path": "tests/plugin-deploy.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/plugin-manifest.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "feb5fb74f747370a2b943f6e1724b549bde8a9e72a54c529349a869e2b82be6b",
+        "size": 2817
+      },
+      "after": {
+        "hash": "f23442805dc50ed3552b41a444e8a2af928dfccd39e47507b202cb4cd2200205",
+        "size": 2865
+      },
+      "attributedTo": [
+        {
+          "path": "tests/plugin-manifest.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tests/plugin-wiring.test.mjs",
+      "kind": "modified",
+      "before": {
+        "hash": "3e3e8448051f4f2b3b9e64e2846d4a7c8c0fc225ce0c79586b42588b2dbb0a78",
+        "size": 32488
+      },
+      "after": {
+        "hash": "9ab13a8de08ed5e1f885aa0f8310c82e41d39005cd332075ed08e30336e22e00",
+        "size": 32425
+      },
+      "attributedTo": [
+        {
+          "path": "tests/plugin-wiring.test.mjs",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/context.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "9cc6f6ee62d733dd5261a60a02ef80c985c25c7ebf4ff1a3ea9d6a098c73311c",
+        "size": 2556
+      },
+      "after": {
+        "hash": "368d101a03051331d5323bcf4dac796a9077ad8ad4229890247d460c0500620d",
+        "size": 2678
+      },
+      "attributedTo": [
+        {
+          "path": "tui/context.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/features/collapse-options.ts",
+      "kind": "added",
+      "before": null,
+      "after": {
+        "hash": "2fd0ce60ae85e0b1d2e9d477d73d31edb315387a0b575dbf40139c279956bebe",
+        "size": 620
+      },
+      "attributedTo": [
+        {
+          "path": "tui/features/collapse-options.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/lsp.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "d400e717ce77866b38879d65f66ae89f54d9835d144f175f58dadfa14dbabd96",
+        "size": 2009
+      },
+      "after": {
+        "hash": "99519e0dc5d70e2da19c32a749c2094d117f21523cbdf88529e45170d4c6fa1d",
+        "size": 2132
+      },
+      "attributedTo": [
+        {
+          "path": "tui/lsp.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/mcp.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "a2bc7b76f6e9d8e5abc88c2864c76bbcd58a57a2264e36e320439292f0699936",
+        "size": 2121
+      },
+      "after": {
+        "hash": "435563df6a905cfc9c7aaf81b2870e07712cdf1ee48651bd7c63211767ac1ae8",
+        "size": 2244
+      },
+      "attributedTo": [
+        {
+          "path": "tui/mcp.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/presentation/renderer.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "8b995e9baa14b5bccbaceda77b884283529376f1cee23a04122a357ac0036629",
+        "size": 13889
+      },
+      "after": {
+        "hash": "22e4f7229735ce64c5dad9696109aa41df0d4075ff24e60ff88003c30d8a4278",
+        "size": 14037
+      },
+      "attributedTo": [
+        {
+          "path": "tui/presentation/renderer.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/quota.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "c7d0e171a5ca3b3db31a61fc1e8fb00172d125dd037752c10711c918a4738c91",
+        "size": 3699
+      },
+      "after": {
+        "hash": "6a3fed0840739faafa363fe7690beb31f9e93870c4fa2e1ced8d4d02004de867",
+        "size": 3981
+      },
+      "attributedTo": [
+        {
+          "path": "tui/quota.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/runtime/manifest.ts",
+      "kind": "modified",
+      "before": {
+        "hash": "0d66d8b105ced0fea70b729b99e46d162de78614d9d0be11746055a47154986d",
+        "size": 638
+      },
+      "after": {
+        "hash": "5dc2dcd3871b5bbdad95ba81299e4960a1149b18b250f1252c19801e0f67c237",
+        "size": 655
+      },
+      "attributedTo": [
+        {
+          "path": "tui/runtime/manifest.ts",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/ses-tokens.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "ed7f442a6e88d981b78e33e882f2b8d95decdd5bf4479af6e299f0bdce39a23e",
+        "size": 6030
+      },
+      "after": {
+        "hash": "1ac0ea073b62c251a75a7b656c2be366bdbbb2fce5666939b6246b4f0bda07b2",
+        "size": 6142
+      },
+      "attributedTo": [
+        {
+          "path": "tui/ses-tokens.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/subagent.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "f1989d320cc310169b7cfb9740e428ed4a2a59ee9009bd609bb6cd80d39e48f1",
+        "size": 14440
+      },
+      "after": {
+        "hash": "733c7735523e3d0501d8ef4a52d3c7ebfff4d58d370dbb355d6d33ae7db49aa5",
+        "size": 14581
+      },
+      "attributedTo": [
+        {
+          "path": "tui/subagent.tsx",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "path": "tui/todo.tsx",
+      "kind": "modified",
+      "before": {
+        "hash": "98bda62b64b9ca3d96a8fb72d80895a4db730b393d181f4ccbb6b87736f0793c",
+        "size": 2352
+      },
+      "after": {
+        "hash": "83e0ecc3be6618aeac9342c2f39ba46d7216fb348bc8668a4f52334ff7c27866",
+        "size": 2474
+      },
+      "attributedTo": [
+        {
+          "path": "tui/todo.tsx",
+          "kind": "file"
+        }
+      ]
+    }
+  ],
+  "unattributed": [],
+  "unresolvedScopes": [],
+  "noCodeReason": null,
+  "scopeHash": "60ca586014c015b445b3fad58eb23dff6d70871082452522c05dae669cb81e60"
+}

@@ -1,17 +1,16 @@
-import { createMemo, createSignal, For, Show, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, For, Show, type JSX } from "solid-js"
 
 import {
   CompactPanel,
   createTodoPanelModel,
   defineTuiPlugin,
   pluginDescriptor,
+  resolveCollapseDefault,
   type PanelTheme,
   type TodoStatusRow,
 } from "../shared/opencode-tools-shared.js"
 
 const descriptor = pluginDescriptor("todo")
-const COLLAPSED_KEY = "aamkye.opencode-tools-todo.collapsed"
-
 function TodoRow(props: { row: TodoStatusRow; theme: () => PanelTheme }) {
   return (
     <box flexDirection="row" width="100%" overflow="hidden">
@@ -30,21 +29,22 @@ function TodoRow(props: { row: TodoStatusRow; theme: () => PanelTheme }) {
   )
 }
 
-const plugin = defineTuiPlugin(descriptor, (_context, api) => {
+const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
   const [sessionID, setSessionID] = createSignal("")
+  const defaultCollapsed = resolveCollapseDefault(options, false).collapsed
 
   function TodoPanel() {
-    const [collapsed, setCollapsed] = createSignal(api.kv.get(COLLAPSED_KEY, false))
+    const [collapsed, setCollapsed] = createSignal(defaultCollapsed)
+    createEffect(() => {
+      sessionID()
+      setCollapsed(defaultCollapsed)
+    })
     const model = createMemo(() => {
       const currentSessionID = sessionID()
       const records = currentSessionID ? api.state.session.todo(currentSessionID) : []
       return createTodoPanelModel(records)
     })
-    const toggle = () => {
-      const next = !collapsed()
-      setCollapsed(next)
-      api.kv.set(COLLAPSED_KEY, next)
-    }
+    const toggle = () => setCollapsed((current) => !current)
 
     const render = () => (
       <CompactPanel

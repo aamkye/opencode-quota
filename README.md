@@ -75,10 +75,11 @@ Fully restart OpenCode after deployment.
   source order without polling.
 - **Native status roles** — connected, disabled, failed, authentication, and
   client-registration states use compact labels and status-colored bullets.
-- **Persistent collapse state** — remembers the user's preference, and the
-  collapsed header shows a `success/warning/error` health rollup (connected,
-  disabled, and error-state counts) that stays compact as a colored `0/0/0`
-  summary when the server list is empty.
+- **Session-local collapse state** — resets to the configured default whenever
+  the active session changes. The collapsed header shows a
+  `success/warning/error` health rollup (connected, disabled, and error-state
+  counts) that stays compact as a colored `0/0/0` summary when the server list
+  is empty.
 
 ### Context
 
@@ -94,7 +95,8 @@ Fully restart OpenCode after deployment.
   the model context limit is unavailable, the panel preserves the known `Tokens`
   value and accumulated `Spent`, while `Limit`, `Used`, and the collapsed summary
   remain `-`.
-- **Persistent collapse state**: remembers the user's header-click preference.
+- **Session-local collapse state**: resets to the configured default whenever
+  the active session changes.
 
 ### LSP
 
@@ -103,9 +105,9 @@ Fully restart OpenCode after deployment.
 - **Status-colored bullets** — successful servers use the success color,
   failed servers use the error color, and unknown statuses remain in the list
   with a muted bullet.
-- **Persistent collapse state** — remembers the user's header-click preference
-  and shows `LSPs will activate as files are read` when the expanded list is
-  empty.
+- **Session-local collapse state** — resets to the configured default whenever
+  the active session changes and shows `LSPs will activate as files are read`
+  when the expanded list is empty.
 
 ### TODO
 
@@ -116,9 +118,9 @@ Fully restart OpenCode after deployment.
 - **Aligned wrapped rows** — reserves four cells for each marker so continuation
   lines align beneath the content column. An empty list shows
   `No TODOs for this session`.
-- **Persistent collapse state** — remembers the user's header-click preference
-  and summarizes `done/working/todo` counts (cancelled excluded) in the
-  collapsed header.
+- **Session-local collapse state** — resets to the configured default whenever
+  the active session changes and summarizes `done/working/todo` counts
+  (cancelled excluded) in the collapsed header.
 
 ### SesTokens
 
@@ -133,8 +135,8 @@ Fully restart OpenCode after deployment.
   retries. It does not poll or calculate cost.
 - **Stale recovery**: retains the last successful snapshot as stale and
   recovers it to ready after a successful refresh.
-- **Memory-only data**: Snapshots are memory-only; only the collapse preference
-  persists.
+- **Memory-only data**: Snapshots and collapse choices are memory-only. Selecting
+  another session resets the panel to its configured or built-in default.
 
 ### SubAgent
 
@@ -152,8 +154,9 @@ Fully restart OpenCode after deployment.
   right-aligned duration box with a two-cell structural margin. Expanded titles
   wrap in full without a duration reservation.
   The Rest disclosure and title are muted, and its divider is two muted three-dash segments separated by flexible space.
-- **Persistent interaction state**: panel collapse, `Rest` collapse, expanded
-  child, and retained failure evidence persist per parent session.
+- **Session-local interaction state**: panel collapse, `Rest` collapse, and an
+  expanded child reset whenever the active session changes. Retained failure
+  evidence remains persistent per parent session.
 - **Stale and empty behavior**: a failed refresh after ready data retains the
   complete entry body and marks the panel stale. Loading, unavailable, and
   unselected states emit no panel output; a ready parent without direct children
@@ -236,16 +239,37 @@ Native TUI options can be supplied with the local plugin entry:
 Context ships as a separate opt-in artifact. Enable it by adding
 `./opencode-tools-context.js` to the `plugin` array.
 
-The entries must remain standalone and in manifest order. Only quota accepts
-the options object; home, token-report, Context, SesTokens, SubAgent, MCP, LSP,
-and TODO use string entries.
-MCP, Context, LSP, and TODO accept no options. Context has no built-in panel override
-to disable. SesTokens accepts no options and has no built-in panel override. The
-SubAgent accepts no options and has no built-in panel override. The other
-external panels do not deactivate their built-in counterparts. Users must disable
-`internal:sidebar-mcp`,
-`internal:sidebar-lsp`, and `internal:sidebar-todo` themselves, as shown by
-`plugin_enabled`, to avoid duplicate panels.
+The entries must remain standalone and in manifest order. Quota accepts the
+quota options object; each sidebar panel (Context, SesTokens, SubAgent, MCP,
+LSP, TODO) optionally accepts an options object with `defaultState`. Home and
+token-report use string entries.
+
+#### Default collapse state
+
+Any sidebar panel can be configured with `defaultState`. Whenever the active
+session ID changes, including returning to a previously opened session, every
+panel resets to that configured state. A missing or invalid value uses the
+built-in `"expanded"` default. Header and secondary-section toggles remain local
+to the currently selected session and are not persisted.
+
+| Plugin                             | Accepted values                                           |
+| ---------------------------------- | --------------------------------------------------------- |
+| Context, SesTokens, MCP, LSP, TODO | `"expanded"` (default), `"collapsed"`                     |
+| SubAgent, Quota                    | `"expanded"` (default), `"semi-collapsed"`, `"collapsed"` |
+
+`"semi-collapsed"` starts the panel expanded with the secondary section (Rest /
+Other Providers) collapsed; it is ignored for panels without a secondary section.
+
+```json
+["./opencode-tools-context.js", { "defaultState": "collapsed" }]
+```
+
+MCP, Context, LSP, and TODO have no built-in panel override to disable.
+SesTokens has no built-in panel override. The SubAgent has no built-in panel
+override. The other external panels do not deactivate their built-in
+counterparts. Users must disable `internal:sidebar-mcp`, `internal:sidebar-lsp`,
+and `internal:sidebar-todo` themselves, as shown by `plugin_enabled`, to avoid
+duplicate panels.
 
 `quota.opencodego.workspaceId` identifies the OpenCode Go workspace.
 `quota.opencodego.workspaceToken` authenticates the console request;
@@ -288,6 +312,70 @@ Move them to `quota.refreshIntervalSeconds` and `quota.progressColors`
 respectively. The legacy root-level `otherProviders` object is also ignored:
 move `otherProviders.percentageMode` to `quota.percentageMode` and
 `otherProviders.sortDirection` to `quota.otherProviders.sortDirection`.
+
+#### Configuration reference
+
+Every configurable option accepted by the plugins and host-level files is
+listed below. Options are supplied through the tuple form
+`["./plugin.js", { ... }]` in `tui.json` (or `opencode.json`). Unknown keys
+in an options object are ignored.
+
+**Per-plugin options**
+
+| Plugin                             | Option         | Type     | Default       | Accepted values                                             |
+| ---------------------------------- | -------------- | -------- | ------------- | ---------------------------------------------------------- |
+| Context                            | `defaultState` | string   | `"expanded"`  | `"expanded"`, `"collapsed"`                                |
+| SesTokens                          | `defaultState` | string   | `"expanded"`  | `"expanded"`, `"collapsed"`                                |
+| SubAgent                           | `defaultState` | string   | `"expanded"`  | `"expanded"`, `"semi-collapsed"`, `"collapsed"`            |
+| Quota                              | `defaultState` | string   | `"expanded"`  | `"expanded"`, `"semi-collapsed"`, `"collapsed"`            |
+| MCP                                | `defaultState` | string   | `"expanded"`  | `"expanded"`, `"collapsed"`                                |
+| LSP                                | `defaultState` | string   | `"expanded"`  | `"expanded"`, `"collapsed"`                                |
+| TODO                               | `defaultState` | string   | `"expanded"`  | `"expanded"`, `"collapsed"`                                |
+
+`defaultState` resets every sidebar panel when the active session ID changes.
+`"semi-collapsed"` starts the panel expanded with the secondary section (Rest
+or Other Providers) collapsed; it is ignored for panels without a secondary
+section. Missing or unrecognized values fall back to `"expanded"`.
+
+**Quota plugin options (`quota` object)**
+
+| Path                                   | Type    | Default | Accepted values                             | Effect                                                                |
+| -------------------------------------- | ------- | ------- | ------------------------------------------- | --------------------------------------------------------------------- |
+| `quota.refreshIntervalSeconds`         | number  | `10`    | finite, positive                            | Provider polling interval in seconds. Invalid or non-positive falls back to 10. |
+| `quota.progressColors.enabled`         | boolean | `true`  | `true`, `false`                             | Enables semantic bar and percentage colors.                           |
+| `quota.progressColors.errorBelow`      | number  | `10`    | `0`–`100`; must be ≤ `warningBelow`         | Remaining percentage at or below which the bar turns error color.    |
+| `quota.progressColors.warningBelow`    | number  | `30`    | `0`–`100`                                   | Remaining percentage at or below which the bar turns warning color.  |
+| `quota.percentageMode`                 | string  | `"remaining"` | `"remaining"`, `"used"`               | Whether bars and collapsed summaries show remaining or used percentage. |
+| `quota.hideInactive`                  | boolean | `false` | `true`, `false`                             | Global default for hiding inactive providers in Other Providers.     |
+| `quota.openai.hideInactive`            | boolean | *(inherit)* | `true`, `false`                        | Overrides `hideInactive` for OpenAI. Resolves as `providerOverride ?? quota.hideInactive ?? false`. |
+| `quota.zai.hideTools`                 | boolean | `false` | `true`, `false`                             | Removes every Z.AI tool-limit row and its quantities from the panel. |
+| `quota.zai.hideInactive`              | boolean | *(inherit)* | `true`, `false`                        | Overrides `hideInactive` for Z.AI.                                    |
+| `quota.opencodego.workspaceId`         | string  | *(none)* | `wrk_` followed by alphanumeric characters | Identifies the OpenCode Go workspace. Required to activate OpenCode Go. |
+| `quota.opencodego.workspaceToken`      | string  | *(none)* | non-empty, no line breaks                   | Auth cookie value for the console request. Required to activate OpenCode Go. |
+| `quota.opencodego.hideInactive`        | boolean | *(inherit)* | `true`, `false`                        | Overrides `hideInactive` for OpenCode Go.                             |
+| `quota.otherProviders.sortDirection`   | string  | `"desc"` | `"desc"`, `"asc"`                           | Sort direction for secondary providers inside Other Providers.       |
+
+When `progressColors.errorBelow` exceeds `progressColors.warningBelow`, both
+revert to their defaults (`10` and `30`).
+
+**Host-level configuration**
+
+| Key                              | Type   | Effect                                                                          |
+| -------------------------------- | ------ | ------------------------------------------------------------------------------- |
+| `plugin`                         | array  | Ordered list of plugin entries. Each entry is a string spec or `[spec, options]` tuple. Specs are relative file paths, `file://` URLs, or npm package names. Relative paths resolve against the config file that declared them. |
+| `plugin_enabled`                 | object | Keyed by plugin ID. Set a key to `false` to disable an internal built-in panel. |
+
+Built-in panel overrides:
+
+| Key                          | Disables                  |
+| ---------------------------- | ------------------------- |
+| `internal:sidebar-context`   | Built-in Context panel    |
+| `internal:sidebar-mcp`       | Built-in MCP panel        |
+| `internal:sidebar-lsp`       | Built-in LSP panel        |
+| `internal:sidebar-todo`      | Built-in TODO panel       |
+
+Set these to `false` in `plugin_enabled` when the corresponding opencode-tools
+plugin is loaded, to avoid duplicate sidebar panels.
 
 ### MCP sidebar layouts
 
@@ -393,8 +481,7 @@ LSPs will activate as files are read
 
 The collapsed count uses normal header text. Successful servers use a success
 bullet, failed servers use an error bullet, and unknown statuses remain present
-with a muted bullet. Only header clicks write the persisted collapse
-preference.
+with a muted bullet. Header clicks affect only the current session selection.
 
 ### TODO sidebar layouts
 
@@ -492,8 +579,8 @@ While the first snapshot loads, the expanded body and collapsed summary show
 `Loading...` without zero metrics. If the initial attempt and all three retries
 fail, they show `Usage unavailable`. A failed refresh after ready data retains
 the last successful snapshot as stale and recovers it to ready when a later
-refresh succeeds. The panel does not poll. Snapshots are memory-only; only the
-collapse preference persists, and the panel does not calculate cost.
+refresh succeeds. The panel does not poll. Snapshots and collapse choices are
+memory-only, and the panel does not calculate cost.
 
 ### SubAgent sidebar layouts
 
@@ -662,8 +749,9 @@ npm run deploy:global
 
 Each deploy command rebuilds first and automatically migrates managed
 configuration entries to the nine standalone entries in manifest order. It
-preserves unrelated plugin entries and preserves existing quota options;
-quota options remain attached only to the quota entry. Local deployment also
+preserves unrelated plugin entries and preserves existing per-plugin options
+(quota and `defaultState`); quota options remain attached only to the quota
+entry. Local deployment also
 removes managed source entries from the project-root `tui.json`, because
 OpenCode loads it together with `.opencode/tui.json`; options in the selected
 `.opencode` config take precedence. Repeating either command produces the same

@@ -1,0 +1,151 @@
+{
+  "schema": "comet.native.verification-evidence.v1",
+  "change": "tui-session-collapse-reset",
+  "sourceRevision": 3,
+  "result": "pass",
+  "freshness": "complete",
+  "contractHash": "b791c0bbb59c431fae2269adb430cb1667efb381b72dd6885e1ae170d20b962f",
+  "acceptanceCriteriaHash": "995966c53bf855459ddadff4dcb2ecf5e331e81eb88d0441f63a13fd6c1ff053",
+  "implementationScopeRef": "runtime/evidence/scopes/b150619dbf1137ac6757f1e4233ac34466c27b9e3cf655a37eb5fe928224ac60.json",
+  "implementationScopeHash": "b150619dbf1137ac6757f1e4233ac34466c27b9e3cf655a37eb5fe928224ac60",
+  "reportRef": "verification.md",
+  "reportHash": "1f0fa299bcd4280cbccf63551a4c3d3d37c69e742bd4a0402da5ebc5a93215cd",
+  "acceptanceTrace": {
+    "schema": "comet.native.acceptance-trace.v1",
+    "nativeRootRef": "docs/comet",
+    "criteriaHash": "995966c53bf855459ddadff4dcb2ecf5e331e81eb88d0441f63a13fd6c1ff053",
+    "total": 10,
+    "evidenced": 10,
+    "skipped": 0,
+    "entries": [
+      {
+        "acceptanceId": "acceptance-0b83ababadce7f657c538d3ff50ba8e8d1c7e6df40d7bd5c08fa0227ed64fbf3",
+        "kind": "spec-scenario",
+        "source": "specs/tui-default-collapse-option/spec.md",
+        "evidenceRefs": [
+          "tests/context-mounted.test.mjs",
+          "tests/lsp-mounted.test.mjs",
+          "tests/mcp-mounted.test.mjs",
+          "tests/ses-tokens-mounted.test.mjs",
+          "tests/todo-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-20343debe6a1688c527f66ce9603f3efcc9e1983aaf45b11867b4a4209e36ad6",
+        "kind": "spec-scenario",
+        "source": "specs/tui-default-collapse-option/spec.md",
+        "evidenceRefs": [
+          "tests/context-mounted.test.mjs",
+          "tests/lsp-mounted.test.mjs",
+          "tests/mcp-mounted.test.mjs",
+          "tests/presentation-mounted.test.mjs",
+          "tests/ses-tokens-mounted.test.mjs",
+          "tests/subagent-mounted.test.mjs",
+          "tests/todo-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-3fd718bd83a8dc67536ae5929de3b248c61c235c25393e51c4c4d4cd56a1f33e",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/collapse-options.test.mjs",
+          "tests/context-mounted.test.mjs",
+          "tests/lsp-mounted.test.mjs",
+          "tests/mcp-mounted.test.mjs",
+          "tests/presentation-mounted.test.mjs",
+          "tests/ses-tokens-mounted.test.mjs",
+          "tests/subagent-mounted.test.mjs",
+          "tests/todo-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-7d1e40cb74603f44c993deea34d9fca18b7e0273e9b1922fd8fc7cc2ae041bbe",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/context-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-86998c8bc3a5ccf96ebd9c71d0db758648d705aa116a8cac7d2289c6ef4a559a",
+        "kind": "spec-scenario",
+        "source": "specs/tui-default-collapse-option/spec.md",
+        "evidenceRefs": [
+          "tests/context-mounted.test.mjs",
+          "tests/lsp-mounted.test.mjs",
+          "tests/mcp-mounted.test.mjs",
+          "tests/presentation-mounted.test.mjs",
+          "tests/ses-tokens-mounted.test.mjs",
+          "tests/subagent-mounted.test.mjs",
+          "tests/todo-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-969489332bc10ed9a38788da62ea2b120e2b6b653140fece274ee979a4445f52",
+        "kind": "spec-scenario",
+        "source": "specs/tui-default-collapse-option/spec.md",
+        "evidenceRefs": [
+          "tests/presentation-mounted.test.mjs",
+          "tests/subagent-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-a2a4e80a64b70730e6534b2ad60ad666eb348e9ca2a5edd43166f1860d9e6997",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/context-mounted.test.mjs",
+          "tests/lsp-mounted.test.mjs",
+          "tests/mcp-mounted.test.mjs",
+          "tests/presentation-mounted.test.mjs",
+          "tests/ses-tokens-mounted.test.mjs",
+          "tests/subagent-mounted.test.mjs",
+          "tests/todo-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-a538ba454377fc8dda233208c3fb0e69140ab66d3d49fc682d57a329ddd3bca9",
+        "kind": "spec-scenario",
+        "source": "specs/tui-default-collapse-option/spec.md",
+        "evidenceRefs": [
+          "tests/collapse-options.test.mjs",
+          "tests/lsp-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-b345f0f58c84e422e59af3b641dafd913fcf541423f6bc077948e4f06e578332",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/subagent-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-b3e2e547e4b95ddc2d4631da52cc5325fe480066678e4e6a8504c860ea653a8e",
+        "kind": "spec-scenario",
+        "source": "specs/tui-default-collapse-option/spec.md",
+        "evidenceRefs": [
+          "tests/collapse-options.test.mjs",
+          "tests/lsp-mounted.test.mjs"
+        ],
+        "skippedReason": null
+      }
+    ],
+    "traceHash": "aaf27a979fb08b5e5334e51cf97f955ab1775717c4324838109a46fc7c049888"
+  },
+  "partialAllowanceRef": null,
+  "partialAllowanceHash": null,
+  "receiptRef": "runtime/evidence/check-receipts/8204b3cf5f5442b24962989cfe0e8bd3b991fb503b33db4cc62cbdd2007846a9.json",
+  "createdAt": "2026-07-23T00:41:34.495Z",
+  "envelopeHash": "9e6908e657d2c1982b2271cf3f30d5fa69f82576911f822f832165e17f0888b0"
+}

@@ -124,6 +124,7 @@ async function settle() {
 
 export async function mountSesTokensPanel(options: {
   sessionID?: string
+  defaultState?: unknown
   savedCollapsed?: boolean
   store?: Map<string, unknown>
 } = {}) {
@@ -233,7 +234,7 @@ export async function mountSesTokensPanel(options: {
     },
   }
 
-  await sesTokensPlugin.tui(api as never, undefined, meta)
+  await sesTokensPlugin.tui(api as never, { defaultState: options.defaultState }, meta)
   const registration = registrations[0]
   const slot = registration?.slots.sidebar_content
   if (!registration || !slot) throw new Error("SesTokens sidebar slot was not registered")

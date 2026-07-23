@@ -161,17 +161,17 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     "sums finite detailed `input`, `output`, `reasoning`, `cache.read`, and `cache.write` buckets and uses the newest assistant message whose sum is positive",
     "sums finite assistant-message costs for the active session and ignores missing or non-finite costs",
     "shows `Tokens -`, `Used -`, and `Spent $0.00` when the host has not supplied usable context data",
-    "remembers the user's header-click preference",
+    "resets to the configured default whenever the active session changes",
   ]) assert.equal(contextFeatures.replace(/\s+/gu, " ").includes(text), true, `missing Context feature text: ${text}`)
 
   assert.match(
     configurationSection.replace(/\s+/gu, " "),
     /Context ships as a separate opt-in artifact\. Enable it by adding `\.\/opencode-tools-context\.js` to the `plugin` array\./u,
   )
-  assert.match(configurationSection, /Context, LSP, and TODO accept no options\./u)
-  assert.match(configurationSection, /Context has no built-in panel override\s+to disable\./u)
-  assert.match(configurationSection, /SesTokens accepts no options and has no built-in panel override\./u)
-  assert.match(configurationSection, /SubAgent accepts no options and has no built-in panel override\./u)
+  assert.match(configurationSection, /MCP, Context, LSP, and TODO have no built-in panel override to disable\./u)
+  assert.match(configurationSection, /SesTokens has no built-in panel override\./u)
+  assert.match(configurationSection, /SubAgent has no built-in panel/u)
+  assert.match(configurationSection, /defaultState/u)
 
   for (const id of [
     "aamkye/opencode-tools-quota",
@@ -189,7 +189,7 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     "OpenCode 1.18.1 or newer",
     "automatically migrates managed configuration entries",
     "preserves unrelated plugin entries",
-    "preserves existing quota options",
+    "preserves existing per-plugin options",
     "quota options remain attached only to the quota entry",
     "normalized quota runtime ID",
     "host-managed plugin state may reset",
@@ -407,7 +407,7 @@ test("documents standalone installation, migration, sidebar layouts, and rollbac
     "2, 4, and 8 second retries",
     "retains the last successful snapshot as stale and recovers it to ready",
     "does not poll",
-    "Snapshots are memory-only; only the collapse preference persists",
+    "Snapshots and collapse choices are memory-only. Selecting another session resets the panel",
     "does not calculate cost",
     "Loading...",
     "Usage unavailable",

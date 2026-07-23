@@ -11,6 +11,7 @@ import {
   defineTuiPlugin,
   PANEL_MAX_CELLS,
   pluginDescriptor,
+  resolveCollapseDefault,
   type PanelStatus,
   type PanelTheme,
   type RetainedFailures,
@@ -23,9 +24,6 @@ import {
 
 const descriptor = pluginDescriptor("subagent")
 const FAILURE_KEY = "aamkye.opencode-tools-subagent.failures"
-const PANEL_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.panel-collapsed"
-const REST_COLLAPSED_KEY = "aamkye.opencode-tools-subagent.rest-collapsed"
-const EXPANDED_CHILD_KEY = "aamkye.opencode-tools-subagent.expanded-child"
 export const subagentRuntimeTestKey = Symbol("subagent-runtime-test")
 
 type SubagentSourceFactory = (dependencies: SubagentSourceDependencies) => SubagentSource
@@ -187,7 +185,8 @@ function SubagentRow(props: {
   )
 }
 
-const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
+const plugin = defineTuiPlugin(descriptor, (context, api, options, meta) => {
+  const collapseDefaults = resolveCollapseDefault(options, true)
   const directory = api.state.path.directory
   const injected = runtime(meta)
   const loadSnapshot = createSubagentSnapshotLoader({
@@ -217,9 +216,6 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
     clearTimer: injected.clearTimer,
   })
   const [state, setState] = createSignal<SubagentSourceState | undefined>(source.state())
-  let panelCollapsedByParent = api.kv.get<Record<string, boolean>>(PANEL_COLLAPSED_KEY, {})
-  let restCollapsedByParent = api.kv.get<Record<string, boolean>>(REST_COLLAPSED_KEY, {})
-  let expandedChildByParent = api.kv.get<Record<string, string>>(EXPANDED_CHILD_KEY, {})
   const clockStops = new Set<() => void>()
   context.onCleanup(source.dispose)
   context.onCleanup(source.subscribe(() => setState(source.state())))
@@ -229,10 +225,10 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
   })
 
   function SubagentPanel(props: { panelState: Extract<SubagentSourceState, { phase: "ready" | "stale" }> }) {
-    const parentID = props.panelState.parentID
-    const [collapsed, setCollapsed] = createSignal(panelCollapsedByParent[parentID] ?? false)
-    const [expandedID, setExpandedID] = createSignal<string | undefined>(expandedChildByParent[parentID])
-    const [restExpanded, setRestExpanded] = createSignal(!(restCollapsedByParent[parentID] ?? false))
+    const parentID = () => props.panelState.parentID
+    const [collapsed, setCollapsed] = createSignal(collapseDefaults.collapsed)
+    const [expandedID, setExpandedID] = createSignal<string | undefined>()
+    const [restExpanded, setRestExpanded] = createSignal(!collapseDefaults.secondaryCollapsed)
     const [now, setNow] = createSignal(injected.now())
     const model = createMemo<SubagentPanelModel>(() => createSubagentPanelModel(
       props.panelState.snapshot,
@@ -240,34 +236,24 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
       now(),
     ))
     const summaryText = () => model().summary.map((segment) => segment.text).join("")
-    const togglePanel = () => {
-      const next = !collapsed()
-      panelCollapsedByParent = { ...panelCollapsedByParent, [parentID]: next }
-      setCollapsed(next)
-      api.kv.set(PANEL_COLLAPSED_KEY, panelCollapsedByParent)
-    }
-    const toggleRest = () => {
-      const next = !restExpanded()
-      restCollapsedByParent = { ...restCollapsedByParent, [parentID]: !next }
-      setRestExpanded(next)
-      api.kv.set(REST_COLLAPSED_KEY, restCollapsedByParent)
-    }
+    const togglePanel = () => setCollapsed((current) => !current)
+    const toggleRest = () => setRestExpanded((current) => !current)
     const toggleEntry = (entryID: string) => {
       const next = expandedID() === entryID ? undefined : entryID
-      expandedChildByParent = { ...expandedChildByParent }
-      if (next === undefined) delete expandedChildByParent[parentID]
-      else expandedChildByParent[parentID] = next
       setExpandedID(next)
-      api.kv.set(EXPANDED_CHILD_KEY, expandedChildByParent)
     }
+
+    createEffect(() => {
+      parentID()
+      setCollapsed(collapseDefaults.collapsed)
+      setRestExpanded(!collapseDefaults.secondaryCollapsed)
+      setExpandedID(undefined)
+    })
 
     createEffect(() => {
       const selected = expandedID()
       if (!selected || props.panelState.snapshot.childIDs.includes(selected)) return
-      expandedChildByParent = { ...expandedChildByParent }
-      delete expandedChildByParent[parentID]
       setExpandedID(undefined)
-      api.kv.set(EXPANDED_CHILD_KEY, expandedChildByParent)
     })
 
     let clock: unknown

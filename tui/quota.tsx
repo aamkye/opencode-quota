@@ -11,6 +11,7 @@ import {
   defineTuiPlugin,
   pluginDescriptor,
   quotaAdapterShared,
+  resolveCollapseDefault,
   type QuotaProviderDemand,
   type QuotaProviderHub,
   type ServiceLease,
@@ -64,8 +65,10 @@ function reactiveProviders(providers: () => readonly QuotaProviderAdapter[]): re
 
 const plugin = defineTuiPlugin(pluginDescriptor("quota"), (context, api, rawOptions, meta) => {
   const options = quotaAdapterShared.normalizeOptions(rawOptions)
+  const collapseDefaults = resolveCollapseDefault(rawOptions, true)
   const hub = acquireHub(context, api, quotaHubDemand(options), meta)
   const [currentProviders, setCurrentProviders] = createSignal(hub.value.providers())
+  const [activeSessionID, setActiveSessionID] = createSignal("")
   let currentSessionID = ""
   context.onCleanup(hub.value.subscribe(() => {
     const providers = hub.value.providers()
@@ -84,9 +87,16 @@ const plugin = defineTuiPlugin(pluginDescriptor("quota"), (context, api, rawOpti
       sidebar_content(_ctx, props) {
         const sessionID = props.session_id ?? ""
         currentSessionID = sessionID
+        setActiveSessionID(sessionID)
         selection.setSessionID(sessionID)
         for (const provider of currentProviders()) provider.setSessionID(sessionID)
-        return <PanelRenderer model={model} theme={theme} />
+        return <PanelRenderer
+          model={model}
+          theme={theme}
+          initiallyCollapsed={collapseDefaults.collapsed}
+          initiallyCollapsedGroupIds={collapseDefaults.secondaryCollapsed ? ["other-providers"] : []}
+          resetKey={activeSessionID}
+        />
       },
     },
   })

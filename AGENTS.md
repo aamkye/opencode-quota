@@ -1,14 +1,17 @@
 <comet-ambient-resume>
 <!-- Managed by Comet. Edits inside this block may be replaced by comet init/update. -->
+<!-- Contract: comet.resume_probe.v2 -->
 
 ## Comet Ambient Resume
 
-In this repository, before starting work that may need code changes or investigation, run the Comet resume probe (read-only) if a Comet workflow may already be active.
+In this repository, before starting work that may need code changes or investigation, pass the current user request to the read-only probe when a Comet workflow may already be active: `comet resume-probe . --stdin --json`.
 
-- If the probe returns `auto_resume`, briefly state the selected active change and continue through its `nextCommand`.
+- Trust only the returned `workflow`, `skill`, and `entrySource`; project configuration or the no-config compatibility fallback alone selects them. Do not scan or switch to the other workflow.
+- If the probe returns `auto_resume`, briefly state the selected active change and enter the permanent entry in `nextCommand`. Do not treat a state command as the resume entry or advance it blindly.
 - If the probe returns `ask_user`, ask one short question and wait.
 - If the probe returns `out_of_scope` or `none`, do not enter the Comet workflow.
-- Never attach unrelated work to an active Comet change only because `.comet.yaml` exists.
+- If configuration or state is invalid and `nextCommand` is absent, stop and report the reason; do not guess another workflow.
+- Never attach unrelated work merely because an active change exists. The Native entry inspects uncommitted work; the probe does not attribute it automatically.
 </comet-ambient-resume>
 
 <okf>

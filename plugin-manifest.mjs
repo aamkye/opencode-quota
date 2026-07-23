@@ -1,7 +1,7 @@
 import manifest from "./plugin-manifest.json" with { type: "json" }
 
 const requiredStringFields = ["key", "id", "source", "outfile"]
-const validOptions = new Set(["quota", "none"])
+const validOptions = new Set(["quota", "defaultState", "none"])
 
 export function validatePluginManifest(entries) {
   if (!Array.isArray(entries)) throw new TypeError("plugin manifest must be an array")

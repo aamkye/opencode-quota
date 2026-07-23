@@ -92,6 +92,7 @@ for (const [entryPoint, outfile, conditions, plugins, external] of [
   ["tui/mcp.tsx", ".tmp-test/plugin-adapters-mcp-fixture.mjs", ["browser"]],
   ["tui/subagent.tsx", ".tmp-test/plugin-adapters-subagent-fixture.mjs", ["browser"], [openTuiSolidPlugin]],
   ["tui/runtime/plugin.ts", ".tmp-test/plugin-runtime.mjs"],
+  ["tui/features/collapse-options.ts", ".tmp-test/collapse-options.mjs"],
 ]) {
   await build({
     bundle: true,

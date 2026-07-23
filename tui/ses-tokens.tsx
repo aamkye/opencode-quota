@@ -7,6 +7,7 @@ import {
   createSesTokensSource,
   defineTuiPlugin,
   pluginDescriptor,
+  resolveCollapseDefault,
   type PanelTheme,
   type SesTokensPanelModel,
   type SesTokensSource,
@@ -15,7 +16,6 @@ import {
 } from "../shared/opencode-tools-shared.js"
 
 const descriptor = pluginDescriptor("ses-tokens")
-const COLLAPSED_KEY = "aamkye.opencode-tools-ses-tokens.collapsed"
 export const sesTokensSourceTestKey = Symbol("ses-tokens-source-test")
 
 type SesTokensSourceFactory = (dependencies: SesTokensSourceDependencies) => SesTokensSource
@@ -67,7 +67,8 @@ function SesTokensMetricRow(props: { row: MetricRow; theme: () => PanelTheme }) 
   )
 }
 
-const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
+const plugin = defineTuiPlugin(descriptor, (context, api, options, meta) => {
+  const defaultCollapsed = resolveCollapseDefault(options, false).collapsed
   const directory = api.state.path.directory
   const loadSnapshot = createSessionTreeSnapshotLoader({
     async listSessions() {
@@ -91,8 +92,12 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
   context.onCleanup(source.dispose)
   context.onCleanup(source.subscribe(() => setState(source.state())))
 
-  function SesTokensPanel() {
-    const [collapsed, setCollapsed] = createSignal(api.kv.get(COLLAPSED_KEY, false))
+  function SesTokensPanel(props: { sessionID: string }) {
+    const [collapsed, setCollapsed] = createSignal(defaultCollapsed)
+    createEffect(() => {
+      props.sessionID
+      setCollapsed(defaultCollapsed)
+    })
     const model = createMemo(() => {
       const current = state()
       return current?.phase === "ready" || current?.phase === "stale"
@@ -103,11 +108,7 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
       const current = model()
       return current ? metricRows(current) : []
     })
-    const toggle = () => {
-      const next = !collapsed()
-      setCollapsed(next)
-      api.kv.set(COLLAPSED_KEY, next)
-    }
+    const toggle = () => setCollapsed((current) => !current)
     const summary = () => {
       if (!collapsed()) return undefined
       const currentModel = model()
@@ -154,7 +155,7 @@ const plugin = defineTuiPlugin(descriptor, (context, api, _options, meta) => {
     createEffect(() => source.setSessionID(sessionID()))
     return (
       <Show when={sessionID() !== ""}>
-        <SesTokensPanel />
+        <SesTokensPanel sessionID={sessionID()} />
       </Show>
     )
   }

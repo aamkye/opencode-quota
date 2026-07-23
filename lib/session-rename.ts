@@ -23,6 +23,17 @@ export function normalizeTitle(value: string): string | undefined {
   return TITLE.test(title) ? title : undefined
 }
 
+export function describeInvalidTitle(value: string): string {
+  const title = value.trim().replace(/^['"]|['"]$/g, "")
+  const words = title.length === 0 ? [] : title.split(/\s+/).filter(Boolean)
+
+  if (words.length < 3 || words.length > 8) {
+    return `The session name "${title}" is invalid: it must be 3 to 8 words, but has ${words.length}.`
+  }
+
+  return `The session name "${title}" is invalid: each word must start with a letter or number and contain only letters, numbers, apostrophes, and hyphens.`
+}
+
 export function collectRecentUserText(
   messages: readonly SessionMessage[],
   maxCharacters = 8_000,
@@ -68,7 +79,7 @@ function resolveLatestUserModel(messages: readonly SessionMessage[]): { model: S
 }
 
 export function createSessionRenameHooks(client: Client, warn: Warn = logWarning): Hooks {
-  async function appendFeedback(sessionID: string, text: string): Promise<void> {
+  async function reportError(sessionID: string, text: string): Promise<void> {
     const result = await client.session.prompt({
       path: { id: sessionID },
       body: {
@@ -142,8 +153,6 @@ export function createSessionRenameHooks(client: Client, warn: Warn = logWarning
       if (input.command.replace(/^\//, "") !== "session-rename") return
 
       if (!input.arguments.trim()) {
-        let feedback = "Unable to generate a session title."
-
         try {
           const messages = await client.session.messages({ path: { id: input.sessionID } })
           if (!messages.data) throw new Error("session messages are unavailable")
@@ -158,10 +167,8 @@ export function createSessionRenameHooks(client: Client, warn: Warn = logWarning
           try {
             const result = await client.session.update({ path: { id: input.sessionID }, body: { title } })
             if (result.error !== undefined) throw result.error
-            feedback = `Session renamed to "${title}".`
           } catch (error) {
             warn("update", input.sessionID, error)
-            feedback = "Unable to rename this session."
           }
         } catch (error) {
           if (error instanceof Error && error.message !== "generated title is unavailable") {
@@ -169,35 +176,26 @@ export function createSessionRenameHooks(client: Client, warn: Warn = logWarning
           }
         }
 
-        try {
-          await appendFeedback(input.sessionID, feedback)
-        } catch (error) {
-          warn("feedback", input.sessionID, error)
-        }
-
         throw HANDLED_SESSION_RENAME
       }
 
       const title = normalizeTitle(input.arguments)
-      let feedback = "Usage: /session-rename [3-8 word title]"
 
       if (title) {
         try {
           const result = await client.session.update({ path: { id: input.sessionID }, body: { title } })
           if (result.error !== undefined) throw result.error
-          feedback = `Session renamed to "${title}".`
         } catch (error) {
           warn("update", input.sessionID, error)
-          feedback = "Unable to rename this session."
         }
+        throw HANDLED_SESSION_RENAME
       }
 
       try {
-        await appendFeedback(input.sessionID, feedback)
+        await reportError(input.sessionID, describeInvalidTitle(input.arguments))
       } catch (error) {
         warn("feedback", input.sessionID, error)
       }
-
       throw HANDLED_SESSION_RENAME
     },
   }

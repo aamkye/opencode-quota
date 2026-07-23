@@ -68,7 +68,7 @@ test("does not look up an empty session and renders the empty state", async () =
     ])
     assert.equal(mounted.view().hint, "")
     assert.equal(mounted.view().dividerCount, 1)
-    assert.deepEqual(mounted.kvWrites, [["aamkye.opencode-tools-todo.collapsed", true]])
+    assert.deepEqual(mounted.kvWrites, [])
   } finally {
     await mounted.dispose()
   }
@@ -170,53 +170,33 @@ test("wraps content under the 33-cell text column without trailing whitespace", 
   }
 })
 
-test("persists collapse, updates the summary reactively, and restores the preference", async () => {
-  const collapsedKey = "aamkye.opencode-tools-todo.collapsed"
-  const first = await mountTodoPanel({ sessionID: "session-a", records })
-  const store = first.store
-  assert.deepEqual(first.kvReads, [collapsedKey])
-  first.view().clickHeader()
-  assert.equal(first.view().marker, "▶ ")
-  assert.equal(first.view().summaryText, "1/1/2")
-  assert.deepEqual(first.view().summarySegments, [
+test("resets configured collapse state per session and keeps summaries reactive without kv persistence", async () => {
+  const mounted = await mountTodoPanel({ sessionID: "session-a", records, defaultState: "collapsed" })
+  try {
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.equal(mounted.view().summaryText, "1/1/2")
+    assert.deepEqual(mounted.view().summarySegments, [
     ["1", "#00ff00"],
     ["/", "#888888"],
     ["1", "#ffaa00"],
     ["/", "#888888"],
     ["2", "#ffffff"],
-  ])
-  assert.equal(first.view().rows.length, 0)
-  assert.deepEqual(first.kvWrites, [["aamkye.opencode-tools-todo.collapsed", true]])
-  first.setTodos("session-a", [
-    { content: "done", status: "completed", priority: "high" },
-    { content: "also done", status: "completed", priority: "medium" },
-  ])
-  assert.equal(first.view().summaryText, "2/0/0")
-  await first.dispose()
-
-  const second = await mountTodoPanel({ sessionID: "session-a", records, store })
-  try {
-    assert.deepEqual(second.kvReads, [collapsedKey])
-    assert.equal(second.view().marker, "▶ ")
-    assert.equal(second.view().summaryText, "1/1/2")
-    assert.deepEqual(second.kvWrites, [])
-    second.view().clickHeader()
-    assert.equal(second.view().marker, "▼ ")
-    assert.deepEqual(second.kvWrites, [["aamkye.opencode-tools-todo.collapsed", false]])
-  } finally {
-    await second.dispose()
-  }
-
-  const conflictingStore = new Map([[collapsedKey, true]])
-  const conflicting = await mountTodoPanel({ sessionID: "session-a", records, store: conflictingStore })
-  try {
-    assert.deepEqual(conflicting.kvReads, [collapsedKey])
-    assert.equal(conflicting.view().marker, "▶ ")
-    assert.equal(conflicting.view().summaryText, "1/1/2")
-    assert.deepEqual(conflicting.kvWrites, [])
-  } finally {
-    await conflicting.dispose()
-  }
+    ])
+    mounted.setTodos("session-a", [
+      { content: "done", status: "completed", priority: "high" },
+      { content: "also done", status: "completed", priority: "medium" },
+    ])
+    assert.equal(mounted.view().summaryText, "2/0/0")
+    mounted.view().clickHeader()
+    assert.equal(mounted.view().marker, "▼ ")
+    mounted.setSessionID("session-b")
+    assert.equal(mounted.view().marker, "▶ ")
+    mounted.view().clickHeader()
+    mounted.setSessionID("session-a")
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.deepEqual(mounted.kvReads, [])
+    assert.deepEqual(mounted.kvWrites, [])
+  } finally { await mounted.dispose() }
 })
 
 test("uses standard dividers and disposes the Solid and plugin lifecycles", async () => {

@@ -1,0 +1,22 @@
+schema: comet.native.v3
+minimum_runtime_version: 3
+revision: 5
+name: readme-config-reference
+language: en
+phase: archive
+brief: brief.md
+approval: implicit
+approved_contract_hash: af03814bddfed797575f3b836a540047544c9d36836e345158d1f132a741be76
+spec_changes:
+  - capability: readme-config-reference
+    operation: create
+    source: specs/readme-config-reference/spec.md
+    base_hash: null
+verification_result: pass
+verification_report: verification.md
+implementation_scope: runtime/evidence/scopes/ff4296556475bdf14e6e7d4d2756c2b2083197e9350bbcda3a9b2f976cf84c57.json
+verification_evidence: runtime/evidence/verifications/0c6495ac0151e1cf89dbe657b66f15ebe6c40ce8eb150c8362efcccad9909b70.json
+partial_allowance: null
+archived: true
+created_at: 2026-07-23
+run_id: 04f25020-0a91-4c4b-85bf-b12b0862247c

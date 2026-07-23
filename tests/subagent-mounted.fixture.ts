@@ -292,6 +292,7 @@ async function settle() {
 
 export async function mountSubagentPanel(options: {
   parentID?: string
+  defaultState?: unknown
   store?: Map<string, unknown>
 } = {}) {
   const store = options.store ?? new Map<string, unknown>()
@@ -436,7 +437,7 @@ export async function mountSubagentPanel(options: {
     },
   }
 
-  await subagentPlugin.tui(api as never, undefined, meta)
+  await subagentPlugin.tui(api as never, { defaultState: options.defaultState }, meta)
   const registration = registrations[0]
   const slot = registration?.slots.sidebar_content
   if (!registration || !slot) throw new Error("SubAgent sidebar slot was not registered")

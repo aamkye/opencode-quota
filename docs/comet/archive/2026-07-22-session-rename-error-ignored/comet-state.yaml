@@ -1,0 +1,22 @@
+schema: comet.native.v3
+minimum_runtime_version: 3
+revision: 5
+name: session-rename-error-ignored
+language: en
+phase: archive
+brief: brief.md
+approval: implicit
+approved_contract_hash: 60b78ae181ea92f238e3967156ec1dd010cec502336ebec0e702682affe9ecbb
+spec_changes:
+  - capability: session-rename
+    operation: replace
+    source: specs/session-rename/spec.md
+    base_hash: 226ed9f98d015e9425d72e66fbd9cd55d1655ee4b55a310187f8c25069c6cb87
+verification_result: pass
+verification_report: verification.md
+implementation_scope: runtime/evidence/scopes/fe572907513eb293ba362e76bd7e48071e9fef68bbddf57d87087f446f995fb8.json
+verification_evidence: runtime/evidence/verifications/3121dd3499e2ca0fb4b9ef4a6ded0b2a827800ef039e01ad2cfb0a8ddd31f0a4.json
+partial_allowance: null
+archived: true
+created_at: 2026-07-22
+run_id: e8ebaaa2-990c-453b-b878-d4a7cc8829be

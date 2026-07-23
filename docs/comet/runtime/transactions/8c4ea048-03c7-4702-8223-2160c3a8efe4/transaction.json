@@ -1,0 +1,27 @@
+{
+  "schema": "comet.native.transaction.v2",
+  "id": "8c4ea048-03c7-4702-8223-2160c3a8efe4",
+  "kind": "archive",
+  "status": "committed",
+  "change": "readme-config-reference",
+  "createdAt": "2026-07-23T01:09:06.512Z",
+  "preflightHash": "1ac98a84579f782ad79c1cc2fe85cd31a3334fc5febe49bcd4f45c0eafe32f64",
+  "operations": [
+    {
+      "id": "spec-1-readme-config-reference",
+      "type": "write",
+      "target": "specs/readme-config-reference/spec.md",
+      "staged": "runtime/transactions/8c4ea048-03c7-4702-8223-2160c3a8efe4/staged/specs/readme-config-reference/spec.md",
+      "expectedTargetHash": null,
+      "stagedHash": "8d071f26472ca64d092510e0f47c7e86ab2c98ad23d22a7d7b4858f05ec62b86"
+    },
+    {
+      "id": "archive-change",
+      "type": "move",
+      "source": "changes/readme-config-reference",
+      "target": "archive/2026-07-23-readme-config-reference",
+      "expectedSourceHash": "e5165d4a8379a40343c140729b50f31f183e8f5341b83f2b14a272a510aef8f4",
+      "expectedTargetHash": null
+    }
+  ]
+}

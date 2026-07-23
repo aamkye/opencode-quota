@@ -1,0 +1,77 @@
+{
+  "schema": "comet.native.verification-evidence.v1",
+  "change": "session-rename-error-ignored",
+  "sourceRevision": 3,
+  "result": "pass",
+  "freshness": "complete",
+  "contractHash": "60b78ae181ea92f238e3967156ec1dd010cec502336ebec0e702682affe9ecbb",
+  "acceptanceCriteriaHash": "cc20956695531a0d0ba030126becd7eb96678a9313b7c3d013d65782f83723e9",
+  "implementationScopeRef": "runtime/evidence/scopes/fe572907513eb293ba362e76bd7e48071e9fef68bbddf57d87087f446f995fb8.json",
+  "implementationScopeHash": "fe572907513eb293ba362e76bd7e48071e9fef68bbddf57d87087f446f995fb8",
+  "reportRef": "verification.md",
+  "reportHash": "ee3aa41612cba10befcc3eeb5091344de70a48cbc5b7d43c17741a583b9f1ff4",
+  "acceptanceTrace": {
+    "schema": "comet.native.acceptance-trace.v1",
+    "nativeRootRef": "docs/comet",
+    "criteriaHash": "cc20956695531a0d0ba030126becd7eb96678a9313b7c3d013d65782f83723e9",
+    "total": 5,
+    "evidenced": 5,
+    "skipped": 0,
+    "entries": [
+      {
+        "acceptanceId": "acceptance-4a5996ba29bb0ab1cf95be8c94be4aa54219de713f568e06bf8af08d8a1058ff",
+        "kind": "spec-scenario",
+        "source": "specs/session-rename/spec.md",
+        "evidenceRefs": [
+          "lib/session-rename.ts",
+          "tests/session-rename.lifecycle.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-5cb4df37e2bc510a3bf38be0b58513bc85f6c55d757f80b51ce75a0bae6bc187",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/session-rename.lifecycle.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-89dbb857d0c166edb9362f7b8187adcf9fd0bf39ebc778cdcc885d0a229ea034",
+        "kind": "spec-scenario",
+        "source": "specs/session-rename/spec.md",
+        "evidenceRefs": [
+          "lib/session-rename.ts",
+          "tests/session-rename.lifecycle.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-c47aa27feacacb9cbce09c0de363a15b4c9af88e18605981606a13e7ea109f3f",
+        "kind": "brief-example",
+        "source": "brief.md",
+        "evidenceRefs": [
+          "tests/session-rename.lifecycle.test.mjs"
+        ],
+        "skippedReason": null
+      },
+      {
+        "acceptanceId": "acceptance-e73c1c2b65355e11670390ac824d48d2e4ab8a49656d4becfaa6a39073b04b8c",
+        "kind": "spec-scenario",
+        "source": "specs/session-rename/spec.md",
+        "evidenceRefs": [
+          "lib/session-rename.ts",
+          "tests/session-rename.lifecycle.test.mjs"
+        ],
+        "skippedReason": null
+      }
+    ],
+    "traceHash": "c2f52ce9b3adbe4312ac038c8758abea66af1418945a1bbb357d848bc267ed46"
+  },
+  "partialAllowanceRef": null,
+  "partialAllowanceHash": null,
+  "receiptRef": "runtime/evidence/check-receipts/8285968ec3d731fe0fd62fc16c023fbb2e86d9c530536393ee2456de475683a8.json",
+  "createdAt": "2026-07-22T19:29:38.055Z",
+  "envelopeHash": "3121dd3499e2ca0fb4b9ef4a6ded0b2a827800ef039e01ad2cfb0a8ddd31f0a4"
+}

@@ -37,28 +37,24 @@ test("registers LSP at slot 150 and renders ordered IDs with semantic bullets", 
   }
 })
 
-test("persists populated collapse toggles and restores them after restart", async () => {
-  const first = await mountLspPanel({ entries })
-  const store = first.store
-  first.view().clickHeader()
-  assert.equal(first.view().marker, "▶ ")
-  assert.equal(first.view().summaryText, "3")
-  assert.deepEqual(first.view().summaryColors, [undefined])
-  assert.deepEqual(first.kvWrites, [["aamkye.opencode-tools-lsp.collapsed", true]])
-  await first.dispose()
-
-  const second = await mountLspPanel({ entries, store })
+test("resets configured collapse state on every session selection without kv persistence", async () => {
+  const mounted = await mountLspPanel({ sessionID: "session-a", entries, defaultState: "collapsed" })
   try {
-    assert.equal(second.view().marker, "▶ ")
-    second.view().clickHeader()
-    assert.equal(second.view().marker, "▼ ")
-    assert.deepEqual(second.kvWrites, [["aamkye.opencode-tools-lsp.collapsed", false]])
-  } finally {
-    await second.dispose()
-  }
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.equal(mounted.view().summaryText, "3")
+    mounted.view().clickHeader()
+    assert.equal(mounted.view().marker, "▼ ")
+    mounted.setSessionID("session-b")
+    assert.equal(mounted.view().marker, "▶ ")
+    mounted.view().clickHeader()
+    mounted.setSessionID("session-a")
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.deepEqual(mounted.kvReads, [])
+    assert.deepEqual(mounted.kvWrites, [])
+  } finally { await mounted.dispose() }
 })
 
-test("defaults empty LSP expanded and persists empty collapse interaction", async () => {
+test("defaults empty LSP expanded and keeps collapse interaction process-local", async () => {
   const mounted = await mountLspPanel()
   try {
     let view = mounted.view()
@@ -75,7 +71,7 @@ test("defaults empty LSP expanded and persists empty collapse interaction", asyn
     assert.equal(view.summaryText, "0")
     assert.equal(view.hint, "")
     assert.equal(view.dividerCount, 1)
-    assert.deepEqual(mounted.kvWrites, [["aamkye.opencode-tools-lsp.collapsed", true]])
+    assert.deepEqual(mounted.kvWrites, [])
   } finally {
     await mounted.dispose()
   }
@@ -85,7 +81,7 @@ test("reacts between empty and populated lists without remounting or resetting p
   const mounted = await mountLspPanel()
   try {
     assert.equal(mounted.slotMounts(), 1)
-    assert.deepEqual(mounted.kvReads, ["aamkye.opencode-tools-lsp.collapsed"])
+    assert.deepEqual(mounted.kvReads, [])
     mounted.setLsp([
       { id: "yaml-ls", name: "YAML", root: "/workspace", status: "error" },
       { id: "typescript", name: "TypeScript", root: "/workspace", status: "connected" },
@@ -103,24 +99,21 @@ test("reacts between empty and populated lists without remounting or resetting p
     assert.equal(mounted.view().marker, "▶ ")
     assert.equal(mounted.slotMounts(), 1)
     assert.equal(mounted.registrations.length, 1)
-    assert.deepEqual(mounted.kvReads, ["aamkye.opencode-tools-lsp.collapsed"])
-    assert.deepEqual(mounted.kvWrites, [["aamkye.opencode-tools-lsp.collapsed", true]])
+    assert.deepEqual(mounted.kvReads, [])
+    assert.deepEqual(mounted.kvWrites, [])
   } finally {
     await mounted.dispose()
   }
 })
 
-test("restores expanded and collapsed preferences for an empty list", async () => {
-  for (const savedCollapsed of [false, true]) {
-    const mounted = await mountLspPanel({ savedCollapsed })
-    try {
-      assert.equal(mounted.view().marker, savedCollapsed ? "▶ " : "▼ ")
-      assert.equal(mounted.view().hint, savedCollapsed ? "" : "LSPs will activate as files are read")
-      assert.deepEqual(mounted.kvWrites, [])
-    } finally {
-      await mounted.dispose()
-    }
-  }
+test("ignores persisted and unsupported defaults for an empty list", async () => {
+  const mounted = await mountLspPanel({ savedCollapsed: true, defaultState: "semi-collapsed" })
+  try {
+    assert.equal(mounted.view().marker, "▼ ")
+    assert.equal(mounted.view().hint, "LSPs will activate as files are read")
+    assert.deepEqual(mounted.kvReads, [])
+    assert.deepEqual(mounted.kvWrites, [])
+  } finally { await mounted.dispose() }
 })
 
 test("truncates long IDs inside 37 and 36 cells without trailing whitespace", async () => {

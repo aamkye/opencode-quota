@@ -113,8 +113,16 @@ function cleanManagedTokenCommands(config) {
   if (Object.keys(config.command).length === 0) delete config.command
 }
 
+function specToOutfile(spec, configRoot) {
+  const path = managedConfigPath(spec, configRoot)
+  if (!path) return undefined
+  const entry = pluginManifest.find((candidate) => candidate.outfile === path || candidate.source === path)
+  return entry?.outfile
+}
+
 function cleanManagedEntries(config, configRoot) {
   const unrelated = []
+  const optionsByOutfile = {}
   let options
   let priority = Infinity
   let removed = false
@@ -127,16 +135,18 @@ function cleanManagedEntries(config, configRoot) {
     }
 
     removed = true
-    const candidatePriority = Array.isArray(entry) && entry.length > 1
-      ? optionsPriority(spec, configRoot)
-      : Infinity
-    if (candidatePriority < priority) {
-      options = entry[1]
-      priority = candidatePriority
+    if (Array.isArray(entry) && entry.length > 1) {
+      const outfile = specToOutfile(spec, configRoot)
+      if (outfile) optionsByOutfile[outfile] = entry[1]
+      const candidatePriority = optionsPriority(spec, configRoot)
+      if (candidatePriority < priority) {
+        options = entry[1]
+        priority = candidatePriority
+      }
     }
   }
 
-  return { unrelated, options, priority, removed }
+  return { unrelated, options, priority, optionsByOutfile, removed }
 }
 
 async function copyBuiltArtifact(artifact, targetRoot) {
@@ -198,11 +208,19 @@ export async function deployPlugins(targetRoot, { logLevel = "info", projectConf
   }
 
   const configured = selected.priority < Infinity ? selected : fallback
-  const managedEntries = pluginManifest.map((entry) => (
-    entry.options === "quota" && configured?.priority < Infinity
-      ? [`./${entry.outfile}`, configured.options]
-      : `./${entry.outfile}`
-  ))
+  const preservedOptions = { ...fallback?.optionsByOutfile, ...selected.optionsByOutfile }
+  const managedEntries = pluginManifest.map((entry) => {
+    if (entry.options === "quota" && configured?.priority < Infinity) {
+      return [`./${entry.outfile}`, configured.options]
+    }
+    if (entry.options !== "none") {
+      const opts = preservedOptions[entry.outfile]
+      if (opts !== undefined) {
+        return [`./${entry.outfile}`, opts]
+      }
+    }
+    return `./${entry.outfile}`
+  })
   config.plugin = [...selected.unrelated, ...managedEntries]
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`)
 

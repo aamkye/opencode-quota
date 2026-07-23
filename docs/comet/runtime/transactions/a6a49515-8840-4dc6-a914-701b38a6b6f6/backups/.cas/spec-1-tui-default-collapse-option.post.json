@@ -1,0 +1,11 @@
+{
+  "schema": "comet.native.archive-cas.v1",
+  "operationId": "spec-1-tui-default-collapse-option",
+  "role": "post",
+  "hash": "50ac3eb5760400bb5cf0060d189235b06fa98d1d2b1613cc8440d764625e3be5",
+  "identity": {
+    "dev": 16777232,
+    "ino": 352001798,
+    "birthtimeMs": 1784767307091.306
+  }
+}

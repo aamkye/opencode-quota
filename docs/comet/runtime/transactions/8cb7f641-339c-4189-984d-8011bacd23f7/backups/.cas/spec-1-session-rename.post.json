@@ -1,0 +1,11 @@
+{
+  "schema": "comet.native.archive-cas.v1",
+  "operationId": "spec-1-session-rename",
+  "role": "post",
+  "hash": "226ed9f98d015e9425d72e66fbd9cd55d1655ee4b55a310187f8c25069c6cb87",
+  "identity": {
+    "dev": 16777232,
+    "ino": 351480579,
+    "birthtimeMs": 1784744272408.9927
+  }
+}

@@ -112,8 +112,8 @@ async function fixture() {
       "./opencode-tools-mcp.js",
       "./opencode-tools-context.js",
       "./opencode-tools-todo.js",
-      ["./opencode-tools-ses-tokens.js", { ignored: "ses-tokens options" }],
-      ["./opencode-tools-subagent.js", { ignored: "subagent options" }],
+      ["./opencode-tools-ses-tokens.js", { defaultState: "collapsed" }],
+      ["./opencode-tools-subagent.js", { defaultState: "semi-collapsed" }],
       ["./tui/quota.tsx", rootOptions],
       "./tui/home.tsx",
       "./tui/token-report.tsx",
@@ -189,12 +189,23 @@ async function managedArtifactPaths(root, relative = "") {
   return paths.flat().filter((path) => /(?:^|\/)opencode-tools-[^/]+\.(?:js|ts)$/.test(path)).sort()
 }
 
-function expectedManagedEntries(options) {
-  return expectedManagedSpecs.map((spec) => (
-    spec === "./opencode-tools-quota.js" && options !== undefined
-      ? [spec, options]
-      : spec
-  ))
+const fixtureSidebarOptions = {
+  "opencode-tools-ses-tokens.js": { defaultState: "collapsed" },
+  "opencode-tools-subagent.js": { defaultState: "semi-collapsed" },
+}
+
+function expectedManagedEntries(options, sidebarOpts = {}) {
+  return expectedManagedSpecs.map((spec) => {
+    const outfile = spec.slice(2)
+    if (spec === "./opencode-tools-quota.js" && options !== undefined) {
+      return [spec, options]
+    }
+    const opts = sidebarOpts[outfile]
+    if (opts !== undefined) {
+      return [spec, opts]
+    }
+    return spec
+  })
 }
 
 function assertPlainLspEntry(config) {
@@ -264,13 +275,13 @@ test("local deployment removes token artifacts and commands while preserving unr
     "/tmp/unrelated/tui/home.tsx",
     "file:///tmp/unrelated/opencode-tools-quota.js",
     ["file:///tmp/unrelated/tokens.ts?version=1", { preserve: "tokens" }],
-    ...expectedManagedEntries(localOptions),
+    ...expectedManagedEntries(localOptions, fixtureSidebarOptions),
   ])
   assertPlainContextEntry(config)
   assertPlainLspEntry(config)
   assertPlainTodoEntry(config)
-  assertPlainSesTokensEntry(config)
-  assertPlainSubagentEntry(config)
+  assert.deepEqual(config.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-ses-tokens.js"), [["./opencode-tools-ses-tokens.js", { defaultState: "collapsed" }]])
+  assert.deepEqual(config.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-subagent.js"), [["./opencode-tools-subagent.js", { defaultState: "semi-collapsed" }]])
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "used", sortDirection: "asc" },
     quota: {
@@ -358,8 +369,8 @@ test("local deployment preserves project fallback semantics across repeated migr
       "./opencode-tools-mcp.js",
       "./opencode-tools-context.js",
       "./opencode-tools-todo.js",
-      ["./opencode-tools-ses-tokens.js", { ignored: "ses-tokens options" }],
-      ["./opencode-tools-subagent.js", { ignored: "subagent options" }],
+      ["./opencode-tools-ses-tokens.js", { defaultState: "collapsed" }],
+      ["./opencode-tools-subagent.js", { defaultState: "semi-collapsed" }],
       "./tui/home.tsx",
       "@aamkye/opencode-tools/tui",
       "file:///tmp/selected-unrelated-last.js",
@@ -405,13 +416,13 @@ test("local deployment preserves project fallback semantics across repeated migr
     "./selected-unrelated-first.js",
     ["./selected-unrelated-middle.js", { preserve: "middle" }],
     "file:///tmp/selected-unrelated-last.js",
-    ...expectedManagedEntries(rootOptions),
+    ...expectedManagedEntries(rootOptions, fixtureSidebarOptions),
   ])
   assertPlainContextEntry(selectedConfig)
   assertPlainLspEntry(selectedConfig)
   assertPlainTodoEntry(selectedConfig)
-  assertPlainSesTokensEntry(selectedConfig)
-  assertPlainSubagentEntry(selectedConfig)
+  assert.deepEqual(selectedConfig.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-ses-tokens.js"), [["./opencode-tools-ses-tokens.js", { defaultState: "collapsed" }]])
+  assert.deepEqual(selectedConfig.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-subagent.js"), [["./opencode-tools-subagent.js", { defaultState: "semi-collapsed" }]])
   assert.deepEqual(selectedConfig.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "asc" },
     quota: {
@@ -471,8 +482,8 @@ test("global deployment removes token artifacts and commands while preserving un
       "./opencode-tools-mcp.js",
       "./opencode-tools-context.js",
       "./opencode-tools-todo.js",
-      ["./opencode-tools-ses-tokens.js", { ignored: "ses-tokens options" }],
-      ["./opencode-tools-subagent.js", { ignored: "subagent options" }],
+      ["./opencode-tools-ses-tokens.js", { defaultState: "collapsed" }],
+      ["./opencode-tools-subagent.js", { defaultState: "semi-collapsed" }],
       ["./opencode-tools-home.js", { ignored: "home options" }],
       "./tui/quota.tsx",
       "./tui/home.tsx",
@@ -532,13 +543,13 @@ test("global deployment removes token artifacts and commands while preserving un
     "/tmp/unrelated/tui/home.tsx",
     "file:///tmp/unrelated/opencode-tools-quota.js",
     "file:///tmp/unrelated/tokens.ts",
-    ...expectedManagedEntries(globalOptions),
+    ...expectedManagedEntries(globalOptions, fixtureSidebarOptions),
   ])
   assertPlainContextEntry(config)
   assertPlainLspEntry(config)
   assertPlainTodoEntry(config)
-  assertPlainSesTokensEntry(config)
-  assertPlainSubagentEntry(config)
+  assert.deepEqual(config.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-ses-tokens.js"), [["./opencode-tools-ses-tokens.js", { defaultState: "collapsed" }]])
+  assert.deepEqual(config.plugin.filter((entry) => (Array.isArray(entry) ? entry[0] : entry) === "./opencode-tools-subagent.js"), [["./opencode-tools-subagent.js", { defaultState: "semi-collapsed" }]])
   assert.deepEqual(config.plugin.find((entry) => Array.isArray(entry) && entry[0] === "./opencode-tools-quota.js")[1], {
     otherProviders: { percentageMode: "remaining", sortDirection: "desc" },
     quota: {

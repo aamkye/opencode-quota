@@ -9,6 +9,7 @@ export type TodoFixtureOptions = {
   sessionID?: string
   records?: readonly TodoFixtureRecord[]
   sessions?: ReadonlyMap<string, readonly TodoFixtureRecord[]>
+  defaultState?: unknown
   savedCollapsed?: boolean
   store?: Map<string, unknown>
 }
@@ -140,7 +141,7 @@ export async function mountTodoPanel(options: TodoFixtureOptions = {}) {
     theme: { current: theme },
   }
 
-  await todoPlugin.tui(api as never, undefined, undefined)
+  await todoPlugin.tui(api as never, { defaultState: options.defaultState }, undefined)
   const slot = registrations[0]?.slots.sidebar_content
   if (!slot) throw new Error("TODO sidebar slot was not registered")
 

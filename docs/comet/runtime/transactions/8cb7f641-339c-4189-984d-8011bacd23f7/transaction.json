@@ -1,0 +1,27 @@
+{
+  "schema": "comet.native.transaction.v2",
+  "id": "8cb7f641-339c-4189-984d-8011bacd23f7",
+  "kind": "archive",
+  "status": "committed",
+  "change": "session-rename-silent",
+  "createdAt": "2026-07-22T18:17:51.043Z",
+  "preflightHash": "5c4a0a86ca0fee1fb4c39ac2b8f025eaed27b7386f4000e33ecc15bdf9321021",
+  "operations": [
+    {
+      "id": "spec-1-session-rename",
+      "type": "write",
+      "target": "specs/session-rename/spec.md",
+      "staged": "runtime/transactions/8cb7f641-339c-4189-984d-8011bacd23f7/staged/specs/session-rename/spec.md",
+      "expectedTargetHash": null,
+      "stagedHash": "226ed9f98d015e9425d72e66fbd9cd55d1655ee4b55a310187f8c25069c6cb87"
+    },
+    {
+      "id": "archive-change",
+      "type": "move",
+      "source": "changes/session-rename-silent",
+      "target": "archive/2026-07-22-session-rename-silent",
+      "expectedSourceHash": "f39edc0c593302d7f980f058cd9f56aa8e70537a7828d4ddccfd16954a7dff9e",
+      "expectedTargetHash": null
+    }
+  ]
+}

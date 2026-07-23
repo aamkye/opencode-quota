@@ -90,31 +90,22 @@ test("renders the exact expanded row order symbols values and semantic total sep
   }
 })
 
-test("collapses to the token-turn summary and persists across remount", async () => {
-  const first = await mountSesTokensPanel({ sessionID: "session-a" })
-  await resolveReady(first)
-  const store = first.store
-  assert.deepEqual(first.kvReads, ["aamkye.opencode-tools-ses-tokens.collapsed"])
-  await first.view().clickHeader()
-  assert.equal(first.view().marker, "▶ ")
-  assert.equal(first.view().summaryText, "29.2M")
-  assert.equal(first.view().rows.length, 0)
-  assert.equal(first.view().dividerCount, 1)
-  assert.deepEqual(first.kvWrites, [["aamkye.opencode-tools-ses-tokens.collapsed", true]])
-  await first.dispose()
-
-  const second = await mountSesTokensPanel({ sessionID: "session-a", store })
+test("resets configured collapse state on every session selection without kv persistence", async () => {
+  const mounted = await mountSesTokensPanel({ sessionID: "session-a", defaultState: "collapsed" })
   try {
-    await resolveReady(second)
-    assert.equal(second.view().marker, "▶ ")
-    assert.equal(second.view().summaryText, "29.2M")
-    assert.deepEqual(second.kvWrites, [])
-    await second.view().clickHeader()
-    assert.equal(second.view().marker, "▼ ")
-    assert.deepEqual(second.kvWrites, [["aamkye.opencode-tools-ses-tokens.collapsed", false]])
-  } finally {
-    await second.dispose()
-  }
+    await resolveReady(mounted)
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.equal(mounted.view().summaryText, "29.2M")
+    await mounted.view().clickHeader()
+    assert.equal(mounted.view().marker, "▼ ")
+    await mounted.setSessionID("session-b")
+    assert.equal(mounted.view().marker, "▶ ")
+    await mounted.view().clickHeader()
+    await mounted.setSessionID("session-a")
+    assert.equal(mounted.view().marker, "▶ ")
+    assert.deepEqual(mounted.kvReads, [])
+    assert.deepEqual(mounted.kvWrites, [])
+  } finally { await mounted.dispose() }
 })
 
 test("renders stale detail in expanded and collapsed option-A headers", async () => {
@@ -223,13 +214,13 @@ test("switches slot sessions without remounting or leaking prior metrics", async
     await mounted.view().clickHeader()
     assert.equal(mounted.view().marker, "▶ ")
     await mounted.setSessionID("session-b")
-    assert.equal(mounted.view().summaryText, "Loading...")
+    assert.equal(mounted.view().marker, "▼ ")
+    assert.equal(mounted.view().summaryText, "")
+    assert.equal(mounted.view().fallbackText, "Loading...")
     assert.equal(mounted.view().rows.length, 0)
     await resolveReady(mounted, "session-b", oneMessage("session-b", 12))
-    assert.equal(mounted.view().marker, "▶ ")
-    assert.equal(mounted.view().summaryText, "12")
-    assert.equal(mounted.view().rows.length, 0)
-    await mounted.view().clickHeader()
+    assert.equal(mounted.view().marker, "▼ ")
+    assert.equal(mounted.view().summaryText, "")
     assert.deepEqual(mounted.view().rows.map((row) => row.value), ["1", "12", "0", "0", "0", "0.0×", "0", "12"])
     assert.equal(mounted.panelMounts(), 1)
     assert.equal(mounted.panelDisposals(), 0)

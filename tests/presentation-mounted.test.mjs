@@ -224,6 +224,41 @@ test("wires mounted panel and group mouse collapse while the divider follows the
   }
 })
 
+test("resets panel and group disclosure when the session reset key changes", async () => {
+  const mounted = mountPanel(quotaSnapshotModel, {
+    initiallyCollapsedGroupIds: ["other-providers"],
+    resetKey: "session-a",
+  })
+
+  try {
+    await new Promise((resolve) => setImmediate(resolve))
+    let elements = mounted.readElements()
+    let mouseRows = elements.filter((element) => element.type === "box" && typeof element.props.onMouseDown === "function")
+    let panelHeader = mouseRows.find((row) => row.props.children?.[1]?.props?.children === "Quota")
+    let groupHeader = mouseRows.find((row) => row.props.children?.[1]?.props?.children === "Other providers")
+    assert.equal(panelHeader?.props.children[0]?.props?.children, "▼ ")
+    assert.equal(groupHeader?.props.children[0]?.props?.children, "▶ ")
+    groupHeader.props.onMouseDown()
+    panelHeader.props.onMouseDown()
+    elements = mounted.readElements()
+    mouseRows = elements.filter((element) => element.type === "box" && typeof element.props.onMouseDown === "function")
+    panelHeader = mouseRows.find((row) => row.props.children?.[1]?.props?.children === "Quota")
+    assert.equal(panelHeader?.props.children[0]?.props?.children, "▶ ")
+
+    mounted.setResetKey("session-b")
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(mounted.resetKey(), "session-b")
+    elements = mounted.readElements()
+    mouseRows = elements.filter((element) => element.type === "box" && typeof element.props.onMouseDown === "function")
+    panelHeader = mouseRows.find((row) => row.props.children?.[1]?.props?.children === "Quota")
+    groupHeader = mouseRows.find((row) => row.props.children?.[1]?.props?.children === "Other providers")
+    assert.equal(panelHeader?.props.children[0]?.props?.children, "▼ ")
+    assert.equal(groupHeader?.props.children[0]?.props?.children, "▶ ")
+  } finally {
+    mounted.dispose()
+  }
+})
+
 test("mounts collapsed stale and quota summary segments with independent colors", () => {
   const collapsedModel = {
     id: "quota",
