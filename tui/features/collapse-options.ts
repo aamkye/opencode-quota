@@ -16,3 +16,17 @@ export function resolveCollapseDefault(
   }
   return { collapsed: false, secondaryCollapsed: false }
 }
+
+export type ResolvedChipOption = {
+  enabled: boolean
+}
+
+export function resolveChipOption(
+  options: Record<string, unknown> | undefined,
+  defaultEnabled: boolean,
+): ResolvedChipOption {
+  const raw = options?.chip
+  if (raw === "disabled") return { enabled: false }
+  if (raw === "enabled") return { enabled: true }
+  return { enabled: defaultEnabled }
+}
