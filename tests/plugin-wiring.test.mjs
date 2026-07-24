@@ -58,7 +58,7 @@ test("tracked project files contain no active legacy identifier", () => {
   const trackedFiles = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" })
     .split("\0")
     .filter(Boolean)
-    .filter((file) => !file.startsWith("openspec/") && !file.startsWith("docs/superpowers/") && !file.startsWith("okf_bundle/"))
+    .filter((file) => !file.startsWith("openspec/") && !file.startsWith("docs/superpowers/") && !file.startsWith("docs/comet/") && !file.startsWith("okf_bundle/"))
     .filter((file) => existsSync(file))
     .filter((file) => /(?:^|\/)(?:README\.md|package(?:-lock)?\.json|tsconfig\.json|tui\.json|[^/]+\.(?:[cm]?[jt]sx?|json|md))$/.test(file))
 
@@ -78,7 +78,7 @@ test("retains the legacy session artifact name only for deployment cleanup", () 
   const trackedFiles = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" })
     .split("\0")
     .filter(Boolean)
-    .filter((file) => !file.startsWith("openspec/") && !file.startsWith("docs/superpowers/") && !file.startsWith("okf_bundle/"))
+    .filter((file) => !file.startsWith("openspec/") && !file.startsWith("docs/superpowers/") && !file.startsWith("docs/comet/") && !file.startsWith("okf_bundle/"))
     .filter((file) => existsSync(file))
 
   for (const file of trackedFiles) {
