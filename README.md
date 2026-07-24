@@ -336,9 +336,25 @@ in an options object are ignored.
 | TODO                               | `defaultState` | string   | `"expanded"`  | `"expanded"`, `"collapsed"`                                |
 
 `defaultState` resets every sidebar panel when the active session ID changes.
-`"semi-collapsed"` starts the panel expanded with the secondary section (Rest
+"semi-collapsed" starts the panel expanded with the secondary section (Rest
 or Other Providers) collapsed; it is ignored for panels without a secondary
 section. Missing or unrecognized values fall back to `"expanded"`.
+
+**Input chips (`chip` option)**
+
+The seven sidebar-panel plugins (Quota, Context, MCP, LSP, TODO, SesTokens,
+SubAgent) also render a compact status chip on the right of the session prompt's
+agent/model row, reusing each panel's existing collapsed summary — e.g.
+`Q 46%`, `Ctx 64%`, `MCP 4/0/0`, `LSP 2`, `TODO 4/3/2`, `Tok 29.11M`,
+`Sub 7/1/3`. A plugin renders no chip when its panel has no data. Chips are
+display-only and do not affect the sidebar panels.
+
+| Option  | Type   | Default     | Accepted values           | Applicable plugins                                             |
+| ------- | ------ | ----------- | ------------------------- | ------------------------------------------------------------- |
+| `chip`  | string | `"enabled"` | `"enabled"`, `"disabled"` | Quota, Context, MCP, LSP, TODO, SesTokens, SubAgent           |
+
+`chip: "disabled"` suppresses only that plugin's input chip. Missing or
+unrecognized values fall back to `"enabled"`.
 
 **Quota plugin options (`quota` object)**
 

@@ -11,7 +11,9 @@ import {
   defineTuiPlugin,
   PANEL_MAX_CELLS,
   pluginDescriptor,
+  resolveChipOption,
   resolveCollapseDefault,
+  StatusChip,
   type PanelStatus,
   type PanelTheme,
   type RetainedFailures,
@@ -187,6 +189,7 @@ function SubagentRow(props: {
 
 const plugin = defineTuiPlugin(descriptor, (context, api, options, meta) => {
   const collapseDefaults = resolveCollapseDefault(options, true)
+  const chipEnabled = resolveChipOption(options, true).enabled
   const directory = api.state.path.directory
   const injected = runtime(meta)
   const loadSnapshot = createSubagentSnapshotLoader({
@@ -357,11 +360,34 @@ const plugin = defineTuiPlugin(descriptor, (context, api, options, meta) => {
     )
   }
 
+  function SubagentChip(props: { parentID: string; theme: () => PanelTheme }) {
+    const panelState = createMemo(() => {
+      const current = state()
+      if (props.parentID === "" || current?.parentID !== props.parentID) return undefined
+      return current.phase === "ready" || current.phase === "stale" ? current : undefined
+    })
+    const model = createMemo(() => {
+      const ps = panelState()
+      return ps ? createSubagentPanelModel(ps.snapshot, ps.failureTimes, injected.now()) : undefined
+    })
+    const hasChildren = () => !!model() && (model()!.primary.length > 0 || model()!.rest.length > 0)
+    return (
+      <Show when={hasChildren()}>
+        <StatusChip label="Sub" segments={model()!.summary} theme={props.theme} />
+      </Show>
+    )
+  }
+
   api.slots.register({
     order: descriptor.slotOrder,
     slots: {
       sidebar_content(_ctx, props) {
         return <SubagentSlot parentID={props.session_id} />
+      },
+      session_prompt_right(_ctx, props) {
+        return chipEnabled
+          ? <SubagentChip parentID={props?.session_id ?? ""} theme={() => api.theme.current} />
+          : null
       },
     },
   })

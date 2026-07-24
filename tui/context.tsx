@@ -1,11 +1,13 @@
-import { createEffect, createMemo, createSignal, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, Show, type JSX } from "solid-js"
 
 import {
   CompactPanel,
   createContextPanelModel,
   defineTuiPlugin,
   pluginDescriptor,
+  resolveChipOption,
   resolveCollapseDefault,
+  StatusChip,
   type PanelStatus,
   type PanelTheme,
 } from "../shared/opencode-tools-shared.js"
@@ -30,6 +32,23 @@ function ContextMetricRow(props: {
 const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
   const [sessionID, setSessionID] = createSignal("")
   const defaultCollapsed = resolveCollapseDefault(options, false).collapsed
+  const chipEnabled = resolveChipOption(options, true).enabled
+
+  function ContextChip(props: { sessionID: string; theme: () => PanelTheme }) {
+    const model = createMemo(() => {
+      const messages = props.sessionID ? api.state.session.messages(props.sessionID) : []
+      return createContextPanelModel(messages, api.state.provider)
+    })
+    return (
+      <Show when={model().summary !== "-"}>
+        <StatusChip
+          label="Ctx"
+          segments={[{ text: model().summary, ...(model().usageStatus ? { status: model().usageStatus } : {}) }]}
+          theme={props.theme}
+        />
+      </Show>
+    )
+  }
 
   function ContextPanel() {
     const [collapsed, setCollapsed] = createSignal(defaultCollapsed)
@@ -75,8 +94,13 @@ const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
     order: descriptor.slotOrder,
     slots: {
       sidebar_content(_ctx, props) {
-        setSessionID(props.session_id ?? "")
+        setSessionID(props?.session_id ?? "")
         return <ContextPanel />
+      },
+      session_prompt_right(_ctx, props) {
+        return chipEnabled
+          ? <ContextChip sessionID={props?.session_id ?? ""} theme={() => api.theme.current} />
+          : null
       },
     },
   })

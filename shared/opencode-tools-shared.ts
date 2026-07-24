@@ -11,11 +11,12 @@ import { createOpenCodeGoProvider } from "../tui/providers/opencode-go.js";
 import { pluginDescriptor } from "../tui/runtime/manifest.js";
 import { createZaiProvider } from "../tui/providers/zai.js";
 
-export { CompactPanel, CompactStatusRow } from "../tui/presentation/compact-panel.js";
+export { CompactPanel, CompactStatusRow, StatusChip } from "../tui/presentation/compact-panel.js";
 export type {
   CompactPanelProps,
   CompactPanelSummary,
   CompactStatusRowProps,
+  StatusChipProps,
   PanelTheme,
 } from "../tui/presentation/compact-panel.js";
 export type { PanelStatus } from "../tui/presentation/types.js";
@@ -189,5 +190,5 @@ export { acquireService, defineTuiPlugin } from "../tui/runtime/plugin.js";
 export type { FeatureActivation, ServiceFactory, ServiceKey, ServiceLease, ServiceValue, TuiFeatureContext } from "../tui/runtime/plugin.js";
 export { pluginDescriptor, pluginManifest } from "../tui/runtime/manifest.js";
 export type { PluginKey, PluginManifestEntry } from "../tui/runtime/manifest.js";
-export { resolveCollapseDefault } from "../tui/features/collapse-options.js";
-export type { PanelCollapseState, ResolvedCollapseDefault } from "../tui/features/collapse-options.js";
+export { resolveCollapseDefault, resolveChipOption } from "../tui/features/collapse-options.js";
+export type { PanelCollapseState, ResolvedCollapseDefault, ResolvedChipOption } from "../tui/features/collapse-options.js";

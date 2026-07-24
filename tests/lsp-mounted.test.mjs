@@ -22,7 +22,7 @@ test("registers LSP at slot 150 and renders ordered IDs with semantic bullets an
     assert.equal(mounted.pluginID, "aamkye/opencode-tools-lsp")
     assert.equal(mounted.registrations.length, 1)
     assert.equal(mounted.registrations[0].order, 150)
-    assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
+    assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content", "session_prompt_right"])
     assert.equal(view.marker, "▼ ")
     assert.equal(view.summaryText, "")
     assert.deepEqual(view.rows.map((row) => [row.id, row.bullet, row.bulletColor]), [
@@ -226,4 +226,15 @@ test("disposes the Solid root and plugin lifecycle", async () => {
   await mounted.dispose()
   assert.equal(mounted.lifecycleAborted(), true)
   assert.equal(mounted.lifecycleCleanups(), 0)
+})
+
+test("session_prompt_right chip slot is wired and enabled by default", async () => {
+  const mounted = await mountLspPanel({ entries })
+  try {
+    const chipSlot = mounted.registrations[0].slots.session_prompt_right
+    assert.equal(typeof chipSlot, "function")
+    assert.notEqual(chipSlot({}, { session_id: "ses" }), null)
+  } finally {
+    await mounted.dispose()
+  }
 })

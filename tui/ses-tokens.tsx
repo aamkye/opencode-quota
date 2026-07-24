@@ -7,7 +7,9 @@ import {
   createSesTokensSource,
   defineTuiPlugin,
   pluginDescriptor,
+  resolveChipOption,
   resolveCollapseDefault,
+  StatusChip,
   type PanelTheme,
   type SesTokensPanelModel,
   type SesTokensSource,
@@ -69,6 +71,7 @@ function SesTokensMetricRow(props: { row: MetricRow; theme: () => PanelTheme }) 
 
 const plugin = defineTuiPlugin(descriptor, (context, api, options, meta) => {
   const defaultCollapsed = resolveCollapseDefault(options, false).collapsed
+  const chipEnabled = resolveChipOption(options, true).enabled
   const directory = api.state.path.directory
   const loadSnapshot = createSessionTreeSnapshotLoader({
     async listSessions() {
@@ -160,11 +163,28 @@ const plugin = defineTuiPlugin(descriptor, (context, api, options, meta) => {
     )
   }
 
+  function SesTokensChip(props: { theme: () => PanelTheme }) {
+    const model = createMemo(() => {
+      const current = state()
+      return current?.phase === "ready" || current?.phase === "stale"
+        ? createSesTokensPanelModel(current.snapshot.messages)
+        : undefined
+    })
+    return (
+      <Show when={model()}>
+        <StatusChip label="Tok" segments={model()!.summary} theme={props.theme} />
+      </Show>
+    )
+  }
+
   api.slots.register({
     order: descriptor.slotOrder,
     slots: {
       sidebar_content(_ctx, props) {
         return <SesTokensSlot sessionID={props.session_id} />
+      },
+      session_prompt_right() {
+        return chipEnabled ? <SesTokensChip theme={() => api.theme.current} /> : null
       },
     },
   })

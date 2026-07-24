@@ -27,7 +27,7 @@ test("registers MCP at slot 140 and renders rows in source order", async () => {
     assert.equal(mounted.pluginID, "aamkye/opencode-tools-mcp")
     assert.equal(mounted.registrations.length, 1)
     assert.equal(mounted.registrations[0].order, 140)
-    assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
+    assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content", "session_prompt_right"])
     assert.equal(view.marker, "▼ ")
     assert.equal(view.summaryText, "")
     assert.equal(view.dividerCount, 2)

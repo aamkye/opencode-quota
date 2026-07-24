@@ -440,11 +440,11 @@ test("current feature adapters expose normalized standalone plugin contracts", a
         "aamkye/opencode-tools-mcp",
       ],
     )
-    assert.deepEqual(slotNames(quotaApi.api), ["sidebar_content"])
+    assert.deepEqual(slotNames(quotaApi.api), ["sidebar_content", "session_prompt_right"])
     assert.deepEqual(slotNames(homeApi.api), ["home_bottom"])
     assert.equal(slotNames(tokenApi.api).length, 0)
     assert.equal(keymapLayers(tokenApi.api).length, 2)
-    assert.deepEqual(slotNames(mcpApi.api), ["sidebar_content"])
+    assert.deepEqual(slotNames(mcpApi.api), ["sidebar_content", "session_prompt_right"])
     assert.equal(mcpApi.api.slots.registrations[0].order, 140)
   } finally {
     await quotaApi.lifecycle.dispose()
@@ -461,7 +461,7 @@ test("MCP adapter registers only its standalone sidebar surface", async () => {
     assert.equal(mcpPlugin.id, "aamkye/opencode-tools-mcp")
     await activate(mcpPlugin, undefined, api)
 
-    assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content"]])
+    assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content", "session_prompt_right"]])
     assert.equal(api.slots.registrations[0].order, 140)
     assert.deepEqual(api.keymap.registrations, [])
     assert.deepEqual(api.route.registrations, [])
@@ -479,7 +479,7 @@ test("SubAgent adapter activates alone at slot 120 and cleans up its lifecycle",
     assert.equal(subagentPlugin.id, "aamkye/opencode-tools-subagent")
     await activate(subagentPlugin, undefined, api)
 
-    assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content"]])
+    assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content", "session_prompt_right"]])
     assert.equal(api.slots.registrations[0].order, 120)
     assert.deepEqual(api.keymap.registrations, [])
     assert.deepEqual(api.route.registrations, [])
@@ -500,7 +500,7 @@ test("quota adapter registers only the sidebar surface and cleans up selection l
     assert.equal(quotaPlugin.id, "aamkye/opencode-tools-quota")
     await activate(quotaPlugin, undefined, api)
 
-    assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content"]])
+    assert.deepEqual(api.slots.registrations.map((registration) => Object.keys(registration.slots)), [["sidebar_content", "session_prompt_right"]])
     assert.equal(api.slots.registrations[0].order, 130)
     assert.deepEqual(api.keymap.registrations, [])
     assert.deepEqual(api.route.registrations, [])

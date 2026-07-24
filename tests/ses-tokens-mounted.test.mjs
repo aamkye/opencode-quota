@@ -42,7 +42,7 @@ test("registers SesTokens at slot 110 and one session-scoped sidebar slot", asyn
     assert.equal(mounted.pluginID, "aamkye/opencode-tools-ses-tokens")
     assert.equal(mounted.registrations.length, 1)
     assert.equal(mounted.registrations[0].order, 110)
-    assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
+    assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content", "session_prompt_right"])
     assert.deepEqual(mounted.listCalls, [])
     assert.equal(await mounted.setSessionID(), null)
     assert.deepEqual(mounted.listCalls, [])

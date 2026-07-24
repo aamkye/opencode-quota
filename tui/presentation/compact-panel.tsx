@@ -29,6 +29,24 @@ export type CompactStatusRowProps = {
   theme: Accessor<PanelTheme>
 }
 
+export type StatusChipProps = {
+  label: string
+  segments: readonly PanelTextSegment[]
+  theme: Accessor<PanelTheme>
+}
+
+export function StatusChip(props: StatusChipProps) {
+  const color = (status?: PanelStatus) => (status ? props.theme()[status] : undefined)
+  return (
+    <box flexDirection="row" flexShrink={0} alignItems="center">
+      <text fg={props.theme().textMuted}>{` ${props.label} `}</text>
+      <For each={props.segments}>
+        {(segment) => <text fg={color(segment.status)}>{segment.text}</text>}
+      </For>
+    </box>
+  )
+}
+
 const NUMERIC_TOKEN = String.raw`[+-]?\d+(?:\.\d+)?(?:%|[KMB])?`
 const LEFT_NUMERIC_TOKEN = new RegExp(String.raw`(?:^|[\s/])${NUMERIC_TOKEN}$`, "iu")
 const RIGHT_NUMERIC_TOKEN = new RegExp(String.raw`^${NUMERIC_TOKEN}(?=$|[\s/])`, "iu")

@@ -25,7 +25,7 @@ test("registers Context at slot 100 and renders the expanded metric contract", a
     const view = mounted.view()
     assert.equal(mounted.pluginID, "aamkye/opencode-tools-context")
     assert.equal(mounted.registrations[0].order, 100)
-    assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
+    assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content", "session_prompt_right"])
     assert.equal(view.marker, "▼ ")
     assert.equal(view.title, "Context")
     assert.equal(view.summaryText, "")

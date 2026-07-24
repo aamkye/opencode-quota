@@ -24,7 +24,7 @@ test("registers TODO at slot 160 and renders ordered status rows", async () => {
     assert.equal(mounted.pluginID, "aamkye/opencode-tools-todo")
     assert.equal(mounted.registrations.length, 1)
     assert.equal(mounted.registrations[0].order, 160)
-    assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
+    assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content", "session_prompt_right"])
     assert.equal(view.marker, "▼ ")
     assert.equal(view.title, "TODO")
     assert.equal(view.summaryText, "")

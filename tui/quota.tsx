@@ -1,4 +1,4 @@
-import { createMemo, createSignal } from "solid-js"
+import { createMemo, createSignal, Show } from "solid-js"
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 
 import { PanelRenderer, type PanelTheme } from "./presentation/renderer.js"
@@ -11,7 +11,10 @@ import {
   defineTuiPlugin,
   pluginDescriptor,
   quotaAdapterShared,
+  resolveChipOption,
   resolveCollapseDefault,
+  StatusChip,
+  type PanelStatus,
   type QuotaProviderDemand,
   type QuotaProviderHub,
   type ServiceLease,
@@ -66,6 +69,7 @@ function reactiveProviders(providers: () => readonly QuotaProviderAdapter[]): re
 const plugin = defineTuiPlugin(pluginDescriptor("quota"), (context, api, rawOptions, meta) => {
   const options = quotaAdapterShared.normalizeOptions(rawOptions)
   const collapseDefaults = resolveCollapseDefault(rawOptions, true)
+  const chipEnabled = resolveChipOption(rawOptions, true).enabled
   const hub = acquireHub(context, api, quotaHubDemand(options), meta)
   const [currentProviders, setCurrentProviders] = createSignal(hub.value.providers())
   const [activeSessionID, setActiveSessionID] = createSignal("")
@@ -79,6 +83,24 @@ const plugin = defineTuiPlugin(pluginDescriptor("quota"), (context, api, rawOpti
   const selection: QuotaSelectionController = quotaAdapterShared.createSelection(api, providers)
   const model = createMemo(() => quotaAdapterShared.composePanel(selection.selectedProviderID(), providers, options))
   const theme = () => api.theme.current as PanelTheme
+
+  function QuotaChip(props: { theme: () => PanelTheme }) {
+    const summary = createMemo(() => {
+      const s = model()?.collapsedSummary
+      return s && s.kind === "text" ? s : undefined
+    })
+    const segments = createMemo<readonly { text: string; status?: PanelStatus }[]>(() => {
+      const s = summary()
+      if (!s) return []
+      if (s.segments && s.segments.length > 0) return s.segments
+      return [{ text: s.text, ...(s.status ? { status: s.status } : {}) }]
+    })
+    return (
+      <Show when={summary() && segments().length > 0}>
+        <StatusChip label="Q" segments={segments()} theme={props.theme} />
+      </Show>
+    )
+  }
 
   api.slots.register({
     // The aggregate owns the sole sidebar slot at the legacy Z.AI registration order.
@@ -97,6 +119,9 @@ const plugin = defineTuiPlugin(pluginDescriptor("quota"), (context, api, rawOpti
           initiallyCollapsedGroupIds={collapseDefaults.secondaryCollapsed ? ["other-providers"] : []}
           resetKey={activeSessionID}
         />
+      },
+      session_prompt_right() {
+        return chipEnabled ? <QuotaChip theme={theme} /> : null
       },
     },
   })

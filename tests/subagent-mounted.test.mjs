@@ -90,7 +90,7 @@ test("registers the SubAgent ID and session-scoped slot 120", async () => {
   assert.equal(mounted.pluginID, "aamkye/opencode-tools-subagent")
   assert.equal(mounted.registrations.length, 1)
   assert.equal(mounted.registrations[0].order, 120)
-  assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content"])
+  assert.deepEqual(Object.keys(mounted.registrations[0].slots), ["sidebar_content", "session_prompt_right"])
   assert.equal(mounted.sourceFactoryCalls(), 1)
   assert.deepEqual(mounted.registeredTypes(), eventTypes)
   assert.deepEqual(mounted.kvReads, [

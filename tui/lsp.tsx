@@ -7,7 +7,9 @@ import {
   defineTuiPlugin,
   PANEL_MAX_CELLS,
   pluginDescriptor,
+  resolveChipOption,
   resolveCollapseDefault,
+  StatusChip,
   type LspStatusRow,
   type PanelTheme,
 } from "../shared/opencode-tools-shared.js"
@@ -41,7 +43,17 @@ function LspRow(props: { row: LspStatusRow; theme: () => PanelTheme }) {
 
 const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
   const defaultCollapsed = resolveCollapseDefault(options, false).collapsed
+  const chipEnabled = resolveChipOption(options, true).enabled
   const [sessionID, setSessionID] = createSignal("")
+
+  function LspChip(props: { theme: () => PanelTheme }) {
+    const model = createMemo(() => createLspPanelModel(api.state.lsp()))
+    return (
+      <Show when={model().total > 0}>
+        <StatusChip label="LSP" segments={[{ text: String(model().total) }]} theme={props.theme} />
+      </Show>
+    )
+  }
 
   function LspPanel() {
     const [collapsed, setCollapsed] = createSignal(defaultCollapsed)
@@ -81,6 +93,9 @@ const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
       sidebar_content(_ctx, props) {
         setSessionID(props?.session_id ?? "")
         return <LspPanel />
+      },
+      session_prompt_right() {
+        return chipEnabled ? <LspChip theme={() => api.theme.current} /> : null
       },
     },
   })

@@ -288,15 +288,15 @@ test("standalone defaults expose only their manifest ID and TUI activation", asy
 
 test("each artifact loads alone, activates only its feature, and cleans up", async () => {
   const expectedRegistration = {
-    quota: { slots: ["sidebar_content"], keymaps: 0 },
+    quota: { slots: ["sidebar_content", "session_prompt_right"], keymaps: 0 },
     home: { slots: ["home_bottom"], keymaps: 0 },
     "token-report": { slots: [], keymaps: 2 },
-    mcp: { slots: ["sidebar_content"], keymaps: 0 },
-    context: { slots: ["sidebar_content"], keymaps: 0 },
-    lsp: { slots: ["sidebar_content"], keymaps: 0 },
-    todo: { slots: ["sidebar_content"], keymaps: 0 },
-    "ses-tokens": { slots: ["sidebar_content"], keymaps: 0 },
-    subagent: { slots: ["sidebar_content"], keymaps: 0 },
+    mcp: { slots: ["sidebar_content", "session_prompt_right"], keymaps: 0 },
+    context: { slots: ["sidebar_content", "session_prompt_right"], keymaps: 0 },
+    lsp: { slots: ["sidebar_content", "session_prompt_right"], keymaps: 0 },
+    todo: { slots: ["sidebar_content", "session_prompt_right"], keymaps: 0 },
+    "ses-tokens": { slots: ["sidebar_content", "session_prompt_right"], keymaps: 0 },
+    subagent: { slots: ["sidebar_content", "session_prompt_right"], keymaps: 0 },
   }
   const isolatedRoot = await mkdtemp(resolve(tmpdir(), "opencode-tools-artifacts-"))
   const originalEnvironment = {

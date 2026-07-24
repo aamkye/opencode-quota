@@ -5,7 +5,9 @@ import {
   createTodoPanelModel,
   defineTuiPlugin,
   pluginDescriptor,
+  resolveChipOption,
   resolveCollapseDefault,
+  StatusChip,
   type PanelTheme,
   type TodoStatusRow,
 } from "../shared/opencode-tools-shared.js"
@@ -32,6 +34,18 @@ function TodoRow(props: { row: TodoStatusRow; theme: () => PanelTheme }) {
 const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
   const [sessionID, setSessionID] = createSignal("")
   const defaultCollapsed = resolveCollapseDefault(options, false).collapsed
+  const chipEnabled = resolveChipOption(options, true).enabled
+
+  function TodoChip(props: { sessionID: string; theme: () => PanelTheme }) {
+    const model = createMemo(() =>
+      createTodoPanelModel(props.sessionID ? api.state.session.todo(props.sessionID) : []),
+    )
+    return (
+      <Show when={model().total > 0}>
+        <StatusChip label="TODO" segments={model().summary} theme={props.theme} />
+      </Show>
+    )
+  }
 
   function TodoPanel() {
     const [collapsed, setCollapsed] = createSignal(defaultCollapsed)
@@ -75,6 +89,11 @@ const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
       sidebar_content(_ctx, props) {
         setSessionID(props.session_id ?? "")
         return <TodoPanel />
+      },
+      session_prompt_right(_ctx, props) {
+        return chipEnabled
+          ? <TodoChip sessionID={props?.session_id ?? ""} theme={() => api.theme.current} />
+          : null
       },
     },
   })

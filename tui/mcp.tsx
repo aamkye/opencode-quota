@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, For, Show, type JSX } from "solid-js"
 
 import {
   CompactPanel,
@@ -6,13 +6,26 @@ import {
   createMcpPanelModel,
   defineTuiPlugin,
   pluginDescriptor,
+  resolveChipOption,
   resolveCollapseDefault,
+  StatusChip,
+  type PanelTheme,
 } from "../shared/opencode-tools-shared.js"
 
 const descriptor = pluginDescriptor("mcp")
 const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
   const defaultCollapsed = resolveCollapseDefault(options, false).collapsed
+  const chipEnabled = resolveChipOption(options, true).enabled
   const [sessionID, setSessionID] = createSignal("")
+
+  function McpChip(props: { theme: () => PanelTheme }) {
+    const model = createMemo(() => createMcpPanelModel(api.state.mcp()))
+    return (
+      <Show when={model().total > 0}>
+        <StatusChip label="MCP" segments={model().summary} theme={props.theme} />
+      </Show>
+    )
+  }
 
   function McpPanel() {
     const [collapsed, setCollapsed] = createSignal(defaultCollapsed)
@@ -76,6 +89,9 @@ const plugin = defineTuiPlugin(descriptor, (_context, api, options) => {
       sidebar_content(_ctx, props) {
         setSessionID(props?.session_id ?? "")
         return <McpPanel />
+      },
+      session_prompt_right() {
+        return chipEnabled ? <McpChip theme={() => api.theme.current} /> : null
       },
     },
   })
